@@ -1,7 +1,7 @@
 #esto es una prueba!!
 
 from Modelo.Inventario import Inventario, NodoInventario
-from Modelo.retroceso import Historial
+from Modelo.retroceso import Historial, usar_pergamino
 
 
 class JugadorDePrueba:
@@ -20,33 +20,39 @@ def aplicar_dano(jugador, cantidad, historial):
 
 def recoger_con_historial(inventario, nodo, historial):
     exito = inventario.recoge(nodo)
-    if exito:
+    if exito and nodo.clase != "pergamino_retroceso":
         historial.registrar(
-            deshacer=lambda: inventario.suelta_actual() if inventario.actual() is nodo else None,
+            deshacer=lambda: inventario.suelta_nodo(nodo),
             description=f"recoger {nodo.nombre}"
         )
     return exito
 
-
 if __name__ == "__main__":
-    jugador = JugadorDePrueba(vida=30)
-    inv = Inventario(cap_max=5)
+    inv = Inventario(cap_max=10)
     historial = Historial()
 
-    # --- acción del jugador: se mueve, abre un intervalo nuevo ---
-    historial.abrir_intervalo()
+    pergamino_1 = NodoInventario("p1", "itm_pergamino", "Pergamino 1", 1, 30, "pergamino_retroceso")
+    pergamino_2 = NodoInventario("p2", "itm_pergamino", "Pergamino 2", 1, 30, "pergamino_retroceso")
+    inv.recoge(pergamino_1)
+    inv.recoge(pergamino_2)
 
+    # --- acción 1 del jugador: recoge la daga ---
+    historial.abrir_intervalo()
     daga = NodoInventario("i1", "itm_daga", "Daga oxidada", 2, 15, "arma")
     recoger_con_historial(inv, daga, historial)
-    print("vida antes de daño:", jugador.vida)
-    print("inventario antes de deshacer:", [n.nombre for n in inv])
 
-    # simulamos que, dentro del mismo intervalo, algo le hace daño al jugador
-    aplicar_dano(jugador, 7, historial)
-    print("vida después de daño:", jugador.vida)
+    # --- acción 2 del jugador: recoge la armadura ---
+    historial.abrir_intervalo()
+    armadura = NodoInventario("i2", "itm_armadura", "Armadura de cuero", 5, 20, "armadura")
+    recoger_con_historial(inv, armadura, historial)
 
-    # --- el jugador usa un pergamino ---
-    historial.deshacer_ultimo()
+    print("inventario antes de usar pergaminos:", [n.nombre for n in inv])
 
-    print("vida después de deshacer:", jugador.vida)          # esperado: 30
-    print("inventario después de deshacer:", [n.nombre for n in inv])  # esperado: []
+    # el jugador usa el primer pergamino → deshace la acción 2 (armadura)
+    usar_pergamino(inv, historial, pergamino_1)
+    print("después del 1er pergamino:", [n.nombre for n in inv])
+
+    # el jugador usa el segundo pergamino, sin que haya pasado tiempo virtual
+    # → debe deshacer la acción 1 (daga), NO volver a intentar deshacer la acción 2
+    usar_pergamino(inv, historial, pergamino_2)
+    print("después del 2do pergamino:", [n.nombre for n in inv])

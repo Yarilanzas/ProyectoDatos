@@ -61,27 +61,9 @@ class Inventario:
         return self._cursor
 
     def suelta_actual(self):
-        nodo = self._cursor
-        if nodo is None:
-            return None
-
-        anterior, siguiente = nodo.anterior, nodo.siguiente
-
-        if anterior:
-            anterior.siguiente = siguiente
-        else:
-            self._cabeza = siguiente
-
-        if siguiente:
-            siguiente.anterior = anterior
-        else:
-            self._cola = anterior
-
-        #pasa al cursor a la cripta vecina
-        self._cursor = siguiente or anterior
-        nodo.anterior = nodo.siguiente = None
-        self._cantidad -= 1
-        return nodo
+      if self._cursor is None:
+          return None
+      return self.suelta_nodo(self._cursor)
 
 
     def equipar_actual(self):
@@ -111,13 +93,34 @@ class Inventario:
             nodo = nodo.siguiente
 
 
-def vista_ordenada(inventario,criterio):
-    #no modifica orden actual, arma lista aparte a partir del iter
-    claves = {"peso" : lambda nodo:nodo.peso,
-              "valor" : lambda nodo:nodo.valor,
-              "nombre" : lambda nodo:nodo.nombre}
-    key = claves[criterio]
-    comparacion_costosa = (criterio == "nombre")
-    items = list(inventario) #recorrido de lectura
-    algoritmo = elegir_algoritmo(len(items), comparacion_costosa)
-    return algoritmo(items,key)
+    def vista_ordenada(inventario,criterio):
+        #no modifica orden actual, arma lista aparte a partir del iter
+        claves = {"peso" : lambda nodo:nodo.peso,
+                  "valor" : lambda nodo:nodo.valor,
+                  "nombre" : lambda nodo:nodo.nombre}
+        key = claves[criterio]
+        comparacion_costosa = (criterio == "nombre")
+        items = list(inventario) #recorrido de lectura
+        algoritmo = elegir_algoritmo(len(items), comparacion_costosa)
+        return algoritmo(items,key)
+
+    def suelta_nodo (self, nodo):
+        anterior, siguiente = nodo.anterior, nodo.siguiente
+
+        if anterior:
+            anterior.siguiente = siguiente
+        else:
+            self._cabeza = siguiente
+
+        if siguiente:
+            siguiente.anterior = anterior
+        else:
+            self._cola = anterior
+
+        if self._cursor is nodo:
+            self._cursor = siguiente or anterior
+
+        nodo.anterior = nodo.siguiente = None
+        self._cantidad -= 1
+        return nodo
+

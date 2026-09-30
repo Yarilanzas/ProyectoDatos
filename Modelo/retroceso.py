@@ -1,5 +1,5 @@
 #pergamino
-MAX_INTERVALOS =5
+MAX_INTERVALOS = 5
 
 class Cambio:
     __slots__ = ("deshacer", "description")
@@ -37,3 +37,11 @@ class Historial:
             cambio.deshacer()
         self._intervalos_actual = self._intervalos[-1] if self._intervalos else None
         return True
+
+def usar_pergamino(inventario, historial, nodo_pergamino):
+    if not historial.puede_deshacer():
+        return False
+
+    inventario.suelta_nodo(nodo_pergamino)
+    historial.deshacer_ultimo()
+    return True
