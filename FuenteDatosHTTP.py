@@ -74,21 +74,37 @@ class FuenteDatosHTTP:
         return contenido_salas
 
     def obtener_fichas_catalogo(self, ids_fichas):
-        respuesta = requests.get(
-            f"{self.base_url}/GET /catalogo", headers=self.headers, timeout=10)
-        print(respuesta.status_code)
-        return respuesta.json()
+        tamano = 10
+        bloques_ids = [ids_fichas[i:i + tamano] for i in range(0, len(ids_fichas), tamano)]  # parte en 10
+
+        catalogo_entidades = []
+        i = 0
+        while i < len(bloques_ids):
+            bloque_actual = bloques_ids[i]
+            ids_como_texto = ",".join(str(id_sala) for id_sala in bloque_actual)
+            params = {"ids": ids_como_texto}
+
+            respuesta = requests.get(
+                f"{self.base_url}/catalogo",
+                headers=self.headers,
+                params=params,
+                timeout=10
+            )
+            catalogo_entidades.extend(respuesta.json()['entidades'])  # guarda el contenido
+            i += 1
+
+        return catalogo_entidades
 
 
     def obtener_version_cripta(self, id_cripta):
         respuesta = requests.get(
-            f"{self.base_url}/GET /criptas/{id}/version", headers=self.headers, timeout=10)
+            f"{self.base_url}/criptas/{id_cripta}/version", headers=self.headers, timeout=10)
         print(respuesta.status_code)
         return respuesta.json()
 
-    def obtener_version_catalogo(self):
+    def obtener_version_catalogo(self, id_cripta):
         respuesta = requests.get(
-            f"{self.base_url}/GET /catalogo/version", headers=self.headers, timeout=10)
+            f"{self.base_url}/criptas/{id_cripta}/version", headers=self.headers, timeout=10)
         print(respuesta.status_code)
         return respuesta.json()
 
