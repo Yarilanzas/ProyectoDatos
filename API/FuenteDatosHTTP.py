@@ -2,6 +2,9 @@ import uuid
 import requests
 import time
 
+
+from DTOS.CriptaResumen import CriptaResumen
+
 class FuenteDatosHTTP:
 
     def __init__(self):
@@ -26,7 +29,8 @@ class FuenteDatosHTTP:
             raise RuntimeError(f"No hay conexión al consultar {url}") from e
 
     def list_criptas(self):
-        return self._hacer_solicitud(f"{self.base_url}/criptas")
+        datos = self._hacer_solicitud(f"{self.base_url}/criptas")
+        return [CriptaResumen.desde_json(cripta) for cripta in datos["criptas"]]
 
     def obtener_detalles_cripta(self, id):
         return self._hacer_solicitud(f"{self.base_url}/criptas/{id}")
