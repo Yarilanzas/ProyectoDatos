@@ -1,52 +1,52 @@
 import uuid
 import requests
-
+import time
 
 class FuenteDatosHTTP:
+
     def __init__(self):
         self.base_url = "https://cripta-api.kad06a0zhgs84.us-east-2.cs.amazonlightsail.com/v1"
         self.client_id = str(uuid.uuid4())
         self.headers = {"X-Cripta-Client-Id": self.client_id}
-        print("Hola", self.client_id)
+
+    def _hacer_solicitud(self, url, params=None):
+        try:
+            respuesta = requests.get(url, headers=self.headers, params=params, timeout=10)
+            if respuesta.status_code == 429:
+                cuerpo = respuesta.json()
+                tiempo_espera = cuerpo["reintentar_en"]
+                time.sleep(tiempo_espera)
+                return self._hacer_solicitud(url, params)
+            if respuesta.status_code != 200:
+                raise RuntimeError(f"Error al consultar {url}: código {respuesta.status_code}")
+            return respuesta.json()
+        except requests.exceptions.Timeout as e:
+            raise RuntimeError(f"El servidor tardó demasiado en responder al consultar {url}") from e
+        except requests.exceptions.ConnectionError as e:
+            raise RuntimeError(f"No hay conexión al consultar {url}") from e
 
     def list_criptas(self):
-     respuesta = requests.get(
-        f"{self.base_url}/criptas",headers=self.headers,timeout=10)
-     #print(respuesta.status_code)
-     return respuesta.json()
+        return self._hacer_solicitud(f"{self.base_url}/criptas")
 
     def obtener_detalles_cripta(self, id):
-        respuesta = requests.get(
-            f"{self.base_url}/criptas/{id}", headers=self.headers, timeout=10)
-        #print(respuesta.status_code)
-        return respuesta.json()
+        return self._hacer_solicitud(f"{self.base_url}/criptas/{id}")
 
     def obtener_esqueleto_cripta(self, id_cripta):
         numero_de_pagina = 1
         params = {"pagina": numero_de_pagina}
         # llamada a la api
-        respuesta = requests.get(
-            f"{self.base_url}/criptas/{id_cripta}/salas",
-            headers=self.headers,
-            params=params,  # parametro que se manda al parametro requerido pagina,
-            timeout=10
-        )
+        datos = self._hacer_solicitud(f"{self.base_url}/criptas/{id_cripta}/salas", params)
         # guardar las salas de la pagina 1
         salas_totales = []
-        salas_totales.extend(respuesta.json()['salas'])
+        salas_totales.extend(datos['salas'])
 
-        total_pages = respuesta.json()['total_paginas']
+        total_pages = datos['total_paginas']
 
-        while numero_de_pagina < respuesta.json()['total_paginas']: #paginas totales que devuelve la api
+        while numero_de_pagina < total_pages: #paginas totales que devuelve la api
             numero_de_pagina += 1
             params = {"pagina": numero_de_pagina}
-            respuesta_ciclo = requests.get(
-                f"{self.base_url}/criptas/{id_cripta}/salas",
-                headers=self.headers,
-                params=params,
-                timeout=10
-            )
-            salas_pagina_actual = respuesta_ciclo.json()['salas']
+            datos_ciclo = self._hacer_solicitud(f"{self.base_url}/criptas/{id_cripta}/salas", params)
+            salas_pagina_actual = datos_ciclo['salas']
             salas_totales.extend(salas_pagina_actual)
         print(salas_totales)
         return salas_totales
@@ -62,13 +62,8 @@ class FuenteDatosHTTP:
             ids_como_texto = ",".join(str(id_sala) for id_sala in bloque_actual)
             params = {"salas": ids_como_texto}# adentro del cciclo porque pide en bloques de [i]
 
-            respuesta = requests.get(
-                f"{self.base_url}/criptas/{id_cripta}/contenido",
-                headers=self.headers,
-                params=params,
-                timeout=10
-            )
-            contenido_salas.extend(respuesta.json()['contenido']) #guarda el contenido
+            datos = self._hacer_solicitud(f"{self.base_url}/criptas/{id_cripta}/contenido", params)
+            contenido_salas.extend(datos['contenido']) #guarda el contenido
             i += 1
 
         return contenido_salas
@@ -84,29 +79,17 @@ class FuenteDatosHTTP:
             ids_como_texto = ",".join(str(id_sala) for id_sala in bloque_actual)
             params = {"ids": ids_como_texto}
 
-            respuesta = requests.get(
-                f"{self.base_url}/catalogo",
-                headers=self.headers,
-                params=params,
-                timeout=10
-            )
-            catalogo_entidades.extend(respuesta.json()['entidades'])  # guarda el contenido
+            datos = self._hacer_solicitud(f"{self.base_url}/catalogo", params)
+            catalogo_entidades.extend(datos['entidades'])  # guarda el contenido
             i += 1
 
         return catalogo_entidades
 
-
     def obtener_version_cripta(self, id_cripta):
-        respuesta = requests.get(
-            f"{self.base_url}/criptas/{id_cripta}/version", headers=self.headers, timeout=10)
-        print(respuesta.status_code)
-        return respuesta.json()
+        return self._hacer_solicitud(f"{self.base_url}/criptas/{id_cripta}/version")
 
     def obtener_version_catalogo(self, id_cripta):
-        respuesta = requests.get(
-            f"{self.base_url}/criptas/{id_cripta}/version", headers=self.headers, timeout=10)
-        print(respuesta.status_code)
-        return respuesta.json()
+        return self._hacer_solicitud(f"{self.base_url}/catalogo/version")
 
 if __name__ == "__main__":
     fuente = FuenteDatosHTTP()
