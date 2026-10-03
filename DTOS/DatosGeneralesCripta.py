@@ -1,7 +1,7 @@
 from DTOS.EstadisticasJugador import EstadisticasJugador
 
 class CriptaDetalles:
-    def __init__(self, id, version, salas_total, sala_inicial,sala_salida, llave_salida,presupuesto_solicitudes,inventario_max ):
+    def __init__(self, id, version, salas_total, sala_inicial,sala_salida, llave_salida,presupuesto_solicitudes,inventario_max, jugador ):
         self.id= id
         self.version= version
         self.salas_total= salas_total
