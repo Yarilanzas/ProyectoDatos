@@ -5,6 +5,7 @@ import time
 
 from DTOS.CriptaResumen import CriptaResumen
 
+
 class FuenteDatosHTTP:
 
     def __init__(self):
