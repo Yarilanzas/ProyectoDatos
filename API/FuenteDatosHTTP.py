@@ -2,8 +2,12 @@ import uuid
 import requests
 import time
 
-
+from DTOS import CriptaDetalles
+from DTOS.ContenidoSala import ContenidoSala
 from DTOS.CriptaResumen import CriptaResumen
+from DTOS.CriptaDetalles import CriptaDetalles
+from DTOS.FichaCatalogo import FichaCatalogo
+from DTOS.SalaEsqueleto import SalaEsqueleto
 
 
 class FuenteDatosHTTP:
@@ -34,7 +38,8 @@ class FuenteDatosHTTP:
         return [CriptaResumen.desde_json(cripta) for cripta in datos["criptas"]]
 
     def obtener_detalles_cripta(self, id):
-        return self._hacer_solicitud(f"{self.base_url}/criptas/{id}")
+        datos= self._hacer_solicitud(f"{self.base_url}/criptas/{id}")
+        return CriptaDetalles.desde_json(datos)
 
     def obtener_esqueleto_cripta(self, id_cripta):
         numero_de_pagina = 1
@@ -43,8 +48,7 @@ class FuenteDatosHTTP:
         datos = self._hacer_solicitud(f"{self.base_url}/criptas/{id_cripta}/salas", params)
         # guardar las salas de la pagina 1
         salas_totales = []
-        salas_totales.extend(datos['salas'])
-
+        salas_totales.extend(datos['salas']) #extend mete a la lista que existe(extiende el tamaño de la lista ya existente )
         total_pages = datos['total_paginas']
 
         while numero_de_pagina < total_pages: #paginas totales que devuelve la api
@@ -53,13 +57,12 @@ class FuenteDatosHTTP:
             datos_ciclo = self._hacer_solicitud(f"{self.base_url}/criptas/{id_cripta}/salas", params)
             salas_pagina_actual = datos_ciclo['salas']
             salas_totales.extend(salas_pagina_actual)
-        print(salas_totales)
-        return salas_totales
+       #print(salas_totales)
+        return [SalaEsqueleto.desde_json(sala) for sala in salas_totales]
 
     def obtener_contenido_sala(self, id_cripta, ids_salas):
         tamano = 10
         bloques_ids = [ids_salas[i:i + tamano] for i in range(0, len(ids_salas), tamano)]#parte en 10
-
         contenido_salas = []
         i = 0
         while i < len(bloques_ids):
@@ -71,7 +74,7 @@ class FuenteDatosHTTP:
             contenido_salas.extend(datos['contenido']) #guarda el contenido
             i += 1
 
-        return contenido_salas
+        return [ContenidoSala.desde_json(sala) for sala in contenido_salas]
 
     def obtener_fichas_catalogo(self, ids_fichas):
         tamano = 10
@@ -88,7 +91,7 @@ class FuenteDatosHTTP:
             catalogo_entidades.extend(datos['entidades'])  # guarda el contenido
             i += 1
 
-        return catalogo_entidades
+        return [FichaCatalogo.desde_json(entidad) for entidad in catalogo_entidades]
 
     def obtener_version_cripta(self, id_cripta):
         return self._hacer_solicitud(f"{self.base_url}/criptas/{id_cripta}/version")
@@ -98,7 +101,41 @@ class FuenteDatosHTTP:
 
 if __name__ == "__main__":
     fuente = FuenteDatosHTTP()
-    print (fuente.list_criptas())
-    print (fuente.obtener_detalles_cripta("cripta-01"))
-    print (fuente.obtener_esqueleto_cripta("cripta-01"))
-    print( fuente.obtener_contenido_sala("cripta-01", [1,2,3,4]))
+
+    # 1. Listar criptas disponibles
+    criptas = fuente.list_criptas()
+    print(f"Criptas disponibles: {len(criptas)}")
+    for cripta in criptas:
+        print(f"  - {cripta.id}: {cripta.nombre} ({cripta.salas} salas, dificultad {cripta.dificultad})")
+
+    # 2. Datos generales de una cripta
+    detalles = fuente.obtener_detalles_cripta("cripta-01")
+    print(f"\nDatos generales de {detalles.id}:")
+    print(f"  Sala inicial: {detalles.sala_inicial}, sala de salida: {detalles.sala_salida}")
+    print(f"  Jugador - vida_max: {detalles.jugador.vida}, ataque: {detalles.jugador.ataque}")
+
+    # 3. Esqueleto completo
+    esqueleto = fuente.obtener_esqueleto_cripta("cripta-01")
+    print(f"\nEsqueleto: {len(esqueleto)} salas")
+    primera_sala = esqueleto[0]
+    print(f"  Sala {primera_sala.id} ({primera_sala.nombre}) tiene salidas: {list(primera_sala.salidas.keys())}")
+
+    # 4. Contenido de las primeras salas
+    contenido = fuente.obtener_contenido_sala("cripta-01", [1, 2, 3, 4])
+    print(f"\nContenido de {len(contenido)} salas:")
+    tipos_encontrados = set()
+    for sala_contenido in contenido:
+        print(f"  Sala {sala_contenido.id_sala}: {len(sala_contenido.enemigos)} enemigos, {len(sala_contenido.objetos)} objetos")
+        for enemigo in sala_contenido.enemigos:
+            tipos_encontrados.add(enemigo.tipo)
+
+    # 5. Fichas de catálogo de los tipos de enemigo encontrados
+    if tipos_encontrados:
+        fichas = fuente.obtener_fichas_catalogo(list(tipos_encontrados))
+        print(f"\nFichas de catálogo: {len(fichas)}")
+        for ficha in fichas:
+            print(f"  {ficha.id} ({ficha.clase}): {ficha.nombre}")
+
+    # 6. Versiones
+    print(f"\nVersión de cripta: {fuente.obtener_version_cripta('cripta-01')}")
+    print(f"Versión de catálogo: {fuente.obtener_version_catalogo()}")

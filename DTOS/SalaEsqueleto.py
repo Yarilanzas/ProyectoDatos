@@ -6,8 +6,6 @@ class SalaEsqueleto:
         self.salidas= salidas
 
 
-
-
     @classmethod
     def desde_json(cls, datos):
         salidas_convertidas = {}
