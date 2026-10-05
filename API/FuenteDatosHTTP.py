@@ -101,7 +101,7 @@ class FuenteDatosHTTP:
         datos = self._hacer_solicitud(f"{self.base_url}/catalogo/version")
         return datos["version"]
 
-if __name__ == "__main__":
+'''if __name__ == "__main__":
     fuente = FuenteDatosHTTP()
 
     # 1. Listar criptas disponibles
@@ -146,4 +146,4 @@ if __name__ == "__main__":
     # 6. Versiones
     print("6. Versiones")
     print(f"\nVersión de cripta: {fuente.obtener_version_cripta('cripta-01')}")
-    print(f"Versión de catálogo: {fuente.obtener_version_catalogo()}")
+    print(f"Versión de catálogo: {fuente.obtener_version_catalogo()}")'''
