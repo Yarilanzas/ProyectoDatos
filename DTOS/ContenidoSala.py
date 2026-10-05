@@ -20,20 +20,19 @@ class ContenidoSala:
         llaman a su propio metodo creador que llama al init de una'''
         enemigos_convertidos = []
         trampas_convertidos = []
-        objetos_convertidos = []
 
         for enemigo in datos["enemigos"]:
+            #print(enemigo)
             enemigos_convertidos.append(EnemigoInstancia.desde_json(enemigo))
         for trampa in datos["trampas"]:
             trampas_convertidos.append(TrampaInstancia.desde_json(trampa))
-        for objeto in datos["objetos"]:
-            objetos_convertidos.append(TrampaInstancia.desde_json(objeto))
+
 
         return cls(
             id_sala=datos["sala"],
             enemigos=enemigos_convertidos,
             trampas=trampas_convertidos,
-            objetos=objetos_convertidos
+            objetos=datos["objetos"]
 
         )
 

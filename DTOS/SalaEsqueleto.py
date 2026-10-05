@@ -15,7 +15,7 @@ class SalaEsqueleto:
         return cls(
             id=datos["id"],
             nombre=datos["nombre"],
-            salidas=Salida.desde_json(datos["salas"])
+            salidas=salidas_convertidas
         )
 
 

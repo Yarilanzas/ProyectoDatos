@@ -4,24 +4,25 @@ class FichaCatalogo:
         self.clase = clase
         self.nombre = nombre
 
-        @classmethod
-        def desde_json(cls, datos):
-            if datos["clase"] == "enemigo":
-                return FichaEnemigo.desde_json(datos)
-            elif datos["clase"] == "arma":
-                return FichaArma.desde_json(datos)
-            elif datos["clase"] == "armadura":
-                return FichaArmadura.desde_json(datos)
-            elif datos["clase"] == "pocion":
-                return FichaPocion.desde_json(datos)
-            elif datos["clase"] == "antidoto":
-                return FichaAntidoto.desde_json(datos)
-            elif datos["clase"] == "llave":
-                return FichaLlave.desde_json(datos)
-            elif datos["clase"] == "pergamino_retroceso":
-                return FichaPergamino.desde_json(datos)
-            elif datos["clase"] == "trampa":
-                return FichaTrampa.desde_json(datos)
+    @classmethod
+    def desde_json(cls, datos):
+        if datos["clase"] == "enemigo":
+            return FichaEnemigo.desde_json(datos)
+        elif datos["clase"] == "arma":
+            return FichaArma.desde_json(datos)
+        elif datos["clase"] == "armadura":
+            return FichaArmadura.desde_json(datos)
+        elif datos["clase"] == "pocion":
+            return FichaPocion.desde_json(datos)
+        elif datos["clase"] == "antidoto":
+            return FichaAntidoto.desde_json(datos)
+        elif datos["clase"] == "llave":
+            return FichaLlave.desde_json(datos)
+        elif datos["clase"] == "pergamino_retroceso":
+            return FichaPergamino.desde_json(datos)
+        elif datos["clase"] == "trampa":
+            return FichaTrampa.desde_json(datos)
+        return None
 
 
 class FichaEnemigo(FichaCatalogo):
@@ -45,7 +46,7 @@ class FichaEnemigo(FichaCatalogo):
             defensa=datos["defensa"],
             velocidad=datos["velocidad"],
             comportamiento=datos["comportamiento"],
-            suelta=datos["suelta"]
+            suelta=datos.get("suelta") #no siempre van a soltar cosas por eso el . get
         )
 
 class FichaArma(FichaCatalogo):

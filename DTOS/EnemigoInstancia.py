@@ -11,7 +11,9 @@ class EnemigoInstancia:
         return cls(
             instancia=datos["instancia"],
             tipo=datos["tipo"],
-            vida=datos["vida"]
+            vida=datos.get("vida") #hay algunas entidades que agarran su vida del catalogo
+                                   #por lo que no siempre va a venir una vida como parametro
+                                   #por eso se queda en get
 
         )
 

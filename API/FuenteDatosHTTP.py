@@ -2,12 +2,12 @@ import uuid
 import requests
 import time
 
-from DTOS import CriptaDetalles
 from DTOS.ContenidoSala import ContenidoSala
 from DTOS.CriptaResumen import CriptaResumen
 from DTOS.CriptaDetalles import CriptaDetalles
 from DTOS.FichaCatalogo import FichaCatalogo
 from DTOS.SalaEsqueleto import SalaEsqueleto
+
 
 
 class FuenteDatosHTTP:
@@ -94,33 +94,39 @@ class FuenteDatosHTTP:
         return [FichaCatalogo.desde_json(entidad) for entidad in catalogo_entidades]
 
     def obtener_version_cripta(self, id_cripta):
-        return self._hacer_solicitud(f"{self.base_url}/criptas/{id_cripta}/version")
+        datos = self._hacer_solicitud(f"{self.base_url}/criptas/{id_cripta}/version")
+        return datos["version"]
 
-    def obtener_version_catalogo(self, id_cripta):
-        return self._hacer_solicitud(f"{self.base_url}/catalogo/version")
+    def obtener_version_catalogo(self):
+        datos = self._hacer_solicitud(f"{self.base_url}/catalogo/version")
+        return datos["version"]
 
 if __name__ == "__main__":
     fuente = FuenteDatosHTTP()
 
     # 1. Listar criptas disponibles
+    print(" 1. Listar criptas disponibles")
     criptas = fuente.list_criptas()
     print(f"Criptas disponibles: {len(criptas)}")
     for cripta in criptas:
         print(f"  - {cripta.id}: {cripta.nombre} ({cripta.salas} salas, dificultad {cripta.dificultad})")
 
     # 2. Datos generales de una cripta
+    print("2. Datos generales de una cripta")
     detalles = fuente.obtener_detalles_cripta("cripta-01")
     print(f"\nDatos generales de {detalles.id}:")
     print(f"  Sala inicial: {detalles.sala_inicial}, sala de salida: {detalles.sala_salida}")
     print(f"  Jugador - vida_max: {detalles.jugador.vida}, ataque: {detalles.jugador.ataque}")
 
     # 3. Esqueleto completo
+    print("3. Esqueleto completo")
     esqueleto = fuente.obtener_esqueleto_cripta("cripta-01")
     print(f"\nEsqueleto: {len(esqueleto)} salas")
     primera_sala = esqueleto[0]
     print(f"  Sala {primera_sala.id} ({primera_sala.nombre}) tiene salidas: {list(primera_sala.salidas.keys())}")
 
     # 4. Contenido de las primeras salas
+    print("4. Contenido de las primeras salas")
     contenido = fuente.obtener_contenido_sala("cripta-01", [1, 2, 3, 4])
     print(f"\nContenido de {len(contenido)} salas:")
     tipos_encontrados = set()
@@ -130,6 +136,7 @@ if __name__ == "__main__":
             tipos_encontrados.add(enemigo.tipo)
 
     # 5. Fichas de catálogo de los tipos de enemigo encontrados
+    print("5. Fichas de catálogo de los tipos de enemigo encontrados")
     if tipos_encontrados:
         fichas = fuente.obtener_fichas_catalogo(list(tipos_encontrados))
         print(f"\nFichas de catálogo: {len(fichas)}")
@@ -137,5 +144,6 @@ if __name__ == "__main__":
             print(f"  {ficha.id} ({ficha.clase}): {ficha.nombre}")
 
     # 6. Versiones
+    print("6. Versiones")
     print(f"\nVersión de cripta: {fuente.obtener_version_cripta('cripta-01')}")
     print(f"Versión de catálogo: {fuente.obtener_version_catalogo()}")
