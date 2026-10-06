@@ -9,9 +9,10 @@ class CacheCatalogo:
         self.orden_uso = Estructuras.Queue()
 
     def esta_en_cache(self, id_ficha):
-        encontrado, _ = self._buscar_posicion(id_ficha)
+        encontrado, posicion = self._buscar_posicion(id_ficha) #busca si esta y si lo encuentra lo devuelve
         '''ese _ es que nos va a devolver un valor que no nos importa 
         en esta funcion por lo que lo dejamos afuera '''
+        self.actualizar_orden(id_ficha)
         return encontrado
 
     def agregar(self, ficha):
@@ -35,4 +36,9 @@ class CacheCatalogo:
                 fin = medio - 1
 
         return (False, inicio)
+    def actualizar_orden(self, id_ficha):
+        encontrado, posicion = self._buscar_posicion(ficha.id)
+        if not encontrado:
+            self.orden_uso.dequeue(posicion)
+        self.orden_uso.enqueue(id_ficha)
 
