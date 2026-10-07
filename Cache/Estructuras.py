@@ -36,3 +36,13 @@ class Queue:
             self.rear = None
         return value
 
+    def is_empty(self):
+        return self.front is None
+
+    def size(self):
+        contador = 0
+        actual = self.front
+        while actual is not None:
+            contador += 1
+            actual = actual.next
+        return contador
