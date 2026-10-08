@@ -11,6 +11,7 @@ class Actor:
         self.sala = sala
         self.tiempo_siguiente = 0
         self.vivo = True
+        self.evento_actual = None
 
     def recibir_dano(self, dano):
         

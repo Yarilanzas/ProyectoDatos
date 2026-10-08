@@ -1,5 +1,4 @@
 class Evento:
-
     def __init__(self, tiempo, secuencia, tipo, actor=None):
         self.tiempo = tiempo
         self.secuencia = secuencia

@@ -1,78 +1,129 @@
-from Modelo.Jugador import Jugador
-from Modelo.Enemigo import Enemigo
 from Modelo.MotorSimulacion import MotorSimulacion
+from Modelo.Enemigo import Enemigo
+from Modelo.Jugador import Jugador
+from DTOS.SalaEsqueleto import SalaEsqueleto
+from DTOS.Salida import Salida
 
 
-# CREAR ACTORES
+#SALIDAS
+
+salida_norte = Salida(sala_destino=2, cerrada=False, llave=None,cierre_automatico=None)
+salida_sur = Salida(sala_destino=3,cerrada=True,llave=None,cierre_automatico=None)
 
 
-jugador = Jugador(id=1,vida=100,vida_max=100,ataque=20,defensa=10,velocidad=100)
+sala1 = SalaEsqueleto(id=1,nombre="Sala 1",salidas={ "N": salida_norte,  "S": salida_sur })
+sala2 = SalaEsqueleto(id=2,nombre="Sala 2",salidas={})
 
-enemigo = Enemigo(id=1,vida=50,vida_max=50,ataque=15,defensa=5,velocidad=150,comportamiento="errante")
-
-
-
-# PRUEBA DE ACTORES
-
-print("===== JUGADOR =====")
-print("ID:", jugador.id)
-print("Vida:", jugador.vida)
-print("Vida máxima:", jugador.vida_max)
-print("Ataque:", jugador.ataque)
-print("Defensa:", jugador.defensa)
-print("Velocidad:", jugador.velocidad)
-print("Tiempo siguiente:", jugador.tiempo_siguiente)
-print("Vivo:", jugador.vivo)
+motor = MotorSimulacion(123)
+motor.salas = [sala1, sala2]
 
 
-print("\n===== ENEMIGO =====")
-print("ID:", enemigo.id)
-print("Vida:", enemigo.vida)
-print("Vida máxima:", enemigo.vida_max)
-print("Ataque:", enemigo.ataque)
-print("Defensa:", enemigo.defensa)
-print("Velocidad:", enemigo.velocidad)
-print("Comportamiento:", enemigo.comportamiento)
-print("Activo:", enemigo.activo)
-print("Vivo:", enemigo.vivo)
+jugador = Jugador(id=1,vida=100,vida_max=100,ataque=10,defensa=5,velocidad=100,sala=sala1)
 
-print("\n===== PRUEBA DEL MOTOR DE SIMULACIÓN =====")
+# Asignar jugador al motor
+motor.jugador = jugador
 
-motor = MotorSimulacion()
-# El jugador comienza en tiempo 0
-motor.programar_evento(tiempo=0, tipo="ACCION_JUGADOR", actor=jugador)
-
-# El enemigo calcula su tiempo según su velocidad
-motor.proxima_accion(enemigo)
-motor.ejecutar()
+enemigo = Enemigo(id=1, vida=100,vida_max=100,ataque=10,defensa=5, velocidad=100,comportamiento="errante",sala=sala1)
 
 
-# PRUEBA DE DAÑO
-
-print("\n===== PRUEBA DE DAÑO =====")
-
-enemigo.recibir_dano(20)
-print("Vida del enemigo después de recibir 20 de daño:", enemigo.vida)
-print("¿Está vivo?:",enemigo.esta_vivo())
+# =====================================================
+# PRUEBA 1: SALIDAS ABIERTAS
 
 
-enemigo.recibir_dano(30)
-print("Vida del enemigo después de recibir otros 30:",enemigo.vida)
-print("¿Está vivo?:",enemigo.esta_vivo())
+print("========== PRUEBA 1 ==========")
+
+salidas = motor.salidas_abiertas(sala1)
+
+print("Salidas abiertas:")
+
+for direccion, salida in salidas:
+    print("Dirección:", direccion, "| Destino:", salida.sala_destino)
 
 
+# =====================================================
+# PRUEBA 2: ELEGIR SALIDA
 
-# PRUEBA DE CURACIÓN
 
-print("\n===== PRUEBA DE CURACIÓN =====")
+print("\n========== PRUEBA 2 ==========")
 
-jugador.recibir_dano(40)
-print("Vida del jugador después de recibir daño:",jugador.vida)
+resultado = motor.salida_errante(enemigo)
 
-jugador.curar(20)
-print("Vida del jugador después de curarse:",jugador.vida)
+if resultado is None:
+    print("No hay salidas abiertas")
 
-jugador.curar(100)
-print("Vida del jugador después de curarse 100:",jugador.vida)
+else:
+    direccion, salida = resultado
 
+    print("Dirección elegida:", direccion)
+    print("Sala destino:", salida.sala_destino)
+
+
+# =====================================================
+# PRUEBA 3: ENEMIGO Y JUGADOR EN LA MISMA SALA
+
+
+print("\n========== PRUEBA 3 ==========")
+
+print("Sala del jugador:", jugador.sala.id)
+print("Sala del enemigo:", enemigo.sala.id)
+
+accion = motor.accion_enemigo(enemigo, jugador)
+
+print("Acción del enemigo:", accion)
+
+
+# =====================================================
+# PRUEBA 4: ENEMIGO EN OTRA SALA
+
+
+print("\n========== PRUEBA 4 ==========")
+
+enemigo.sala = sala2
+
+print("Sala del jugador:", jugador.sala.id)
+print("Sala del enemigo:", enemigo.sala.id)
+
+accion = motor.accion_enemigo(enemigo, jugador)
+
+
+print("Acción del enemigo:", accion)
+
+
+# =====================================================
+# PRUEBA 5: MOVIMIENTO
+
+
+print("\n========== PRUEBA 5 ==========")
+
+salas = [sala1, sala2]
+
+enemigo.sala = sala1
+
+print(
+    "Sala antes de mover:",
+    enemigo.sala.id
+)
+
+resultado = motor.salida_errante(enemigo)
+
+if resultado is None:
+
+    print("El enemigo no puede moverse")
+
+else:
+
+    direccion, salida = resultado
+
+    print("Salida elegida:", direccion)
+    print("ID destino:", salida.sala_destino)
+
+    movio = motor.mover_enemigo( enemigo, salas, salida)
+
+    if movio:
+
+        print( "Sala después de mover:", enemigo.sala.id )
+
+    else:
+
+        print("No se encontró la sala destino")
 

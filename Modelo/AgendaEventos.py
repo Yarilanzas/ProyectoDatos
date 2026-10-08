@@ -1,7 +1,6 @@
 #Aqui manejamos los eventos pendientes
 
 class AgendaEventos:
-
     def __init__(self):
         self.heap = []
 
@@ -14,7 +13,6 @@ class AgendaEventos:
 
     def siguiente(self):
         while not self.esta_vacia():
-
             evento = self.heap[0]
 
             if evento.cancelado:
@@ -35,23 +33,20 @@ class AgendaEventos:
         return evento
 
     def _subir(self, indice):
-
         while indice > 0:
-
             padre = (indice - 1) // 2
 
             if self.heap[indice] < self.heap[padre]:
-                self.heap[indice], self.heap[padre] = \
-                    self.heap[padre], self.heap[indice]
-
+                self.heap[indice], self.heap[padre] = (
+                    self.heap[padre],
+                    self.heap[indice]
+                )
                 indice = padre
             else:
                 break
 
     def _bajar(self, indice):
-
         while True:
-
             izquierdo = 2 * indice + 1
             derecho = 2 * indice + 2
             menor = indice
@@ -67,13 +62,14 @@ class AgendaEventos:
             if menor == indice:
                 break
 
-            self.heap[indice], self.heap[menor] = \
-                self.heap[menor], self.heap[indice]
+            self.heap[indice], self.heap[menor] = (
+                self.heap[menor],
+                self.heap[indice]
+            )
 
             indice = menor
 
     def _eliminar_raiz(self):
-
         ultimo = self.heap.pop()
 
         if not self.esta_vacia():
