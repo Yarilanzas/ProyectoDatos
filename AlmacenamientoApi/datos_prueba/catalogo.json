@@ -1,9 +1,0 @@
-{
-    "version": "cat-v1",
-    "entidades": [
-        {
-            "id": "itm_antorcha",
-            "clase": "antorcha"
-        }
-    ]
-}

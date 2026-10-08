@@ -14,7 +14,7 @@ class FuenteDatosHTTP:
 
     def __init__(self):
         self.base_url = "https://cripta-api.kad06a0zhgs84.us-east-2.cs.amazonlightsail.com/v1"
-        self.client_id = str(uuid.uuid4())
+        self.client_id = str(uuid.uuid4()) #un mismo cliente hace la peticion en todos los metodos
         self.headers = {"X-Cripta-Client-Id": self.client_id}
 
     def _hacer_solicitud(self, url, params=None):
