@@ -7,6 +7,11 @@ class CacheCatalogo:
         self.tamanio_maximo = tamanio_maximo
         self.fichas = []
         self.orden_uso = Estructuras.Queue()
+        '''se decide trabajar con una cola para guardar el orden el que se van usando 
+        las fichas ya que el principio fifo se adapta perfectamente a los requerimientos de 
+        liberar el espacio si ya esta lleno. Se toma la decision de hacer modificaciones al
+        momento de agregar un objeto a la lista de uso para evitar consumir memoria y tener 
+        fichas duplicadas'''
 
     def obtener(self, id_ficha):
         encontrado, posicion = self._buscar_posicion(id_ficha)
