@@ -16,6 +16,8 @@ class NodoInventario:
         self.peso = peso
         self.valor = valor
         self.clase = clase #catalogo
+        self.ataque_bonus = ataque_bonus
+        self.defensa_bonus = defensa_bonus
         self.anterior = None
         self.siguiente = None
 
