@@ -1,3 +1,5 @@
+from enum import nonmember
+
 from API.FuenteDatosHTTP import FuenteDatosHTTP
 from AlmacenamientoLocalApi.AlmacenamientoLocalApi import AlmacenamientoLocalApi
 from Cache.CacheCatalogo import CacheCatalogo
@@ -22,3 +24,31 @@ class GestorDatos:
         self.cache_catalogo = CacheCatalogo(cache_size)
 
         self._inicializado = True
+
+    def obtener_ficha(self, id_ficha):
+        if self.cache_catalogo.esta_en_cache(id_ficha):
+            return self.cache_catalogo.obtener(id_ficha)
+
+        version_actual = self.fuente_http.obtener_version_catalogo()
+        entidades_disco = self.almacenamiento_disco.cargar_catalogo(version_actual)
+
+        if entidades_disco is not None:
+            for ficha in entidades_disco:
+                if ficha.id == id_ficha:
+                    self.cache_catalogo.agregar(ficha, self)
+                    return ficha
+
+        fichas_red = self.fuente_http.obtener_fichas_catalogo([id_ficha])
+        if fichas_red:
+            ficha = fichas_red[0]
+            self.cache_catalogo.agregar(ficha, self)
+            self.almacenamiento_disco.guardar_catalogo(version_actual, ...)
+            return ficha
+
+        return None
+
+    def obtener_esqueleto(self, id_cripta):
+       id= self.fuente_http.obtener_version_catalogo()
+       datos= self.almacenamiento_disco.cargar_catalogo(id)
+       if datos is not None:
+           return datos
