@@ -26,6 +26,8 @@ class Inventario:
         self._cursor = None
         self._cantidad = 0
         self._capacidad = cap_max
+        self._arma_equipada = None
+        self._armadura_equipada = None
 
     def lleno(self):
         return self._cantidad >= self._capacidad
@@ -68,30 +70,41 @@ class Inventario:
 
     def equipar_actual(self):
         nodo = self._cursor
-        if nodo is None or nodo is self._cabeza:
-            return nodo
+        if nodo is None:
+            return None
 
-        anterior, siguiente = nodo.anterior, nodo.siguiente
-        if anterior:
-            anterior.siguiente = siguiente
-        if siguiente:
-            siguiente.anterior = anterior
-        else:
-            self._cola = anterior
-
+        if nodo is not self._cabeza:
+            anterior, siguiente = nodo.anterior, nodo.siguiente
+            if anterior:
+                anterior.siguiente = siguiente
+            if siguiente:
+                siguiente.anterior = anterior
+            else:
+                self._cola = anterior
 
         nodo.anterior = None
         nodo.siguiente = self._cabeza
         self._cabeza.anterior = nodo
         self._cabeza = nodo
+
+        if nodo.clase == "arma":
+            self._arma_equipada = nodo
+        elif nodo.clase == "armadura":
+            self._armadura_equipada = nodo
+
         return nodo
+
+    def arma_equipada(self):
+        return self._arma_equipada
+
+    def armadura_equipada(self):
+        return self._armadura_equipada
 
     def __iter__(self):
         nodo = self._cabeza
         while nodo:
             yield nodo
             nodo = nodo.siguiente
-
 
     def vista_ordenada(inventario,criterio):
         #no modifica orden actual, arma lista aparte a partir del iter
@@ -124,3 +137,15 @@ class Inventario:
         self._cantidad -= 1
         return nodo
 
+    def _reinsertar(self,nodo, anterior, siguiente):
+        nodo.anterior = anterior
+        nodo.siguiente = siguiente
+        if anterior:
+            anterior.siguiente = nodo
+        else:
+            self._cabeza = nodo
+        if siguiente:
+            siguiente.anterior = nodo
+        else:
+            self._cola = nodo
+        self._cantidad -= 1

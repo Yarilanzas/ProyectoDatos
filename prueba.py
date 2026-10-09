@@ -1,7 +1,7 @@
 #esto es una prueba!!
 
 from Modelo.Inventario import Inventario, NodoInventario
-from Modelo.retroceso import Historial, usar_pergamino
+from Modelo.retroceso import Historial, usar_pergamino, soltar_reversible, equipar_reversible, recoger_reversible
 
 
 class JugadorDePrueba:
@@ -106,3 +106,55 @@ if __name__ == "__main__":
 
     historial2.deshacer_ultimo()
     print("contenido después de deshacer:", [n.nombre for n in inv2])
+
+    print("\n")
+    inv = Inventario(cap_max=5)
+    historial = Historial()
+
+    daga = NodoInventario("i1", "t1", "Daga", 2, 15, "arma")
+    espada = NodoInventario("i2", "t2", "Espada", 3, 25, "arma")
+    armadura = NodoInventario("i3", "t3", "Armadura", 5, 20, "armadura")
+
+    historial.abrir_intervalo()
+    recoger_reversible(inv, daga, historial)
+    recoger_reversible(inv, espada, historial)
+    recoger_reversible(inv, armadura, historial)
+
+    # equipar la daga
+    inv._cursor = daga
+    equipar_reversible(inv, historial)
+    print("arma equipada:", inv.arma_equipada().nombre)  # Daga
+    print("armadura equipada:", inv.armadura_equipada())  # None
+
+    # equipar la armadura (NO debería pisar la daga)
+    inv._cursor = armadura
+    equipar_reversible(inv, historial)
+    print("arma equipada:", inv.arma_equipada().nombre)  # Daga (sigue igual)
+    print("armadura equipada:", inv.armadura_equipada().nombre)  # Armadura
+
+    # equipar la espada (SÍ debería sustituir a la daga)
+    inv._cursor = espada
+    equipar_reversible(inv, historial)
+    print("arma equipada:", inv.arma_equipada().nombre)  # Espada
+    print("daga sigue en inventario:", any(n.nombre == "Daga" for n in inv))  # True
+
+    print("\n")
+    inv = Inventario(cap_max=2)
+    historial = Historial()
+    historial.abrir_intervalo()
+
+    a = NodoInventario("a", "t1", "Objeto A", 1, 1, "arma")
+    b = NodoInventario("b", "t2", "Objeto B", 1, 1, "arma")
+    c = NodoInventario("c", "t3", "Objeto C", 1, 1, "arma")  # no debería entrar
+
+    print("recoger A:", recoger_reversible(inv, a, historial))
+    print("recoger B:", recoger_reversible(inv, b, historial))
+    print("recoger C (lleno):", recoger_reversible(inv, c, historial))
+
+    print("contenido:", [n.nombre for n in inv])
+    print("cantidad:", inv._cantidad)
+
+    # si el intento fallido de recoger C hubiera registrado algo falso,
+    # este deshacer se comportaría mal o fallaría
+    historial.deshacer_ultimo()
+    print("contenido después de deshacer:", [n.nombre for n in inv])

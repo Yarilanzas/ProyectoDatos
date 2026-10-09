@@ -45,3 +45,54 @@ def usar_pergamino(inventario, historial, nodo_pergamino):
     inventario.suelta_nodo(nodo_pergamino)
     historial.deshacer_ultimo()
     return True
+
+def recoger_reversible(inventario, nodo, historial):
+    exito = inventario.recoge(nodo)
+    if exito and nodo.clase != "pergamino_retroceso":
+        historial.registrar(deshacer = lambda: inventario.suelta_nodo(nodo),
+                        description =f"recoger {nodo.nombre}")
+    return exito
+
+def soltar_reversible(inventario, nodo, historial):
+    anterior_guardado = nodo.anterior
+    siguiente_guardado = nodo.siguiente
+
+    resultado = inventario.suelta_nodo(nodo)
+    if resultado is None:
+        return None
+
+    if nodo.clase != "pergamino_retroceso":
+        historial.registrar(deshacer=lambda: inventario._reinsertar(nodo,anterior_guardado, siguiente_guardado),
+                        description=f"soltar {nodo.nombre}")
+    return resultado
+
+def equipar_reversible(inventario, historial):
+    nodo = inventario.actual()
+    if nodo is None:
+        return None
+
+    anterior_guardado = nodo.anterior
+    siguiente_guardado = nodo.siguiente
+    era_cabeza = nodo is inventario._cabeza
+
+    if nodo.clase == "arma":
+        equipado_anterior = inventario._arma_equipada
+    elif nodo.clase == "armadura":
+        equipado_anterior = inventario._armadura_equipada
+    else:
+        equipado_anterior = None
+
+    resultado  = inventario.equipar_actual()
+
+    if nodo.clase != "pergamino_retroceso":
+        def deshacer():
+            if not era_cabeza:
+                inventario.suelta_nodo(nodo)
+                inventario._reinsertar(nodo, anterior_guardado, siguiente_guardado)
+            if nodo.clase == "arma":
+                inventario._arma_equipada = equipado_anterior
+            elif nodo.clase == "armadura":
+                inventario._armadura_equipada = equipado_anterior
+
+        historial.registrar(deshacer=deshacer,description=f"equipar {nodo.nombre}")
+    return resultado
