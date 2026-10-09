@@ -75,3 +75,7 @@ class AgendaEventos:
         if not self.esta_vacia():
             self.heap[0] = ultimo
             self._bajar(0)
+
+    # Este metodo nos permite comprobar si el evento sigue en el heap
+    def contiene(self,evento):
+        return any(actual is evento for actual in self.heap)
