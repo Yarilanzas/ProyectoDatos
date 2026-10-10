@@ -7,9 +7,9 @@ class NodoInventario:
     #los slots sirven para poder es una optimizacion para las instancias, en este caso, como se llama tanto a cada objeto del inventario
     #crea una instancia de la clase
     #
-    __slots__ = ("instancia_id", "tipo_id", "nombre", "peso", "valor", "clase", "anterior", "siguiente")
+    __slots__ = ("instancia_id", "tipo_id", "nombre", "peso", "valor", "clase","ataque_bonus","defensa_bonus" ,"anterior", "siguiente")
 
-    def __init__(self, instancia_id, tipo_id,nombre, peso, valor, clase):
+    def __init__(self, instancia_id, tipo_id,nombre, peso, valor, clase,ataque_bonus, defensa_bonus):
         self.instancia_id = instancia_id
         self.tipo_id = tipo_id
         self.nombre = nombre
