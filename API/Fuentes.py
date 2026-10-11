@@ -126,7 +126,7 @@ class FuenteDatosOffline(FuenteDatos): #(FuenteDatos) es herencia
             return json.load(f)
 
 
-if __name__ == "__main__":
+'''if __name__ == "__main__":
     fuente = FuenteDatosHTTP()
 
     criptas = fuente.list_criptas()
@@ -150,4 +150,4 @@ if __name__ == "__main__":
         print("Fichas de catálogo:", [f.id for f in fichas])
 
     print("Versión cripta:", fuente.obtener_version_cripta("cripta-01"))
-    print("Versión catálogo:", fuente.obtener_version_catalogo())
+    print("Versión catálogo:", fuente.obtener_version_catalogo())'''
