@@ -5,6 +5,19 @@ class SalaEsqueleto:
         self.nombre= nombre
         self.salidas= salidas
 
+    def a_json(self):
+        salidas_dict = {}
+        for direccion, objeto_salida in self.salidas.items():
+            if hasattr(objeto_salida, "a_json"):
+                salidas_dict[direccion] = objeto_salida.a_json()
+            else:
+                salidas_dict[direccion] = objeto_salida
+
+        return {
+            "id": self.id,
+            "nombre": self.nombre,
+            "salidas": salidas_dict
+        }
 
     @classmethod
     def desde_json(cls, datos):

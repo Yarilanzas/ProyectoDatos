@@ -1,12 +1,12 @@
-from . import Estructuras
-
+#import Estructuras
+from Cache.Estructuras import Queue
 
 class CacheCatalogo:
 
     def __init__(self, tamanio_maximo):
         self.tamanio_maximo = tamanio_maximo
         self.fichas = []
-        self.orden_uso = Estructuras.Queue()
+        self.orden_uso = Queue()
         '''se decide trabajar con una cola para guardar el orden el que se van usando 
         las fichas ya que el principio fifo se adapta perfectamente a los requerimientos de 
         liberar el espacio si ya esta lleno. Se toma la decision de hacer modificaciones al

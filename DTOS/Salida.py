@@ -5,6 +5,13 @@ class Salida:
         self.llave= llave
         self.cierre_automatico= cierre_automatico
 
+    def a_json(self):
+        return {
+            "sala": self.sala_destino,
+            "cerrada": self.cerrada,
+            "llave": self.llave,
+            "cierre_automatico": self.cierre_automatico
+        }
 
     @classmethod
     def desde_json(cls, datos):

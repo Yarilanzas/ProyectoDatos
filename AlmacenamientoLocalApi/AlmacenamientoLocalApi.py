@@ -1,5 +1,16 @@
-import json
+import sys
 import os
+import json
+
+# Provicional para probar
+RAIZ = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if RAIZ not in sys.path:
+    sys.path.insert(0, RAIZ)
+
+# Tus importaciones habituales funcionarán directamente:
+from DTOS.SalaEsqueleto import SalaEsqueleto
+from Cache.Estructuras import Queue
+
 
 
 class AlmacenamientoLocalApi:
@@ -35,21 +46,35 @@ class AlmacenamientoLocalApi:
          por lo que retorna None para forzar la 
          actualización desde la API HTTP.'''
         return contenido["entidades"]
+
     def guardar_esqueleto(self, id_cripta, version, esqueleto):
         ruta = os.path.join(self.ruta_base, f"esqueleto_{id_cripta}.json")
-        contenido = {"version": version, "esqueleto": esqueleto}
+
+        # Convierte la lista de objetos sala esqueleto a diccionarios de Python
+        esqueleto_json = [sala.a_json() for sala in esqueleto]
+
+        contenido = {
+            "version": version,
+            "esqueleto": esqueleto_json
+        }
+
+        os.makedirs(self.ruta_base, exist_ok=True)
         with open(ruta, "w", encoding="utf-8") as f:
             json.dump(contenido, f, indent=4, ensure_ascii=False)
 
-    def cargar_esqueleto(self, id_cripta, version_actual):
+    def cargar_esqueleto(self, id_cripta, version_esperada):
         ruta = os.path.join(self.ruta_base, f"esqueleto_{id_cripta}.json")
         if not os.path.exists(ruta):
             return None
+
         with open(ruta, "r", encoding="utf-8") as f:
             contenido = json.load(f)
-        if contenido["version"] != version_actual:
-            return None
-        return contenido["esqueleto"]
+
+        if contenido.get("version") != version_esperada:
+            return None  # si lla a version cambió se descarta el cache en local
+
+        # Reconstruye los objetos de sala esqueleto originales usando desde_json
+        return [SalaEsqueleto.desde_json(datos_sala) for datos_sala in contenido["esqueleto"]]
 
     def guardar_contenido(self, id_cripta, version, contenido):
         ruta = os.path.join(self.ruta_base, f"contenido_{id_cripta}.json")

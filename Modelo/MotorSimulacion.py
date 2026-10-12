@@ -4,7 +4,7 @@ from Modelo.AgendaEventos import AgendaEventos
 from Modelo.Enemigo import Enemigo
 from Modelo.Inventario import NodoInventario
 from Modelo.retroceso import (Historial,recoger_reversible,soltar_reversible,equipar_reversible, usar_pergamino)
-from GestorDatos.GestorDatos import GestorDatos
+from Gestor.GestorDatos import GestorDatos
 
 class MotorSimulacion:
 
