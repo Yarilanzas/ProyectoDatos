@@ -1,4 +1,4 @@
-import Estructuras
+from . import Estructuras
 
 
 class CacheCatalogo:

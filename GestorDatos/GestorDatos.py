@@ -1,6 +1,6 @@
 from enum import nonmember
 
-from API.FuenteDatosHTTP import FuenteDatosHTTP
+from API.Fuentes import FuenteDatosHTTP
 from AlmacenamientoLocalApi.AlmacenamientoLocalApi import AlmacenamientoLocalApi
 from Cache.CacheCatalogo import CacheCatalogo
 
