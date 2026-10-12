@@ -100,7 +100,7 @@ class GestorDatos:
         self.estado_juego = estado
 
 
-''' VERIFICAR ESTO CON MARI!!!!!!!!!!!!!!::
+
     def esta_en_uso(self, id_ficha):
         if self.estado_juego is None:
             return False # si no hay nada en el juego retorna falso
@@ -116,4 +116,4 @@ class GestorDatos:
             return id_ficha in self.estado_juego.fichas_activas
 
         return False
-'''
+
