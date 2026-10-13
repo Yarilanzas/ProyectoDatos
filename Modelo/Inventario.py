@@ -9,7 +9,7 @@ class NodoInventario:
     #
     __slots__ = ("instancia_id", "tipo_id", "nombre", "peso", "valor", "clase","ataque_bonus","defensa_bonus" ,"anterior", "siguiente")
 
-    def __init__(self, instancia_id, tipo_id,nombre, peso, valor, clase,ataque_bonus, defensa_bonus):
+    def __init__(self, instancia_id, tipo_id,nombre, peso, valor, clase,ataque_bonus = 0, defensa_bonus = 0):
         self.instancia_id = instancia_id
         self.tipo_id = tipo_id
         self.nombre = nombre
@@ -84,10 +84,10 @@ class Inventario:
             else:
                 self._cola = anterior
 
-        nodo.anterior = None
-        nodo.siguiente = self._cabeza
-        self._cabeza.anterior = nodo
-        self._cabeza = nodo
+            nodo.anterior = None
+            nodo.siguiente = self._cabeza
+            self._cabeza.anterior = nodo
+            self._cabeza = nodo
 
         if nodo.clase == "arma":
             self._arma_equipada = nodo
@@ -135,11 +135,18 @@ class Inventario:
         if self._cursor is nodo:
             self._cursor = siguiente or anterior
 
+        if self._arma_equipada is nodo:
+            self._arma_equipada = None
+        if self._armadura_equipada is nodo:
+            self._armadura_equipada = None
+
         nodo.anterior = nodo.siguiente = None
         self._cantidad -= 1
         return nodo
 
     def _reinsertar(self,nodo, anterior, siguiente):
+        vacio = self._cabeza is None # si es vacio devuelve None
+
         nodo.anterior = anterior
         nodo.siguiente = siguiente
         if anterior:
@@ -150,4 +157,6 @@ class Inventario:
             siguiente.anterior = nodo
         else:
             self._cola = nodo
-        self._cantidad -= 1
+        self._cantidad += 1
+        if vacio:
+            self._cursor = nodo #si no habia nada, apunta al unico obj
