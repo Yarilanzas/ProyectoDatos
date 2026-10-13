@@ -9,6 +9,12 @@ class ContenidoSala:
         self.trampas= trampas
         self.objetos= objetos
 
+    def a_json(self):
+        return {"sala": self.id_sala,
+                "enemigos": [e.a_json() for e in self.enemigos],
+                "objetos": self.objetos,
+                "trampas": [t.a_json() for t in self.trampas]}
+
     @classmethod
     def desde_json(cls, datos):
         '''estos dos ciclos basicamente lo que hacen es convertir uno por uno los enemigos

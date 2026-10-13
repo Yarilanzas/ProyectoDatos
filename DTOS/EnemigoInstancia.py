@@ -5,6 +5,12 @@ class EnemigoInstancia:
         self.vida= vida
 
 
+    def a_json(self):
+        datos = {"instancia": self.instancia,
+                 "tipo": self.tipo}
+        if self.vida is not None:
+            datos["vida"] = self.vida
+        return datos
 
     @classmethod
     def desde_json(cls, datos):

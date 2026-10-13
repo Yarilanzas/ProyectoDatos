@@ -10,9 +10,9 @@ ORDEN_DIRECCIONES = ["N", "S", "E", "O"]
 
 
 class PlanificadorPrecarga:
-    def __init__(self, esqueleto):
+    def __init__(self, esqueleto, limite=10):
         self.esqueleto = esqueleto
-        self.limite = 10
+        self.limite = limite
 
     def _buscar_sala(self, id_sala):
         for sala in self.esqueleto:

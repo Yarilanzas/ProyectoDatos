@@ -6,6 +6,11 @@ class EstadisticasJugador:
         self.defensa = defensa
         self.velocidad = velocidad
 
+    def a_json(self):
+        return {"vida_max": self.vida,
+                "ataque": self.ataque,
+                "defensa": self.defensa,
+                "velocidad": self.velocidad}
     @classmethod
     def desde_json(cls, datos):
         return cls(

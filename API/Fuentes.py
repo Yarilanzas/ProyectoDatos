@@ -15,6 +15,8 @@ from DTOS.SalaEsqueleto import SalaEsqueleto
 
 
 class FuenteDatos:
+    solicitudes_realizadas = 0
+
     def _obtener(self, ruta, params=None):
         raise NotImplementedError
 
@@ -94,6 +96,7 @@ class FuenteDatosHTTP(FuenteDatos): #(FuenteDatos) es herencia
         self.headers = {"X-Cripta-Client-Id": self.client_id}
 
     def _hacer_solicitud(self, url, params=None):
+        self.solicitudes_realizadas += 1
         try:
             respuesta = requests.get(url, headers=self.headers, params=params, timeout=10)
             if respuesta.status_code == 429:

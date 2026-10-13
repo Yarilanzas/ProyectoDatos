@@ -12,6 +12,17 @@ class CriptaDetalles:
         self.inventario_max = inventario_max
         self.jugador = jugador
 
+    def a_json(self):
+        return {"id": self.id,
+                "version": self.version,
+                "salas_total": self.salas_total,
+                "sala_inicial": self.sala_inicial,
+                "sala_salida": self.sala_salida,
+                "llave_salida": self.llave_salida,
+                "presupuesto_solicitudes": self.presupuesto_solicitudes,
+                "inventario_max": self.inventario_max,
+                "jugador": self.jugador.a_json()}
+
     # decorador en python, hace que se pueda ejecutar el metodo
     # sin que haya una instancia de el
     @classmethod

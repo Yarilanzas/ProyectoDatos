@@ -8,7 +8,7 @@ if RAIZ not in sys.path:
 #--------------------
 
 #importaciones normales:
-from Gestor.GestorDatos import PlanificadorPrecarga
+from Gestor.PlanificadorPreCarga import PlanificadorPrecarga
 from Cache.CacheCatalogo import CacheCatalogo
 from AlmacenamientoLocalApi.AlmacenamientoLocalApi import AlmacenamientoLocalApi
 class GestorDatos:
@@ -53,9 +53,9 @@ class GestorDatos:
         return self._version_cripta
 
 
-    #Esto no funciona
-    #def solicitudes_realizadas(self):
-        #return self.fuente.solicitudes_realizadas
+
+    def solicitudes_realizadas(self):
+        return self.fuente.solicitudes_realizadas
 
     def obtener_ficha(self, id_ficha):
         #primero se verifica si esta en cache

@@ -4,6 +4,11 @@ class TrampaInstancia:
         self.tipo= tipo
 
 
+    def a_json(self):
+        return {
+            "instancia": self.instancia,
+            "tipo": self.tipo,
+        }
     @classmethod
     def desde_json(cls, datos):
         return cls(

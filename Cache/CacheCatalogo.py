@@ -33,7 +33,7 @@ class CacheCatalogo:
             self.fichas.insert(posicion, ficha)
 
             self.actualizar_orden(ficha.id)
-        print("agrgada")
+        #print("agrgada")
 
     def  _buscar_posicion(self, id_buscado):
         #busqueda binaria

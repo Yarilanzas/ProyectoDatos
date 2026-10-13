@@ -1,6 +1,12 @@
 import shutil
 import tempfile
 import time
+import os
+import sys
+
+RAIZ = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if RAIZ not in sys.path:
+    sys.path.insert(0, RAIZ)
 
 from Cache.CacheCatalogo import CacheCatalogo
 from Cache.Estructuras import Queue
@@ -40,7 +46,6 @@ def _buscar_lineal(fichas, id_buscado):
     return (False, len(fichas))
 
 
-# ---------- 1. búsqueda en caché ----------
 def bench_busqueda_cache():
     print("\n1. Búsqueda en caché: binaria vs lineal (microsegundos por búsqueda)")
     print(f"{'fichas':>8} {'binaria':>10} {'lineal':>10}")

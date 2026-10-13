@@ -7,9 +7,10 @@ RAIZ = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if RAIZ not in sys.path:
     sys.path.insert(0, RAIZ)
 
-# Tus importaciones habituales funcionarán directamente:
+#  importaciones
+from DTOS.ContenidoSala import ContenidoSala
+from DTOS.FichaCatalogo import FichaCatalogo
 from DTOS.SalaEsqueleto import SalaEsqueleto
-from Cache.Estructuras import Queue
 
 
 
@@ -26,7 +27,8 @@ class AlmacenamientoLocalApi:
     #with: el archivo se cierra solito
     def guardar_catalogo(self, version, entidades):
         ruta = os.path.join(self.ruta_base, "catalogo.json") #une la ruta
-        contenido = {"version": version, "entidades": entidades}
+        contenido = {"version": version, "entidades": [e.a_json() for e in entidades]}
+
         with open(ruta, "w", encoding="utf-8") as f:
             json.dump(contenido, f, indent=4, ensure_ascii=False)
         #.dump lo convierte a json
@@ -45,18 +47,15 @@ class AlmacenamientoLocalApi:
          datos guardados de una version que no es la misma 
          por lo que retorna None para forzar la 
          actualización desde la API HTTP.'''
-        return contenido["entidades"]
+        return [FichaCatalogo.desde_json(e) for e in contenido["entidades"]]
 
     def guardar_esqueleto(self, id_cripta, version, esqueleto):
         ruta = os.path.join(self.ruta_base, f"esqueleto_{id_cripta}.json")
 
         # Convierte la lista de objetos sala esqueleto a diccionarios de Python
-        esqueleto_json = [sala.a_json() for sala in esqueleto]
 
-        contenido = {
-            "version": version,
-            "esqueleto": esqueleto_json
-        }
+        contenido = {"version": version, "esqueleto": [s.a_json() for s in esqueleto]}
+
 
         os.makedirs(self.ruta_base, exist_ok=True)
         with open(ruta, "w", encoding="utf-8") as f:
@@ -74,11 +73,11 @@ class AlmacenamientoLocalApi:
             return None  # si lla a version cambió se descarta el cache en local
 
         # Reconstruye los objetos de sala esqueleto originales usando desde_json
-        return [SalaEsqueleto.desde_json(datos_sala) for datos_sala in contenido["esqueleto"]]
+        return [SalaEsqueleto.desde_json(s) for s in contenido["esqueleto"]]
 
     def guardar_contenido(self, id_cripta, version, contenido):
         ruta = os.path.join(self.ruta_base, f"contenido_{id_cripta}.json")
-        datos = {"version": version, "contenido": contenido}
+        datos = {"version": version, "contenido": [c.a_json() for c in contenido]}
         with open(ruta, "w", encoding="utf-8") as f:
             json.dump(datos, f, indent=4, ensure_ascii=False)
 
@@ -90,7 +89,7 @@ class AlmacenamientoLocalApi:
             datos = json.load(f)
         if datos["version"] != version_actual:
             return None
-        return datos["contenido"]
+        return [ContenidoSala.desde_json(c) for c in datos["contenido"]]
 '''if __name__ == "__main__":
     almacen = AlmacenamientoLocalApi("datos_prueba")
     almacen.guardar_catalogo("cat-v1", [{"id": "itm_antorcha", "clase": "antorcha"}])

@@ -6,6 +6,12 @@ class CriptaResumen:
         self.salas= salas
         self.dificultad= dificultad
 
+    def a_json(self):
+        return {"id": self.id,
+                "nombre": self.nombre,
+                "salas": self.salas,
+                "dificultad": self.dificultad}
+
     @classmethod  #decorador en python, hace que se pueda ejecutar el metodo
                   #sin que haya una instancia de el
     def desde_json(cls, datos):
