@@ -57,12 +57,25 @@ class GestorDatos:
             self._id_cripta_version = id_cripta
         return self._version_cripta
 
+    # sirven para: detectar si la cripta o el catalogo cambiaron desde que se jugo la partida
+    def version_cripta(self, id_cripta):
+        return self._version_de_cripta(id_cripta)
+
+    def version_catalogo(self):
+        return self._version_del_catalogo()
+
+    def listar_criptas(self):
+        return self.fuente.list_criptas()
+
     def solicitudes_realizadas(self):
         return self.fuente.solicitudes_realizadas
 
     def obtener_ficha(self, id_ficha):
-        fichas = self.resolver_fichas([id_ficha])
-        return fichas[0] if fichas else None
+        # se busca por id: el resultado no siempre viene en el orden pedido
+        for ficha in self.resolver_fichas([id_ficha]):
+            if ficha.id == id_ficha:
+                return ficha
+        return None
 
     def resolver_fichas(self, ids_tipos):
         # sin repetidos
@@ -106,7 +119,12 @@ class GestorDatos:
 
         # 3. fuente (api u offline): todas las que faltan juntas, en lotes de 10
         if por_pedir:
-            nuevas = self.fuente.obtener_fichas_catalogo(por_pedir)
+            # la fuente offline devuelve el catalogo completo: solo se toma lo pedido
+            nuevas = []
+            for ficha in self.fuente.obtener_fichas_catalogo(por_pedir):
+                if ficha is not None and ficha.id in por_pedir:
+                    nuevas.append(ficha)
+
             for ficha in nuevas:
                 self.cache_catalogo.agregar(ficha, self)
                 resultado.append(ficha)
@@ -202,7 +220,12 @@ class GestorDatos:
                 tipos.append(objeto)
         self.resolver_fichas(tipos)   # catalogo de todo lo nuevo, en lotes
 
+    def _validar_cripta_iniciada(self):
+        if self._planificador is None:
+            raise RuntimeError("Primero se debe llamar a iniciar_cripta()")
+
     def asegurar_sala(self, id_sala):
+        self._validar_cripta_iniciada()
         if id_sala not in self._salas_cargadas:
             lote = self._planificador.planificar(id_sala, self._salas_cargadas)
             self._cargar_lote(lote)
@@ -212,6 +235,7 @@ class GestorDatos:
         return None
 
     def precargar(self, id_sala):
+        self._validar_cripta_iniciada()
         lote = self._planificador.planificar(id_sala, self._salas_cargadas)
         if lote:
             self._cargar_lote(lote)

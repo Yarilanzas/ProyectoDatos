@@ -77,7 +77,7 @@ class CacheCatalogo:
 
             if en_uso:
                 self.orden_uso.enqueue(id_candidato)    # protegida: se conserva
-                continue
+                continue #sale de la iteraciony pasa a la siguiente
 
             encontrado, pos = self._buscar_posicion(id_candidato)
             if encontrado:
