@@ -133,10 +133,13 @@ class FuenteDatosHTTP(FuenteDatos): #(FuenteDatos) es herencia
 
 
 class FuenteDatosOffline(FuenteDatos): #(FuenteDatos) es herencia
-    def __init__(self, carpeta_paquete): #para construirse ocupa una ruta
+    def _init_(self, carpeta_paquete): #para construirse ocupa una ruta
         self.carpeta_paquete = carpeta_paquete
+        # mismo contador que la fuente HTTP, asi GestorDatos.resumen_red() funciona en ambos modos
+        self.solicitudes_realizadas = 0
 
     def _obtener(self, ruta, params=None):
+        self.solicitudes_realizadas += 1
         #Es una ruta que todavia no existe hay de e
         archivo = os.path.join(self.carpeta_paquete, ruta.strip("/") + ".json")
         if not os.path.exists(archivo):

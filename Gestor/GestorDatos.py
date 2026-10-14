@@ -69,6 +69,8 @@ class GestorDatos:
 
     def solicitudes_realizadas(self):
         return self.fuente.solicitudes_realizadas
+    ###
+
 
     def obtener_ficha(self, id_ficha):
         # se busca por id: el resultado no siempre viene en el orden pedido
@@ -220,9 +222,11 @@ class GestorDatos:
                 tipos.append(objeto)
         self.resolver_fichas(tipos)   # catalogo de todo lo nuevo, en lotes
 
+
+    #verifica si el planificador es distinto de none
     def _validar_cripta_iniciada(self):
         if self._planificador is None:
-            raise RuntimeError("Primero se debe llamar a iniciar_cripta()")
+            raise RuntimeError("Llamar a iniciar_cripta()")
 
     def asegurar_sala(self, id_sala):
         self._validar_cripta_iniciada()
