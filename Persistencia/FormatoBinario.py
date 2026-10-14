@@ -4,7 +4,7 @@
 import struct
 
 MAGIA = b"CRPT"
-VERSION_FORMATO = 1
+VERSION_FORMATO = 2 # v2: se agrega el bloque del jugador y los enemigos/objetos guardan su instancia
 LARGO_TEXTO = 32
 
 # el prefijo (magia + version) siempre va en las mismas posiciones, asi una version nueva del formato se detecta antes de intentar leer el resto del encabezado
@@ -56,7 +56,7 @@ class EncabezadoPartida:
         self.cantidad_salas = cantidad_salas
         self.offset_indice = offset_indice
 
-    def a_bytes(self):
+    def to_bytes(self):
         return struct.pack(
             FORMATO_ENCABEZADO,
             MAGIA,
@@ -71,7 +71,7 @@ class EncabezadoPartida:
         )
 
     @classmethod
-    def desde_bytes(cls, datos):
+    def from_bytes(cls, datos):
         if len(datos) < TAMANO_PREFIJO:
             raise VersionIncompatible("El archivo está incompleto o no es una partida de Cripta")
 
@@ -102,4 +102,4 @@ class EncabezadoPartida:
     @classmethod
     def desde_archivo(cls, archivo):
         archivo.seek(0)
-        return cls.desde_bytes(archivo.read(TAMANO_ENCABEZADO))
+        return cls.from_bytes(archivo.read(TAMANO_ENCABEZADO))

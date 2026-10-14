@@ -2,11 +2,10 @@ import os
 import tempfile
 import unittest
 
-from Persistencia.ArchivoPartida import guardar_partida, LectorPartida
-from Persistencia.ExportadorJSON import guardar_partida_json, cargar_partida_json, leer_sala_json
+from Persistencia.ArchivoPartida import (guardar_partida, LectorPartida)
+from Persistencia.ExportadorJSON import (guardar_partida_json, cargar_partida_json, leer_sala_json)
 from Persistencia.RegistroSala import RegistroSala
-from test_personaD.test_archivo_partida import crear_sala_prueba, crear_sala_vacia, iguales
-
+from tests.test_archivo_partida import (crear_sala_prueba, crear_sala_vacia, iguales)
 
 class PruebasExportadorJSON(unittest.TestCase):
 
@@ -34,7 +33,7 @@ class PruebasExportadorJSON(unittest.TestCase):
         self.assertIsNone(leer_sala_json(self.ruta, 9))
 
     def test_conserva_tildes(self):
-        original = RegistroSala(1, 5, [("e-1", "ent_guardián", 3)], [], [], [])
+        original = RegistroSala(1, 5, [("e-1", "ent_guardián", 3, -1)], [], [], [])
         self.guardar([original])
         self.assertEqual(leer_sala_json(self.ruta, 1).enemigos[0][1], "ent_guardián")
 

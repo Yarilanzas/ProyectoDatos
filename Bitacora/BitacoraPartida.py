@@ -41,6 +41,15 @@ class BitacoraPartida:
         # despues de eso solo se agregan lineas al final
         self._archivo = open(ruta, "a", encoding="utf-8")
 
+    # continua una bitacora existente (partida cargada): valida el encabezado y solo agrega al final
+    @classmethod
+    def continuar(cls, ruta):
+        encabezado, _ = leer_bitacora(ruta)  # lanza VersionIncompatible si no es valida
+
+        bitacora = cls.__new__(cls)  # sin __init__: no se reescribe el encabezado
+        bitacora._archivo = open(ruta, "a", encoding="utf-8")
+        return bitacora, encabezado
+
     # se llama despues de que el motor aceptó la accion del jugador
     def registrar(self, nombre, argumento=""):
         if not isinstance(nombre, str):

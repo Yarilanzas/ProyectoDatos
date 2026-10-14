@@ -12,8 +12,8 @@ def crear_sala_prueba(sala_id):
     return RegistroSala(
         sala_id=sala_id,
         rastro=sala_id * 10,
-        enemigos=[("e-201", "ent_rata_gigante", 12), ("e-202", "ent_rata_gigante", 7)],
-        objetos=["itm_daga_oxidada", "itm_antorcha"],
+        enemigos=[("e-201", "ent_rata_gigante", 12, 340), ("e-202", "ent_rata_gigante", 7, -1)],
+        objetos=[("obj-1", "itm_daga_oxidada"), ("obj-2", "itm_antorcha")],
         trampas=[("t-17", "trp_dardos", True)],
         puertas=[("E", True), ("N", False)],
     )
@@ -31,15 +31,15 @@ class PruebasRegistroSala(unittest.TestCase):
 
     def test_persistencia_datos(self): # testea la serialización y deserialización con información
         original = crear_sala_prueba(7)
-        self.assertTrue(iguales(original, RegistroSala.desde_bytes(original.a_bytes())))
+        self.assertTrue(iguales(original, RegistroSala.from_bytes(original.to_bytes())))
 
     def test_persistencia_sala_vacia(self): # evalua el caso extremo de una sala vacía
         original = crear_sala_vacia(3)
-        self.assertTrue(iguales(original, RegistroSala.desde_bytes(original.a_bytes())))
+        self.assertTrue(iguales(original, RegistroSala.from_bytes(original.to_bytes())))
 
     def test_tipos_datos(self): # conserva tildes y booleanos
-        original = RegistroSala(1, 5, [("e-1", "ent_guardián", 3)], [], [("t-1", "trp_ñu", False)], [("O", True)])
-        leido = RegistroSala.desde_bytes(original.a_bytes())
+        original = RegistroSala(1, 5, [("e-1", "ent_guardián", 3, -1)], [], [("t-1", "trp_ñu", False)], [("O", True)])
+        leido = RegistroSala.from_bytes(original.to_bytes())
         self.assertEqual(leido.enemigos[0][1], "ent_guardián")
         self.assertIs(leido.trampas[0][2], False)
         self.assertIs(leido.puertas[0][1], True)
@@ -98,7 +98,7 @@ class PruebasArchivoPartida(unittest.TestCase):
             leido = lector.bytes_leidos - antes
         self.assertLess(leido, tamano // 100)
         # la busqueda binaria sobre 2000 entradas hace a lo sumo 11 lecturas del indice
-        self.assertLessEqual(leido, 11 * TAMANO_ENTRADA + len(crear_sala_prueba(1500).a_bytes()))
+        self.assertLessEqual(leido, 11 * TAMANO_ENTRADA + len(crear_sala_prueba(1500).to_bytes()))
 
     def test_version_incompatible(self):
         self.guardar([crear_sala_prueba(1)])
@@ -160,7 +160,7 @@ class PruebasArchivoPartida(unittest.TestCase):
         with open(self.ruta, "rb") as archivo:
             contenido_anterior = archivo.read()
 
-        registro_invalido = RegistroSala(2, 0, [], ["x" * 65536], [], [])
+        registro_invalido = RegistroSala(2, 0, [], [("o-1", "x" * 65536)], [], [])
 
         with self.assertRaises(ValueError):
             self.guardar([registro_invalido])
@@ -172,42 +172,40 @@ class PruebasArchivoPartida(unittest.TestCase):
 
     def test_registro_truncado(self):
         original = crear_sala_prueba(7)
-        datos = original.a_bytes()
+        datos = original.to_bytes()
 
         with self.assertRaises(ValueError):
-            RegistroSala.desde_bytes(datos[:-1])
+            RegistroSala.from_bytes(datos[:-1])
 
     def test_registro_con_bytes_sobrantes(self):
         original = crear_sala_prueba(7)
-        datos = original.a_bytes() + b"\x00"
+        datos = original.to_bytes() + b"\x00"
 
         with self.assertRaises(ValueError):
-            RegistroSala.desde_bytes(datos)
+            RegistroSala.from_bytes(datos)
 
     def test_booleano_invalido_en_puerta(self):
         original = crear_sala_prueba(7)
-        datos = bytearray(original.a_bytes())
+        datos = bytearray(original.to_bytes())
 
         # El ultimo byte es el booleano de la ultima puerta.
         datos[-1] = 2
 
         with self.assertRaises(ValueError):
-            RegistroSala.desde_bytes(datos)
+            RegistroSala.from_bytes(datos)
 
     def test_rechaza_vida_fuera_de_rango(self):
         sala = RegistroSala(
             1, 0,
-            [("e-1", "ent_rata", 2147483648)],
+            [("e-1", "ent_rata", 2147483648, -1)],
             [], [], []
         )
 
         with self.assertRaises(ValueError):
-            sala.a_bytes()
+            sala.to_bytes()
 
     def test_rechaza_cadena_demasiado_larga(self):
-        sala = RegistroSala(
-            1, 0, [], ["x" * 65536], [], []
-        )
+        sala = RegistroSala(1, 0, [], [("o-1", "x" * 65536)], [], [])
 
         with self.assertRaises(ValueError):
-            sala.a_bytes()
+            sala.to_bytes()

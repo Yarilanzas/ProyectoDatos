@@ -1,13 +1,11 @@
-
 # registro de una sala dentro del archivo binario de la partida (S4.10)
 # guarda solo los datos modificables de cada sala
 
 import struct
 
-
 FORMATO_BASE = "<Iq"
 FORMATO_CANTIDAD = "<H"
-FORMATO_VIDA = "<i"
+FORMATO_ENEMIGO = "<iq" # i vida | q tiempo de su siguiente accion (-1 si el enemigo esta inactivo)
 FORMATO_BOOLEANO = "<B"
 
 TAMANO_BASE = struct.calcsize(FORMATO_BASE)
@@ -72,8 +70,8 @@ def _validar_booleano(valor, nombre):
 
 class RegistroSala:
     # rastro: instante de la ultima visita (-1 si nunca estuvo)
-    # enemigos: lista de (instancia, tipo, vida)
-    # objetos: lista de tipos de objetos en el suelo
+    # enemigos: lista de (instancia, tipo, vida, tiempo_siguiente) -> tiempo -1 = inactivo
+    # objetos: lista de (instancia, tipo) de los objetos en el suelo se guarda la instancia para que un objeto conserve su id al cargar
     # trampas: lista de (instancia, tipo, armada)
     # puertas: lista de (direccion, cerrada)
 
@@ -94,7 +92,7 @@ class RegistroSala:
         self.trampas = trampas
         self.puertas = puertas
 
-    def a_bytes(self):
+    def to_bytes(self):
         _validar_entero(self.sala_id, 0, 4294967295, "sala_id")
         _validar_entero(self.rastro, -9223372036854775808,
                         9223372036854775807, "rastro")
@@ -106,16 +104,18 @@ class RegistroSala:
         cantidad = _validar_cantidad(self.enemigos, "enemigos")
         partes.append(struct.pack(FORMATO_CANTIDAD, cantidad))
 
-        for instancia, tipo, vida in self.enemigos:
+        for instancia, tipo, vida, tiempo in self.enemigos:
             _validar_entero(vida, -2147483648, 2147483647, "vida")
+            _validar_entero(tiempo, -1, 9223372036854775807, "tiempo_siguiente")
             partes.append(_empaquetar_cadena(instancia))
             partes.append(_empaquetar_cadena(tipo))
-            partes.append(struct.pack(FORMATO_VIDA, vida))
+            partes.append(struct.pack(FORMATO_ENEMIGO, vida, tiempo))
 
         cantidad = _validar_cantidad(self.objetos, "objetos")
         partes.append(struct.pack(FORMATO_CANTIDAD, cantidad))
 
-        for tipo in self.objetos:
+        for instancia, tipo in self.objetos:
+            partes.append(_empaquetar_cadena(instancia))
             partes.append(_empaquetar_cadena(tipo))
 
         cantidad = _validar_cantidad(self.trampas, "trampas")
@@ -138,7 +138,7 @@ class RegistroSala:
         return b"".join(partes)
 
     @classmethod
-    def desde_bytes(cls, datos):
+    def from_bytes(cls, datos):
         if not isinstance(datos, (bytes, bytearray, memoryview)):
             raise ValueError("El registro debe recibirse como bytes")
 
@@ -155,10 +155,10 @@ class RegistroSala:
         for _ in range(cantidad):
             instancia, posicion = _leer_cadena(datos, posicion)
             tipo, posicion = _leer_cadena(datos, posicion)
-            (vida,), posicion = _leer_unpack(
-                FORMATO_VIDA, datos, posicion
+            (vida, tiempo), posicion = _leer_unpack(
+                FORMATO_ENEMIGO, datos, posicion
             )
-            enemigos.append((instancia, tipo, vida))
+            enemigos.append((instancia, tipo, vida, tiempo))
 
         (cantidad,), posicion = _leer_unpack(
             FORMATO_CANTIDAD, datos, posicion
@@ -166,8 +166,9 @@ class RegistroSala:
         objetos = []
 
         for _ in range(cantidad):
+            instancia, posicion = _leer_cadena(datos, posicion)
             tipo, posicion = _leer_cadena(datos, posicion)
-            objetos.append(tipo)
+            objetos.append((instancia, tipo))
 
         (cantidad,), posicion = _leer_unpack(
             FORMATO_CANTIDAD, datos, posicion
