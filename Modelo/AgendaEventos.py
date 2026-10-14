@@ -1,46 +1,84 @@
-#Aqui manejamos los eventos pendientes
+
+# Aqui manejamos los eventos pendientes.
 
 class AgendaEventos:
     def __init__(self):
         self.heap = []
+        self._posiciones = {}  # id(evento) -> indice en heap
 
     def esta_vacia(self):
-        return len(self.heap) == 0
+        return self.siguiente() is None
 
     def agregar(self, evento):
+        if self.contiene(evento):
+            return
+
+        indice = len(self.heap)
         self.heap.append(evento)
-        self._subir(len(self.heap) - 1)
+        self._posiciones[id(evento)] = indice
+        self._subir(indice)
 
     def siguiente(self):
-        while not self.esta_vacia():
-            evento = self.heap[0]
-
-            if evento.cancelado:
-                self._eliminar_raiz()
-                continue
-
-            return evento
-
-        return None
+        self._limpiar_cancelados_raiz()
+        return self.heap[0] if self.heap else None
 
     def extraer(self):
-        evento = self.siguiente()
-
-        if evento is None:
+        self._limpiar_cancelados_raiz()
+        if not self.heap:
             return None
+        return self._eliminar_indice(0)
 
-        self._eliminar_raiz()
-        return evento
+    def extraer_evento(self, evento):
+        indice = self._posiciones.get(id(evento))
+        if indice is None or self.heap[indice] is not evento:
+            return None
+        return self._eliminar_indice(indice)
+
+    def _limpiar_cancelados_raiz(self):
+        while self.heap and self.heap[0].cancelado:
+            self._eliminar_indice(0)
+
+    def _eliminar_evento(self, evento):
+        # Se conserva por compatibilidad con llamadas internas existentes.
+        indice = self._posiciones.get(id(evento))
+        if indice is None or self.heap[indice] is not evento:
+            return
+        self._eliminar_indice(indice)
+
+    def _eliminar_indice(self, indice):
+        ultimo_indice = len(self.heap) - 1
+        eliminado = self.heap[indice]
+        del self._posiciones[id(eliminado)]
+
+        if indice == ultimo_indice:
+            self.heap.pop()
+            return eliminado
+
+        ultimo = self.heap.pop()
+        self.heap[indice] = ultimo
+        self._posiciones[id(ultimo)] = indice
+
+        if indice > 0:
+            padre = (indice - 1) // 2
+            if self.heap[indice] < self.heap[padre]:
+                self._subir(indice)
+            else:
+                self._bajar(indice)
+        else:
+            self._bajar(indice)
+
+        return eliminado
+
+    def _intercambiar(self, i, j):
+        self.heap[i], self.heap[j] = self.heap[j], self.heap[i]
+        self._posiciones[id(self.heap[i])] = i
+        self._posiciones[id(self.heap[j])] = j
 
     def _subir(self, indice):
         while indice > 0:
             padre = (indice - 1) // 2
-
             if self.heap[indice] < self.heap[padre]:
-                self.heap[indice], self.heap[padre] = (
-                    self.heap[padre],
-                    self.heap[indice]
-                )
+                self._intercambiar(indice, padre)
                 indice = padre
             else:
                 break
@@ -62,20 +100,13 @@ class AgendaEventos:
             if menor == indice:
                 break
 
-            self.heap[indice], self.heap[menor] = (
-                self.heap[menor],
-                self.heap[indice]
-            )
-
+            self._intercambiar(indice, menor)
             indice = menor
 
     def _eliminar_raiz(self):
-        ultimo = self.heap.pop()
+        if self.heap:
+            self._eliminar_indice(0)
 
-        if not self.esta_vacia():
-            self.heap[0] = ultimo
-            self._bajar(0)
-
-    # Este metodo nos permite comprobar si el evento sigue en el heap
-    def contiene(self,evento):
-        return any(actual is evento for actual in self.heap)
+    def contiene(self, evento):
+        indice = self._posiciones.get(id(evento))
+        return indice is not None and self.heap[indice] is evento

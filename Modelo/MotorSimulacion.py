@@ -19,57 +19,158 @@ class MotorSimulacion:
         self.historial = Historial()
         self.contenidos_salas = []
         self.objetos_suelo = []
+        self._salas_contenido_cargado = []
+        self._estado_trampas = []
         # Una única instancia del gestor para este motor.
         self.gestor_datos = gestor_datos
 
         if self.gestor_datos is not None:
             self.gestor_datos.conectar_estado_juego(self)
 
+    def _guardar_estado_trampa(self, id_trampa, activa):
+        for estado in self._estado_trampas:
+            if estado[0] == id_trampa:
+                estado[1] = activa
+                return
 
+        self._estado_trampas.append([id_trampa, activa])
+
+    def _obtener_estado_trampa(self, id_trampa, defecto=True):
+        for estado in self._estado_trampas:
+            if estado[0] == id_trampa:
+                return estado[1]
+
+        return defecto
+
+    def cambiar_estado_trampa_reversible(self, trampa, activa):
+        # Cambia el estado de una trampa y registra cómo deshacerlo
+
+        estado_anterior = self._obtener_estado_trampa(trampa.instancia, True)
+
+        self._guardar_estado_trampa(trampa.instancia, activa)
+
+        self.historial.registrar(
+            deshacer=lambda: self._guardar_estado_trampa(
+                trampa.instancia, estado_anterior
+            ),
+            description=f"estado de trampa {trampa.instancia}"
+        )
+
+    def activar_trampas_de_sala(self, sala):
+        if sala is None or self.jugador is None:
+            return
+
+        # Buscar el contenido de la sala actual.
+        contenido_sala = None
+
+        for contenido in self.contenidos_salas:
+            if contenido.id_sala == sala.id:
+                contenido_sala = contenido
+                break
+
+        if contenido_sala is None:
+            return
+
+        # Revisar las trampas de esta sala.
+        for trampa in contenido_sala.trampas:
+
+            # No activar una trampa que ya está desactivada.
+            if not self._obtener_estado_trampa(trampa.instancia, True):
+                continue
+
+            if self.gestor_datos is None:
+                raise RuntimeError("No hay gestor de datos para consultar la ficha de la trampa.")
+
+            ficha = self.gestor_datos.obtener_ficha(trampa.tipo)
+
+            if ficha is None or ficha.clase != "trampa":
+                raise RuntimeError( f"No se encontró una ficha válida para la trampa: {trampa.tipo}" )
+
+            intervalo = ficha.rearme
+
+            if intervalo is None:
+                intervalo = 300
+
+            if intervalo < 0:
+                raise ValueError(f"El tiempo de rearme de la trampa {trampa.instancia} no puede ser negativo.")
+
+            # Desactivar la trampa y registrar cómo deshacer el cambio.
+            self.cambiar_estado_trampa_reversible(trampa, False)
+
+            # Guardar el estado anterior del jugador.
+            vida_anterior = self.jugador.vida
+            vivo_anterior = self.jugador.vivo
+
+            # Aplicar el daño.
+            self.jugador.recibir_dano(ficha.danio)
+
+            # Registrar cómo deshacer el daño.
+            def deshacer_dano(
+                    jugador=self.jugador,
+                    vida=vida_anterior,
+                    vivo=vivo_anterior
+            ):
+                jugador.vida = vida
+                jugador.vivo = vivo
+
+            self.historial.registrar(
+                deshacer=deshacer_dano,
+                description=f"daño de trampa {trampa.instancia}"
+            )
+
+            print(
+                f"¡Trampa activada! {ficha.nombre} Daño recibido: {ficha.danio}" )
+
+            # Programar el rearme.
+            self.programar_evento(self.reloj + intervalo,"REARMAR_TRAMPA", trampa)
 
     def cargar_contenido_salas(self, id_cripta, ids_salas):
 
         gestor = self.gestor_datos
+
         if gestor is None:
             raise RuntimeError("El motor no tiene un GestorDatos configurado.")
 
-        contenidos = self.gestor_datos.obtener_contenido_salas(id_cripta, ids_salas)
+        contenidos = gestor.obtener_contenido_salas(id_cripta, ids_salas)
 
         if contenidos is None:
-            raise RuntimeError("No se pudo cargar el contenido de las salas." )
+            raise RuntimeError("No se pudo cargar el contenido de las salas.")
 
-        # Validar las salas antes de modificar el estado del motor.
+        # Validar todas las salas antes de modificar el estado.
         for contenido in contenidos:
             sala = self.buscar_sala(self.salas, contenido.id_sala)
-            if sala is None:
-                raise RuntimeError(
-                    f"La sala {contenido.id_sala} no existe  en el esqueleto cargado." )
 
-        # Mantener las instancias de objetos y enemigos por separado
-        # de los DTO originales.
+            if sala is None:
+                raise RuntimeError(f"La sala {contenido.id_sala} no existe en el esqueleto cargado.")
+
+        # Identificar las salas cuyo contenido ya fue cargado.
+        salas_cargadas = self._salas_contenido_cargado.copy()
         objetos_por_sala = []
         enemigos_nuevos = []
+        contenidos_nuevos = []
 
+        # Convertir el contenido de las salas nuevas.
         for contenido in contenidos:
+            id_sala = contenido.id_sala
 
-            sala = self.buscar_sala(self.salas, contenido.id_sala)
+            # No reconstruir objetos ni enemigos de una sala cargada.
+            if id_sala in salas_cargadas:
+                continue
 
+            sala = self.buscar_sala(self.salas, id_sala)
             objetos_convertidos = []
 
-            # Convertir los identificadores de objetos a nodos.
+            # Convertir los objetos del catálogo a nodos.
             for indice, tipo_id in enumerate(contenido.objetos):
                 ficha = gestor.obtener_ficha(tipo_id)
 
                 if ficha is None:
-                    raise RuntimeError( f"No se encontró la ficha del objeto {tipo_id}.")
+                    raise RuntimeError(f"No se encontró la ficha del objeto {tipo_id}.")
 
-                # Los atributos peso y valor existen en las fichas
-                # de objetos del catálogo.
-                if not hasattr(ficha, "peso") or not hasattr(ficha, "valor" ):
-                    raise RuntimeError(
-                        f"La ficha {tipo_id} no contiene los atributos requeridos para un objeto." )
+                if not hasattr(ficha, "peso") or not hasattr(ficha, "valor"):
+                    raise RuntimeError(f"La ficha {tipo_id} no contiene los atributos requeridos para un objeto.")
 
-                instancia_id = (f"obj-{id_cripta}-{contenido.id_sala}-"f"{tipo_id}-{indice}")
+                instancia_id = (f"obj-{id_cripta}-{id_sala}-{tipo_id}-{indice}" )
 
                 objeto = NodoInventario(
                     instancia_id=instancia_id,
@@ -88,53 +189,83 @@ class MotorSimulacion:
 
                 objetos_convertidos.append(objeto)
 
-            objetos_por_sala.append([contenido.id_sala, objetos_convertidos])
+            objetos_por_sala.append([id_sala, objetos_convertidos])
 
-            # Construir enemigos sin duplicar instancias existentes.
+            # Construir enemigos sin duplicar sus instancias.
             for instancia in contenido.enemigos:
-                enemigo_existente = any(enemigo.id == instancia.instancia for enemigo in self.enemigos) or any(enemigo.id == instancia.instancia for enemigo in enemigos_nuevos )
+                id_enemigo = instancia.instancia
 
-                if enemigo_existente:
+                existe = (any( enemigo.id == id_enemigo for enemigo in self.enemigos) or any(enemigo.id == id_enemigo for enemigo in enemigos_nuevos))
+
+                if existe:
                     continue
 
-                ficha = self.gestor_datos.obtener_ficha(instancia.tipo)
+                ficha = gestor.obtener_ficha(instancia.tipo)
 
                 if ficha is None:
-                    raise RuntimeError(f"No se encontró la ficha {instancia.tipo} del enemigo {instancia.instancia}.")
+                    raise RuntimeError(f"No se encontró la ficha {instancia.tipo} del enemigo {id_enemigo}.")
 
                 if ficha.clase != "enemigo":
-                    raise RuntimeError(
-                        f"La ficha {instancia.tipo} no es una ficha de enemigo.")
+                    raise RuntimeError(f"La ficha {instancia.tipo} no es una ficha de enemigo.")
 
                 vida = (ficha.vida_max if instancia.vida is None else instancia.vida)
 
-                enemigo = Enemigo(id=instancia.instancia,vida=vida,vida_max=ficha.vida_max,ataque=ficha.ataque,defensa=ficha.defensa,velocidad=ficha.velocidad,comportamiento=ficha.comportamiento,sala=sala,tipo_id=instancia.tipo, )
+                enemigo = Enemigo(
+                    id=id_enemigo,
+                    vida=vida,
+                    vida_max=ficha.vida_max,
+                    ataque=ficha.ataque,
+                    defensa=ficha.defensa,
+                    velocidad=ficha.velocidad,
+                    comportamiento=ficha.comportamiento,
+                    sala=sala,
+                    tipo_id=instancia.tipo,
+                )
+
+                # Enemigo comienza inactivo, según su constructor.
                 enemigos_nuevos.append(enemigo)
 
-        # Incorporar los enemigos después de completar la conversión.
+            contenidos_nuevos.append(contenido)
+
+        # Registrar los enemigos después de completar la conversión.
         self.registrar_enemigos(enemigos_nuevos)
 
-        contenidos_convertidos = []
-
-        for contenido in contenidos:
-            # No modificar contenido.objetos ni contenido.trampas.
-            # Los objetos del motor se almacenan por separado.
-            contenidos_convertidos.append(contenido)
-
+        # Incorporar los objetos sin reemplazar los existentes.
         for id_sala, objetos in objetos_por_sala:
-            encontrado = False
+            entrada_existente = None
 
             for entrada in self.objetos_suelo:
                 if entrada[0] == id_sala:
-                    entrada[1][:] = objetos
-                    encontrado = True
+                    entrada_existente = entrada
                     break
 
-            if not encontrado:
+            if entrada_existente is None:
                 self.objetos_suelo.append([id_sala, objetos])
+            else:
+                entrada_existente[1].extend(objetos)
 
-        # Mantener la referencia al contenido recibido.
-        self.contenidos_salas = contenidos_convertidos
+            if id_sala not in self._salas_contenido_cargado:
+                self._salas_contenido_cargado.append(id_sala)
+
+        # Conservar el contenido de las salas cargadas anteriormente.
+        ids_existentes = [
+            contenido.id_sala
+            for contenido in self.contenidos_salas
+        ]
+
+        for contenido in contenidos_nuevos:
+            if contenido.id_sala in ids_existentes:
+                continue
+
+            self.contenidos_salas.append(contenido)
+            ids_existentes.append(contenido.id_sala)
+
+            # Registrar el estado inicial de las trampas.
+            for trampa in contenido.trampas:
+                self._guardar_estado_trampa(trampa.instancia, True)
+            # Marcar también las salas nuevas que no tienen objetos.
+            if contenido.id_sala not in self._salas_contenido_cargado:
+                self._salas_contenido_cargado.append(contenido.id_sala)
 
     def registrar_enemigo(self, enemigo):
         for existente in self.enemigos:
@@ -177,6 +308,9 @@ class MotorSimulacion:
         self.objetos_suelo = []
         self.jugador = jugador
         self.salas = salas
+        self._salas_contenido_cargado.clear()
+        self._estado_trampas.clear()
+
         if jugador.sala is not None:
             jugador.sala.rastro = 0
 
@@ -184,6 +318,13 @@ class MotorSimulacion:
             self.contenidos_salas = contenidos_salas
         else:
             self.contenidos_salas = []
+
+        for contenido in self.contenidos_salas:
+            if contenido.id_sala not in self._salas_contenido_cargado:
+                self._salas_contenido_cargado.append(contenido.id_sala)
+
+            for trampa in contenido.trampas:
+                self._guardar_estado_trampa(trampa.instancia, True)
 
         # Registrar los enemigos
         for enemigo in enemigos:
@@ -205,8 +346,10 @@ class MotorSimulacion:
     def programar_evento(self, tiempo, tipo, actor=None):
 
         secuencia_anterior = self.secuencia
-        evento_anterior_actor = ( actor.evento_actual if actor is not None else None)
-
+        evento_anterior_actor = (
+            getattr(actor, "evento_actual", None)
+            if actor is not None else None
+        )
         secuencia = self.sig_secu()
         evento = Evento(tiempo, secuencia, tipo, actor)
         self.agenda.agregar(evento)
@@ -285,12 +428,6 @@ class MotorSimulacion:
             if evento is None:
                 return False
 
-            # Ignorar eventos cancelados.
-            if evento.cancelado:
-                self.agenda.extraer()
-                continue
-
-
             if evento.actor is jugador:
                 evento = self.agenda.extraer()
 
@@ -331,10 +468,15 @@ class MotorSimulacion:
     def ejecutar_evento(self, evento):
 
         actor = evento.actor
-
-        if actor is not None and not actor.esta_vivo():
+        if evento.tipo == "REARMAR_TRAMPA":
+            if actor is not None:
+                self.cambiar_estado_trampa_reversible(actor, True)
+                print(f"Trampa {actor.instancia} rearmada.")
             return
 
+        if actor is not None and hasattr(actor, "esta_vivo"):
+            if not actor.esta_vivo():
+                return
         print(f"Tiempo {self.reloj}: ejecutando {evento.tipo}")
 
         if actor is not None:
@@ -625,45 +767,50 @@ class MotorSimulacion:
         return True
 
     def mover_jugador(self, direccion):
-
         jugador = self.jugador
 
         if jugador is None or jugador.sala is None:
             return False
 
-        # Buscar la salida en la dirección indicada.
         salida = jugador.sala.salidas.get(direccion)
 
         if salida is None or salida.cerrada:
             print("No existe una salida abierta en esa dirección.")
             return False
 
-        # Buscar la sala de destino.
-        sala_destino = self.buscar_sala(self.salas, salida.sala_destino )
+        sala_destino = self.buscar_sala(
+            self.salas, salida.sala_destino
+        )
 
         if sala_destino is None:
             print("No se encontró la sala destino.")
             return False
 
-        # Guardar el estado anterior para poder deshacer el movimiento.
         sala_anterior = jugador.sala
-        # Abrir el intervalo antes de modificar el estado.
+
+        # Abrir el intervalo antes de cambiar el estado.
         self.accion_jugador()
 
         jugador.sala = sala_destino
-        self.actualizar_rastro(sala_destino)
 
-        def deshacer_movimiento():
-            jugador.sala = sala_anterior
-
+        # Registrar primero el movimiento, incluso si una trampa mata.
         self.historial.registrar(
-            deshacer=deshacer_movimiento,
+            deshacer=lambda: setattr(jugador, "sala", sala_anterior),
             description="movimiento del jugador"
         )
+
+        self.actualizar_rastro(sala_destino)
+
+        # Las trampas se activan al entrar, antes de avanzar el reloj.
+        self.activar_trampas_de_sala(sala_destino)
+
+        if not jugador.esta_vivo():
+            return True
 
         self.activar_enemigos_de_sala(sala_destino)
         self.proxima_accion(jugador, costo=100)
         self.avanzar_hasta_jugador()
+
         return True
 
     def actualizar_rastro(self, sala):
@@ -689,7 +836,7 @@ class MotorSimulacion:
         )
 
     def obtener_objetos_suelo(self, sala):
-        # Devuelve los objetos que están en el suelo de una sala
+        # Devuelve los objetos que están en el suelo de una sala.
         if sala is None:
             return []
 
@@ -747,7 +894,22 @@ class MotorSimulacion:
         if nodo is None:
             return None
 
-        objetos = self.obtener_objetos_suelo(jugador.sala)
+        # Buscar la lista real de objetos de esta sala.
+        entrada_suelo = None
+
+        for entrada in self.objetos_suelo:
+            if entrada[0] == jugador.sala.id:
+                entrada_suelo = entrada
+                break
+
+        # Si la sala no tiene una lista registrada, crearla.
+        lista_nueva = entrada_suelo is None
+
+        if lista_nueva:
+            objetos = []
+            entrada_suelo = [jugador.sala.id, objetos]
+        else:
+            objetos = entrada_suelo[1]
 
         self.accion_jugador()
 
@@ -756,17 +918,24 @@ class MotorSimulacion:
         if resultado is None:
             return None
 
-        # Agregar la misma instancia al suelo de la sala actual.
+        if lista_nueva:
+            self.objetos_suelo.append(entrada_suelo)
+
         objetos.append(resultado)
 
         def deshacer_soltar():
             if resultado in objetos:
                 objetos.remove(resultado)
 
+            # Si la lista se creó con esta acción, eliminarla al retroceder.
+            if lista_nueva and entrada_suelo in self.objetos_suelo:
+                self.objetos_suelo.remove(entrada_suelo)
+
         self.historial.registrar(
             deshacer=deshacer_soltar,
             description=f"objeto soltado en sala {jugador.sala.id}"
         )
+
         self.actualizar_rastro(jugador.sala)
         self.proxima_accion(jugador, costo=25)
         self.avanzar_hasta_jugador()
@@ -804,39 +973,37 @@ class MotorSimulacion:
         return usar_pergamino(self.jugador.inventario,self.historial,nodo_pergamino)
 
     def es_ficha_activa(self, id_ficha):
-        # Comprueba si una ficha del catálogo sigue en uso
-
-        # Enemigos vivos.
+        # Revisar fichas de enemigos vivos.
         for enemigo in self.enemigos:
-            tipo_id = getattr(enemigo, "tipo_id", None)
-
-            if enemigo.esta_vivo() and tipo_id == id_ficha:
+            if enemigo.esta_vivo() and enemigo.tipo_id == id_ficha:
                 return True
 
-        # Objetos del inventario del jugador.
+        # Revisar fichas de objetos del inventario del jugador.
         if self.jugador is not None:
             for objeto in self.jugador.inventario:
-                if getattr(objeto, "tipo_id", None) == id_ficha:
+                if objeto.tipo_id == id_ficha:
                     return True
 
-        # Objetos que permanecen en el suelo de las salas.
+        # Revisar objetos que están en el suelo.
         for entrada in self.objetos_suelo:
             objetos = entrada[1]
 
             for objeto in objetos:
-                if getattr(objeto, "tipo_id", None) == id_ficha:
+                if objeto.tipo_id == id_ficha:
                     return True
 
-        # Trampas de las salas cargadas.
-        for contenido in self.contenidos_salas:
-            for trampa in contenido.trampas:
-                tipo_id = getattr(trampa, "tipo_id", None)
 
-                if tipo_id is None:
-                    tipo_id = getattr(trampa, "tipo", trampa)
+        # Revisar las trampas únicamente en la sala actual.
+        if self.jugador is not None and self.jugador.sala is not None:
+            id_sala_actual = self.jugador.sala.id
 
-                if tipo_id == id_ficha:
-                    return True
+            for contenido in self.contenidos_salas:
+                if contenido.id_sala != id_sala_actual:
+                    continue
+
+                for trampa in contenido.trampas:
+                    if trampa.tipo == id_ficha:
+                        return True
 
         return False
 
@@ -938,11 +1105,18 @@ class MotorSimulacion:
                  e.tiempo_siguiente, e.activo)
                 for e in sorted(self.enemigos, key=lambda x: str(x.id)) # se usa para presentar los enemigos en un orden estable al comparar pruebas.
             ],
+
             "eventos": sorted(
-                (ev.tiempo, ev.secuencia, ev.tipo,
-                 None if ev.actor is None else ev.actor.id, ev.cancelado)
+                (
+                    ev.tiempo,
+                    ev.secuencia,
+                    ev.tipo,
+                    None if ev.actor is None else getattr(ev.actor, "id", None),
+                    ev.cancelado
+                )
                 for ev in self.agenda.heap
             ),
+
             "azar": self.azar.getstate(),
         }
 
