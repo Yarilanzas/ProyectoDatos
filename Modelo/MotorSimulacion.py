@@ -6,9 +6,7 @@ from Modelo.Enemigo import Enemigo
 from Modelo.Inventario import NodoInventario
 from Modelo.ordenamiento import elegir_algoritmo
 from Modelo.retroceso import (Historial, recoger_reversible, soltar_reversible, equipar_reversible, usar_pergamino)
-from Gestor.GestorDatos import GestorDatos
 
-# Reglas de §2.10
 TIPOS_EFECTO = ("VENENO", "REGENERAR", "FIN_VELOCIDAD", "APAGAR_ANTORCHA")
 INTERVALO_VENENO = 80
 DURACION_VENENO = 400
@@ -23,6 +21,7 @@ class MotorSimulacion:
         self.secuencia = 0
         self.agenda = AgendaEventos()
         self.azar = random.Random(semilla)
+        self.semilla = semilla
         self.salas = []
         self.jugador = None
         self.enemigos = []
@@ -31,9 +30,9 @@ class MotorSimulacion:
         self.objetos_suelo = []
         self._salas_contenido_cargado = []
         self._estado_trampas = []
-        self.cripta_id = None  # la fija el controlador al iniciar
-        self.mensajes = RegistroMensajes()  # últimos 20 mensajes para la vista
-        self.eco = False  # True: además los imprime en consola
+        self.cripta_id = None
+        self.mensajes = RegistroMensajes()
+        self.eco = False
         self.acciones_jugador = 0
         self.enemigos_derrotados = 0
         self.sala_salida = None
@@ -44,6 +43,7 @@ class MotorSimulacion:
         self._indice_origen = None
         # Una única instancia del gestor para este motor.
         self.gestor_datos = gestor_datos
+        self.restaurador = None
 
         if self.gestor_datos is not None:
             self.gestor_datos.conectar_estado_juego(self)
@@ -187,32 +187,8 @@ class MotorSimulacion:
 
             # Convertir los objetos del catálogo a nodos.
             for indice, tipo_id in enumerate(contenido.objetos):
-                ficha = gestor.obtener_ficha(tipo_id)
-
-                if ficha is None:
-                    raise RuntimeError(f"No se encontró la ficha del objeto {tipo_id}.")
-
-                if not hasattr(ficha, "peso") or not hasattr(ficha, "valor"):
-                    raise RuntimeError(f"La ficha {tipo_id} no contiene los atributos requeridos para un objeto.")
-
                 instancia_id = (f"obj-{id_cripta}-{id_sala}-{tipo_id}-{indice}")
-
-                objeto = NodoInventario(
-                    instancia_id=instancia_id,
-                    tipo_id=tipo_id,
-                    nombre=ficha.nombre,
-                    peso=ficha.peso,
-                    valor=ficha.valor,
-                    clase=ficha.clase,
-                    ataque_bonus=getattr(
-                        ficha, "ataque_bonus", 0
-                    ),
-                    defensa_bonus=getattr(
-                        ficha, "defensa_bonus", 0
-                    ),
-                )
-
-                objetos_convertidos.append(objeto)
+                objetos_convertidos.append(self.crear_objeto(instancia_id, tipo_id))
 
             objetos_por_sala.append([id_sala, objetos_convertidos])
 
@@ -226,50 +202,8 @@ class MotorSimulacion:
                 if existe:
                     continue
 
-                ficha = gestor.obtener_ficha(instancia.tipo)
-
-                if ficha is None:
-                    raise RuntimeError(f"No se encontró la ficha {instancia.tipo} del enemigo {id_enemigo}.")
-
-                if ficha.clase != "enemigo":
-                    raise RuntimeError(f"La ficha {instancia.tipo} no es una ficha de enemigo.")
-
-                vida = (ficha.vida_max if instancia.vida is None else instancia.vida)
-
-                enemigo = Enemigo(
-                    id=id_enemigo,
-                    vida=vida,
-                    vida_max=ficha.vida_max,
-                    ataque=ficha.ataque,
-                    defensa=ficha.defensa,
-                    velocidad=ficha.velocidad,
-                    comportamiento=ficha.comportamiento,
-                    sala=sala,
-                    tipo_id=instancia.tipo,
-                )
-
-                enemigo.regeneracion = getattr(ficha, "regeneracion", 0) or 0
-                enemigo.botin = []
-
-                for k, tipo_botin in enumerate(getattr(ficha, "suelta", None) or []):
-                    ficha_botin = gestor.obtener_ficha(tipo_botin)
-
-                    if ficha_botin is None or not hasattr(ficha_botin, "peso"):
-                        raise RuntimeError(f"No se encontró la ficha del botín {tipo_botin}.")
-
-                    enemigo.botin.append(NodoInventario(
-                        instancia_id=f"bot-{id_enemigo}-{k}-{tipo_botin}",
-                        tipo_id=tipo_botin,
-                        nombre=ficha_botin.nombre,
-                        peso=ficha_botin.peso,
-                        valor=ficha_botin.valor,
-                        clase=ficha_botin.clase,
-                        ataque_bonus=getattr(ficha_botin, "ataque_bonus", 0),
-                        defensa_bonus=getattr(ficha_botin, "defensa_bonus", 0),
-                    ))
-
                 # Enemigo comienza inactivo, según su constructor.
-                enemigos_nuevos.append(enemigo)
+                enemigos_nuevos.append( self.crear_enemigo(id_enemigo, instancia.tipo, instancia.vida, sala))
 
             contenidos_nuevos.append(contenido)
 
@@ -312,6 +246,60 @@ class MotorSimulacion:
             # Marcar también las salas nuevas que no tienen objetos.
             if contenido.id_sala not in self._salas_contenido_cargado:
                 self._salas_contenido_cargado.append(contenido.id_sala)
+
+    def crear_objeto(self, instancia_id, tipo_id):
+        # Construye el nodo de un objeto a partir de su ficha del catálogo.
+        # Lo usan la carga desde la API y la carga de una partida guardada.
+        ficha = self.gestor_datos.obtener_ficha(tipo_id)
+
+        if ficha is None:
+            raise RuntimeError(f"No se encontró la ficha del objeto {tipo_id}.")
+
+        if not hasattr(ficha, "peso") or not hasattr(ficha, "valor"):
+            raise RuntimeError(f"La ficha {tipo_id} no contiene los atributos requeridos para un objeto.")
+
+        return NodoInventario(
+            instancia_id=instancia_id,
+            tipo_id=tipo_id,
+            nombre=ficha.nombre,
+            peso=ficha.peso,
+            valor=ficha.valor,
+            clase=ficha.clase,
+            ataque_bonus=getattr(ficha, "ataque_bonus", 0),
+            defensa_bonus=getattr(ficha, "defensa_bonus", 0),
+        )
+
+    def crear_enemigo(self, id_enemigo, tipo_id, vida, sala):
+        # Construye un enemigo (inactivo) con su botín. vida=None usa vida_max.
+        ficha = self.gestor_datos.obtener_ficha(tipo_id)
+
+        if ficha is None:
+            raise RuntimeError(f"No se encontró la ficha {tipo_id} del enemigo {id_enemigo}.")
+
+        if ficha.clase != "enemigo":
+            raise RuntimeError(f"La ficha {tipo_id} no es una ficha de enemigo.")
+
+        enemigo = Enemigo(
+            id=id_enemigo,
+            vida=ficha.vida_max if vida is None else vida,
+            vida_max=ficha.vida_max,
+            ataque=ficha.ataque,
+            defensa=ficha.defensa,
+            velocidad=ficha.velocidad,
+            comportamiento=ficha.comportamiento,
+            sala=sala,
+            tipo_id=tipo_id,
+        )
+
+        enemigo.regeneracion = getattr(ficha, "regeneracion", 0) or 0
+        enemigo.botin = []
+
+        for k, tipo_botin in enumerate(getattr(ficha, "suelta", None) or []):
+            enemigo.botin.append(
+                self.crear_objeto(f"bot-{id_enemigo}-{k}-{tipo_botin}", tipo_botin)
+            )
+
+        return enemigo
 
     def registrar_enemigo(self, enemigo):
         for existente in self.enemigos:
@@ -582,9 +570,7 @@ class MotorSimulacion:
                 self.proxima_accion(actor, 100)
 
     def cambiar_velocidad(self, actor, nueva_velocidad):
-        # §2.3: reescala el tiempo restante de la acción ya programada.
-        # Si el actor no tiene acción pendiente en la agenda (p. ej. el jugador
-        # en el instante de su decisión) solo cambia la velocidad.
+
         nueva_velocidad = max(1, nueva_velocidad)
         velocidad_anterior = actor.velocidad
         evento_previo = actor.evento_actual
@@ -637,10 +623,7 @@ class MotorSimulacion:
 
         return evento_nuevo
 
-    # ------------------------------------------------------------------
-    # Efectos temporales (§2.10). Todos son eventos de la agenda y todos
-    # registran cómo deshacerse, igual que el resto del motor.
-    # ------------------------------------------------------------------
+
 
     def _asignar_reversible(self, objeto, nombre, valor):
         anterior = getattr(objeto, nombre, None)
@@ -1042,6 +1025,11 @@ class MotorSimulacion:
     def preparar_sala(self, sala):
         # Trae y carga el contenido de una sala. La espera de red no modifica
         # el reloj virtual. Sin gestor o sin cripta_id no hace nada.
+        # En una partida cargada, la sala se toma del archivo si está guardada ahí.
+
+        if self.restaurador is not None and self.restaurador.restaurar_sala(self, sala.id):
+            return
+
         if self.gestor_datos is None or self.cripta_id is None:
             return
 
@@ -1480,7 +1468,10 @@ class MotorSimulacion:
             self.accion_jugador()
             self.actualizar_rastro(self.jugador.sala)
             self.proxima_accion(self.jugador, costo=100)
-            return self.avanzar_hasta_jugador()
+            # La acción ya se aceptó aunque el jugador muera esperando: debe
+            # devolver True para que quede en la bitácora y el replay no se detenga.
+            self.avanzar_hasta_jugador()
+            return True
 
         if nombre == "atacar":
             enemigo = next((e for e in self.enemigos
