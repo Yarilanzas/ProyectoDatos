@@ -80,60 +80,68 @@ class GestorDatos:
         return None
 
     def resolver_fichas(self, ids_tipos):
-        # sin repetidos
+        #ids_tipos= fichas que se quieren buscar
+        # guarda los que no estan duplicados: evita buscar la misma ficha más de una vez en memoria o disco.
         unicos = []
         for id_ficha in ids_tipos:
             if id_ficha not in unicos:
                 unicos.append(id_ficha)
 
-        # 1. cache en memoria
         resultado = []
         faltantes = []
         for id_ficha in unicos:
             ficha = self.cache_catalogo.obtener(id_ficha)
-            if ficha is not None:
+            if ficha is not None: #ficha si estaba cargada previamente en la cache
                 self.aciertos_cache += 1
                 resultado.append(ficha)
             else:
-                self.fallos_cache += 1
-                faltantes.append(id_ficha)
+                self.fallos_cache += 1 #ficha no estaba en la cache
+                faltantes.append(id_ficha) #lo pone en los que faltan para buscarlos depues
 
         if not faltantes:
-            return resultado
+            return resultado #si todas las fichas estaban entonces retorna resultado
 
         # 2. disco (validado contra la version del catalogo)
         version_actual = self._version_del_catalogo()
+        #Obtiene la versión actual del catálogo desde la fuente o memoria
+        # para asegurarse de no leer datos viejos
+
+        #carga las fichas de ese catalogo
         entidades_disco = self.almacenamiento_disco.cargar_catalogo(version_actual)
+
+
+        #guarda las fichas en disco si no es un obj vacio, si si es vacio pone una
+        #lista vacia nueva
         en_disco = entidades_disco if entidades_disco is not None else []
 
         por_pedir = []
-        for id_ficha in faltantes:
+        for id_ficha in faltantes: #porc cada ficha que faltaba
             encontrada = None
-            for ficha in en_disco:
-                if ficha.id == id_ficha:
-                    encontrada = ficha
-                    break
-            if encontrada is not None:
-                self.cache_catalogo.agregar(encontrada, self)
+            for ficha in en_disco: #por cada ficha en disco
+                if ficha.id == id_ficha: #compara la cada ficha en el disco por cada ficha que le entra
+                    encontrada = ficha #si es igual la asigna a encontrada
+                    break #sale del ciclo
+            if encontrada is not None: #si encontrada existe
+                self.cache_catalogo.agregar(encontrada, self) #la agrega al cache
                 resultado.append(encontrada)
             else:
-                por_pedir.append(id_ficha)
+                por_pedir.append(id_ficha) #si no se encuentra en disco se agrega a por pedir
 
-        # 3. fuente (api u offline): todas las que faltan juntas, en lotes de 10
+        # Pedir  todas las que faltan juntas en lotes de 10
         if por_pedir:
             # la fuente offline devuelve el catalogo completo: solo se toma lo pedido
             nuevas = []
-            for ficha in self.fuente.obtener_fichas_catalogo(por_pedir):
-                if ficha is not None and ficha.id in por_pedir:
-                    nuevas.append(ficha)
+            for ficha in self.fuente.obtener_fichas_catalogo(por_pedir): #por cada ficha en las fichas guardades en la fuente(on u off)
+                if ficha is not None and ficha.id in por_pedir: #si la ficha existr y la ficha esta en por pedir
+                    nuevas.append(ficha) #la guarda
 
-            for ficha in nuevas:
+            for ficha in nuevas: #por cada ficha que se acaba de buscar  se guardan en cache
                 self.cache_catalogo.agregar(ficha, self)
                 resultado.append(ficha)
-            # se guarda lo que ya habia en disco mas lo nuevo
+            # se guarda lo que ya habia en disco tanto viejas como nuevas
             self.almacenamiento_disco.guardar_catalogo(version_actual, en_disco + nuevas)
 
-        return resultado
+        return resultado #retorna las fichas salvadas
 
     def obtener_detalles(self, id_cripta):
         if self._id_detalles != id_cripta:
