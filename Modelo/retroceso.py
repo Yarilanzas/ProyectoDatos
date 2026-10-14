@@ -1,5 +1,6 @@
 #pergamino
 MAX_INTERVALOS = 5
+import struct
 
 class Cambio:
     __slots__ = ("deshacer", "description")
@@ -38,12 +39,21 @@ class Historial:
         self._intervalos_actual = self._intervalos[-1] if self._intervalos else None
         return True
 
+    #El historial de retroceso es de sesión: al guardar la partida,  no persiste. Al cargar, el jugador empieza sin deshacer disponible.
+    def to_bytes(self) -> bytes:
+        return struct.pack(">H", 0)
+
+    @classmethod
+    def from_bytes(cls, datos: bytes) -> "Historial":
+        return cls()
+
+#(§4.6). El pergamino usado debe quedar consumido después de completar el retroceso
 def usar_pergamino(inventario, historial, nodo_pergamino):
     if not historial.puede_deshacer():
         return False
 
-    inventario.suelta_nodo(nodo_pergamino)
-    historial.deshacer_ultimo()
+    historial.deshacer_ultimo() #revierte
+    inventario.suelta_nodo(nodo_pergamino) #consume
     return True
 
 def recoger_reversible(inventario, nodo, historial):

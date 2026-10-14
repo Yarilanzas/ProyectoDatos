@@ -1,5 +1,11 @@
 import time
 import random
+import json
+
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from Modelo.Inventario import Inventario,NodoInventario
 from Modelo.ordenamiento import insertion_sort,binary_insertion_sort,merge_sort
 from Modelo.retroceso import Historial,Cambio
@@ -67,10 +73,39 @@ def bench_retroceso():
     duracion_deshacer = time.perf_counter() - inicio
     print(f"deshacer {n_intervalos} intervalos: {duracion_deshacer:.6f}s")
 
+def bench_serializacion():
+    print("\n-Serialización (binario vs JSON)-")
+    n = 200
+    inv = Inventario(cap_max=n)
+    for i in range(n):
+        nodo = NodoInventario(f"i{i}", "tipo", f"Objeto {i}", 1, 1, "arma", ataque_bonus=1)
+        inv.recoge(nodo)
+
+    datos_bin = inv.to_bytes()
+    datos_json = json.dumps(inv.to_dict()).encode("utf-8")
+    print(f"tamaño binario: {len(datos_bin)} bytes")
+    print(f"tamaño JSON:    {len(datos_json)} bytes")
+
+    repeticiones = 200
+
+    inicio = time.perf_counter()
+    for _ in range(repeticiones):
+        Inventario.from_bytes(datos_bin)
+    duracion_bin = (time.perf_counter() - inicio) / repeticiones
+    print(f"tiempo de carga binario (promedio): {duracion_bin*1e6:.2f} µs")
+
+    inicio = time.perf_counter()
+    for _ in range(repeticiones):
+        dict_reconstruido = json.loads(datos_json.decode("utf-8"))
+        Inventario.from_dict(dict_reconstruido)
+    duracion_json = (time.perf_counter() - inicio) / repeticiones
+    print(f"tiempo de carga JSON (promedio):    {duracion_json*1e6:.2f} µs")
+
 def correr_bench():
     bench_inventario()
     bench_ordenamiento()
     bench_retroceso()
+    bench_serializacion()
 
 if __name__ == "__main__":
     correr_bench()

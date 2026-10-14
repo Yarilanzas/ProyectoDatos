@@ -63,6 +63,33 @@ def test_recoger_reversible_con_inventario_lleno():
     historial.deshacer_ultimo()
     print("contenido después de deshacer:", [n.nombre for n in inv])
 
+def test_pergamino_no_corrompe_lista_al_deshacer_soltar():
+    inv = Inventario(cap_max=10)
+    historial = Historial()
+
+    pergamino = NodoInventario("p1", "itm_pergamino", "Pergamino", 1, 30, "pergamino_retroceso")
+    daga = NodoInventario("i1", "itm_daga", "Daga", 2, 15, "arma")
+    armadura = NodoInventario("i2", "itm_armadura", "Armadura", 5, 20, "armadura")
+
+    inv.recoge(pergamino)
+    inv.recoge(daga)
+    inv.recoge(armadura)
+    print("orden inicial:", [n.nombre for n in inv])  # Pergamino, Daga, Armadura
+
+    historial.abrir_intervalo()
+    soltar_reversible(inv, daga, historial)
+    print("después de soltar daga:", [n.nombre for n in inv])  # Pergamino, Armadura
+
+    usar_pergamino(inv, historial, pergamino)
+    resultado = [n.nombre for n in inv]
+    print("después de usar el pergamino:", resultado)
+
+    # el pergamino se consume, la daga vuelve a estar en la lista
+    assert "Pergamino" not in resultado
+    assert "Daga" in resultado
+    assert "Armadura" in resultado
+    assert len(resultado) == 2
+    print("OK: la lista no se corrompió al deshacer con el pergamino de por medio\n")
 
 if __name__ == "__main__":
     print("--- pergaminos consecutivos ---")
@@ -71,3 +98,5 @@ if __name__ == "__main__":
     test_historial_vacio_no_rompe()
     print("\n--- recoger_reversible con inventario lleno ---")
     test_recoger_reversible_con_inventario_lleno()
+    print("\n--- pergamino no corrompe la lista al deshacer un soltar ---")
+    test_pergamino_no_corrompe_lista_al_deshacer_soltar()

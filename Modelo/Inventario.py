@@ -2,6 +2,7 @@
 #ya que esta especifica que puede recorrerse de delante y poe detras
 
 from Modelo.ordenamiento import elegir_algoritmo
+import struct
 
 class NodoInventario:
     #los slots sirven para poder es una optimizacion para las instancias, en este caso, como se llama tanto a cada objeto del inventario
@@ -160,3 +161,85 @@ class Inventario:
         self._cantidad += 1
         if vacio:
             self._cursor = nodo #si no habia nada, apunta al unico obj
+
+
+    def to_bytes(self) -> bytes:
+        cuerpo = bytearray()
+        cuerpo.extend(struct.pack(">HH", self._capacidad, self._cantidad))
+        for nodo in self:
+            b_instancia = nodo.instancia_id.encode('utf-8')
+            b_tipo = nodo.tipo_id.encode('utf-8')
+            b_nombre = nodo.nombre.encode('utf-8')
+            b_clase = nodo.clase.encode('utf-8')
+
+            es_arma = 1 if self._arma_equipada is nodo else 0
+            es_armadura = 1 if self._armadura_equipada is nodo else 0
+            es_cursor = 1 if self._cursor is nodo else 0
+
+            cuerpo.extend(struct.pack(
+                ">BBBBhhhhBBB", len(b_instancia), len(b_tipo), len(b_nombre), len(b_clase),
+                nodo.peso,nodo.valor,nodo.ataque_bonus, nodo.defensa_bonus,
+                es_arma,es_armadura,es_cursor
+            ))
+            cuerpo.extend(b_instancia + b_tipo + b_nombre+ b_clase)
+
+        return struct.pack(">H", len(cuerpo)) + cuerpo
+
+    @classmethod
+    def from_bytes(cls, datos:bytes) -> "Inventario":
+        offset = 2
+        capacidad, cantidad = struct.unpack_from(">HH", datos, offset)
+        offset += 4
+        inv =cls(capacidad)
+        cursor_nodo = None
+        for _ in range(cantidad):
+            (len_i, len_t, len_n, len_c, peso, valor, ab, db,
+            es_arma, es_armadura, es_cursor) = struct.unpack_from(">BBBBhhhhBBB", datos, offset)
+
+            offset += struct.calcsize(">BBBBhhhhBBB")
+            inst = datos[offset:offset + len_i].decode("utf-8"); offset += len_i
+            tipo = datos[offset:offset + len_t].decode("utf-8"); offset += len_t
+            nom = datos[offset:offset + len_n].decode("utf-8");offset += len_n
+            clase = datos[offset:offset + len_c].decode("utf-8");offset += len_c
+
+            nodo = NodoInventario(inst, tipo, nom, peso, valor, clase, ab, db)
+            inv.recoge(nodo)
+
+            if es_arma: inv._arma_equipada = nodo
+            if es_armadura: inv._armadura_equipada = nodo
+            if es_cursor: cursor_nodo = nodo
+            if cursor_nodo: inv._cursor = cursor_nodo
+        return inv
+
+    @classmethod
+    def from_dict(cls, datos:dict) -> "Inventario":
+        inv = cls(datos["capacidad"])
+        cursor_nodo = None
+        for n in datos["nodos"]:
+            nodo = NodoInventario(
+                n["instancia_id"], n["tipo_id"], n["nombre"],
+                n["peso"], n["valor"], n["clase"],
+                n["ataque_bonus"], n["defensa_bonus"]
+            )
+
+            inv.recoge(nodo)
+            if n["es_arma"]: inv._arma_equipada = nodo
+            if n["es_armadura"]: inv._armadura_equipada = nodo
+            if n["es_cursor"]: cursor_nodo = nodo
+        if cursor_nodo: inv._cursor = cursor_nodo
+        return inv
+
+      #Para la comparativa JSON vs binario que pide §4.10
+    def to_dict(self) -> dict:
+        return {
+            "capacidad": self._capacidad,
+            "nodos": [{
+                "instancia_id": n.instancia_id, "tipo_id": n.tipo_id, "nombre": n.nombre,
+                "peso": n.peso, "valor": n.valor, "clase": n.clase,
+                "ataque_bonus": n.ataque_bonus, "defensa_bonus": n.defensa_bonus,
+                "es_arma": self._arma_equipada is n,
+                "es_armadura": self._armadura_equipada is n,
+                "es_cursor": self._cursor is n,
+            } for n in self]
+        }
+
