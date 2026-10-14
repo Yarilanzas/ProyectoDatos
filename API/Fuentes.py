@@ -15,7 +15,6 @@ from DTOS.SalaEsqueleto import SalaEsqueleto
 
 
 class FuenteDatos:
-    solicitudes_realizadas = 0
 
     def _obtener(self, ruta, params=None):
         raise NotImplementedError
@@ -65,7 +64,7 @@ class FuenteDatos:
 
     def obtener_fichas_catalogo(self, ids_fichas):
         tamano = 10
-        bloques_ids = [ids_fichas[i:i + tamano] for i in range(0, len(ids_fichas), tamano)]  # parte en 10
+        bloques_ids = [ids_fichas[i:i + tamano] for i in range(0, len(ids_fichas), tamano)]
 
         catalogo_entidades = []
         i = 0
@@ -90,27 +89,44 @@ class FuenteDatos:
 
 
 class FuenteDatosHTTP(FuenteDatos): #(FuenteDatos) es herencia
-    def __init__(self):
+    def __init__(self, presupuesto_solicitudes=None):
         self.base_url = "https://cripta-api.kad06a0zhgs84.us-east-2.cs.amazonlightsail.com/v1"
         self.client_id = str(uuid.uuid4())
         self.headers = {"X-Cripta-Client-Id": self.client_id}
+        self.solicitudes_realizadas = 0
+        # el presupuesto se conoce recién después de pedir los datos generales de la cripta (§3.3),
+        # por eso puede quedar en None al construir y setearse después con fijar_presupuesto()
+        self.presupuesto_solicitudes = presupuesto_solicitudes
+
+    def fijar_presupuesto(self, presupuesto_solicitudes):
+        self.presupuesto_solicitudes = presupuesto_solicitudes
 
     def _hacer_solicitud(self, url, params=None):
-        self.solicitudes_realizadas += 1
-        try:
-            respuesta = requests.get(url, headers=self.headers, params=params, timeout=10)
+        while True:
+            if (self.presupuesto_solicitudes is not None
+                    and self.solicitudes_realizadas >= self.presupuesto_solicitudes):
+                raise RuntimeError(
+                    f"Se agotó el presupuesto de solicitudes ({self.presupuesto_solicitudes}) "
+                    f"al consultar {url}"
+                )
+
+            self.solicitudes_realizadas += 1
+            try:
+                respuesta = requests.get(url, headers=self.headers, params=params, timeout=10)
+            except requests.exceptions.Timeout as e:
+                raise RuntimeError(f"El servidor tardó demasiado en responder al consultar {url}") from e
+            except requests.exceptions.ConnectionError as e:
+                raise RuntimeError(f"No hay conexión al consultar {url}") from e
+
             if respuesta.status_code == 429:
                 cuerpo = respuesta.json()
                 tiempo_espera = cuerpo["reintentar_en"]
                 time.sleep(tiempo_espera)
-                return self._hacer_solicitud(url, params)
+                continue  # antes era "return self._hacer_solicitud(...)" (recursivo); ahora reintenta
+                          # dentro del mismo while, respetando el chequeo de presupuesto de arriba
             if respuesta.status_code != 200:
                 raise RuntimeError(f"Error al consultar {url}: código {respuesta.status_code}")
             return respuesta.json()
-        except requests.exceptions.Timeout as e:
-            raise RuntimeError(f"El servidor tardó demasiado en responder al consultar {url}") from e
-        except requests.exceptions.ConnectionError as e:
-            raise RuntimeError(f"No hay conexión al consultar {url}") from e
 
     def _obtener(self, ruta, params=None):
         return self._hacer_solicitud(self.base_url + ruta, params)
@@ -127,30 +143,3 @@ class FuenteDatosOffline(FuenteDatos): #(FuenteDatos) es herencia
             raise RuntimeError(f"Falta el archivo para {ruta}: {archivo}")
         with open(archivo, "r", encoding="utf-8") as f:
             return json.load(f)
-
-
-'''if __name__ == "__main__":
-    fuente = FuenteDatosHTTP()
-
-    criptas = fuente.list_criptas()
-    print("Criptas:", len(criptas))
-
-    detalles = fuente.obtener_detalles_cripta("cripta-01")
-    print("Sala inicial:", detalles.sala_inicial, "| vida jugador:", detalles.jugador.vida)
-
-    esqueleto = fuente.obtener_esqueleto_cripta("cripta-01")
-    print("Salas en el esqueleto:", len(esqueleto))
-
-    contenido = fuente.obtener_contenido_sala("cripta-01", [1, 2, 3, 4])
-    print("Contenido de", len(contenido), "salas")
-
-    tipos = set()
-    for sala in contenido:
-        for enemigo in sala.enemigos:
-            tipos.add(enemigo.tipo)
-    if tipos:
-        fichas = fuente.obtener_fichas_catalogo(list(tipos))
-        print("Fichas de catálogo:", [f.id for f in fichas])
-
-    print("Versión cripta:", fuente.obtener_version_cripta("cripta-01"))
-    print("Versión catálogo:", fuente.obtener_version_catalogo())'''

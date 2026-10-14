@@ -14,6 +14,8 @@ from AlmacenamientoLocalApi.AlmacenamientoLocalApi import AlmacenamientoLocalApi
 from DTOS.FichaCatalogo import FichaCatalogo
 from DTOS.SalaEsqueleto import SalaEsqueleto
 from Gestor.PlanificadorPreCarga import PlanificadorPrecarga
+from API.Fuentes import FuenteDatosHTTP
+import requests
 
 
 class FichaFalsa:
@@ -67,7 +69,6 @@ def bench_busqueda_cache():
         print(f"{n:>8} {t_bin * 1e6:>10.2f} {t_lin * 1e6:>10.2f}")
 
 
-# ---------- 2. disco vs memoria ----------
 def bench_disco_vs_memoria():
     print("\n2. Recuperar una ficha: disco vs memoria (microsegundos)")
     carpeta = tempfile.mkdtemp()
@@ -94,7 +95,6 @@ def bench_disco_vs_memoria():
         shutil.rmtree(carpeta, ignore_errors=True)
 
 
-# ---------- 3. cola de uso ----------
 def bench_cola_de_uso():
     print("\n3. Cola de uso: reacomodar (tu actualizar_orden) vs solo encolar")
     print(f"{'fichas':>8} {'reacomodar us':>14} {'encolar us':>12} {'tam. reacomodar':>16} {'tam. encolar':>13}")
@@ -123,7 +123,6 @@ def bench_cola_de_uso():
         print(f"{n:>8} {t_reac * 1e6:>14.2f} {t_enc * 1e6:>12.2f} {tam_reac:>16} {tam_enc:>13}")
 
 
-# ---------- 4. solicitudes por estrategia de precarga ----------
 def _crear_esqueleto_grid(ancho, alto):
     salas = []
     for fila in range(alto):
@@ -189,9 +188,53 @@ def bench_precarga():
             print(f"    {nombre:<26} {_contar_solicitudes(esqueleto, orden, limite):>4} solicitudes")
 
 
+class RespuestaFalsa:
+    def __init__(self, status_code, cuerpo):
+        self.status_code = status_code
+        self._cuerpo = cuerpo
+
+    def json(self):
+        return self._cuerpo
+
+
+def bench_presupuesto_solicitudes():
+    print("\n5. FuenteDatosHTTP: reintentos por 429 y presupuesto de solicitudes")
+    original_get = requests.get
+    llamadas = {"n": 0}
+
+    def get_dos_429_luego_200(url, headers=None, params=None, timeout=None):
+        llamadas["n"] += 1
+        if llamadas["n"] <= 2:
+            return RespuestaFalsa(429, {"reintentar_en": 0})
+        return RespuestaFalsa(200, {"ok": True})
+
+    requests.get = get_dos_429_luego_200
+    try:
+        fuente = FuenteDatosHTTP(presupuesto_solicitudes=10)
+        resultado = fuente._obtener("/ruta-de-prueba")
+        print(f"  dos 429 seguidos, sin reventar: {llamadas['n']} llamadas, resultado = {resultado}")
+    finally:
+        requests.get = original_get
+
+    def siempre_429(url, headers=None, params=None, timeout=None):
+        return RespuestaFalsa(429, {"reintentar_en": 0})
+
+    requests.get = siempre_429
+    try:
+        fuente_limitada = FuenteDatosHTTP(presupuesto_solicitudes=1)
+        try:
+            fuente_limitada._obtener("/otra-ruta")
+            print("  ERROR: no se detectó el presupuesto agotado")
+        except RuntimeError as e:
+            print(f"  presupuesto agotado detectado: {e}")
+    finally:
+        requests.get = original_get
+
+
 def ejecutar_bench():
     print("=== BENCH módulo B ===")
-    for prueba in (bench_busqueda_cache, bench_disco_vs_memoria, bench_cola_de_uso, bench_precarga):
+    for prueba in (bench_busqueda_cache, bench_disco_vs_memoria, bench_cola_de_uso,
+                   bench_precarga, bench_presupuesto_solicitudes):
         try:
             prueba()
         except Exception as e:

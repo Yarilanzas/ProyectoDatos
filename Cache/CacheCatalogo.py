@@ -26,17 +26,20 @@ class CacheCatalogo:
     def agregar(self, ficha, gestor_datos=None):
         encontrado, posicion = self._buscar_posicion(ficha.id)
 
-        if not encontrado:
-            if len(self.fichas) >= self.tamanio_maximo:
-                self.desalojar(gestor_datos)
-
-            self.fichas.insert(posicion, ficha)
-
+        if encontrado:
             self.actualizar_orden(ficha.id)
-        #print("agrgada")
+            return
+
+        while len(self.fichas) >= self.tamanio_maximo:
+            if not self.desalojar(gestor_datos):
+                break
+
+        _, posicion = self._buscar_posicion(ficha.id)
+        self.fichas.insert(posicion, ficha)
+        self.actualizar_orden(ficha.id)
 
     def  _buscar_posicion(self, id_buscado):
-        #busqueda binaria
+        #busqueda binariaF
         inicio = 0
         fin = len(self.fichas) - 1
 
@@ -68,17 +71,19 @@ class CacheCatalogo:
         self.orden_uso.enqueue(id_ficha) #al
 
     def desalojar(self, gestor_datos=None):
-        while len(self.fichas) >= self.tamanio_maximo and not self.orden_uso.is_empty():
+        for _ in range(self.orden_uso.size()):      # una sola pasada por la cola
             id_candidato = self.orden_uso.dequeue()
             en_uso = gestor_datos.esta_en_uso(id_candidato) if gestor_datos else False
 
             if en_uso:
-                self.orden_uso.enqueue(id_candidato)
-            else:
-                encontrado, pos = self._buscar_posicion(id_candidato)
-                if encontrado:
-                    self.fichas.pop(pos)
-                break
+                self.orden_uso.enqueue(id_candidato)    # protegida: se conserva
+                continue
+
+            encontrado, pos = self._buscar_posicion(id_candidato)
+            if encontrado:
+                self.fichas.pop(pos)
+                return True
+        return False
 
 
 

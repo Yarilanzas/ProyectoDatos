@@ -11,20 +11,19 @@ if RAIZ not in sys.path:
 from Gestor.PlanificadorPreCarga import PlanificadorPrecarga
 from Cache.CacheCatalogo import CacheCatalogo
 from AlmacenamientoLocalApi.AlmacenamientoLocalApi import AlmacenamientoLocalApi
-class GestorDatos:
-    _instancia = None  # única instancia
 
-    def __new__(cls, *args, **kwargs):
-        #crea la instancia si no existe
-        if cls._instancia is None:
-            cls._instancia = super().__new__(cls)
-            cls._instancia._inicializado = False
-        return cls._instancia
+
+class ResumenRed:
+    def __init__(self, solicitudes, presupuesto, aciertos_cache, fallos_cache):
+        self.solicitudes = solicitudes
+        self.presupuesto = presupuesto
+        self.aciertos_cache = aciertos_cache
+        self.fallos_cache = fallos_cache
+
+
+class GestorDatos:
 
     def __init__(self, fuente, ruta_base="datos_locales", cache_size=25):
-        if self._inicializado:
-            return
-
         self.fuente = fuente  # llega ya construida (HTTP o offline), se decide main.py
         self.almacenamiento_disco = AlmacenamientoLocalApi(ruta_base)
         self.cache_catalogo = CacheCatalogo(cache_size)
@@ -39,7 +38,13 @@ class GestorDatos:
         self.aciertos_cache = 0
         self.fallos_cache = 0
 
-        self._inicializado = True
+        # estado de la cripta en curso
+        self._planificador = None
+        self._id_cripta_actual = None
+        self._salas_cargadas = []
+        self._contenido_en_memoria = []
+        self._detalles = None
+        self._id_detalles = None
 
     def _version_del_catalogo(self):
         if self._version_catalogo is None: # si no hay una guardada
@@ -52,44 +57,74 @@ class GestorDatos:
             self._id_cripta_version = id_cripta
         return self._version_cripta
 
-
-
     def solicitudes_realizadas(self):
         return self.fuente.solicitudes_realizadas
 
     def obtener_ficha(self, id_ficha):
-        #primero se verifica si esta en cache
-        if self.cache_catalogo.esta_en_cache(id_ficha):
-            self.aciertos_cache += 1
-            return self.cache_catalogo.obtener(id_ficha)
-        self.fallos_cache += 1
+        fichas = self.resolver_fichas([id_ficha])
+        return fichas[0] if fichas else None
 
-        #si no esta en cache la busca en disco
+    def resolver_fichas(self, ids_tipos):
+        # sin repetidos
+        unicos = []
+        for id_ficha in ids_tipos:
+            if id_ficha not in unicos:
+                unicos.append(id_ficha)
+
+        # 1. cache en memoria
+        resultado = []
+        faltantes = []
+        for id_ficha in unicos:
+            ficha = self.cache_catalogo.obtener(id_ficha)
+            if ficha is not None:
+                self.aciertos_cache += 1
+                resultado.append(ficha)
+            else:
+                self.fallos_cache += 1
+                faltantes.append(id_ficha)
+
+        if not faltantes:
+            return resultado
+
+        # 2. disco (validado contra la version del catalogo)
         version_actual = self._version_del_catalogo()
         entidades_disco = self.almacenamiento_disco.cargar_catalogo(version_actual)
+        en_disco = entidades_disco if entidades_disco is not None else []
 
-        if entidades_disco is not None:
-            for ficha in entidades_disco:
+        por_pedir = []
+        for id_ficha in faltantes:
+            encontrada = None
+            for ficha in en_disco:
                 if ficha.id == id_ficha:
-                    self.cache_catalogo.agregar(ficha, self)
-                    return ficha
+                    encontrada = ficha
+                    break
+            if encontrada is not None:
+                self.cache_catalogo.agregar(encontrada, self)
+                resultado.append(encontrada)
+            else:
+                por_pedir.append(id_ficha)
 
+        # 3. fuente (api u offline): todas las que faltan juntas, en lotes de 10
+        if por_pedir:
+            nuevas = self.fuente.obtener_fichas_catalogo(por_pedir)
+            for ficha in nuevas:
+                self.cache_catalogo.agregar(ficha, self)
+                resultado.append(ficha)
+            # se guarda lo que ya habia en disco mas lo nuevo
+            self.almacenamiento_disco.guardar_catalogo(version_actual, en_disco + nuevas)
 
-        #si del todo no esta en disco no en cache se manda a llamar a la api o datos offline para buscarla
-        fichas_red = self.fuente.obtener_fichas_catalogo([id_ficha])
-        if fichas_red:
-            ficha = fichas_red[0]
-            self.cache_catalogo.agregar(ficha, self)
+        return resultado
 
-            # se guarda lo que ya había en disco mas la ficha nueva
-            fichas_a_guardar = []
-            if entidades_disco is not None:
-                fichas_a_guardar.extend(entidades_disco)
-            fichas_a_guardar.append(ficha)
-            self.almacenamiento_disco.guardar_catalogo(version_actual, fichas_a_guardar)
-            return ficha
+    def obtener_detalles(self, id_cripta):
+        if self._id_detalles != id_cripta:
+            self._detalles = self.fuente.obtener_detalles_cripta(id_cripta)
+            self._id_detalles = id_cripta
+        return self._detalles
 
-        return None
+    def resumen_red(self):
+        presupuesto = self._detalles.presupuesto_solicitudes if self._detalles is not None else None
+        return ResumenRed(self.solicitudes_realizadas(), presupuesto,
+                          self.aciertos_cache, self.fallos_cache)
 
     def obtener_esqueleto(self, id_cripta):
         version_actual = self._version_de_cripta(id_cripta)
@@ -143,8 +178,6 @@ class GestorDatos:
             return False # si no hay nada en el juego retorna falso
         if hasattr(self.estado_juego, "es_ficha_activa"):
             return self.estado_juego.es_ficha_activa(id_ficha)
-        if hasattr(self.estado_juego, "fichas_activas"):
-            return id_ficha in self.estado_juego.fichas_activas
         return False
 
     def iniciar_cripta(self, id_cripta):
@@ -157,9 +190,17 @@ class GestorDatos:
 
     def _cargar_lote(self, ids_salas):
         contenido = self.obtener_contenido_salas(self._id_cripta_actual, ids_salas)
+        tipos = []
         for sala in contenido:
             self._contenido_en_memoria.append(sala)
             self._salas_cargadas.append(sala.id_sala)
+            for enemigo in sala.enemigos:
+                tipos.append(enemigo.tipo)
+            for trampa in sala.trampas:
+                tipos.append(trampa.tipo)
+            for objeto in sala.objetos:
+                tipos.append(objeto)
+        self.resolver_fichas(tipos)   # catalogo de todo lo nuevo, en lotes
 
     def asegurar_sala(self, id_sala):
         if id_sala not in self._salas_cargadas:
@@ -174,23 +215,3 @@ class GestorDatos:
         lote = self._planificador.planificar(id_sala, self._salas_cargadas)
         if lote:
             self._cargar_lote(lote)
-
-from API.Fuentes import FuenteDatosHTTP
-from Gestor.GestorDatos import GestorDatos
-
-if __name__ == "__main__":
-    fuente = FuenteDatosHTTP()
-    gestor = GestorDatos(fuente, ruta_base="datos_prueba", cache_size=25)
-
-    esqueleto = gestor.iniciar_cripta("cripta-01")
-    print("Salas en el esqueleto:", len(esqueleto))
-  #  print("Solicitudes tras iniciar:", gestor.solicitudes_realizadas())
-
-    sala = gestor.asegurar_sala(1)
-    print("Enemigos en la sala 1:", len(sala.enemigos))
-    print("Salas cargadas:", gestor._salas_cargadas)
-    print("Solicitudes tras asegurar la sala 1:", gestor.solicitudes_realizadas())
-
-    antes = gestor.solicitudes_realizadas()
-    gestor.asegurar_sala(2)
-    print("Solicitudes nuevas por la sala 2 (esperado 0):", gestor.solicitudes_realizadas() - antes)
