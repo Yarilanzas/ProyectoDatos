@@ -115,10 +115,12 @@ class VistaConsola:
         self.mostrar(f"Solicitudes: {resumen.solicitudes} de {presupuesto}   "
                      f"caché: {resumen.aciertos_cache} aciertos / {resumen.fallos_cache} fallos")
 
-    def mostrar_fin(self, resumen):
+    def mostrar_fin(self, resumen, resumen_red=None):
         if resumen["resultado"] == "victoria":
             self.mostrar("*** ¡Escapaste de la cripta! ***")
         else:
             self.mostrar("*** Has muerto en la cripta ***")
         self.mostrar(f"Acciones: {resumen['acciones']}   enemigos derrotados: "
                      f"{resumen['enemigos_derrotados']}   tiempo final: {resumen['tiempo_final']}")
+        if resumen_red is not None:
+            self.mostrar_red(resumen_red)

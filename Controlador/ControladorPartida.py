@@ -214,7 +214,8 @@ class ControladorPartida:
                 self.vista.mostrar_estado(self.motor)
 
                 if self.motor.estado_partida() != "en_curso":
-                    self.vista.mostrar_fin(self.motor.resumen_puntaje())
+                    self.vista.mostrar_fin(self.motor.resumen_puntaje(),self.gestor.resumen_red())
+                   # self.vista
                     break
 
                 linea = self.vista.pedir_comando()
