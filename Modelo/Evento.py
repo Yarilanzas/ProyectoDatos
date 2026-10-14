@@ -1,10 +1,12 @@
 class Evento:
-    def __init__(self, tiempo, secuencia, tipo, actor=None):
+    def __init__(self, tiempo, secuencia, tipo, actor=None, datos=None):
         self.tiempo = tiempo
         self.secuencia = secuencia
         self.tipo = tipo
         self.actor = actor
+        self.datos = datos  # carga útil opcional (p. ej. daño y fin de un veneno)
         self.cancelado = False
+        self.indice_heap = -1  # posición en AgendaEventos.heap; -1 si no está en la agenda
 
     def cancelar(self):
         self.cancelado = True

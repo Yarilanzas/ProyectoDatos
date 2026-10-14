@@ -4,7 +4,6 @@
 class AgendaEventos:
     def __init__(self):
         self.heap = []
-        self._posiciones = {}  # id(evento) -> indice en heap
 
     def esta_vacia(self):
         return self.siguiente() is None
@@ -15,7 +14,7 @@ class AgendaEventos:
 
         indice = len(self.heap)
         self.heap.append(evento)
-        self._posiciones[id(evento)] = indice
+        evento.indice_heap = indice
         self._subir(indice)
 
     def siguiente(self):
@@ -29,10 +28,9 @@ class AgendaEventos:
         return self._eliminar_indice(0)
 
     def extraer_evento(self, evento):
-        indice = self._posiciones.get(id(evento))
-        if indice is None or self.heap[indice] is not evento:
+        if not self.contiene(evento):
             return None
-        return self._eliminar_indice(indice)
+        return self._eliminar_indice(evento.indice_heap)
 
     def _limpiar_cancelados_raiz(self):
         while self.heap and self.heap[0].cancelado:
@@ -40,15 +38,13 @@ class AgendaEventos:
 
     def _eliminar_evento(self, evento):
         # Se conserva por compatibilidad con llamadas internas existentes.
-        indice = self._posiciones.get(id(evento))
-        if indice is None or self.heap[indice] is not evento:
-            return
-        self._eliminar_indice(indice)
+        if self.contiene(evento):
+            self._eliminar_indice(evento.indice_heap)
 
     def _eliminar_indice(self, indice):
         ultimo_indice = len(self.heap) - 1
         eliminado = self.heap[indice]
-        del self._posiciones[id(eliminado)]
+        eliminado.indice_heap = -1
 
         if indice == ultimo_indice:
             self.heap.pop()
@@ -56,7 +52,7 @@ class AgendaEventos:
 
         ultimo = self.heap.pop()
         self.heap[indice] = ultimo
-        self._posiciones[id(ultimo)] = indice
+        ultimo.indice_heap = indice
 
         if indice > 0:
             padre = (indice - 1) // 2
@@ -71,8 +67,8 @@ class AgendaEventos:
 
     def _intercambiar(self, i, j):
         self.heap[i], self.heap[j] = self.heap[j], self.heap[i]
-        self._posiciones[id(self.heap[i])] = i
-        self._posiciones[id(self.heap[j])] = j
+        self.heap[i].indice_heap = i
+        self.heap[j].indice_heap = j
 
     def _subir(self, indice):
         while indice > 0:
@@ -108,5 +104,5 @@ class AgendaEventos:
             self._eliminar_indice(0)
 
     def contiene(self, evento):
-        indice = self._posiciones.get(id(evento))
-        return indice is not None and self.heap[indice] is evento
+        indice = evento.indice_heap
+        return 0 <= indice < len(self.heap) and self.heap[indice] is evento

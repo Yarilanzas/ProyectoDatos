@@ -1,28 +1,12 @@
 """
-CRIPTA | BENCHMARK INTEGRAL DE PERSONA A
-========================================
+CRIPTA | Benchmark del motor (Persona A)
 
-Ejecución desde la raíz:
     python tests/bench_motor.py
     python tests/bench_motor.py --sizes 10,50,100,250 --repeats 7
+    python tests/bench_motor.py --enemigos 100,300,500 --ciclos 60
 
-Mide:
-- Agenda: insertar, consultar mínimo, extraer, buscar identidad.
-- Motor: programar eventos, cambio de velocidad, ejecutar eventos, avance de reloj.
-- IA: decisiones guardian/errante/rastreador, salidas y rastros.
-- Movimiento: jugador y enemigos (si las clases reales del proyecto se pueden construir).
-- Combate: ataque y cancelación de evento por muerte (si se pueden construir actores reales).
-- Trampas: activación y rearme (si hay fixtures/datos compatibles).
-- Retroceso: coste de abrir/cerrar intervalos y deshacer (según API de Historial).
-- Contenido y fichas: carga y búsqueda (requiere GestorDatos/configuración real).
-
-El benchmark intenta usar clases reales del proyecto. Cuando una integración no puede
-construirse sin datos específicos, la marca como NO EJECUTADA y muestra la razón:
-no inventa resultados ni presenta micropruebas como pruebas de integración.
-
-Nota: las pruebas de ciclo real necesitan constructores/datos de tu proyecto. Este script
-descubre algunos constructores comunes, pero puede requerir adaptar la sección de fixtures
-a las firmas exactas de Sala/Jugador/Enemigo/Contenido/GestorDatos de tu repositorio.
+Tablas: agenda (heap propio vs lista), motor, IA y búsquedas, integración con
+las clases reales y ciclo completo de eventos (límite de 20 ms, §5.2).
 """
 from __future__ import annotations
 
@@ -71,23 +55,41 @@ def medir_us(funcion: Callable[[], object], repeticiones: int = 5) -> float:
     return medir_ms(funcion, repeticiones) * 1000
 
 
-def seccion(titulo: str) -> None:
-    print(f"\n{titulo}")
+ANCHO = 74
 
 
-def metrica(nombre: str, valor: str) -> None:
-    print(f"  {nombre:<34} {valor:>14}")
+def titulo(texto: str, nota: str = "") -> None:
+    print(f"\n{texto}" + (f"  ·  {nota}" if nota else ""))
+    print("─" * ANCHO)
 
 
-def pie() -> None:
-    pass
+def fmt_t(ms: float) -> str:
+    """Tiempo legible: µs si es menor a 1 ms."""
+    if ms < 0.001:
+        return f"{ms * 1000:.2f} µs"
+    if ms < 1:
+        return f"{ms * 1000:.1f} µs"
+    return f"{ms:.2f} ms"
+
+
+def tabla(encabezado, filas) -> None:
+    """Columnas auto-ajustadas: la primera a la izquierda, el resto a la derecha."""
+    cols = len(encabezado)
+    anchos = [max(len(str(r[c])) for r in [encabezado] + filas) for c in range(cols)]
+
+    def linea(fila):
+        celdas = [str(fila[0]).ljust(anchos[0])]
+        celdas += [str(fila[c]).rjust(anchos[c]) for c in range(1, cols)]
+        return "  " + "   ".join(celdas)
+
+    print(linea(encabezado))
+    print("  " + "   ".join("─" * a for a in anchos))
+    for fila in filas:
+        print(linea(fila))
 
 
 def registrar(nombre: str, estado: str, detalle: str = "") -> None:
     RESULTADOS.append((nombre, estado, detalle))
-    simbolo = {"OK": "✓", "FALLO": "✗", "NO EJECUTADA": "–"}.get(estado, "·")
-    extra = f" — {detalle}" if detalle else ""
-    print(f"  [{simbolo}] {nombre}: {estado}{extra}")
 
 
 @contextlib.contextmanager
@@ -146,7 +148,7 @@ def try_import(module_name, class_name):
 
 # ───────────────────────── Agenda y motor base ────────────────────────────────
 
-def bench_agenda(n: int, repeticiones: int) -> None:
+def bench_agenda(n: int, repeticiones: int) -> dict:
     def insertar_agenda():
         agenda = AgendaEventos()
         actor = ActorBench("agenda")
@@ -180,19 +182,15 @@ def bench_agenda(n: int, repeticiones: int) -> None:
     t_bh = medir_us(lambda: agenda.contiene(objetivo_a), repeticiones)
     t_bl = medir_us(lambda: any(e is objetivo_l for e in eventos), repeticiones)
 
-    seccion(f"AGENDA DE EVENTOS · N={n}")
-    metrica("Insertar todos · AgendaEventos", f"{t_ah:.3f} ms")
-    metrica("Insertar todos · lista", f"{t_li:.3f} ms")
-    metrica("Consultar mínimo · AgendaEventos", f"{t_mh:.3f} µs")
-    metrica("Consultar mínimo · lista", f"{t_ml:.3f} µs")
-    metrica("Extraer todos · AgendaEventos", f"{t_eh:.3f} ms")
-    metrica("Extraer todos · lista", f"{t_el:.3f} ms")
-    metrica("Buscar identidad · AgendaEventos", f"{t_bh:.3f} µs")
-    metrica("Buscar identidad · lista", f"{t_bl:.3f} µs")
-    pie()
+    return {
+        "Insertar todos": (t_ah, t_li),
+        "Consultar mínimo": (t_mh / 1000, t_ml / 1000),
+        "Extraer todos": (t_eh, t_el),
+        "Buscar un evento": (t_bh / 1000, t_bl / 1000),
+    }
 
 
-def bench_motor_base(n: int, repeticiones: int) -> None:
+def bench_motor_base(n: int, repeticiones: int) -> dict:
     def programar():
         motor = MotorSimulacion(semilla=123)
         actor = ActorBench("actor")
@@ -217,16 +215,14 @@ def bench_motor_base(n: int, repeticiones: int) -> None:
                 if not motor.ejecu_sig_evento():
                     break
 
-    seccion(f"PROGRAMACIÓN Y CICLO SINTÉTICO · N={n}")
-    metrica(f"Programar {n} eventos", f"{medir_ms(programar, repeticiones):.3f} ms")
-    metrica("Cuatro cambios de velocidad", f"{medir_ms(cambiar_velocidad, repeticiones):.3f} ms")
-    metrica(f"Ejecutar hasta {min(n, 10)} eventos", f"{medir_ms(ciclo, repeticiones):.3f} ms")
-    metrica("Incluye", "agenda + reloj + historial")
-    metrica("No equivale a", "turno real completo")
-    pie()
+    return {
+        "Programar N eventos": medir_ms(programar, repeticiones),
+        "4 cambios de velocidad": medir_ms(cambiar_velocidad, repeticiones),
+        "Ejecutar 10 eventos": medir_ms(ciclo, repeticiones),
+    }
 
 
-def bench_ia_busqueda(n: int, repeticiones: int) -> None:
+def bench_ia_busqueda(n: int, repeticiones: int) -> dict:
     motor = MotorSimulacion(semilla=123)
     cantidad = max(2, n)
     salas = [SalaBench(i) for i in range(cantidad)]
@@ -242,17 +238,18 @@ def bench_ia_busqueda(n: int, repeticiones: int) -> None:
     for i, sala in enumerate(salas):
         sala.rastro = i
 
-    seccion(f"BÚSQUEDAS E IA · {cantidad} SALAS")
-    metrica("Buscar sala", f"{medir_us(lambda: motor.buscar_sala(salas, str(cantidad - 1)), repeticiones):.3f} µs/op")
-    metrica("Obtener salidas abiertas", f"{medir_us(lambda: motor.salidas_abiertas(salas[0]), repeticiones):.3f} µs/op")
-    metrica("Decisión errante", f"{medir_us(lambda: motor.salida_errante(enemigo), repeticiones):.3f} µs/op")
-    metrica("Búsqueda de rastro", f"{medir_us(lambda: motor.salida_rastro(enemigo), repeticiones):.3f} µs/op")
-    metrica("Decisión de comportamiento", f"{medir_us(lambda: motor.accion_enemigo(enemigo, jugador), repeticiones):.3f} µs/op")
-    # Guardian y ataque en misma sala: mide únicamente la selección de acción.
+    resultados = {
+        "Buscar sala": medir_ms(lambda: motor.buscar_sala(salas, str(cantidad - 1)), repeticiones),
+        "Salidas abiertas": medir_ms(lambda: motor.salidas_abiertas(salas[0]), repeticiones),
+        "Decisión errante": medir_ms(lambda: motor.salida_errante(enemigo), repeticiones),
+        "Decisión rastreador": medir_ms(lambda: motor.salida_rastro(enemigo), repeticiones),
+        "Elegir acción (movimiento)": medir_ms(lambda: motor.accion_enemigo(enemigo, jugador), repeticiones),
+    }
+    # Guardián en la misma sala del jugador: solo la selección de acción.
     enemigo.comportamiento = "guardian"
     enemigo.sala = jugador.sala
-    metrica("Decisión guardian/ataque", f"{medir_us(lambda: motor.accion_enemigo(enemigo, jugador), repeticiones):.3f} µs/op")
-    pie()
+    resultados["Elegir acción (ataque)"] = medir_ms(lambda: motor.accion_enemigo(enemigo, jugador), repeticiones)
+    return resultados
 
 
 # ───────────────────────── Pruebas de integración con modelos reales ───────────
@@ -331,7 +328,6 @@ def bench_integracion(repeticiones: int) -> None:
     from pathlib import Path
 
     clases, errores = intentar_modelos_reales()
-    seccion("INTEGRACIÓN CON CLASES REALES")
     for nombre in ("Jugador", "Enemigo", "SalaEsqueleto", "Salida", "ContenidoSala",
                    "TrampaInstancia", "GestorDatos", "Historial", "NodoInventario"):
         registrar(f"Importación de {nombre}", OK if clases.get(nombre) else FAIL,
@@ -368,6 +364,7 @@ def bench_integracion(repeticiones: int) -> None:
                 motor, jugador, a, b = crear_mundo()
                 with silencioso():
                     motor.iniciar_partida(jugador, [a, b], [])
+                    motor._salas_contenido_cargado.append(b.id)  # contenido ya cargado
                     assert motor.mover_jugador("E") is True
                 assert jugador.sala is b
                 assert motor.reloj >= 1
@@ -485,16 +482,16 @@ def bench_integracion(repeticiones: int) -> None:
                         contenido = ContenidoSala(2, [],
                             [TrampaInstancia("trampa-inst-bench", "trampa-bench")], [])
                         motor.contenidos_salas = [contenido]
-                        motor._estado_trampas["trampa-inst-bench"] = True
+                        motor._guardar_estado_trampa("trampa-inst-bench", True)
                         vida_antes = jugador.vida
                         motor.accion_jugador()
                         motor.activar_trampas_de_sala(b)
                         assert jugador.vida == vida_antes - 7
-                        assert motor._estado_trampas["trampa-inst-bench"] is False
+                        assert motor._obtener_estado_trampa("trampa-inst-bench") is False
                         evento = motor.agenda.siguiente()
                         assert evento is not None and evento.tipo == "REARMAR_TRAMPA"
                         assert motor.ejecu_sig_evento() is True
-                        assert motor._estado_trampas["trampa-inst-bench"] is True
+                        assert motor._obtener_estado_trampa("trampa-inst-bench") is True
                         assert jugador.vida == vida_antes - 7
                         GestorDatos._instancia = None
                 t = medir_ms(trampa_real, repeticiones)
@@ -535,51 +532,136 @@ def bench_integracion(repeticiones: int) -> None:
         registrar("Integración con modelos reales", FAIL,
                   "No se pudieron importar los modelos requeridos")
 
-def imprimir_resumen() -> None:
-    seccion("RESUMEN DE PRUEBAS DE INTEGRACIÓN")
-    total_ok = sum(1 for _, estado, _ in RESULTADOS if estado == OK)
-    total_fallo = sum(1 for _, estado, _ in RESULTADOS if estado == FAIL)
-    total_skip = sum(1 for _, estado, _ in RESULTADOS if estado == SKIP)
-    metrica("Pruebas correctas", str(total_ok))
-    metrica("Pruebas fallidas", str(total_fallo))
-    metrica("Pruebas no ejecutadas", str(total_skip))
-    pie()
-    if total_fallo:
-        print("  Revisar las pruebas fallidas.")
-    if total_skip:
-        print("  Pendientes: requieren modelos o datos reales compatibles.")
+def bench_ciclo_real(tamanos, ciclos: int) -> list:
+    """Ciclo completo de eventos entre dos decisiones del jugador (§5.2)."""
+    import random
+    Jugador, _ = try_import("Modelo.Jugador", "Jugador")
+    Enemigo, _ = try_import("Modelo.Enemigo", "Enemigo")
+    Sala, _ = try_import("DTOS.SalaEsqueleto", "SalaEsqueleto")
+    Salida, _ = try_import("DTOS.Salida", "Salida")
+    if not all((Jugador, Enemigo, Sala, Salida)):
+        return []
+
+    filas = []
+    for k in tamanos:
+        salas = [Sala(i, f"s{i}", {}) for i in range(1, 201)]
+        for i in range(199):
+            salas[i].salidas["E"] = Salida(salas[i + 1].id, False, None, None)
+            salas[i + 1].salidas["O"] = Salida(salas[i].id, False, None, None)
+        azar = random.Random(2)
+        jugador = Jugador("J", 10**9, 10**9, 1, 0, 100, salas[100])
+        enemigos = [Enemigo(f"e{i:05d}", 10, 10, 1, 0, azar.choice((80, 100, 150)),
+                            azar.choice(("errante", "rastreador", "guardian")),
+                            sala=salas[azar.randrange(200)]) for i in range(k)]
+        motor = MotorSimulacion(semilla=1)
+        tiempos = []
+        with silencioso():
+            motor.iniciar_partida(jugador, salas, enemigos)
+            for e in enemigos:
+                motor.activar_enemigo(e)
+            for _ in range(ciclos):
+                inicio = time.perf_counter_ns()
+                motor.ejecutar_accion("esperar")
+                tiempos.append((time.perf_counter_ns() - inicio) / 1_000_000)
+        tiempos.sort()
+        mediana = statistics.median(tiempos)
+        p95 = tiempos[min(len(tiempos) - 1, int(len(tiempos) * 0.95))]
+        estado = "✓" if p95 < 20 else ("~" if mediana < 20 else "✗")
+        filas.append((k, mediana, p95, estado))
+    return filas
+
+
+def imprimir_integracion() -> None:
+    importaciones = [r for r in RESULTADOS if r[0].startswith("Importación")]
+    pruebas = [r for r in RESULTADOS if not r[0].startswith("Importación")]
+    fallos_imp = [r for r in importaciones if r[1] != OK]
+
+    titulo("INTEGRACIÓN CON CLASES REALES")
+    if not fallos_imp:
+        print(f"  Importaciones: {len(importaciones)}/{len(importaciones)} ✓\n")
+    else:
+        for nombre, _, detalle in fallos_imp:
+            print(f"  ✗ {nombre}: {detalle}")
+        print()
+
+    simbolo = {OK: "✓", FAIL: "✗", SKIP: "–"}
+    filas = []
+    for nombre, estado, detalle in pruebas:
+        tiempo = detalle if estado == OK else detalle[:34]
+        filas.append((nombre.split(":")[0], simbolo.get(estado, "·"), tiempo.replace(" ms/op", " ms")))
+    tabla(("Prueba", "", "Tiempo / error"), filas)
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Benchmark integral de Persona A - CRIPTA")
+    parser = argparse.ArgumentParser(description="Benchmark del motor (Persona A) - CRIPTA")
     parser.add_argument("--sizes", default="10,50,100,250",
-                        help="Tamaños separados por comas (por defecto: 10,50,100,250)")
+                        help="Tamaños N separados por comas (por defecto: 10,50,100,250)")
     parser.add_argument("--repeats", type=int, default=5,
                         help="Repeticiones por medición (por defecto: 5)")
+    parser.add_argument("--enemigos", default="100,300,500,1000",
+                        help="Enemigos activos para el ciclo completo (por defecto: 100,300,500,1000)")
+    parser.add_argument("--ciclos", type=int, default=60,
+                        help="Ciclos medidos por tamaño (por defecto: 60)")
     args = parser.parse_args()
     try:
         sizes = [int(x.strip()) for x in args.sizes.split(",") if x.strip()]
-        if not sizes or any(x < 1 for x in sizes):
+        enemigos = [int(x.strip()) for x in args.enemigos.split(",") if x.strip()]
+        if not sizes or any(x < 1 for x in sizes) or not enemigos or any(x < 1 for x in enemigos):
             raise ValueError
     except ValueError:
-        parser.error("--sizes debe contener enteros positivos separados por comas")
-    if args.repeats < 1:
-        parser.error("--repeats debe ser al menos 1")
+        parser.error("--sizes y --enemigos deben contener enteros positivos separados por comas")
+    if args.repeats < 1 or args.ciclos < 1:
+        parser.error("--repeats y --ciclos deben ser al menos 1")
 
-    print("\n" + "=" * 48)
-    print(" CRIPTA | BENCHMARK PERSONA A")
-    print(f" Repeticiones: {args.repeats} | N: {', '.join(map(str, sizes))}")
-    print("=" * 48)
+    print("\n" + "═" * ANCHO)
+    print("  CRIPTA · Benchmark del motor (Persona A)")
+    print(f"  {args.repeats} repeticiones · N = {', '.join(map(str, sizes))} · mediana")
+    print("═" * ANCHO)
 
-    for n in sizes:
-        bench_agenda(n, args.repeats)
-        bench_motor_base(n, args.repeats)
-        bench_ia_busqueda(n, args.repeats)
+    agenda = [bench_agenda(n, args.repeats) for n in sizes]
+    base = [bench_motor_base(n, args.repeats) for n in sizes]
+    ia = [bench_ia_busqueda(n, args.repeats) for n in sizes]
+    columnas = [f"N={n}" for n in sizes]
 
-    bench_integracion(args.repeats)
-    imprimir_resumen()
-    print("\nObjetivo <20 ms: validar con un turno real completo.")
-    print("=" * 48 + "\n")
+    titulo("AGENDA DE EVENTOS", "heap propio vs lista · menor es mejor")
+    filas = []
+    for op in agenda[0]:
+        heap = [fmt_t(r[op][0]) for r in agenda]
+        lista = [fmt_t(r[op][1]) for r in agenda]
+        razon = agenda[-1][op][1] / agenda[-1][op][0] if agenda[-1][op][0] else 1
+        ventaja = f"heap {razon:.1f}×" if razon >= 1 else f"lista {1 / razon:.1f}×"
+        filas.append([op, "heap", *heap, ventaja])
+        filas.append(["", "lista", *lista, ""])
+    tabla(["Operación", "", *columnas, f"ventaja @N={sizes[-1]}"], filas)
+
+    titulo("MOTOR", "eventos sintéticos: agenda + reloj + historial")
+    tabla(["Operación", *columnas],
+          [[op, *[fmt_t(r[op]) for r in base]] for op in base[0]])
+
+    titulo("IA Y BÚSQUEDAS", "por decisión · columnas = salas de la cripta")
+    tabla(["Operación", *[f"{n} salas" for n in sizes]],
+          [[op, *[fmt_t(r[op]) for r in ia]] for op in ia[0]])
+
+    with silencioso():
+        bench_integracion(args.repeats)
+    imprimir_integracion()
+
+    ciclo = bench_ciclo_real(enemigos, args.ciclos)
+    titulo("CICLO COMPLETO ENTRE DECISIONES", "límite §5.2: 20 ms · todos los enemigos actuando")
+    if ciclo:
+        tabla(("Enemigos activos", "Mediana", "p95", ""),
+              [(k, fmt_t(m), fmt_t(p), e) for k, m, p, e in ciclo])
+        print("\n  ✓ p95 < 20 ms   ~ solo la mediana   ✗ no cumple")
+    else:
+        print("  No se pudieron importar las clases reales.")
+
+    ok = sum(1 for r in RESULTADOS if r[1] == OK and not r[0].startswith("Importación"))
+    total = sum(1 for r in RESULTADOS if not r[0].startswith("Importación"))
+    cumple = [k for k, _, p, _ in ciclo if p < 20]
+    print("\n" + "═" * ANCHO)
+    print(f"  Integración {ok}/{total} ✓"
+          + (f"  ·  ciclo < 20 ms hasta {max(cumple)} enemigos" if cumple else "  ·  ciclo: ningún tamaño cumple"))
+    print("═" * ANCHO + "\n")
 
 
 if __name__ == "__main__":

@@ -1,4 +1,3 @@
-
 import unittest
 from types import SimpleNamespace
 
@@ -166,7 +165,10 @@ class TestPartidaCompleta(unittest.TestCase):
 
         self.assertTrue(resultado)
         self.assertIs(jugador.sala, sala2)
-        self.assertEqual(jugador.vida, 95)
+        # 100 - 5 (trampa) - 2 (el guardián, activado al entrar, actúa en t=100
+        # antes que el jugador por menor secuencia; ataque 2 + azar 0).
+        self.assertEqual(motor.reloj, 100)
+        self.assertEqual(jugador.vida, 93)
         self.assertFalse(
             motor._obtener_estado_trampa("trampa-1")
         )
