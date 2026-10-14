@@ -133,7 +133,7 @@ class FuenteDatosHTTP(FuenteDatos): #(FuenteDatos) es herencia
 
 
 class FuenteDatosOffline(FuenteDatos): #(FuenteDatos) es herencia
-    def _init_(self, carpeta_paquete): #para construirse ocupa una ruta
+    def __init__(self, carpeta_paquete): #para construirse ocupa una ruta
         self.carpeta_paquete = carpeta_paquete
         # mismo contador que la fuente HTTP, asi GestorDatos.resumen_red() funciona en ambos modos
         self.solicitudes_realizadas = 0
