@@ -1,13 +1,13 @@
 -Guardado binario vs JSON-
 n =    20 tamaño:         binario =    2350 B   json =    3627 B
-n =    20 guardar:        binario = 0.005542s  json = 0.003678s
-n =    20 cargar todo:    binario = 0.001124s  json = 0.000608s
-n =    20 cargar 1 sala:  binario = 0.000395s  json = 0.000527s
+n =    20 guardar:        binario = 0.006332s  json = 0.002550s
+n =    20 cargar todo:    binario = 0.000763s  json = 0.000474s
+n =    20 cargar 1 sala:  binario = 0.000310s  json = 0.000402s
 n =   200 tamaño:         binario =   22465 B   json =   35641 B
-n =   200 guardar:        binario = 0.010696s  json = 0.012533s
-n =   200 cargar todo:    binario = 0.005395s  json = 0.003024s
-n =   200 cargar 1 sala:  binario = 0.000404s  json = 0.001844s
+n =   200 guardar:        binario = 0.010185s  json = 0.012974s
+n =   200 cargar todo:    binario = 0.005450s  json = 0.002417s
+n =   200 cargar 1 sala:  binario = 0.000298s  json = 0.001283s
 n =  2000 tamaño:         binario =  226666 B   json =  362414 B
-n =  2000 guardar:        binario = 0.055039s  json = 0.115640s
-n =  2000 cargar todo:    binario = 0.055241s  json = 0.021770s
-n =  2000 cargar 1 sala:  binario = 0.000328s  json = 0.013582s
+n =  2000 guardar:        binario = 0.054248s  json = 0.118780s
+n =  2000 cargar todo:    binario = 0.064689s  json = 0.023782s
+n =  2000 cargar 1 sala:  binario = 0.000306s  json = 0.013526s
