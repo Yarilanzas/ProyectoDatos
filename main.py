@@ -96,11 +96,14 @@ def main():
     argumentos = parser.parse_args()
 
     if argumentos.bench:
-        from tests.bench_personaD import correr_bench
+        from tests.bench_personaD import correr_bench as bench_persistencia
+        from tests.bench_ciclo import correr_bench as bench_ciclo
 
-        correr_bench()
+        bench_persistencia()
+        print()
+        bench_ciclo()
         return 0
-
+    
     vista = VistaConsola()
     gestor = crear_gestor(argumentos)
 
