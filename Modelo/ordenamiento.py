@@ -67,8 +67,26 @@ def _merge(left, right, key, comparacion):
     return result
 
 UMBRAL_TAMANO = 32
+UMBRAL_PROP_DESORDEN = 0.1
 
-def elegir_algoritmo(n,comparacion_costosa=False):
-    if n <= UMBRAL_TAMANO:
-        return binary_insertion_sort if comparacion_costosa else insertion_sort
-    return merge_sort
+def cuenta_desorden(items, key):
+    if len(items) < 2:
+        return 0, 0
+    fueraorden = 0
+    for i in range(len(items) -1):
+        if key(items[i]) > key(items[i+1]):
+            fueraorden +=1
+    return fueraorden, len(items)-1
+
+def casi_ordenado(items, key, umbral =UMBRAL_PROP_DESORDEN):
+    fueraorden, pares = cuenta_desorden(items, key)
+    if pares == 0:
+        return True
+    return (fueraorden / pares) <= umbral
+
+def elegir_algoritmo(n,comparacion_costosa=False, casi_ordenado=False):
+   if casi_ordenado:
+       return insertion_sort
+   if n <= UMBRAL_TAMANO:
+       return binary_insertion_sort if comparacion_costosa else insertion_sort
+   return merge_sort

@@ -1,7 +1,7 @@
 #para hacer el inventario, decidi hacerle con u na lista doblemente enlazada,
 #ya que esta especifica que puede recorrerse de delante y poe detras
 
-from Modelo.ordenamiento import elegir_algoritmo
+from Modelo.ordenamiento import elegir_algoritmo, casi_ordenado
 import struct
 
 class NodoInventario:
@@ -117,7 +117,8 @@ class Inventario:
         key = claves[criterio]
         comparacion_costosa = (criterio == "nombre")
         items = list(inventario) #recorrido de lectura
-        algoritmo = elegir_algoritmo(len(items), comparacion_costosa)
+        esta_ordenado = casi_ordenado(items,key)
+        algoritmo = elegir_algoritmo(len(items), comparacion_costosa, esta_ordenado)
         return algoritmo(items,key)
 
     def suelta_nodo (self, nodo):

@@ -7,12 +7,12 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from Modelo.Inventario import Inventario,NodoInventario
-from Modelo.ordenamiento import insertion_sort,binary_insertion_sort,merge_sort
+from Modelo.ordenamiento import insertion_sort,binary_insertion_sort,merge_sort, casi_ordenado
 from Modelo.retroceso import Historial,Cambio
 
 def bench_ordenamiento():
     print("\n-Ordenamiento-")
-    tams = [10, 20, 30, 50, 75, 100]
+    tams = [10, 32, 100, 1000, 10000]
     algoritmos = {
         "insertion_sort":insertion_sort,
         "binary_insertion_sort":binary_insertion_sort,
@@ -28,6 +28,29 @@ def bench_ordenamiento():
             duracion = time.perf_counter() - inicio
             print(f"n = {n:5d} {nombre:22s} tiempo = {duracion:.6f}s comparaciones = {comparaciones}")
 
+def  bench_ordenamiento_casi_ordenado():
+    print("\n-Ordenamiento datos casi ordenados-")
+    tams = [100, 1000, 10000]
+    proporcion = 0.05
+    algoritmos = {
+        "insertion_sort": insertion_sort,
+        "merge_sort": merge_sort,
+    }
+    for n in tams:
+        datos_base = list(range(n))
+        n_swaps = max(1, int(n * proporcion))
+        for _ in range(n_swaps):
+            i = random.randint(0, n-2)
+            datos_base[i], datos_base[i+1] = datos_base[i+1], datos_base[i]
+        detectado = casi_ordenado(datos_base, key=lambda x: x)
+        print(f"n = {n:6d} casi ordenado detecto = {detectado}")
+
+        for nombre,algoritmo in algoritmos.items():
+            datos = list(datos_base)
+            inicio = time.perf_counter()
+            _, comparaciones = algoritmo(datos, key=lambda x: x)
+            duracion = time.perf_counter() - inicio
+            print(f"n = {n:6d} {nombre:22s} tiempo = {duracion:.6f}s comparaciones = {comparaciones}")
 
 def bench_inventario():
     print("\n-Inventario-")
@@ -104,6 +127,7 @@ def bench_serializacion():
 def correr_bench():
     bench_inventario()
     bench_ordenamiento()
+    bench_ordenamiento_casi_ordenado()
     bench_retroceso()
     bench_serializacion()
 
