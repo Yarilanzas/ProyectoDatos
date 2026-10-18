@@ -7,6 +7,7 @@ from Bitacora.BitacoraPartida import leer_bitacora
 from Bitacora.Reproductor import Reproductor
 from Controlador.ControladorPartida import ControladorPartida
 from Persistencia.FormatoBinario import VersionIncompatible
+from Persistencia.TablaPuntajes import ARCHIVO_PUNTAJES, CRITERIOS_PUNTAJES, TablaPuntajes
 from Vista.VistaConsola import VistaConsola
 
 
@@ -72,6 +73,20 @@ def main():
         help="Continúa una partida guardada",
     )
     parser.add_argument(
+        "--puntajes",
+        default=ARCHIVO_PUNTAJES,
+        metavar="ARCHIVO",
+        help="Tabla de puntajes donde se registra cada partida terminada",
+    )
+    parser.add_argument(
+        "--mostrar-puntajes",
+        nargs="?",
+        const="mejores",
+        choices=CRITERIOS_PUNTAJES,
+        metavar="CRITERIO",
+        help="Muestra la tabla de puntajes (mejores, acciones, tiempo, derrotados o nombre) y termina",
+    )
+    parser.add_argument(
         "--bitacora",
         default="partida.log",
         help="Archivo donde se anotan las acciones de la partida",
@@ -103,8 +118,18 @@ def main():
         print()
         bench_ciclo()
         return 0
-    
+
     vista = VistaConsola()
+
+    if argumentos.mostrar_puntajes:
+        try:
+            puntajes = TablaPuntajes(argumentos.puntajes).ordenados(argumentos.mostrar_puntajes)
+        except (ValueError, OSError) as error:
+            vista.mostrar_error(str(error))
+            return 1
+        vista.mostrar_puntajes(puntajes, argumentos.mostrar_puntajes)
+        return 0
+
     gestor = crear_gestor(argumentos)
 
     if argumentos.replay:
@@ -118,7 +143,7 @@ def main():
             return 1
         return 0
 
-    controlador = ControladorPartida(gestor, vista, argumentos.bitacora)
+    controlador = ControladorPartida(gestor, vista, argumentos.bitacora, argumentos.puntajes)
 
     try:
         if argumentos.cargar:

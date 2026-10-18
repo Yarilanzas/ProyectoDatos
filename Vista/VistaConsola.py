@@ -1,5 +1,5 @@
 # Vista (MVC) en consola: solo LEE el estado del motor y lo muestra
-# no modifica nada ni decide reglas; eso lo hace el controlador
+# No modifica nada ni decide reglas; eso lo hace el controlador
 # entrada/salida se pueden reemplazar (por ejemplo en las pruebas) para no usar el teclado
 
 NOMBRES_DIRECCION = {"N": "norte", "S": "sur", "E": "este", "O": "oeste"}
@@ -12,6 +12,7 @@ AYUDA = """Comandos:
   retroceder       (usa un pergamino de retroceso)
   inventario [peso|valor|nombre]         mensajes
   red              (solicitudes y cache)
+  puntajes [mejores|acciones|tiempo|derrotados|nombre]
   guardar [ARCHIVO]                      cargar ARCHIVO
   ayuda            salir"""
 
@@ -105,7 +106,7 @@ class VistaConsola:
             self.mostrar(f"  · {texto}")
 
     def mostrar_inventario_ordenado(self, nodos, criterio, inventario):
-        # vista_ordenada, no cambia el orden real del inventario
+        # vista_ordenada (persona C) no cambia el orden real del inventario
         self.mostrar(f"Inventario por {criterio}:")
         for nodo in nodos:
             self.mostrar(f"  {self._texto_nodo(nodo, inventario):<45} peso {nodo.peso:<4} valor {nodo.valor}")
@@ -114,6 +115,17 @@ class VistaConsola:
         presupuesto = "sin límite" if resumen.presupuesto is None else resumen.presupuesto
         self.mostrar(f"Solicitudes: {resumen.solicitudes} de {presupuesto}   "
                      f"caché: {resumen.aciertos_cache} aciertos / {resumen.fallos_cache} fallos")
+
+    def mostrar_puntajes(self, puntajes, criterio="mejores"):
+        self.mostrar(f"Puntajes ({criterio}):")
+        if not puntajes:
+            self.mostrar("  Todavía no hay partidas registradas.")
+            return
+        self.mostrar(f"  {'#':>2}  {'jugador':<16} {'cripta':<14} {'versión':<14} {'acciones':>8} "
+                     f"{'derrotados':>10} {'tiempo':>7}  resultado")
+        for posicion, p in enumerate(puntajes, start=1):
+            self.mostrar(f"  {posicion:>2}  {p.nombre:<16.16} {p.cripta_id:<14.14} {p.version_cripta:<14.14} "
+                         f"{p.acciones:>8} {p.derrotados:>10} {p.tiempo:>7}  {p.resultado}")
 
     def mostrar_fin(self, resumen, resumen_red=None):
         if resumen["resultado"] == "victoria":

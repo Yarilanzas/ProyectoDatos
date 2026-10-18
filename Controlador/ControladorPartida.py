@@ -1,7 +1,7 @@
 # Controlador (MVC): recibe los comandos del jugador, se los pasa al motor
 # y deja constancia de cada accion aceptada en la bitacora (S4.11)
 # Tambien guarda y carga la partida en el archivo binario (S4.10)
-# La vista solo muestra; el motor solo simula; aqui se decide qué se hace con cada comando
+# La vista solo muestra; el motor solo simula; aqui se decide que se hace con cada comando
 
 import os
 import random
@@ -12,12 +12,14 @@ from Gestor.PreparadorPartida import preparar_partida, cargar_partida
 from Persistencia.ArchivoPartida import guardar_partida
 from Persistencia.ConversorPartida import (RestauradorPartida, registros_desde_motor, registro_jugador_desde_motor)
 from Persistencia.FormatoBinario import VersionIncompatible
+from Persistencia.TablaPuntajes import TablaPuntajes, Puntaje, CRITERIOS_PUNTAJES
 
 # acciones del motor que consumen tiempo y por eso van a la bitacora
 ACCIONES = ("mover", "abrir", "atacar", "recoger", "soltar", "equipar", "usar", "esperar", "retroceder")
 ATAJOS = {"n": ("mover", "N"), "s": ("mover", "S"), "e": ("mover", "E"), "o": ("mover", "O")}
 CRITERIOS_INVENTARIO = ("peso", "valor", "nombre")
 ARCHIVO_GUARDADO = "partida.cripta"
+PUNTAJES_EN_PANTALLA = 10  # cuantos puntajes se muestran al terminar una partida o con el comando puntajes
 
 # errores esperables al guardar o cargar: se muestran al jugador sin cerrar el juego
 ERRORES_ARCHIVO = (VersionIncompatible, ValueError, RuntimeError, OSError)
@@ -35,10 +37,12 @@ def _misma_ruta(ruta_a, ruta_b):
 
 class ControladorPartida:
 
-    def __init__(self, gestor, vista, ruta_bitacora="partida.log"):
+    # ruta_puntajes=None no registra nada: asi las pruebas y el --replay no escriben la tabla
+    def __init__(self, gestor, vista, ruta_bitacora="partida.log", ruta_puntajes=None):
         self.gestor = gestor
         self.vista = vista
         self.ruta_bitacora = ruta_bitacora
+        self.tabla_puntajes = TablaPuntajes(ruta_puntajes) if ruta_puntajes else None
         self.motor = None
         self.bitacora = None
 
@@ -62,7 +66,7 @@ class ControladorPartida:
             self.ruta_bitacora, cripta_id,
             self.gestor.version_cripta(cripta_id), self.gestor.version_catalogo(), semilla,
         )
-        self.vista.mostrar_aviso(f"Partida nueva en {cripta_id} (semilla {semilla}).")
+        self.vista.mostrar_aviso(f"Partida nueva en {cripta_id} (semilla {semilla})")
 
     def cargar(self, ruta):
         motor = cargar_partida(ruta, self.gestor)  # valida version de cripta y catalogo
@@ -70,14 +74,13 @@ class ControladorPartida:
         self._cerrar()
         self.motor = motor
         self.bitacora = self._continuar_bitacora(ruta)
-        self.vista.mostrar_aviso(f"Partida cargada desde {ruta}.")
+        self.vista.mostrar_aviso(f"Partida cargada desde {ruta}")
 
     def _continuar_bitacora(self, ruta_guardado):
         copia = ruta_bitacora_de(ruta_guardado)
 
         if not os.path.exists(copia):
-            self.vista.mostrar_aviso("La partida no tiene bitácora: lo que se juegue ahora "
-                                     "no se podrá reproducir con --replay.")
+            self.vista.mostrar_aviso("La partida no tiene bitácora: lo que se juegue ahora no se podrá reproducir con --replay")
             return None
 
         # se continua sobre una copia, asi la bitacora guardada no cambia
@@ -88,7 +91,7 @@ class ControladorPartida:
 
         if encabezado.cripta_id != self.motor.cripta_id or encabezado.semilla != self.motor.semilla:
             bitacora.cerrar()
-            self.vista.mostrar_aviso("La bitácora no corresponde a esta partida; no se usará.")
+            self.vista.mostrar_aviso("La bitácora no corresponde a esta partida; no se usará")
             return None
 
         return bitacora
@@ -99,14 +102,15 @@ class ControladorPartida:
         motor = self.motor
 
         if motor.estado_partida() != "en_curso":
-            self.vista.mostrar_aviso("La partida terminó; ya no se puede guardar.")
+            self.vista.mostrar_aviso("La partida terminó; ya no se puede guardar")
             return False
 
         # primero se arma todo en memoria (puede leer salas pendientes del archivo cargado)
         registros = registros_desde_motor(motor)
         jugador = registro_jugador_desde_motor(motor)
 
-        # el archivo cargado se cierra antes de reemplazarlo (en Windows no se puede reemplazar un archivo abierto) y se vuelve a abrir al terminar
+        # el archivo cargado se cierra antes de reemplazarlo (en Windows no se puede
+        # reemplazar un archivo abierto) y se vuelve a abrir al terminar
         anterior = motor.restaurador
         ruta_lectura = None
         if anterior is not None:
@@ -129,7 +133,7 @@ class ControladorPartida:
         if self.bitacora is not None and not _misma_ruta(self.ruta_bitacora, ruta_bitacora_de(ruta)):
             shutil.copyfile(self.ruta_bitacora, ruta_bitacora_de(ruta))
 
-        self.vista.mostrar_aviso(f"Partida guardada en {ruta}.")
+        self.vista.mostrar_aviso(f"Partida guardada en {ruta}")
         return True
 
     # comandos
@@ -148,7 +152,7 @@ class ControladorPartida:
             return False
 
         if not aceptada:
-            self.vista.mostrar_aviso("No se pudo realizar esa acción.")
+            self.vista.mostrar_aviso("No se pudo realizar esa acción")
             return False
 
         # solo se anota lo que el motor acepto: el --replay debe repetir exactamente esto
@@ -159,7 +163,7 @@ class ControladorPartida:
     def _inventario(self, criterio):
         criterio = criterio or "nombre"
         if criterio not in CRITERIOS_INVENTARIO:
-            self.vista.mostrar_error("El criterio debe ser peso, valor o nombre.")
+            self.vista.mostrar_error("El criterio debe ser peso, valor o nombre")
             return
 
         inventario = self.motor.jugador.inventario
@@ -191,6 +195,8 @@ class ControladorPartida:
             self.vista.mostrar_mensajes(self.motor.mensajes.ultimos())
         elif comando == "red":
             self.vista.mostrar_red(self.gestor.resumen_red())
+        elif comando == "puntajes":
+            self.mostrar_puntajes(argumento.lower())
         elif comando == "guardar":
             try:
                 self.guardar(argumento or ARCHIVO_GUARDADO)
@@ -214,7 +220,7 @@ class ControladorPartida:
 
                 if self.motor.estado_partida() != "en_curso":
                     self.vista.mostrar_fin(self.motor.resumen_puntaje(),self.gestor.resumen_red())
-                   # self.vista
+                    self.registrar_puntaje()
                     break
 
                 linea = self.vista.pedir_comando()
@@ -222,6 +228,44 @@ class ControladorPartida:
                     break
         finally:
             self._cerrar()
+
+    # tabla de puntajes (S2.12)
+
+    def registrar_puntaje(self):
+        # se pide el nombre al terminar, asi tambien sirve para las partidas que se cargaron
+        if self.tabla_puntajes is None:
+            return
+
+        nombre = self.vista.pedir_texto("Nombre para la tabla de puntajes: ")
+        puntaje = Puntaje.desde_resumen(
+            nombre, self.motor.cripta_id,
+            self.gestor.version_cripta(self.motor.cripta_id), self.motor.resumen_puntaje(),
+        )
+
+        try:
+            self.tabla_puntajes.registrar(puntaje)
+        except OSError as error:
+            self.vista.mostrar_error(f"No se pudo registrar el puntaje: {error}")
+            return
+
+        self.vista.mostrar_aviso(f"Puntaje registrado en {self.tabla_puntajes.ruta}")
+        self.mostrar_puntajes("mejores")
+
+    def mostrar_puntajes(self, criterio=""):
+        criterio = criterio or "mejores"
+        if criterio not in CRITERIOS_PUNTAJES:
+            self.vista.mostrar_error(f"El criterio debe ser uno de: {', '.join(CRITERIOS_PUNTAJES)}")
+            return
+        if self.tabla_puntajes is None:
+            self.vista.mostrar_aviso("Esta sesión no tiene tabla de puntajes")
+            return
+
+        try:
+            puntajes = self.tabla_puntajes.ordenados(criterio)
+        except (ValueError, OSError) as error:
+            self.vista.mostrar_error(f"No se pudo leer la tabla de puntajes: {error}")
+            return
+        self.vista.mostrar_puntajes(puntajes[:PUNTAJES_EN_PANTALLA], criterio)
 
     def _cerrar(self):
         if self.bitacora is not None:
