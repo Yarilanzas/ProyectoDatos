@@ -1,0 +1,62 @@
+{
+    "version": "v1",
+    "contenido": [
+        {
+            "sala": 1,
+            "enemigos": [],
+            "objetos": [
+                "itm_daga",
+                "itm_pocion",
+                "itm_pergamino"
+            ],
+            "trampas": []
+        },
+        {
+            "sala": 2,
+            "enemigos": [
+                {
+                    "instancia": "e-rata-1",
+                    "tipo": "ent_rata"
+                }
+            ],
+            "objetos": [
+                "itm_llave_salida"
+            ],
+            "trampas": [
+                {
+                    "instancia": "t-dardos-1",
+                    "tipo": "trp_dardos"
+                }
+            ]
+        },
+        {
+            "sala": 3,
+            "enemigos": [
+                {
+                    "instancia": "e-rata-2",
+                    "tipo": "ent_rata",
+                    "vida": 4
+                }
+            ],
+            "objetos": [],
+            "trampas": []
+        },
+        {
+            "sala": 4,
+            "enemigos": [],
+            "objetos": [],
+            "trampas": []
+        },
+        {
+            "sala": 5,
+            "enemigos": [
+                {
+                    "instancia": "e-murcielago-1",
+                    "tipo": "ent_murcielago"
+                }
+            ],
+            "objetos": [],
+            "trampas": []
+        }
+    ]
+}

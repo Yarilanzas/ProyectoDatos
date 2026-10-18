@@ -1,0 +1,11 @@
+-Reproducción de una partida desde su bitácora-
+Equipo: Windows-10-10.0.19045-SP0
+Procesador: AMD64 Family 23 Model 17 Stepping 0, AuthenticAMD
+Python: 3.13.9
+Repeticiones por tamaño: 7
+Motor falso: sin simulación real ni renderizado
+Se mide la lectura, validación y despacho de acciones.
+
+acciones =    100   mediana =     0.889 ms   p95 =     4.347 ms
+acciones =   1000   mediana =     4.997 ms   p95 =    27.043 ms
+acciones =  10000   mediana =    21.467 ms   p95 =    47.835 ms

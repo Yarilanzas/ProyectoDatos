@@ -1,0 +1,83 @@
+{
+    "version": "v1",
+    "esqueleto": [
+        {
+            "id": 1,
+            "nombre": "Entrada",
+            "salidas": {
+                "E": {
+                    "sala": 2,
+                    "cerrada": false,
+                    "llave": null,
+                    "cierre_automatico": null
+                }
+            }
+        },
+        {
+            "id": 2,
+            "nombre": "Pasillo",
+            "salidas": {
+                "O": {
+                    "sala": 1,
+                    "cerrada": false,
+                    "llave": null,
+                    "cierre_automatico": null
+                },
+                "E": {
+                    "sala": 3,
+                    "cerrada": false,
+                    "llave": null,
+                    "cierre_automatico": null
+                },
+                "S": {
+                    "sala": 5,
+                    "cerrada": false,
+                    "llave": null,
+                    "cierre_automatico": null
+                }
+            }
+        },
+        {
+            "id": 3,
+            "nombre": "Antecámara",
+            "salidas": {
+                "O": {
+                    "sala": 2,
+                    "cerrada": false,
+                    "llave": null,
+                    "cierre_automatico": null
+                },
+                "E": {
+                    "sala": 4,
+                    "cerrada": true,
+                    "llave": "itm_llave_salida",
+                    "cierre_automatico": null
+                }
+            }
+        },
+        {
+            "id": 4,
+            "nombre": "Salida",
+            "salidas": {
+                "O": {
+                    "sala": 3,
+                    "cerrada": false,
+                    "llave": null,
+                    "cierre_automatico": null
+                }
+            }
+        },
+        {
+            "id": 5,
+            "nombre": "Nido",
+            "salidas": {
+                "N": {
+                    "sala": 2,
+                    "cerrada": false,
+                    "llave": null,
+                    "cierre_automatico": null
+                }
+            }
+        }
+    ]
+}

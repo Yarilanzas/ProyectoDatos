@@ -93,6 +93,8 @@ def correr_bench():
     with open(ARCHIVO_RESULTADOS, "w", encoding="utf-8") as archivo:
         archivo.write("\n".join(lineas) + "\n")
 
+    print(f"Resultados guardados en: {ARCHIVO_RESULTADOS}")
+
 
 if __name__ == "__main__":
     correr_bench()

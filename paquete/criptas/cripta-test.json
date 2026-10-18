@@ -1,0 +1,1 @@
+{"id": "cripta-test", "version": "v1", "salas_total": 5, "sala_inicial": 1, "sala_salida": 4, "llave_salida": "itm_llave_salida", "presupuesto_solicitudes": 500, "inventario_max": 5, "jugador": {"vida_max": 40, "ataque": 6, "defensa": 1, "velocidad": 100}}
