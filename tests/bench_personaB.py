@@ -24,7 +24,7 @@ class FichaFalsa:
 
 
 def _id_ficha(i):
-    return f"ficha_{i:05d}"          # con ceros, para que el orden alfabético sea el numérico
+    return f"ficha_{i:05d}"
 
 
 def _medir(funcion, repeticiones):

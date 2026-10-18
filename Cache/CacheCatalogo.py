@@ -90,9 +90,9 @@ class CacheCatalogo:
 '''pruebas:
 if __name__ == "__main__":
 
-    cache = CacheCatalogo(tamanio_maximo=3)  # chiquito a propósito, para forzar desalojo rápido
+    cache = CacheCatalogo(tamanio_maximo=3) 
 
-    # Simula una ficha mínima (ajusta según tu clase real)
+    # Simula una ficha mínima 
     class FichaFalsa:
         def __init__(self, id):
             self.id = id
@@ -109,8 +109,8 @@ if __name__ == "__main__":
     cache.agregar(f1)
     cache.agregar(f2)
     cache.agregar(f3)
-    print("¿f1 en cache?", cache.esta_en_cache("ent_rata_gigante"))  # True
-    print("¿f4 en cache?", cache.esta_en_cache("itm_antorcha"))      # False, aún no se agregó
+    print("¿f1 en cache?", cache.esta_en_cache("ent_rata_gigante"))  
+    print("¿f4 en cache?", cache.esta_en_cache("itm_antorcha"))      
 
     # 2. Usar f1 de nuevo (para que quede como 'reciente', no debería ser desalojada)
     cache.obtener("ent_rata_gigante")
@@ -118,15 +118,15 @@ if __name__ == "__main__":
     # 3. Agregar una cuarta — debería desalojar la MENOS reciente (f2, porque f1 se volvió a usar)
     cache.agregar(f4)
 
-    print("¿f1 sigue en cache?", cache.esta_en_cache("ent_rata_gigante"))  # esperado: True
-    print("¿f2 sigue en cache?", cache.esta_en_cache("itm_daga_oxidada"))  # esperado: False (desalojada)
+    print("¿f1 sigue en cache?", cache.esta_en_cache("ent_rata_gigante"))  
+    print("¿f2 sigue en cache?", cache.esta_en_cache("itm_daga_oxidada"))  
     # esperado: True
     print("¿f4 ya está?", cache.esta_en_cache("itm_antorcha"))
 
 
     class GestorFalso:
         def esta_en_uso(self, id_ficha):
-            return id_ficha == "itm_daga_oxidada"  # simula que esta SIEMPRE está en uso
+            return id_ficha == "itm_daga_oxidada"  
 
 
     cache2 = CacheCatalogo(tamanio_maximo=2)

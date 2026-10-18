@@ -56,5 +56,5 @@ class PlanificadorPrecarga:
     esqueleto = fuente.obtener_esqueleto_cripta("cripta-01")
 
     planificador = PlanificadorPrecarga(esqueleto)
-    print(planificador.planificar(1, []))  # nada cargado
+    print(planificador.planificar(1, []))  
     print(planificador.planificar(1, [1, 2]))'''
