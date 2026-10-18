@@ -4,11 +4,17 @@ import json
 
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import io
+import contextlib
+
+RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(RAIZ)
 
 from Modelo.Inventario import Inventario,NodoInventario
 from Modelo.ordenamiento import insertion_sort,binary_insertion_sort,merge_sort, casi_ordenado
 from Modelo.retroceso import Historial,Cambio
+
+ARCHIVO_RESULTADOS = os.path.join(RAIZ, "resultados_bench_ordenamiento.txt")
 
 def bench_ordenamiento():
     print("\n-Ordenamiento-")
@@ -125,11 +131,18 @@ def bench_serializacion():
     print(f"tiempo de carga JSON (promedio):    {duracion_json*1e6:.2f} µs")
 
 def correr_bench():
-    bench_inventario()
-    bench_ordenamiento()
-    bench_ordenamiento_casi_ordenado()
-    bench_retroceso()
-    bench_serializacion()
+    buffer = io.StringIO()
+    with contextlib.redirect_stdout(buffer):
+        bench_inventario()
+        bench_ordenamiento()
+        bench_ordenamiento_casi_ordenado()
+        bench_retroceso()
+        bench_serializacion()
+    salida = buffer.getvalue()
+    print(salida, end="")
+
+    with open(ARCHIVO_RESULTADOS, "w", encoding="utf-8") as archivo:
+        archivo.write(salida)
 
 if __name__ == "__main__":
     correr_bench()

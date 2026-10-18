@@ -1,0 +1,43 @@
+
+-Inventario-
+recoger 500 objetos: 0.000363s
+avanza 500 veces: 0.000051s
+soltar 500 objetos: 0.000171s
+
+-Ordenamiento-
+n =    10 insertion_sort         tiempo = 0.000011s comparaciones = 27
+n =    10 binary_insertion_sort  tiempo = 0.000012s comparaciones = 23
+n =    10 merge_sort             tiempo = 0.000027s comparaciones = 25
+n =    32 insertion_sort         tiempo = 0.000042s comparaciones = 313
+n =    32 binary_insertion_sort  tiempo = 0.000036s comparaciones = 121
+n =    32 merge_sort             tiempo = 0.000053s comparaciones = 125
+n =   100 insertion_sort         tiempo = 0.000375s comparaciones = 2732
+n =   100 binary_insertion_sort  tiempo = 0.000214s comparaciones = 537
+n =   100 merge_sort             tiempo = 0.000222s comparaciones = 549
+n =  1000 insertion_sort         tiempo = 0.033203s comparaciones = 252859
+n =  1000 binary_insertion_sort  tiempo = 0.012852s comparaciones = 8584
+n =  1000 merge_sort             tiempo = 0.002821s comparaciones = 8674
+n = 10000 insertion_sort         tiempo = 3.518332s comparaciones = 24901503
+n = 10000 binary_insertion_sort  tiempo = 1.348569s comparaciones = 119019
+n = 10000 merge_sort             tiempo = 0.044670s comparaciones = 120362
+
+-Ordenamiento datos casi ordenados-
+n =    100 casi ordenado detecto = True
+n =    100 insertion_sort         tiempo = 0.000024s comparaciones = 104
+n =    100 merge_sort             tiempo = 0.000168s comparaciones = 320
+n =   1000 casi ordenado detecto = True
+n =   1000 insertion_sort         tiempo = 0.000328s comparaciones = 1049
+n =   1000 merge_sort             tiempo = 0.002310s comparaciones = 4958
+n =  10000 casi ordenado detecto = True
+n =  10000 insertion_sort         tiempo = 0.002296s comparaciones = 10475
+n =  10000 merge_sort             tiempo = 0.027221s comparaciones = 64891
+
+-Retroceso-
+registrar 250 cambios: 0.000098s
+deshacer 5 intervalos: 0.000042s
+
+-Serialización (binario vs JSON)-
+tamaño binario: 7186 bytes
+tamaño JSON:    41408 bytes
+tiempo de carga binario (promedio): 395.57 µs
+tiempo de carga JSON (promedio):    617.08 µs
