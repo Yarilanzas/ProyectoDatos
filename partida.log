@@ -1,8 +1,19 @@
 CRIPTA-LOG 1
-cripta_id=cripta-01
-version_cripta=fd58f7743b9e
+cripta_id=cripta-02
+version_cripta=8091a5cd8b7c
 version_catalogo=be68d322d2f5
-semilla=42
+semilla=1506160512
 ---
 mover N
-atacar e-202
+recoger obj-cripta-02-2-itm_llave_bronce-1
+mover S
+mover N
+mover N
+mover N
+recoger obj-cripta-02-4-itm_llave_negra-0
+mover N
+abrir E
+mover E
+mover O
+mover N
+recoger obj-cripta-02-6-itm_antidoto-0

@@ -1,0 +1,353 @@
+{
+    "version": "8091a5cd8b7c",
+    "esqueleto": [
+        {
+            "id": 1,
+            "nombre": "Sala 1",
+            "salidas": {
+                "N": {
+                    "sala": 2,
+                    "cerrada": false,
+                    "llave": null,
+                    "cierre_automatico": null
+                }
+            }
+        },
+        {
+            "id": 2,
+            "nombre": "Sala 2",
+            "salidas": {
+                "S": {
+                    "sala": 1,
+                    "cerrada": false,
+                    "llave": null,
+                    "cierre_automatico": null
+                },
+                "N": {
+                    "sala": 3,
+                    "cerrada": false,
+                    "llave": null,
+                    "cierre_automatico": null
+                }
+            }
+        },
+        {
+            "id": 3,
+            "nombre": "Sala 3",
+            "salidas": {
+                "S": {
+                    "sala": 2,
+                    "cerrada": false,
+                    "llave": null,
+                    "cierre_automatico": null
+                },
+                "N": {
+                    "sala": 4,
+                    "cerrada": false,
+                    "llave": null,
+                    "cierre_automatico": null
+                }
+            }
+        },
+        {
+            "id": 4,
+            "nombre": "Sala 4",
+            "salidas": {
+                "S": {
+                    "sala": 3,
+                    "cerrada": false,
+                    "llave": null,
+                    "cierre_automatico": null
+                },
+                "N": {
+                    "sala": 5,
+                    "cerrada": false,
+                    "llave": null,
+                    "cierre_automatico": null
+                }
+            }
+        },
+        {
+            "id": 5,
+            "nombre": "Sala 5",
+            "salidas": {
+                "S": {
+                    "sala": 4,
+                    "cerrada": false,
+                    "llave": null,
+                    "cierre_automatico": null
+                },
+                "N": {
+                    "sala": 6,
+                    "cerrada": false,
+                    "llave": null,
+                    "cierre_automatico": null
+                },
+                "E": {
+                    "sala": 19,
+                    "cerrada": true,
+                    "llave": "itm_llave_bronce",
+                    "cierre_automatico": 500
+                }
+            }
+        },
+        {
+            "id": 6,
+            "nombre": "Sala 6",
+            "salidas": {
+                "S": {
+                    "sala": 5,
+                    "cerrada": false,
+                    "llave": null,
+                    "cierre_automatico": null
+                },
+                "N": {
+                    "sala": 7,
+                    "cerrada": false,
+                    "llave": null,
+                    "cierre_automatico": null
+                }
+            }
+        },
+        {
+            "id": 7,
+            "nombre": "Sala 7",
+            "salidas": {
+                "S": {
+                    "sala": 6,
+                    "cerrada": false,
+                    "llave": null,
+                    "cierre_automatico": null
+                },
+                "N": {
+                    "sala": 8,
+                    "cerrada": false,
+                    "llave": null,
+                    "cierre_automatico": null
+                }
+            }
+        },
+        {
+            "id": 8,
+            "nombre": "Sala 8",
+            "salidas": {
+                "S": {
+                    "sala": 7,
+                    "cerrada": false,
+                    "llave": null,
+                    "cierre_automatico": null
+                },
+                "N": {
+                    "sala": 9,
+                    "cerrada": false,
+                    "llave": null,
+                    "cierre_automatico": null
+                }
+            }
+        },
+        {
+            "id": 9,
+            "nombre": "Sala 9",
+            "salidas": {
+                "S": {
+                    "sala": 8,
+                    "cerrada": false,
+                    "llave": null,
+                    "cierre_automatico": null
+                },
+                "N": {
+                    "sala": 10,
+                    "cerrada": false,
+                    "llave": null,
+                    "cierre_automatico": null
+                }
+            }
+        },
+        {
+            "id": 10,
+            "nombre": "Sala 10",
+            "salidas": {
+                "S": {
+                    "sala": 9,
+                    "cerrada": false,
+                    "llave": null,
+                    "cierre_automatico": null
+                },
+                "N": {
+                    "sala": 11,
+                    "cerrada": false,
+                    "llave": null,
+                    "cierre_automatico": null
+                }
+            }
+        },
+        {
+            "id": 11,
+            "nombre": "Sala 11",
+            "salidas": {
+                "S": {
+                    "sala": 10,
+                    "cerrada": false,
+                    "llave": null,
+                    "cierre_automatico": null
+                },
+                "N": {
+                    "sala": 12,
+                    "cerrada": false,
+                    "llave": null,
+                    "cierre_automatico": null
+                }
+            }
+        },
+        {
+            "id": 12,
+            "nombre": "Sala 12",
+            "salidas": {
+                "S": {
+                    "sala": 11,
+                    "cerrada": false,
+                    "llave": null,
+                    "cierre_automatico": null
+                },
+                "N": {
+                    "sala": 13,
+                    "cerrada": false,
+                    "llave": null,
+                    "cierre_automatico": null
+                }
+            }
+        },
+        {
+            "id": 13,
+            "nombre": "Sala 13",
+            "salidas": {
+                "S": {
+                    "sala": 12,
+                    "cerrada": false,
+                    "llave": null,
+                    "cierre_automatico": null
+                },
+                "N": {
+                    "sala": 14,
+                    "cerrada": false,
+                    "llave": null,
+                    "cierre_automatico": null
+                }
+            }
+        },
+        {
+            "id": 14,
+            "nombre": "Sala 14",
+            "salidas": {
+                "S": {
+                    "sala": 13,
+                    "cerrada": false,
+                    "llave": null,
+                    "cierre_automatico": null
+                },
+                "N": {
+                    "sala": 15,
+                    "cerrada": false,
+                    "llave": null,
+                    "cierre_automatico": null
+                }
+            }
+        },
+        {
+            "id": 15,
+            "nombre": "Sala 15",
+            "salidas": {
+                "S": {
+                    "sala": 14,
+                    "cerrada": false,
+                    "llave": null,
+                    "cierre_automatico": null
+                },
+                "N": {
+                    "sala": 16,
+                    "cerrada": false,
+                    "llave": null,
+                    "cierre_automatico": null
+                }
+            }
+        },
+        {
+            "id": 16,
+            "nombre": "Sala 16",
+            "salidas": {
+                "S": {
+                    "sala": 15,
+                    "cerrada": false,
+                    "llave": null,
+                    "cierre_automatico": null
+                },
+                "N": {
+                    "sala": 17,
+                    "cerrada": false,
+                    "llave": null,
+                    "cierre_automatico": null
+                }
+            }
+        },
+        {
+            "id": 17,
+            "nombre": "Sala 17",
+            "salidas": {
+                "S": {
+                    "sala": 16,
+                    "cerrada": false,
+                    "llave": null,
+                    "cierre_automatico": null
+                },
+                "N": {
+                    "sala": 18,
+                    "cerrada": true,
+                    "llave": "itm_llave_negra",
+                    "cierre_automatico": null
+                }
+            }
+        },
+        {
+            "id": 18,
+            "nombre": "Sala 18",
+            "salidas": {
+                "S": {
+                    "sala": 17,
+                    "cerrada": false,
+                    "llave": null,
+                    "cierre_automatico": null
+                }
+            }
+        },
+        {
+            "id": 19,
+            "nombre": "Cámara oculta 19",
+            "salidas": {
+                "O": {
+                    "sala": 5,
+                    "cerrada": false,
+                    "llave": null,
+                    "cierre_automatico": null
+                },
+                "N": {
+                    "sala": 20,
+                    "cerrada": false,
+                    "llave": null,
+                    "cierre_automatico": null
+                }
+            }
+        },
+        {
+            "id": 20,
+            "nombre": "Cámara oculta 20",
+            "salidas": {
+                "O": {
+                    "sala": 19,
+                    "cerrada": false,
+                    "llave": null,
+                    "cierre_automatico": null
+                }
+            }
+        }
+    ]
+}
