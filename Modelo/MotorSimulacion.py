@@ -49,7 +49,12 @@ class MotorSimulacion:
             self.gestor_datos.conectar_estado_juego(self)
 
     def _mensaje(self, texto):
-        self.mensajes.agregar(texto)
+        sobreescribio, anterior= self.mensajes.agregar(texto)
+
+        self.historial.registrar(
+            deshacer=lambda: self.mensajes.deshacer_ultimo(sobreescribio,anterior),
+            description="mensaje agregado")
+
         if self.eco:
             print(texto)
 

@@ -20,13 +20,23 @@ class RegistroMensajes:
 
     def agregar(self, texto):
         capacidad = len(self._datos)
+        sobreescribio = self._cantidad == capacidad
+        anterior = self._datos[self._inicio] if sobreescribio else None
 
-        if self._cantidad < capacidad:
+        if not sobreescribio:
             self._datos[(self._inicio + self._cantidad) % capacidad] = texto
             self._cantidad += 1
         else:
             self._datos[self._inicio] = texto
             self._inicio = (self._inicio + 1) % capacidad
+        return sobreescribio,anterior
+
+    def deshacer_ultimo(self, sobreescribio, anterior):
+        if sobreescribio:
+            self._inicio = (self._inicio - 1) % len(self._datos)
+            self._datos[self._inicio] = anterior
+        else:
+            self._cantidad -= 1
 
     def ultimos(self):
         # De más antiguo a más reciente, listo para mostrar en pantalla.

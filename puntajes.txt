@@ -1,0 +1,4 @@
+lucia	cripta-01	fd58f7743b9e	6	0	330	derrota
+--- Sala 4: Salida --- reloj 2050	cripta-test	v1	28	3	2050	victoria
+lucia	cripta-test	v1	18	3	1175	victoria
+lucia	cripta-test	v1	23	3	1675	victoria
