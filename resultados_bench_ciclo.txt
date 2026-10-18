@@ -1,8 +1,8 @@
 -Ciclo completo entre dos decisiones del jugador (S5.2, limite 20 ms)-
 equipo: Windows-11-10.0.26100-SP0 | Intel64 Family 6 Model 142 Stepping 9, GenuineIntel | Python 3.13.13
 100 ciclos por tamaño, sin red ni renderizado, todos los enemigos activos
-enemigos =   10   mediana =    0.52 ms   p95 =    1.05 ms   cumple
-enemigos =   50   mediana =    2.13 ms   p95 =    5.05 ms   cumple
-enemigos =  100   mediana =    3.13 ms   p95 =    6.09 ms   cumple
-enemigos =  300   mediana =   13.10 ms   p95 =   23.75 ms   NO cumple
-enemigos =  500   mediana =   24.47 ms   p95 =   45.34 ms   NO cumple
+enemigos =   10   mediana =    0.30 ms   p95 =    0.76 ms   cumple
+enemigos =   50   mediana =    0.90 ms   p95 =    2.21 ms   cumple
+enemigos =  100   mediana =    2.46 ms   p95 =    7.63 ms   cumple
+enemigos =  300   mediana =    6.19 ms   p95 =   18.03 ms   cumple
+enemigos =  500   mediana =   46.58 ms   p95 =  331.65 ms   NO cumple

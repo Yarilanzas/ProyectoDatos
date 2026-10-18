@@ -837,15 +837,9 @@ class MotorSimulacion:
         if not salidas:
             return None
 
-        # Solo el movimiento errante consume azar aquí: se guarda el estado del
-        # generador en este punto (y no en cada evento) para poder deshacerlo.
-        estado_azar = self.azar.getstate()
-        eleccion = self.azar.choice(salidas)
-        self.historial.registrar(
-            deshacer=lambda: self.azar.setstate(estado_azar),
-            description=f"azar de {enemigo.id}"
-        )
-        return eleccion
+        # El estado del azar se guarda una sola vez por acción del jugador
+        # (ver accion_jugador), no en cada movimiento.
+        return self.azar.choice(salidas)
 
     def mover_enemigo(self, enemigo, salas, salida):
 
@@ -962,8 +956,6 @@ class MotorSimulacion:
 
     def atacar(self, atacante, defensor):
 
-        estado_azar_anterior = self.azar.getstate()
-
         # Obtener la bonificación de ataque del arma equipada.
         bono_ataque = 0
         inventario_atacante = getattr(atacante, "inventario", None)
@@ -998,7 +990,6 @@ class MotorSimulacion:
         def deshacer():
             defensor.vida = vida_anterior
             defensor.vivo = vivo_anterior
-            self.azar.setstate(estado_azar_anterior)
 
         self.historial.registrar(
             deshacer=deshacer,
@@ -1020,8 +1011,17 @@ class MotorSimulacion:
             return False
 
         self.historial.abrir_intervalo()
-        return True
 
+        # Copiar el estado del azar es caro (625 enteros). Se copia una sola vez
+        # al abrir el intervalo: al retroceder, este cambio se deshace al final
+        # y deja el azar exactamente como estaba antes de la acción.
+        estado_azar = self.azar.getstate()
+        self.historial.registrar(
+            deshacer=lambda: self.azar.setstate(estado_azar),
+            description="estado del azar al inicio de la acción"
+        )
+        return True
+    
     def preparar_sala(self, sala):
         # Trae y carga el contenido de una sala. La espera de red no modifica
         # el reloj virtual. Sin gestor o sin cripta_id no hace nada.
