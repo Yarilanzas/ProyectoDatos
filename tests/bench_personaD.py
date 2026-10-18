@@ -10,7 +10,7 @@ from Modelo.Inventario import Inventario, NodoInventario
 
 REPETICIONES = 5
 TAMANOS = [20, 200, 2000]
-ARCHIVO_RESULTADOS = "resultados_bench_personaD.txt"
+ARCHIVO_RESULTADOS = "resultados_bench_guardado.txt"
 
 # salas sinteticas, la cantidad de enemigos, objetos y trampas varía según el id
 def crear_registros(n):

@@ -1,4 +1,4 @@
-# reproduccion de una partida a partir de su bitacora (S4.11)
+# Reproduccion de una partida a partir de su bitacora (S4.11)
 # no pide nada al usuario ni conoce la vista, solo le entrega las acciones al motor en orden
 from Bitacora.BitacoraPartida import leer_bitacora
 from Persistencia.FormatoBinario import VersionIncompatible

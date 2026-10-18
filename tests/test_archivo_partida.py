@@ -209,3 +209,6 @@ class PruebasArchivoPartida(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             sala.to_bytes()
+
+if __name__ == "__main__":
+    unittest.main()

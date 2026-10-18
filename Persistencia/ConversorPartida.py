@@ -1,11 +1,10 @@
-# puente entre el motor (persona A) y el archivo binario de la partida (S4.10)
+# Puente entre el motor y el archivo binario de la partida (S4.10)
 # - registros_desde_motor / registro_jugador_desde_motor: estado vivo -> registros para guardar
-# - RestauradorPartida: al cargar, cada sala se lee del archivo SOLO cuando el motor la necesita
-#   (busqueda binaria sobre el indice, sin leer el archivo completo)
-#
-# Lo que NO se guarda (igual que el historial de retroceso de persona C, es de sesion):
-# los efectos temporales (veneno, antorcha, velocidad) y los cierres automaticos de puertas pendientes.
-# Los enemigos activos si conservan el instante de su siguiente accion.
+# - RestauradorPartida: al cargar, cada sala se lee del archivo SOLO cuando el motor la necesita (busqueda binaria sobre el indice, sin leer el archivo completo)
+
+# Lo que NO se guarda (igual que el historial de retroceso es de sesion):
+# los efectos temporales (veneno, antorcha, velocidad) y los cierres automaticos de puertas pendientes
+# Los enemigos activos si conservan el instante de su siguiente accion
 
 from DTOS.ContenidoSala import ContenidoSala
 from DTOS.EnemigoInstancia import EnemigoInstancia
@@ -17,7 +16,6 @@ from Persistencia.RegistroJugador import RegistroJugador
 from Persistencia.RegistroSala import RegistroSala
 
 REARME_POR_DEFECTO = 300  # el mismo valor que usa el motor si la ficha no trae rearme
-
 
 # guardar: motor -> registros
 
@@ -44,8 +42,7 @@ def _contenido_de(motor, sala_id):
 
 def _asegurar_salas_con_estado(motor):
     # un enemigo errante puede entrar a una sala que el jugador nunca cargo.
-    # Antes de guardar se carga esa sala, asi cada registro guardado queda completo
-    # (sus enemigos, objetos y trampas originales mas lo que llego despues).
+    # Antes de guardar se carga esa sala, asi cada registro guardado queda completo (sus enemigos, objetos y trampas originales mas lo que llego despues)
     pendientes = []
     for enemigo in motor.enemigos:
         if enemigo.esta_vivo() and enemigo.sala is not None:
@@ -222,8 +219,7 @@ class RestauradorPartida:
         if registro is None:
             return False  # no estaba guardada: el motor la pide al gestor
 
-        # lo restaurado no es parte de ninguna accion del jugador,
-        # asi que no debe quedar en el historial de retroceso
+        # lo restaurado no es parte de ninguna accion del jugador, asi que no debe quedar en el historial de retroceso
         historial = motor.historial
         motor.historial = Historial()
         try:

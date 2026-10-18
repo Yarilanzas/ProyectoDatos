@@ -183,3 +183,6 @@ class PruebasReproductor(unittest.TestCase):
         with self.assertRaises(VersionIncompatible) as contexto:
             reproductor.reproducir(self.ruta)
         self.assertIn("catalogo", str(contexto.exception))
+
+if __name__ == "__main__":
+    unittest.main()

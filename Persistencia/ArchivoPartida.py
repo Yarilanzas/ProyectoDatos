@@ -1,7 +1,6 @@
-# escritura y lectura del archivo binario de la partida (S4.10)
+# Escritura y lectura del archivo binario de la partida (S4.10)
 # disposicion: [encabezado][largo jugador][bloque jugador][bloques de sala][indice de salas]
-# el indice son registros de tamaño fijo ordenados por id de sala
-# asi una sala se busca con busqueda binaria directo sobre el archivo, sin cargarlo completo
+# el indice son registros de tamaño fijo ordenados por id de sala asi una sala se busca con busqueda binaria directo sobre el archivo, sin cargarlo completo
 
 import struct
 import os
@@ -25,25 +24,25 @@ def guardar_partida(
     ruta, cripta_id, version_cripta, version_catalogo,
     semilla, reloj, registros, jugador=None
 ):
-    # Ordena las salas por ID para construir el índice
+    # ordena las salas por ID para construir el índice
     algoritmo = elegir_algoritmo(len(registros))
     ordenados, _ = algoritmo(
         registros, lambda registro: registro.sala_id
     )
 
-    # Comprueba IDs repetidos.
+    # comprueba IDs repetidos
     for i in range(1, len(ordenados)):
         if ordenados[i].sala_id == ordenados[i - 1].sala_id:
             raise ValueError( f"La sala {ordenados[i].sala_id} está repetida" )
 
-    # Serializa todo antes de tocar el archivo final
+    # serializa todo antes de tocar el archivo final
     datos_jugador = jugador.to_bytes() if jugador is not None else b""
     bloques = []
 
     for registro in ordenados:
         bloques.append((registro.sala_id, registro.to_bytes()))
 
-    # Calcula las posiciones de cada registro (las salas van despues del jugador)
+    # calcula las posiciones de cada registro (las salas van despues del jugador)
     posicion = TAMANO_ENCABEZADO + TAMANO_LARGO_JUGADOR + len(datos_jugador)
     entradas = []
     bloques_serializados = []
@@ -62,13 +61,13 @@ def guardar_partida(
 
     offset_indice = posicion
 
-    # Construye y valida el encabezado antes de escribir
+    # construye y valida el encabezado antes de escribir
     encabezado = EncabezadoPartida(cripta_id,version_cripta,version_catalogo, semilla,reloj,len(ordenados),offset_indice)
 
     datos_encabezado = encabezado.to_bytes()
     datos_indice = b"".join(entradas)
 
-    # El archivo temporal se crea en el mismo directorio
+    # el archivo temporal se crea en el mismo directorio
     directorio = os.path.dirname(os.path.abspath(ruta))
     ruta_temporal = None
 
@@ -97,12 +96,12 @@ def guardar_partida(
             archivo.flush()
             os.fsync(archivo.fileno())
 
-        # Reemplaza el archivo final solo si se escribió correctamente
+        # reemplaza el archivo final solo si se escribió correctamente
         os.replace(ruta_temporal, ruta)
         ruta_temporal = None
 
     finally:
-        # Limpia el temporal si hubo un error
+        # limpia el temporal si hubo un error
         if ruta_temporal is not None and os.path.exists(ruta_temporal):
             os.remove(ruta_temporal)
 

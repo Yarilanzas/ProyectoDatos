@@ -1,4 +1,5 @@
-# bitacora de la partida (S4.11): archivo de texto de solo append, una linea por accion del jugador
+# Bitacora de la partida (S4.11):
+# archivo de texto de solo append, una linea por accion del jugador
 
 from Persistencia.FormatoBinario import VersionIncompatible
 

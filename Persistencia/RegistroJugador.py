@@ -1,8 +1,7 @@
-# registro del jugador dentro del archivo binario de la partida (S4.10)
+# Registro del jugador dentro del archivo binario de la partida (S4.10)
 # guarda solo lo que cambia durante la partida. Ataque, defensa, velocidad y vida maxima
-# salen de los datos de la cripta al cargar, asi un efecto temporal (pocion de velocidad)
-# no queda "pegado" para siempre despues de cargar.
-# El inventario reutiliza la serializacion binaria de Inventario (persona C).
+# salen de los datos de la cripta al cargar, asi un efecto temporal (pocion de velocidad) no queda "pegado" para siempre despues de cargar
+# El inventario reutiliza la serializacion binaria de Inventario
 
 import struct
 

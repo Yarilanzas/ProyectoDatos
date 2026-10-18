@@ -58,3 +58,6 @@ class PruebasEncabezado(unittest.TestCase):
         leido = EncabezadoPartida.desde_archivo(archivo)
         self.assertEqual(leido.cripta_id, "cripta-01")
         self.assertEqual(archivo.tell(), TAMANO_ENCABEZADO)
+
+if __name__ == "__main__":
+    unittest.main()

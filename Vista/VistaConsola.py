@@ -1,6 +1,6 @@
-# Vista (MVC) en consola: solo LEE el estado del motor y lo muestra.
-# No modifica nada ni decide reglas; eso lo hace el controlador.
-# entrada/salida se pueden reemplazar (por ejemplo en las pruebas) para no usar el teclado.
+# Vista (MVC) en consola: solo LEE el estado del motor y lo muestra
+# no modifica nada ni decide reglas; eso lo hace el controlador
+# entrada/salida se pueden reemplazar (por ejemplo en las pruebas) para no usar el teclado
 
 NOMBRES_DIRECCION = {"N": "norte", "S": "sur", "E": "este", "O": "oeste"}
 MENSAJES_EN_PANTALLA = 6  # el registro guarda 20 (S4.8); en cada turno se muestran los ultimos
@@ -105,7 +105,7 @@ class VistaConsola:
             self.mostrar(f"  · {texto}")
 
     def mostrar_inventario_ordenado(self, nodos, criterio, inventario):
-        # vista_ordenada (persona C) no cambia el orden real del inventario
+        # vista_ordenada, no cambia el orden real del inventario
         self.mostrar(f"Inventario por {criterio}:")
         for nodo in nodos:
             self.mostrar(f"  {self._texto_nodo(nodo, inventario):<45} peso {nodo.peso:<4} valor {nodo.valor}")

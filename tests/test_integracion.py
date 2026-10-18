@@ -1,6 +1,6 @@
-# pruebas de integracion de persona D: motor (A) + gestor (B) + inventario (C)
-# detras del controlador, con guardado binario, bitacora y --replay.
-# Usan un paquete offline pequeño creado en una carpeta temporal (no hace falta red).
+# Pruebas de integracion: motor (A) + gestor (B) + inventario (C)
+# detras del controlador, con guardado binario, bitacora y --replay
+# Usan un paquete offline pequeño creado en una carpeta temporal (no hace falta red)
 
 import json
 import os
@@ -93,8 +93,8 @@ class VistaFalsa:
         return None
 
 
-# recoge en la entrada, se equipa, cruza al pasillo (dispara la trampa) y mata la rata de un golpe.
-# Termina en reloj 300: la trampa sigue desarmada (se rearma en 400) y el botin queda en el suelo.
+# recoge en la entrada, se equipa, cruza al pasillo (dispara la trampa) y mata la rata de un golpe
+# Termina en reloj 300: la trampa sigue desarmada (se rearma en 400) y el botin queda en el suelo
 COMANDOS_PARTIDA = [
     f"recoger obj-{CRIPTA}-1-itm_daga-0",
     f"equipar obj-{CRIPTA}-1-itm_daga-0",

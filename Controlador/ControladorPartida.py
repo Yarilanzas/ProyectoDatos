@@ -1,7 +1,7 @@
-# Controlador (MVC): recibe los comandos del jugador, se los pasa al motor (persona A)
-# y deja constancia de cada accion aceptada en la bitacora (S4.11).
-# Tambien guarda y carga la partida en el archivo binario (S4.10).
-# La vista solo muestra; el motor solo simula; aqui se decide que se hace con cada comando.
+# Controlador (MVC): recibe los comandos del jugador, se los pasa al motor
+# y deja constancia de cada accion aceptada en la bitacora (S4.11)
+# Tambien guarda y carga la partida en el archivo binario (S4.10)
+# La vista solo muestra; el motor solo simula; aqui se decide qué se hace con cada comando
 
 import os
 import random
@@ -106,8 +106,7 @@ class ControladorPartida:
         registros = registros_desde_motor(motor)
         jugador = registro_jugador_desde_motor(motor)
 
-        # el archivo cargado se cierra antes de reemplazarlo (en Windows no se puede
-        # reemplazar un archivo abierto) y se vuelve a abrir al terminar
+        # el archivo cargado se cierra antes de reemplazarlo (en Windows no se puede reemplazar un archivo abierto) y se vuelve a abrir al terminar
         anterior = motor.restaurador
         ruta_lectura = None
         if anterior is not None:

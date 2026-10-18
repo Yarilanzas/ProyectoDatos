@@ -45,3 +45,6 @@ class PruebasExportadorJSON(unittest.TestCase):
         with LectorPartida(ruta_binaria) as lector:
             for i in range(1, 30):
                 self.assertTrue(iguales(lector.leer_sala(i), leer_sala_json(self.ruta, i)))
+
+if __name__ == "__main__":
+    unittest.main()
