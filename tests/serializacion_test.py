@@ -1,8 +1,4 @@
-"""
-Prueba de to_bytes/from_bytes para Inventario e Historial.
-Copiá este archivo dentro de tests/ en tu proyecto (PycharmProjects\\ProyectoDatos\\tests\\)
-y agregale el sys.path.append de siempre si tu PyCharm no resuelve el import de Modelo.
-"""
+
 
 import sys
 import os
