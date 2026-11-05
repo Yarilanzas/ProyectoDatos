@@ -3,6 +3,7 @@ import os
 import uuid
 import requests
 import time
+import Excepciones
 #solo era para probar si funcionaba bien las llammadas al api, con el main ya no se necesita
 #import sys
 #sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -12,6 +13,8 @@ from DTOS.CriptaResumen import CriptaResumen
 from DTOS.CriptaDetalles import CriptaDetalles
 from DTOS.FichaCatalogo import FichaCatalogo
 from DTOS.SalaEsqueleto import SalaEsqueleto
+from DTOS.UbicacionLlave import UbicacionLlave
+
 
 
 class FuenteDatos:
@@ -22,6 +25,14 @@ class FuenteDatos:
     def list_criptas(self):
         datos = self._obtener("/criptas")
         return [CriptaResumen.desde_json(cripta) for cripta in datos["criptas"]]
+
+
+    def obtener_llaves_cripta(self, id_cripta):
+        ruta = f"/criptas/{id_cripta}/llaves"
+        datos = self._obtener(ruta)
+        if "llaves" not in datos:
+            raise Excepciones.RespuestaInvalidaError(ruta, "falta la clave 'llaves'")
+        return [UbicacionLlave.desde_json(llave) for llave in datos["llaves"]]
 
     def obtener_detalles_cripta(self, id):
         datos = self._obtener(f"/criptas/{id}")
@@ -105,19 +116,15 @@ class FuenteDatosHTTP(FuenteDatos): #(FuenteDatos) es herencia
         while True:
             if (self.presupuesto_solicitudes is not None
                     and self.solicitudes_realizadas >= self.presupuesto_solicitudes):
-                raise RuntimeError(
-                    f"Se agotó el presupuesto de solicitudes ({self.presupuesto_solicitudes}) "
-                    f"al consultar {url}"
-                )
+                raise Excepciones.PresupuestoAgotadoError(self.presupuesto_solicitudes, url)
 
             self.solicitudes_realizadas += 1
             try:
                 respuesta = requests.get(url, headers=self.headers, params=params, timeout=10)
             except requests.exceptions.Timeout as e:
-                raise RuntimeError(f"El servidor tardó demasiado en responder al consultar {url}") from e
+                raise Excepciones.TiempoAgotadoError(url, 10) from e
             except requests.exceptions.ConnectionError as e:
-                raise RuntimeError(f"No hay conexión al consultar {url}") from e
-
+                raise Excepciones.SinConexionError(url) from e
             if respuesta.status_code == 429:
                 cuerpo = respuesta.json()
                 tiempo_espera = cuerpo["reintentar_en"]
@@ -125,11 +132,19 @@ class FuenteDatosHTTP(FuenteDatos): #(FuenteDatos) es herencia
                 continue  # antes era "return self._hacer_solicitud(...)" (recursivo); ahora reintenta
                           # dentro del mismo while, respetando el chequeo de presupuesto de arriba
             if respuesta.status_code != 200:
-                raise RuntimeError(f"Error al consultar {url}: código {respuesta.status_code}")
+                raise Excepciones.ErrorServicio(
+                    url, respuesta.status_code, self._extraer_mensaje(respuesta)
+                )
             return respuesta.json()
 
     def _obtener(self, ruta, params=None):
         return self._hacer_solicitud(self.base_url + ruta, params)
+
+    def _extraer_mensaje(respuesta):
+        try:
+            return respuesta.json().get("error")
+        except (ValueError, AttributeError):
+            return None
 
 
 class FuenteDatosOffline(FuenteDatos): #(FuenteDatos) es herencia
@@ -146,3 +161,4 @@ class FuenteDatosOffline(FuenteDatos): #(FuenteDatos) es herencia
             raise RuntimeError(f"Falta el archivo para {ruta}: {archivo}")
         with open(archivo, "r", encoding="utf-8") as f:
             return json.load(f)
+
