@@ -1,1 +1,4 @@
 .claude/settings.local.json
+cripta.log
+__pycache__/
+*.pyc
