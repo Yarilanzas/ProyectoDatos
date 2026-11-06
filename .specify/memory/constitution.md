@@ -1,20 +1,12 @@
 <!--
 Sync Impact Report
-- Version change: 2.0.0 → 3.0.0 (MAJOR: se elimina una regla de gobernanza del flujo, el punto 12)
-- Origen: enmienda acordada por todo el grupo.
-- Principios modificados: ninguno (I–XI sin cambios; se conserva el Principio IX: especificación
-  confirmada antes que el código y correcciones en confirmaciones separadas).
-- Secciones modificadas:
-  - Flujo de desarrollo y calidad: se elimina "una rama por capacidad, sin commits directos a main,
-    integración por PR" [grupo 12]; se trabaja directamente sobre `main` y cada persona hace
-    `git pull` antes de subir cambios. Las reglas que hablaban de "PR" se redactan en términos de
-    "cambio" sin alterar su contenido (suite en verde, especificación antes que código, README en el
-    mismo cambio, revisión de `Modelo/`, `Persistencia/` y `Bitacora/`). Se conserva intacta la regla
-    de contratos compartidos [grupo 13].
-  - Governance: las enmiendas ya no se proponen mediante PR, sino como cambio por escrito a este
-    archivo con su motivo.
+- Version change: 3.0.0 → 3.0.1 (PATCH: aclaración de dónde se lleva el registro de prompts)
+- Principios modificados: XI. Registro de prompts a LLM (mismo título): `PROMPTS_LLM.md` →
+  documento de prompts del grupo (Word, `Prompts.docx` en la raíz del repositorio).
 - Secciones añadidas: ninguna
 - Secciones eliminadas: ninguna
+- Pendiente fuera de este archivo: `specs/001-niebla-mapa-ir-a/plan.md` y `tasks.md` (T004) aún
+  mencionan `PROMPTS_LLM.md`.
 -->
 
 # Proyecto CRIPTA Constitution
@@ -131,8 +123,8 @@ poder repetirse.
 ### XI. Registro de prompts a LLM
 
 Todo comando de Spec Kit invocado con texto propio (`/speckit-constitution`, `/speckit-specify`,
-`/speckit-clarify`, `/speckit-plan`, etc.) es un prompt a un LLM y MUST registrarse en `PROMPTS_LLM.md`
-en la raíz del repositorio, con al menos la fecha, el comando, el texto enviado y la persona que lo envió.
+`/speckit-clarify`, `/speckit-plan`, etc.) es un prompt a un LLM y MUST registrarse en el documento de prompts del grupo
+(Word, `Prompts.docx` en la raíz del repositorio), con al menos la fecha, el comando, el texto enviado y la persona que lo envió.
 
 **Razón**: el uso de LLM debe ser transparente y auditable para la evaluación del curso.
 
@@ -175,4 +167,4 @@ en la raíz del repositorio, con al menos la fecha, el comando, el texto enviado
   incumplimientos entre spec, plan y tareas.
 - La guía operativa del día a día (comandos, formatos, opciones) está en `README.md`.
 
-**Version**: 3.0.0 | **Ratified**: 2026-11-03 | **Last Amended**: 2026-11-04
+**Version**: 3.0.1 | **Ratified**: 2026-11-03 | **Last Amended**: 2026-11-06
