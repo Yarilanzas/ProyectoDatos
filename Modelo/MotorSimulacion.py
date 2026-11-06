@@ -12,6 +12,7 @@ INTERVALO_VENENO = 80
 DURACION_VENENO = 400
 INTERVALO_REGENERACION = 200
 COSTO_USAR = 50
+COSTO_MOVER = 100
 
 
 class MotorSimulacion:
@@ -1066,6 +1067,11 @@ class MotorSimulacion:
             "enemigos_derrotados": self.enemigos_derrotados,
             "tiempo_final": self.reloj,
         }
+
+    def costo_salida(self, salida):
+        # Único acceso al costo de una salida (FR-005, FR-024). Solo lectura, O(1).
+        costo = getattr(salida, "costo", None)
+        return COSTO_MOVER if costo is None else costo
 
     def mover_jugador(self, direccion):
         jugador = self.jugador

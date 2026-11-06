@@ -35,10 +35,10 @@ Los `§` citados (§3.1, §6.1…) son del enunciado, que no está en el reposit
 **Propósito**: dejar el entorno y las dependencias con el grupo listos antes de tocar código. Esta fase no estaba en el
 pedido: reúne lo que las fases 1 a 7 necesitan y que no pertenece a ninguna de ellas.
 
-- [ ] T001 Instalar `requests` en `.venv` y registrar la línea base con `python -m unittest discover -s tests -v`. Esperado: 128 de 128 (research, línea base). Si no da eso, detenerse y aclararlo antes de seguir. Atiende: SC-006, PR-16. Archivo: tests/ (solo lectura).
+- [X] T001 Instalar `requests` en `.venv` y registrar la línea base con `python -m unittest discover -s tests -v`. Esperado: 128 de 128 (research, línea base). Si no da eso, detenerse y aclararlo antes de seguir. Atiende: SC-006, PR-16. Archivo: tests/ (solo lectura).
 - [ ] T002 [a cargo de quien implemente §3.1] Avisar del cambio del DTO `Salida` (contrato compartido) y resolver la parte pendiente de P-02: quién cambia `mover_jugador`. Anotar la respuesta en P-02. Atiende: FR-005, FR-025, PR-13. Archivo: specs/001-niebla-mapa-ir-a/plan.md.
 - [ ] T003 [a cargo de quien implemente §3.1, en lo referido a enemigos] Corregir la spec, en una confirmación separada y anterior al código (Principio IX): la suposición «Esta capacidad no define ni modifica costos» deja de ser cierta, porque esta capacidad agrega el campo y `mover` lo cobra (R7, H5). Registrar además el dominio de `costo` de §3.1 y qué pasa con un dato inválido o asimétrico (decisión tomada en T006 y T008). Depende de T002. **Nota**: la suposición de costos ya se corrigió en la spec y reemplaza lo anterior: esta capacidad solo lee el costo. Aquí solo falta confirmar ese cambio y SC-007 en Git antes del código, sin esperar a T002. Atiende: FR-005, FR-024, FR-025, PR-13. Archivo: specs/001-niebla-mapa-ir-a/spec.md.
-- [ ] T005 [P] Crear las utilidades de prueba: `crear_paquete_niebla(carpeta, salas, ...)`, que genera un paquete offline con topología, costos, puertas, llaves, antorcha, pergaminos, veneno, enemigos y trampas (formato de `crear_paquete_offline`), y `partida_niebla(...)`, que devuelve motor y controlador con `VistaFalsa`. El archivo no lleva prefijo `test`, así que `discover` no lo ejecuta. Atiende: SC-001, PR-16. Archivo: tests/utiles_niebla.py.
+- [X] T005 [P] Crear las utilidades de prueba: `crear_paquete_niebla(carpeta, salas, ...)`, que genera un paquete offline con topología, costos, puertas, llaves, antorcha, pergaminos, veneno, enemigos y trampas (formato de `crear_paquete_offline`), y `partida_niebla(...)`, que devuelve motor y controlador con `VistaFalsa`. El archivo no lleva prefijo `test`, así que `discover` no lo ejecuta. Atiende: SC-001, PR-16. Archivo: tests/utiles_niebla.py.
 - [ ] T061 [PERSONAS: grupo, P-05] Confirmar que «las dos salas que conecta» observa la salida dirigida `A→B` desde `B`, y que el viaje puede volver por `B→A`. Anotar la respuesta en P-05. Si es negativa, corregir la spec y luego T026 y T016. Atiende: FR-006, PR-02. Archivo: specs/001-niebla-mapa-ir-a/plan.md.
 
 **Punto de control 0**: línea base conocida y spec corregida y confirmada. Sin esto no empieza la Fase 1. P-05 (T061) debe
@@ -58,7 +58,7 @@ costos (spec, Assumptions).
 
 La única tarea es T118. Lleva ese número porque las demás no se renumeraron.
 
-- [ ] T118 Crear `motor.costo_salida(salida)`, solo de lectura, junto con `COSTO_MOVER = 100`: devuelve `getattr(salida, "costo", None)`, o 100 si no lo trae. **No** cambiar el movimiento de ningún actor: `mover_jugador`, `mover_enemigo` y `ejecutar_evento` quedan igual. Es el único acceso al costo. Probar costo propio, salida sin el atributo y que `mover` sigue costando 100, citando FR-005. Atiende: FR-005, FR-024, PR-13. Archivo: Modelo/MotorSimulacion.py, tests/test_costo_salida.py.
+- [X] T118 Crear `motor.costo_salida(salida)`, solo de lectura, junto con `COSTO_MOVER = 100`: devuelve `getattr(salida, "costo", None)`, o 100 si no lo trae. **No** cambiar el movimiento de ningún actor: `mover_jugador`, `mover_enemigo` y `ejecutar_evento` quedan igual. Es el único acceso al costo. Probar costo propio, salida sin el atributo y que `mover` sigue costando 100, citando FR-005. Atiende: FR-005, FR-024, PR-13. Archivo: Modelo/MotorSimulacion.py, tests/test_costo_salida.py.
 
 ### A cargo de quien implemente §3.1
 
