@@ -55,7 +55,7 @@ personas o al enunciado está en [Preguntas abiertas](#preguntas-abiertas).
 |---|---|---|---|
 | **I. Estructuras propias** | ✅ | ✅ | Listas densas y ordinales. Sin `dict`/`set` como índice, sin `heapq`, `bisect`, `collections`, `networkx`. Ordenar con `elegir_algoritmo`, no con `sorted()`. Cola de prioridad a mano. `sala.salidas` es el `dict` del DTO existente: solo se recorre, no se agrega ningún índice |
 | **I. Complejidad documentada** | ✅ | ✅ | Tablas en [data-model.md](data-model.md); se copian a los docstrings |
-| **II. MVC** | ❌ **Incumplido hoy** | ✅ con PR-14 | `main.py` crea la vista antes de `--replay` (H4). `Modelo/` no importa nada nuevo fuera de sí mismo. La vista recibe un DTO. `--bench` no la usa |
+| **II. MVC** | ❌ **Incumplido hoy** | ✅ con PR-14 | `main.py` crea la vista antes de `--replay` (H4). Fuera de sí mismo, `Modelo/` solo agrega la importación de `DTOS/MapaConocido.py`, porque `mapa_conocido()` devuelve ese DTO; no importa red, archivos, consola ni adaptadores. La vista recibe un DTO. `--bench` no la usa |
 | **III. Determinismo** | ❌ **Incumplido hoy** | ✅ con PR-12 | El replay de partidas cargadas diverge (H1). `@cargar` lo corrige. El conocimiento no usa azar ni reloj real, y los órdenes son fijos |
 | **IV. Sin datos de cripta** | ✅ | ✅ | `COSTO_MOVER` es la regla de `mover`, no un dato de cripta. Los datos sintéticos están en `tests/` |
 | **V. Pruebas** | ⚠️ Entorno | ✅ | 2 errores por falta de `requests` en el entorno. Con un sustituto, 128 de 128. Cada caso del Apéndice B tiene prueba con su FR ([quickstart](quickstart.md)) |
@@ -64,13 +64,13 @@ personas o al enunciado está en [Preguntas abiertas](#preguntas-abiertas).
 | **VIII. Decisiones medidas** | ✅ | ✅ | M1 a M6 definidas; hasta medirlas, son hipótesis |
 | **IX. Spec antes que código** | ✅ | ✅ | Spec confirmada en `c8067f0`. Si P-04 o P-05 cambian requisitos, primero se corrige la spec |
 | **X. Trazabilidad** | ✅ | ✅ | [Tabla de requisitos](#requisitos-del-plan) y cobertura de los 31 FR |
-| **XI. Registro de prompts** | ❌ **Incumplido** | ❌ **Acción del grupo** | `PROMPTS_LLM.md` no existe. Este comando debe registrarse. No se creó porque el pedido limita la salida a `specs/001-niebla-mapa-ir-a/` |
+| **XI. Registro de prompts** | ✅ | ✅ | El registro se lleva en el documento de prompts del grupo (`Prompts.docx`, Word) |
 | **Contratos compartidos** | — | ⚠️ Avisar | Formatos de archivo y de bitácora, `Salida`, `ejecutar_replay`, `guardar_partida`: avisar al grupo antes de cambiarlos |
 | **README en el mismo cambio** | — | ✅ | Incluido en PR-16. Está en UTF-16 y se edita avisando al grupo |
 
 **Resultado del gate**: sin violaciones nuevas introducidas por el diseño. Las dos incumplidas por el código actual
-(II y III) quedan resueltas dentro del alcance. Queda bloqueante solo el registro del Principio XI, que no depende del
-diseño pero debe hacerse. No hace falta llenar la tabla de excepciones.
+(II y III) quedan resueltas dentro del alcance. No queda ningún principio bloqueante. No hace falta llenar la tabla de
+excepciones.
 
 ## Decisiones
 
