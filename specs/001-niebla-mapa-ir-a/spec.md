@@ -208,6 +208,7 @@ El conocimiento del jugador forma parte del estado de la partida: se guarda en e
 - **SC-004**: El `--replay` de una partida que usó «ir a» y pergaminos reproduce exactamente el mismo reloj final, posición y conocimiento.
 - **SC-005**: Una orden «ir a» rechazada nunca cambia el reloj, el contador de acciones ni la bitácora.
 - **SC-006**: La suite completa de pruebas sigue al 100 % en verde, sin red, incluidas las pruebas de la Parte I.
+- **SC-007**: El cálculo de un paso de «ir a» tarda 5 ms o menos con el mapa conocido completo de la cripta de referencia (enunciado §6.1; el valor puede ajustarse por enmienda).
 
 ## Assumptions
 
@@ -218,5 +219,5 @@ El conocimiento del jugador forma parte del estado de la partida: se guarda en e
 - Usar la antorcha no cambia el conocimiento por sí sola; el efecto ocurre al entrar a una sala mientras está encendida. Como la antorcha no se guarda (Parte I), tras cargar una partida está apagada, pero el conocimiento ganado con ella sí se conserva.
 - Como el historial de retroceso no se guarda (Parte I), tras cargar no se puede revertir conocimiento ganado antes del guardado.
 - El viaje es un único comando no interactivo: el jugador no puede intervenir entre pasos; el pergamino solo puede usarse después de que el viaje termine o se detenga.
-- En la Parte I las salidas no tienen costo propio: todo `mover` cuesta 100. Esta capacidad asume que el costo de cada salida lo define la Parte II (dato de la cripta tratado en otra capacidad) y que el movimiento ordinario ya lo usa; mientras una salida no traiga costo propio, su costo es el de `mover` (100). Esta capacidad no define ni modifica costos: solo los muestra y los usa para elegir la ruta.
+- En la Parte I las salidas no tienen costo propio: todo `mover` cuesta 100. Esta capacidad solo LEE el costo de cada salida mediante un acceso único, que da 100 si la salida no trae el dato, y lo usa para mostrarlo y para elegir la ruta. Implementar el costo de §3.1 para todos los actores (jugador y enemigos), el campo `costo` en el DTO `Salida` y la versión de formato de la caché del esqueleto corresponden a la capacidad de terreno y costos, no a esta.
 - Depende de: motor de simulación y agenda de eventos, pergamino de retroceso, antorcha, puertas con cierre automático, archivo de partida y bitácora de la Parte I.
