@@ -52,12 +52,11 @@ class VistaConsola:
         for cripta in criptas:
             self.mostrar(f"  {cripta.id:<12} {cripta.nombre} ({cripta.salas} salas, {cripta.dificultad})")
 
-    def _texto_salidas(self, sala):
+    def _texto_salidas(self, salidas):
+        # `salidas` viene de motor.salidas_recordadas: la vista no lee el mapa real (FR-012)
         partes = []
-        for direccion, salida in sala.salidas.items():
-            estado = "cerrada" if salida.cerrada else "abierta"
-            llave = getattr(salida, "llave", None)
-            if salida.cerrada and llave:
+        for direccion, estado, llave in salidas:
+            if estado == "cerrada" and llave:
                 estado += f", llave {llave}"
             nombre = NOMBRES_DIRECCION.get(direccion, direccion)
             partes.append(f"{direccion} {nombre} ({estado})")
@@ -78,7 +77,7 @@ class VistaConsola:
         self.mostrar(f"--- Sala {sala.id}: {getattr(sala, 'nombre', '')} ---   reloj {motor.reloj}")
         self.mostrar(f"Vida {jugador.vida}/{jugador.vida_max}   acciones {motor.acciones_jugador}"
                      f"   derrotados {motor.enemigos_derrotados}")
-        self.mostrar(f"Salidas: {self._texto_salidas(sala)}")
+        self.mostrar(f"Salidas: {self._texto_salidas(motor.salidas_recordadas(sala))}")
 
         enemigos = motor.obtener_enemigos(sala=sala, solo_vivos=True)
         if enemigos:

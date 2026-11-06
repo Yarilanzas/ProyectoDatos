@@ -1,4 +1,5 @@
 import random
+from Modelo.Conocimiento import Conocimiento
 from Modelo.Evento import Evento
 from Modelo.RegistroMensajes import RegistroMensajes
 from Modelo.AgendaEventos import AgendaEventos
@@ -27,6 +28,7 @@ class MotorSimulacion:
         self.jugador = None
         self.enemigos = []
         self.historial = Historial()
+        self.conocimiento = None  # lo crea iniciar_partida; las pruebas que arman el motor a mano no lo usan (H7)
         self.contenidos_salas = []
         self.objetos_suelo = []
         self._salas_contenido_cargado = []
@@ -381,6 +383,12 @@ class MotorSimulacion:
         for enemigo in enemigos:
             self.registrar_enemigo(enemigo)
 
+        # Ordinales en el orden del índice por id. Con el Historial recién creado no hay intervalo
+        # abierto, así que la entrada a la sala inicial no se puede revertir (FR-002).
+        self._reconstruir_indice_salas()
+        self.conocimiento = Conocimiento(self._indice_salas, self._destino)
+        self._entrar_conocimiento(jugador.sala)
+
         jugador.tiempo_siguiente = 0
         evento = self.programar_evento(0, "ACCION_ACTOR", jugador)
         jugador.evento_actual = evento
@@ -535,7 +543,12 @@ class MotorSimulacion:
                     deshacer=lambda: setattr(actor, "cerrada", False),
                     description="cierre automático de puerta"
                 )
-                self._mensaje("Una puerta se cerró sola.")
+                # El cierre real no depende de esto; solo lo que el jugador se entera (FR-007, H6).
+                if self.conocimiento is None:
+                    self._mensaje("Una puerta se cerró sola.")
+                elif self.conocimiento.conecta(actor, self.jugador.sala):
+                    self.conocimiento.observar_puerta(actor, self.historial)
+                    self._mensaje("Una puerta se cerró sola.")
             return
 
         if evento.tipo in TIPOS_EFECTO:
@@ -1034,6 +1047,11 @@ class MotorSimulacion:
         # En una partida cargada, la sala se toma del archivo si está guardada ahí.
 
         if self.restaurador is not None and self.restaurador.restaurar_sala(self, sala.id):
+            # Provisional hasta T079: el conocimiento no se guarda, y restaurar la sala cambia sus
+            # puertas después de crearlo. Sin esto, la sala donde retoma el jugador no estaría
+            # explorada y `Salidas:` mostraría lo que trae el esqueleto (FR-003, FR-006).
+            if self.jugador is not None and sala is self.jugador.sala:
+                self._entrar_conocimiento(sala)
             return
 
         if self.gestor_datos is None or self.cripta_id is None:
@@ -1072,6 +1090,28 @@ class MotorSimulacion:
         # Único acceso al costo de una salida (FR-005, FR-024). Solo lectura, O(1).
         costo = getattr(salida, "costo", None)
         return COSTO_MOVER if costo is None else costo
+
+    def _entrar_conocimiento(self, sala):
+        # Tolera el motor sin conocimiento y el jugador sin sala. O(d(sala)), más las vecinas
+        # nuevas si la antorcha está encendida (ver Conocimiento).
+        if self.conocimiento is not None and sala is not None:
+            antorcha = getattr(self.jugador, "antorcha_encendida", False)
+            self.conocimiento.entrar(sala, antorcha, self.historial)
+
+    def salidas_recordadas(self, sala):
+        # Salidas para la pantalla de estado, como (dirección, estado, llave), en el orden de la
+        # sala (FR-012, R8). Sin conocimiento usa el estado real, como en la Parte I. O(salidas).
+        resultado = []
+
+        for direccion, salida in sala.salidas.items():
+            if self.conocimiento is None:
+                estado = "cerrada" if salida.cerrada else "abierta"
+            else:
+                estado = self.conocimiento.texto_recuerdo(salida)
+
+            resultado.append((direccion, estado, getattr(salida, "llave", None)))
+
+        return resultado
 
     def mover_jugador(self, direccion):
         jugador = self.jugador
@@ -1117,6 +1157,9 @@ class MotorSimulacion:
             deshacer=lambda: setattr(jugador, "sala", sala_anterior),
             description="movimiento del jugador"
         )
+
+        # Antes de las trampas, porque una trampa mortal retorna de inmediato.
+        self._entrar_conocimiento(sala_destino)
 
         self.actualizar_rastro(sala_destino)
 
@@ -1176,6 +1219,9 @@ class MotorSimulacion:
             deshacer=lambda: setattr(salida, "cerrada", True),
             description=f"apertura de puerta {direccion}"
         )
+
+        if self.conocimiento is not None:
+            self.conocimiento.observar_puerta(salida, self.historial)  # FR-008
 
         if (self.llave_salida is not None
                 and getattr(salida, "llave", None) == self.llave_salida):
