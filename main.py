@@ -9,7 +9,15 @@ from Controlador.ControladorPartida import ControladorPartida
 from Persistencia.FormatoBinario import VersionIncompatible
 from Persistencia.TablaPuntajes import ARCHIVO_PUNTAJES, CRITERIOS_PUNTAJES, TablaPuntajes
 from Vista.VistaConsola import VistaConsola
+import logging
 
+def configurar_logging(archivo="cripta.log"):
+    logging.basicConfig(
+        filename=archivo,
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(message)s",
+        encoding="utf-8",
+    )
 
 def crear_gestor(argumentos):
     if argumentos.offline:
@@ -45,6 +53,7 @@ def ejecutar_replay(ruta, gestor, vista):
 
 
 def main():
+
     parser = argparse.ArgumentParser(description="Cliente del proyecto Cripta")
 
     parser.add_argument(
@@ -129,7 +138,7 @@ def main():
             return 1
         vista.mostrar_puntajes(puntajes, argumentos.mostrar_puntajes)
         return 0
-
+    configurar_logging()
     gestor = crear_gestor(argumentos)
 
     if argumentos.replay:

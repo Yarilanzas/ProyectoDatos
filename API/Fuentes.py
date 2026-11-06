@@ -3,7 +3,10 @@ import os
 import uuid
 import requests
 import time
-import Excepciones
+from API import Excepciones
+
+
+import logging
 #solo era para probar si funcionaba bien las llammadas al api, con el main ya no se necesita
 #import sys
 #sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -15,6 +18,7 @@ from DTOS.FichaCatalogo import FichaCatalogo
 from DTOS.SalaEsqueleto import SalaEsqueleto
 from DTOS.UbicacionLlave import UbicacionLlave
 
+logger = logging.getLogger(__name__)
 
 
 class FuenteDatos:
@@ -100,6 +104,12 @@ class FuenteDatos:
 
 
 class FuenteDatosHTTP(FuenteDatos): #(FuenteDatos) es herencia
+    TIMEOUT = 10  # segundos maximos por solicitud
+    MAX_INTENTOS = 3  # intentos totales ante timeout, sin conexion o 5xx
+    ESPERA_INICIAL = 1  # segundos antes del primer reintento
+    MAX_ESPERAS_429 = 5  # veces que se espera por limite de solicitudes
+    ESPERA_429_POR_DEFECTO = 1  # si el 429 no trae "reintentar_en"
+
     def __init__(self, presupuesto_solicitudes=None):
         self.base_url = "https://cripta-api.kad06a0zhgs84.us-east-2.cs.amazonlightsail.com/v1"
         self.client_id = str(uuid.uuid4())
@@ -113,33 +123,82 @@ class FuenteDatosHTTP(FuenteDatos): #(FuenteDatos) es herencia
         self.presupuesto_solicitudes = presupuesto_solicitudes
 
     def _hacer_solicitud(self, url, params=None):
+        intentos_fallidos = 0
+        esperas_429 = 0
+        espera = self.ESPERA_INICIAL
+
         while True:
+            #revision de presupuesto
             if (self.presupuesto_solicitudes is not None
                     and self.solicitudes_realizadas >= self.presupuesto_solicitudes):
+                logger.error("Presupuesto agotado (%s) antes de consultar %s",
+                             self.presupuesto_solicitudes, url)
                 raise Excepciones.PresupuestoAgotadoError(self.presupuesto_solicitudes, url)
 
             self.solicitudes_realizadas += 1
+            inicio = time.perf_counter()
+
             try:
-                respuesta = requests.get(url, headers=self.headers, params=params, timeout=10)
+                ms = (time.perf_counter() - inicio) * 1000
+
+                respuesta = requests.get(
+                    url, headers=self.headers, params=params, timeout=self.TIMEOUT
+                )
             except requests.exceptions.Timeout as e:
-                raise Excepciones.TiempoAgotadoError(url, 10) from e
+                error, causa = Excepciones.TiempoAgotadoError(url, self.TIMEOUT), e
             except requests.exceptions.ConnectionError as e:
-                raise Excepciones.SinConexionError(url) from e
-            if respuesta.status_code == 429:
-                cuerpo = respuesta.json()
-                tiempo_espera = cuerpo["reintentar_en"]
-                time.sleep(tiempo_espera)
-                continue  # antes era "return self._hacer_solicitud(...)" (recursivo); ahora reintenta
-                          # dentro del mismo while, respetando el chequeo de presupuesto de arriba
-            if respuesta.status_code != 200:
-                raise Excepciones.ErrorServicio(
+                error, causa = Excepciones.SinConexionError(url), e
+            except requests.exceptions.RequestException as e:
+                raise Excepciones.ErrorCliente(f"Error al consultar {url}: {e}") from e
+            else:
+                logger.info("GET %s params=%s -> %s (%.0f ms) [solicitud %d/%s]",
+                            url, params, respuesta.status_code, ms,
+                            self.solicitudes_realizadas, self.presupuesto_solicitudes)
+                if respuesta.status_code == 429:
+                    esperas_429 += 1
+                    if esperas_429 > self.MAX_ESPERAS_429:
+                        raise Excepciones.ErrorServicio(
+                            url, 429, "Se superó el máximo de esperas por límite de solicitudes"
+                        )
+                    logger.warning("429 en %s; esperando %s s (espera %d de %d)",
+                                   url, espera_429, esperas_429, self.MAX_ESPERAS_429)
+                    time.sleep(self._leer_espera_429(respuesta))
+                    continue
+
+                if respuesta.status_code == 200:
+                    try:
+                        return respuesta.json()
+                    except ValueError as e:  # JSONDecodeError hereda de ValueError
+                        raise Excepciones.RespuestaInvalidaError(
+                            url, "el cuerpo no es un JSON válido"
+                        ) from e
+
+                error = Excepciones.ErrorServicio(
                     url, respuesta.status_code, self._extraer_mensaje(respuesta)
                 )
-            return respuesta.json()
+                causa = None
+
+            intentos_fallidos += 1
+            if not error.reintentable or intentos_fallidos >= self.MAX_INTENTOS:
+                logger.error("Se abandona la solicitud a %s: %s", url, error)
+                raise error from causa
+            logger.warning("%s; reintento %d de %d en %s s",
+                           error, intentos_fallidos, self.MAX_INTENTOS - 1, espera)
+            time.sleep(espera)
+            espera *= 2  # espera que se duplica con fallidos
+
+    def _leer_espera_429(self, respuesta):
+        try:
+            espera = float(
+                respuesta.json().get("reintentar_en", self.ESPERA_429_POR_DEFECTO)
+            )
+        except (ValueError, TypeError, AttributeError):
+            espera = self.ESPERA_429_POR_DEFECTO
+        return max(0, espera)
 
     def _obtener(self, ruta, params=None):
         return self._hacer_solicitud(self.base_url + ruta, params)
-
+    @staticmethod
     def _extraer_mensaje(respuesta):
         try:
             return respuesta.json().get("error")
