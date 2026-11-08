@@ -1,5 +1,5 @@
 {
-    "version": "8091a5cd8b7c",
+    "version": "52532a77ee04",
     "contenido": [
         {
             "sala": 1,
@@ -60,9 +60,9 @@
             "sala": 7,
             "enemigos": [
                 {
-                    "instancia": "e-rata-cripta-02-1",
+                    "instancia": "e-cripta-02-1",
                     "tipo": "ent_rata_gigante",
-                    "vida": 12
+                    "vida": 8
                 }
             ],
             "objetos": [],

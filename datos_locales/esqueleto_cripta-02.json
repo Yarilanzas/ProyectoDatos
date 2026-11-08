@@ -1,5 +1,5 @@
 {
-    "version": "8091a5cd8b7c",
+    "version": "52532a77ee04",
     "esqueleto": [
         {
             "id": 1,
@@ -160,6 +160,12 @@
                     "cerrada": false,
                     "llave": null,
                     "cierre_automatico": null
+                },
+                "E": {
+                    "sala": 12,
+                    "cerrada": false,
+                    "llave": null,
+                    "cierre_automatico": null
                 }
             }
         },
@@ -211,6 +217,12 @@
                 },
                 "N": {
                     "sala": 13,
+                    "cerrada": false,
+                    "llave": null,
+                    "cierre_automatico": null
+                },
+                "O": {
+                    "sala": 9,
                     "cerrada": false,
                     "llave": null,
                     "cierre_automatico": null

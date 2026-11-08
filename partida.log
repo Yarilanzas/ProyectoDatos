@@ -1,12 +1,6 @@
 CRIPTA-LOG 1
-cripta_id=cripta-test
-version_cripta=v1
-version_catalogo=cat-1
-semilla=7
+cripta_id=cripta-02
+version_cripta=52532a77ee04
+version_catalogo=4b9e75a42be5
+semilla=42
 ---
-recoger obj-cripta-test-1-itm_daga-0
-recoger obj-cripta-test-1-itm_pocion-1
-recoger obj-cripta-test-1-itm_pergamino-2
-mover E
-equipar obj-cripta-test-1-itm_daga-0
-atacar e-rata-1
