@@ -22,10 +22,17 @@ de la niebla de guerra (capacidad 001).
 sobrevivir a las trampas, calcular una ruta sala por sala, verificar partidas cargadas o reproducidas, 
 y mostrar una solución durante la partida.
 
+## Clarifications
+
+### Session 2026-11-07
+
+- Q: ¿Cuándo se dice que una llave no obtenible K «depende» de la llave J? → A: Puertas más cercanas: K → J si todas las puertas bloqueadas que entran a la zona de K (salas desde las que se llega a K sin cruzar otra puerta bloqueada) piden J, en todas sus ubicaciones; si piden llaves distintas o alguna no indica llave, K no depende de ninguna.
+- Q: Cuando hay varias llaves obtenibles a la vez, ¿cómo se arma el orden de obtención? → A: Por oleadas: primero todas las obtenibles sin abrir puertas, luego todas las que se vuelven obtenibles con las anteriores, y así sucesivamente; dentro de cada oleada, por identificador.
+
 ## Definiciones
 
 - **Salida**: conexión dirigida de una sala origen a una sala destino. Que A→B esté cerrada no dice nada 
-de B→A.(c)
+de B→A.
 - **Región alcanzable**: salas a las que se llega desde la sala inicial atravesando salidas abiertas 
 y salidas cerradas cuya llave ya se obtuvo, repitiendo hasta que no se pueda obtener ninguna llave más.
 - **Llave obtenible**: llave con al menos una ubicación dentro de la región alcanzable. 
@@ -34,8 +41,14 @@ Si la suelta un enemigo, su ubicación es la sala donde ese enemigo inicia.
 región alcanzable, cuyo destino es `sala_salida` y cuya llave es `llave_salida`.
 - **Frontera bloqueada**: salidas cerradas cuyo origen está en la región alcanzable, cuyo destino 
 está fuera de ella y cuya llave no es obtenible (o que no indican llave).
-- **Dependencia entre llaves**: la llave K depende de la llave J cuando K está ubicada
-detrás de una o más puertas que solo J puede abrir. Se escribe K → J.
+- **Puerta bloqueada**: salida cerrada cuyo destino está fuera de la región alcanzable y cuya llave
+no es obtenible (o que no indica llave). Su origen puede estar dentro o fuera de la región alcanzable.
+- **Zona de una sala no alcanzable**: salas fuera de la región alcanzable desde las que se llega a ella
+sin cruzar ninguna puerta bloqueada.
+- **Dependencia entre llaves**: la llave no obtenible K depende de la llave J cuando todas las puertas
+bloqueadas que entran a la zona de cada ubicación de K piden J. Se escribe K → J. Si esas puertas piden
+llaves distintas, o alguna no indica llave, K no depende de ninguna llave. Por eso cada llave depende
+como mucho de una, y los ciclos no comparten llaves.
 - **Ciclo de llaves**: cadena de dependencias entre llaves no obtenibles que vuelve a su inicio.
 Es directo si K depende de sí misma (K → K) y por cadena en otro caso (K → J → K).
 
@@ -145,8 +158,8 @@ la partida inicia y no se muestra el reporte.
 **Then** la partida inicia y no se muestra ni el reporte ni el orden de llaves.
 3. **Given** `--verificar <cripta> --forzar`, **When** se ejecuta, 
 **Then** solo se verifica: se muestra el resultado completo y no inicia ninguna partida.
-4. **Given** una partida forzada guardada, o su bitácora, 
-5. **When** se usa `--cargar` o `--replay` sin `--forzar`, **Then** funciona normalmente, sin verificación.
+4. **Given** una partida forzada guardada, o su bitácora,
+**When** se usa `--cargar` o `--replay` sin `--forzar`, **Then** funciona normalmente, sin verificación.
 
 ---
 
@@ -203,14 +216,14 @@ cuál es el archivo que falta, la partida no inicia y el código de salida es 1.
 **Resultado cuando es resoluble**
 
 - **FR-006**: Si la cripta es resoluble, el sistema MUST mostrar un mensaje que lo indique y un orden de obtención con todas las llaves obtenibles, señalando cuál es `llave_salida`.
-- **FR-007**: En el orden, cada llave MUST ser obtenible usando únicamente las llaves que la preceden, de modo que aparezca después de todas las necesarias para alcanzarla. Si hay varias obtenibles en un mismo punto, MUST ir primero la de menor identificador.
+- **FR-007**: En el orden, cada llave MUST ser obtenible usando únicamente las llaves que la preceden, de modo que aparezca después de todas las necesarias para alcanzarla. El orden MUST armarse por oleadas: la oleada 1 son las llaves obtenibles sin abrir ninguna puerta cerrada; la oleada n+1, las que se vuelven obtenibles con las llaves de las oleadas 1 a n. Dentro de cada oleada, las llaves MUST ordenarse por identificador. Ejemplo: si desde el inicio se alcanzan C y D, y C abre la sala de A, el orden es `C, D, A`.
 
 **Reporte cuando no es resoluble**
 
 - **FR-008**: Si la cripta no es resoluble, el sistema MUST mostrar un reporte con las llaves no obtenibles y las dependencias entre llaves.
 - **FR-009**: El reporte MUST listar cada puerta de la frontera bloqueada con su sala de origen, su sala de destino y la llave que requiere, e indicar de forma explícita si la frontera está vacía. También MUST incluir la puerta hacia `sala_salida` que requiere `llave_salida` si está bloqueada, e indicar si no existe ninguna.
 - **FR-010**: El reporte MUST indicar dónde se encuentra cada llave no obtenible y cada llave de la frontera: sala, enemigo que la suelta si aplica, o «ubicación desconocida».
-- **FR-011**: Si existen ciclos de llaves, el reporte MUST señalarlos, tanto directos como por cadena. Cada llave que pertenezca a un ciclo MUST aparecer en al menos un ciclo señalado. 
+- **FR-011**: Si existen ciclos de llaves, el reporte MUST señalarlos, tanto directos como por cadena. Como cada llave depende como mucho de otra (ver Definiciones), cada llave que pertenezca a un ciclo MUST aparecer en exactamente un ciclo señalado, y las llaves sin dependencia MUST mostrarse como tales.
 
 **Determinismo**
 
