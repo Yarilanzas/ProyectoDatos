@@ -1,10 +1,10 @@
 # Feature Specification: Niebla de guerra, mapa conocido y viaje automático «ir a»
 
-**Feature Branch**: `main` (el grupo trabaja directamente sobre `main`, constitución v3.0.0)
+**Feature Branch**: `main` (el grupo trabaja directamente sobre `main`, constitución v3.0.2)
 
 **Created**: 2026-11-04
 
-**Status**: Draft
+**Status**: Approved
 
 **Input**: Enunciado Parte II §3.3, §3.4, §5.3 y casos de niebla e «ir a» del Apéndice B. El jugador deja de ver el mapa completo: solo conoce lo que exploró; puede consultar su mapa conocido y viajar automáticamente a una sala explorada con «ir a <sala>».
 
@@ -178,7 +178,7 @@ El conocimiento del jugador forma parte del estado de la partida: se guarda en e
 - **FR-021**: El sistema MUST ofrecer el comando `ir a <sala>`, donde `<sala>` es el id de la sala destino, que lleva al jugador hasta esa sala mediante una secuencia de movimientos ordinarios.
 - **FR-022**: Si el destino no está explorado, no existe, es la sala actual o no hay ruta conocida hacia él, la orden MUST rechazarse con un aviso, sin consumir tiempo y sin anotarse en la bitácora.
 - **FR-023**: La ruta MUST calcularse solo con el conocimiento del jugador: puede pasar únicamente por salas exploradas y por salidas que el mapa recuerda abiertas.
-- **FR-024**: La ruta elegida MUST minimizar la suma de costos de sus salidas; entre rutas de igual costo MUST elegirse la que da el primer paso hacia la vecina de menor id (el mismo desempate que el cazador).
+- **FR-024**: La ruta elegida MUST minimizar la suma de costos de sus salidas; entre rutas de igual costo MUST elegirse la que da el primer paso hacia la vecina de menor id (el mismo desempate que el cazador). Ante dos salidas hacia la misma vecina con el mismo costo, MUST ganar la primera en el orden N, S, E, O.
 - **FR-025**: Cada paso del viaje MUST ser una acción completa del jugador, equivalente a un `mover` por la salida correspondiente: consume el mismo tiempo, cuenta como acción y, entre paso y paso, ocurren todos los eventos del reloj (enemigos, efectos, cierres de puertas, rearmes de trampas).
 - **FR-026**: Antes de cada paso la ruta MUST recalcularse con el conocimiento vigente; si al llegar a una sala el jugador observó que una puerta de la ruta está cerrada, el siguiente cálculo MUST evitarla.
 - **FR-027**: El viaje MUST detenerse cuando ocurra cualquiera de estas condiciones, y MUST informar al jugador del motivo:
@@ -186,7 +186,8 @@ El conocimiento del jugador forma parte del estado de la partida: se guarda en e
   - (b) entra a una sala con enemigos vivos, activos o dormidos (los dormidos se activan según §2.4);
   - (c) el jugador pierde vida durante el paso, por cualquier causa (ataques, trampas, veneno, incluido un veneno que ya estaba activo antes de dar la orden);
   - (d) deja de existir una ruta conocida hacia el destino (sin consumir tiempo adicional);
-  - (e) la partida termina (victoria o derrota).
+  - (e) la partida termina (victoria o derrota);
+  - (f) el motor rechaza un paso a mitad del viaje: el viaje se detiene e informa el mismo mensaje de rechazo que daría `mover`, y termina sin consumir tiempo adicional.
 - **FR-028**: La orden «ir a» MUST aceptarse aunque la sala actual tenga enemigos (activos o dormidos): la condición de parada (b) solo se evalúa al *entrar* a una sala, no en la sala de partida.
 - **FR-029**: El viaje MUST NOT abrir puertas, aunque el jugador tenga la llave.
 - **FR-030**: En la bitácora, cada paso del viaje MUST anotarse como un movimiento individual, y la orden `ir a <sala>` MUST anotarse además como una línea de comentario antes del primer paso; `--replay` MUST ignorar los comentarios y reproducir solo los movimientos. Si el formato de la bitácora cambia para admitir comentarios, su versión MUST incrementarse y documentarse en el README.
