@@ -1,12 +1,16 @@
 <!--
 Sync Impact Report
-- Version change: 3.0.0 → 3.0.1 (PATCH: aclaración de dónde se lleva el registro de prompts)
-- Principios modificados: XI. Registro de prompts a LLM (mismo título): `PROMPTS_LLM.md` →
-  documento de prompts del grupo (Word, `Prompts.docx` en la raíz del repositorio).
+- Version change: 3.0.1 → 3.0.2 (PATCH: aclaración de dónde y cómo se lleva el registro de prompts)
+- Principios modificados: XI. Registro de prompts a LLM (mismo título): documento Word `Prompts.docx` →
+  `PROMPTS_LLM.md` en la raíz del repositorio, armado al final a partir de las notas de cada persona, con
+  fecha, modelo, prompt textual y para qué se usó.
 - Secciones añadidas: ninguna
 - Secciones eliminadas: ninguna
-- Pendiente fuera de este archivo: `specs/001-niebla-mapa-ir-a/plan.md` y `tasks.md` (T004) aún
-  mencionan `PROMPTS_LLM.md`.
+- Plantillas y documentos actualizados: `specs/001-niebla-mapa-ir-a/plan.md` (Constitution Check, fila XI) y
+  `tasks.md` (T004 y tabla de dependencias de personas).
+- Corrección del informe 3.0.1: su pendiente («plan.md y tasks.md aún mencionan `PROMPTS_LLM.md`») ya no era
+  cierto; ambos citaban `Prompts.docx`.
+- Pendiente fuera de este archivo: ninguno.
 -->
 
 # Proyecto CRIPTA Constitution
@@ -123,8 +127,9 @@ poder repetirse.
 ### XI. Registro de prompts a LLM
 
 Todo comando de Spec Kit invocado con texto propio (`/speckit-constitution`, `/speckit-specify`,
-`/speckit-clarify`, `/speckit-plan`, etc.) es un prompt a un LLM y MUST registrarse en el documento de prompts del grupo
-(Word, `Prompts.docx` en la raíz del repositorio), con al menos la fecha, el comando, el texto enviado y la persona que lo envió.
+`/speckit-clarify`, `/speckit-plan`, etc.) es un prompt a un LLM y MUST registrarse en `PROMPTS_LLM.md`, en la raíz
+del repositorio. Cada persona lleva sus notas mientras trabaja, y el archivo se arma al final a partir de ellas, con al
+menos la fecha, el modelo, el prompt textual y para qué se usó.
 
 **Razón**: el uso de LLM debe ser transparente y auditable para la evaluación del curso.
 
@@ -167,4 +172,4 @@ Todo comando de Spec Kit invocado con texto propio (`/speckit-constitution`, `/s
   incumplimientos entre spec, plan y tareas.
 - La guía operativa del día a día (comandos, formatos, opciones) está en `README.md`.
 
-**Version**: 3.0.1 | **Ratified**: 2026-11-03 | **Last Amended**: 2026-11-06
+**Version**: 3.0.2 | **Ratified**: 2026-11-03 | **Last Amended**: 2026-11-09

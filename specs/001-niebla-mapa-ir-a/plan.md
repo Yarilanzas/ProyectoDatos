@@ -1,6 +1,6 @@
 # Implementation Plan: Niebla de guerra, mapa conocido y viaje automático «ir a»
 
-**Branch**: `main` (constitución v3.0.0: se trabaja sobre `main`) | **Date**: 2026-11-06 | **Spec**: [spec.md](spec.md)
+**Branch**: `main` (constitución v3.0.2: se trabaja sobre `main`) | **Date**: 2026-11-06 | **Spec**: [spec.md](spec.md)
 
 **Input**: Feature specification from `specs/001-niebla-mapa-ir-a/spec.md`
 
@@ -58,14 +58,14 @@ personas o al enunciado está en [Preguntas abiertas](#preguntas-abiertas).
 | **II. MVC** | ❌ **Incumplido hoy** | ✅ con PR-14 | `main.py` crea la vista antes de `--replay` (H4). Fuera de sí mismo, `Modelo/` solo agrega la importación de `DTOS/MapaConocido.py`, porque `mapa_conocido()` devuelve ese DTO; no importa red, archivos, consola ni adaptadores. La vista recibe un DTO. `--bench` no la usa |
 | **III. Determinismo** | ❌ **Incumplido hoy** | ✅ con PR-12 | El replay de partidas cargadas diverge (H1). `@cargar` lo corrige. El conocimiento no usa azar ni reloj real, y los órdenes son fijos |
 | **IV. Sin datos de cripta** | ✅ | ✅ | `COSTO_MOVER` es la regla de `mover`, no un dato de cripta. Los datos sintéticos están en `tests/` |
-| **V. Pruebas** | ⚠️ Entorno | ✅ | 2 errores por falta de `requests` en el entorno. Con un sustituto, 128 de 128. Cada caso del Apéndice B tiene prueba con su FR ([quickstart](quickstart.md)) |
+| **V. Pruebas** | ⚠️ Entorno | ✅ | Línea base (T001), con `requests` instalado: 128 de 128. Tras las fases 1 a 3: 185 pruebas, OK (`py -m unittest discover -s tests -v`). Cada caso del Apéndice B tiene prueba con su FR ([quickstart](quickstart.md)) |
 | **VI. Persistencia versionada** | ✅ | ✅ | `CRPT` 3 y `CRIPTA-LOG` 2, rechazo con código 2, README actualizado |
 | **VII. Presupuesto** | ✅ | ⚠️ Verificar | Explorar con antorcha no hace solicitudes. `@cargar` puede repetir solicitudes en un replay con red: PR-12 exige una prueba |
 | **VIII. Decisiones medidas** | ✅ | ✅ | M1 a M6 definidas; hasta medirlas, son hipótesis |
-| **IX. Spec antes que código** | ✅ | ✅ | Spec confirmada en `c8067f0`. Si P-04 o P-05 cambian requisitos, primero se corrige la spec |
+| **IX. Spec antes que código** | ✅ | ✅ | Spec confirmada en `c8067f0`, y su corrección de costos y SC-007 en `6ed5b92`, antes del código. FR-024 (P-03) y FR-027f (P-04) se corrigieron en la spec y deben confirmarse en Git antes del código de la Fase 4. Si P-05 cambia requisitos, primero se corrige la spec |
 | **X. Trazabilidad** | ✅ | ✅ | [Tabla de requisitos](#requisitos-del-plan) y cobertura de los 31 FR |
-| **XI. Registro de prompts** | ✅ | ✅ | El registro se lleva en el documento de prompts del grupo (`Prompts.docx`, Word) |
-| **Contratos compartidos** | — | ⚠️ Avisar | Formatos de archivo y de bitácora, `Salida`, `ejecutar_replay`, `guardar_partida`: avisar al grupo antes de cambiarlos |
+| **XI. Registro de prompts** | ✅ | ✅ | `PROMPTS_LLM.md` en la raíz, armado al final a partir de las notas de cada persona: fecha, modelo, prompt textual y para qué se usó (T004) |
+| **Contratos compartidos** | — | ⚠️ Avisar | Formatos de archivo y de bitácora, `ejecutar_replay`, `guardar_partida`: avisar al grupo antes de cambiarlos. `Salida` no cambia en esta capacidad |
 | **README en el mismo cambio** | — | ✅ | Incluido en PR-16. Está en UTF-16 y se edita avisando al grupo |
 
 **Resultado del gate**: sin violaciones nuevas introducidas por el diseño. Las dos incumplidas por el código actual
@@ -81,7 +81,7 @@ excepciones.
 | 3 | Persistencia y replay | Bloque nuevo en `CRPT` 3; directiva `@cargar` en la bitácora | [R3](research.md#r3-persistencia-del-conocimiento-fr-015-y-fr-016), [R4](research.md#r4-replay-de-partidas-cargadas-fr-017) |
 | 4 | Comandos | `mapa` e `ir a`, con `Viaje` en el modelo y orquestación en el controlador | [R5](research.md#r5-comandos-nuevos-y-bitácora-fr-018-a-fr-022-fr-030) |
 | 5 | Ruta | **PENDIENTE D-PEND-01.** Interfaz `primer_paso` decidida | [R6](research.md#r6-búsqueda-de-la-ruta-de-ir-a-fr-023-fr-024-fr-026) |
-| 6 | Costo | Campo en `Salida`, único acceso `motor.costo_salida` | [R7](research.md#r7-costo-de-cada-salida) |
+| 6 | Costo | Solo lectura por el único acceso `motor.costo_salida` (100 si la salida no trae costo). El campo `costo` de `Salida` y el cambio de `mover` son de la capacidad de terreno y costos | [R7](research.md#r7-costo-de-cada-salida) |
 
 ## Requisitos del plan
 
@@ -99,7 +99,7 @@ excepciones.
 | PR-10 | Interfaz `primer_paso`, `GrafoConocido` y prueba de contrato. **Implementación bloqueada por D-PEND-01** | FR-011, FR-023, FR-024, FR-029 | `Modelo/rutas_ir_a.py` (nuevo), `Modelo/Conocimiento.py`, `tests/test_ruta_contrato.py` (nuevo) |
 | PR-11 | Bitácora v2 con comentarios; `--replay` los ignora | FR-030, SC-004 | `Bitacora/BitacoraPartida.py`, `Controlador/ControladorPartida.py` |
 | PR-12 | `@cargar`, recarga en el replay, guardado extraído sin vista; verificar presupuesto (H1) | FR-017, SC-004 | `Bitacora/Reproductor.py`, `Bitacora/BitacoraPartida.py`, `Controlador/ControladorPartida.py`, `main.py` |
-| PR-13 | Costo en `Salida` y acceso único, también en `mover_jugador` | FR-005, FR-024, FR-025 | `DTOS/Salida.py`, `Modelo/MotorSimulacion.py` |
+| PR-13 | Lectura del costo por el acceso único `motor.costo_salida`, 100 si la salida no lo trae, sin cambiar el movimiento de ningún actor | FR-005, FR-024 | `Modelo/MotorSimulacion.py`, `tests/test_costo_salida.py` |
 | PR-14 | `--replay` sin instanciar la vista (Principio II, H4) | FR-017 | `main.py`, `tests/test_integracion.py`, `tests/test_puntajes.py` |
 | PR-15 | Medición `--bench` M1 a M6 | Principio VIII | `tests/bench_niebla.py` (nuevo), `main.py` |
 | PR-16 | Pruebas por FR, sin regresiones; README y Documento de Decisiones | SC-001, SC-002, SC-003, SC-004, SC-005, SC-006, FR-016, FR-020 | `tests/test_conocimiento.py`, `tests/test_mapa.py`, `tests/test_viaje.py`, `tests/test_persistencia_conocimiento.py`, `README.md` |
@@ -123,9 +123,9 @@ Solo el cuerpo de `primer_paso` espera a D-PEND-01. `Viaje` se puede probar ante
 | ID | Pregunta | Quién | Bloquea | Mientras tanto |
 |----|----------|-------|---------|----------------|
 | **D-PEND-01** | ¿La búsqueda de «ir a» comparte implementación con el cazador? | Grupo, con quien lleva el cazador | Cuerpo de `primer_paso` | **Decisión pendiente.** Opciones en [R6](research.md#r6-búsqueda-de-la-ruta-de-ir-a-fr-023-fr-024-fr-026) |
-| **P-02** | ✅ **Resuelta** (enunciado §3.1 y §4.1): el campo se llama `costo`, es un entero mayor o igual que 1, vale 100 si la salida no lo declara y es el mismo en ambos sentidos. **Sigue pendiente**: quién cambia `mover_jugador` | Grupo, solo para lo pendiente | Nada del diseño | Acceso único `motor.costo_salida`, ver [R7](research.md#r7-costo-de-cada-salida) |
-| **P-03** | Dos salidas a la misma vecina con igual costo: ¿qué desempate aplica? FR-024 solo habla de vecinas distintas | Grupo | Nada: no hay casos en las 3 criptas locales | Determinista por el orden de `salidas`; no se fija en pruebas |
-| **P-04** | Si un paso es rechazado en pleno viaje, por ejemplo por agotar el presupuesto al entrar a una sala explorada con antorcha, ¿qué motivo se informa? FR-027 no lo lista | Grupo; luego corregir la spec | Motivo `PASO_RECHAZADO` | Sin definir |
+| **P-02** | ✅ **Resuelta** (enunciado §3.1 y §4.1): el campo se llama `costo`, es un entero mayor o igual que 1, vale 100 si la salida no lo declara y es el mismo en ambos sentidos. Agregar el campo a `Salida` y cobrarlo en `mover` (jugador y enemigos) corresponde a la capacidad de terreno y costos (spec, Assumptions); esta capacidad solo lo lee | — | Nada | Acceso único de solo lectura `motor.costo_salida`, ver [R7](research.md#r7-costo-de-cada-salida) |
+| **P-03** | ✅ **Resuelta** (FR-024): ante dos salidas hacia la misma vecina con el mismo costo, gana la primera en el orden N, S, E, O | — | Nada | La prueba de contrato fija ese desempate (T043) |
+| **P-04** | ✅ **Resuelta** (FR-027f): si el motor rechaza un paso en pleno viaje, el viaje se detiene e informa el mismo mensaje de rechazo que daría `mover`, sin consumir tiempo adicional | — | Nada | Motivo `PASO_RECHAZADO` (T060) |
 | **P-05** | Las salidas son dirigidas y `A→B` cerrada convive con `B→A` abierta. ¿Se confirma que «las dos salas que conecta» observa la salida dirigida `A→B` desde `B`, y que el viaje puede volver por `B→A`? | Grupo | Nada del diseño; confirma la lectura de FR-006 | El plan aplica esa lectura |
 | **P-06** | «La trampa X se rearmó.» se muestra aunque sea en una sala desconocida. ¿Debe filtrarse? Queda fuera de la letra de FR-010 y FR-012 | Grupo | Nada | Sin cambio |
 | **P-07** | `@cargar` hace falso el texto del README «`cargar` no se anota». ¿El grupo lo acepta como contrato nuevo? | Grupo | PR-12 | Es la solución de este plan |
@@ -168,11 +168,10 @@ Modelo/
 ├── Conocimiento.py          # nuevo: Conocimiento, GrafoConocido
 ├── Viaje.py                 # nuevo
 ├── rutas_ir_a.py            # nuevo: frontera de D-PEND-01
-├── MotorSimulacion.py       # hooks, costo_salida, mapa_conocido, preparar_viaje
+├── MotorSimulacion.py       # hooks, costo_salida (solo lectura), mapa_conocido, preparar_viaje
 └── retroceso.py             # sin cambios
 DTOS/
-├── MapaConocido.py          # nuevo
-└── Salida.py                # campo costo
+└── MapaConocido.py          # nuevo (Salida.py no cambia: su campo costo es de la capacidad de terreno y costos)
 Persistencia/
 ├── RegistroConocimiento.py  # nuevo
 ├── ArchivoPartida.py        # bloque nuevo

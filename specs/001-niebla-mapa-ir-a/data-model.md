@@ -119,7 +119,7 @@ Un `retroceder` posterior no reanuda nada, porque el `Viaje` ya no existe (FR-03
 | `DANO` | La vida bajó durante el paso | FR-027c |
 | `SIN_RUTA` | El recálculo no encuentra ruta | FR-027d |
 | `FIN_PARTIDA` | Victoria o derrota | FR-027e |
-| `PASO_RECHAZADO` | El motor rechazó un `mover`. **Pendiente de P-04**: no está en FR-027 | — |
+| `PASO_RECHAZADO` | El motor rechazó un `mover`: se informa el mismo mensaje de rechazo que daría `mover`, sin tiempo adicional | FR-027f |
 
 Si coinciden varias, se informa por prioridad: `FIN_PARTIDA`, `DANO`, `ENEMIGOS`, `DESTINO`.
 
@@ -154,9 +154,9 @@ Formato en [contracts/formato-partida.md](contracts/formato-partida.md).
 
 ### `Salida` (`DTOS/Salida.py`)
 
-| Campo | Cambio |
-|-------|--------|
-| `costo` | **Nuevo**, opcional. `None` significa sin costo propio. Nombre JSON: costo (enunciado §3.1) |
+Esta capacidad **no** cambia los campos de `Salida`. El campo `costo` (enunciado §3.1) lo agrega la capacidad de
+terreno y costos (T010). Aquí el costo solo se lee, con `motor.costo_salida`, que usa `getattr` y da 100 si la salida
+no lo trae (R7).
 
 Atributos internos asignados por `Conocimiento`, igual que el `_destino` actual: `_ordinal` y `_origen` (necesario
 para `CERRAR_PUERTA`, cuyo actor es la salida). Las salas reciben `_ordinal`.
@@ -165,13 +165,13 @@ para `CERRAR_PUERTA`, cuyo actor es la salida). Las salas reciben `_ordinal`.
 
 | Elemento | Cambio | FR |
 |----------|--------|----|
-| `COSTO_MOVER` | Constante nueva con el valor actual de `mover` | FR-025 |
+| `COSTO_MOVER` | Constante nueva con el valor actual de `mover`; es el costo por defecto de `costo_salida` | FR-005 |
 | `conocimiento` | Atributo nuevo; `None` si el motor se armó sin `iniciar_partida` (pruebas de la Parte I) | SC-006 |
 | `iniciar_partida` | Crea `Conocimiento` y registra la entrada a la sala inicial, sin intervalo abierto | FR-002 |
-| `mover_jugador` | Llama a `entrar` antes de las trampas, guarda «había enemigos al entrar» y cobra `costo_salida` | FR-003, FR-009, FR-025, FR-027b |
+| `mover_jugador` | Llama a `entrar` antes de las trampas y guarda «había enemigos al entrar». Su costo no cambia (sigue en 100; cobrar `costo_salida` es de la capacidad de terreno y costos) | FR-003, FR-009, FR-027b |
 | `abrir_salida` | Llama a `observar_puerta` | FR-008 |
 | `ejecutar_evento` (`CERRAR_PUERTA`) | Observa y avisa solo si el jugador ve la puerta | FR-006, FR-007, FR-012 |
-| `costo_salida(salida)` | Nuevo: único acceso al costo | FR-005, FR-024 |
+| `costo_salida(salida)` | Nuevo: único acceso al costo, solo lectura | FR-005, FR-024 |
 | `mapa_conocido()` | Nuevo: devuelve el DTO | FR-018 |
 | `salidas_recordadas(sala)` | Nuevo: salidas para la pantalla de estado | FR-012 |
 | `preparar_viaje(texto)` | Nuevo: valida y devuelve un `Viaje` o un rechazo | FR-022 |
@@ -203,7 +203,7 @@ mover_jugador
  ├─ ¿victoria?
  ├─ anotar si hay enemigos vivos      lo lee el Viaje
  ├─ activar_enemigos_de_sala
- ├─ proxima_accion(costo_salida)
+ ├─ proxima_accion(costo=100)        sin cambio: cobrar costo_salida es de terreno y costos
  └─ avanzar_hasta_jugador             un cierre observado cae en este mismo intervalo
 ```
 

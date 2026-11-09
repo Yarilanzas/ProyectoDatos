@@ -8,7 +8,7 @@ ajustarse, pero las **distinciones** entre casos son contractuales. Cualquier ca
 
 | | |
 |---|---|
-| **Sintaxis** | `mapa` (sin argumentos) |
+| **Sintaxis** | `mapa`. Cualquier argumento se ignora: `mapa x` muestra lo mismo que `mapa` |
 | **Tiempo** | No consume, no cuenta como acción, no va a la bitácora (FR-019) |
 | **Muestra** | Salas exploradas y salas avistadas, solo desde el conocimiento (FR-012, FR-018) |
 
@@ -70,10 +70,10 @@ Siempre se informa un motivo. Si coinciden varios, se informa por el orden de la
 | 3 | Entró a una sala con enemigos vivos | FR-027b | `Viaje detenido: hay enemigos en la sala.` |
 | 4 | Llegó al destino | FR-027a | `Llegaste a la sala <id>.` |
 | — | Ya no hay ruta conocida | FR-027d | `Viaje detenido: ya no conoces una ruta.` |
+| — | El motor rechaza un paso | FR-027f | El mismo mensaje de rechazo que daría `mover` |
 
-`Sin ruta` se evalúa al recalcular, antes de un paso, por lo que no consume tiempo y no compite con las demás.
-
-**Pendiente**: un paso rechazado por el motor no está en FR-027. Ver pregunta P-04 del plan.
+`Sin ruta` se evalúa al recalcular, antes de un paso, por lo que no consume tiempo y no compite con las demás. Un paso
+rechazado tampoco consume tiempo: el viaje termina ahí, con el mensaje de rechazo de `mover`.
 
 ### Después del viaje
 

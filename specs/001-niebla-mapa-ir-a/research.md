@@ -22,7 +22,7 @@ repositorio. Condicionan varias decisiones.
 | H2 | **Tras cargar, las puertas de una sala aún no restaurada valen lo del esqueleto.** | Experimento: abrir `1→2`, pasar a 2, guardar, cargar. Con la sala 1 sin restaurar, `1→2` vuelve a estar cerrada en memoria. | Una observación de puerta (FR-006) leería un estado falso ([R3](#r3-persistencia-del-conocimiento-fr-015-y-fr-016)). |
 | H3 | **Cada `Salida` es dirigida y tiene su propio `cerrada`.** En los 3 esqueletos locales, toda puerta cerrada `A→B` tiene su inversa `B→A` abierta; `abrir` solo cambia un sentido. | `datos_locales/esqueleto_*.json`, `MotorSimulacion.abrir_salida`. | La memoria debe ser por salida dirigida, y estar en una sala debe observar también las salidas que **entran** ([R1](#r1-representación-del-conocimiento-fr-001-a-fr-011)). Ver pregunta P-05 del plan. |
 | H4 | `main.py` crea `VistaConsola` antes de la rama `--replay`. | `main.py`, `vista = VistaConsola()`. | Incumple el Principio II ya hoy; este plan lo corrige porque toca `--replay`. |
-| H5 | `mover_jugador` usa `costo=100` escrito en el código; `DTOS/Salida.py` no tiene costo. | `MotorSimulacion.py`, `DTOS/Salida.py`. | La suposición de la spec «el movimiento ordinario ya lo usa» todavía no es cierta ([R7](#r7-costo-de-cada-salida)). |
+| H5 | `mover_jugador` usa `costo=100` escrito en el código; `DTOS/Salida.py` no tiene costo. | `MotorSimulacion.py`, `DTOS/Salida.py`. | La spec asigna el campo `costo` y su cobro en `mover` a la capacidad de terreno y costos; esta capacidad solo lee el costo ([R7](#r7-costo-de-cada-salida)). |
 | H6 | `CERRAR_PUERTA` emite «Una puerta se cerró sola.» esté donde esté el jugador. | `MotorSimulacion.ejecutar_evento`. | Revela un cambio no observado; viola FR-007 y FR-012 ([R8](#r8-lo-que-la-interfaz-muestra-hoy-sin-pasar-por-el-conocimiento)). |
 | H7 | `Salida` y los dobles de prueba aceptan atributos nuevos. Hay pruebas con ids de texto y motores armados sin `iniciar_partida`. | `tests/test_puertas.py`, `tests/bench_motor.py`, `motor._destino` ya guarda un atributo en la salida. | El conocimiento trata los ids como opacos, y el motor tolera `conocimiento is None`, para que las pruebas de la Parte I sigan sin cambios (SC-006). |
 | H8 | Ninguna salida paralela (dos salidas de una sala a la misma vecina) y ninguna salida de un solo sentido en los esqueletos locales. Son 3 criptas de ejemplo; nada garantiza que sea siempre así. | Recorrido de `datos_locales/esqueleto_*.json`. | El diseño no depende de esto (pregunta P-03 del plan). |
@@ -313,33 +313,35 @@ limpiar O(n) en cada búsqueda. Esto describe una forma posible de cumplir el co
 
 ## R7. Costo de cada salida
 
-**Decisión**: el costo vive en el **dato de la salida** y se lee por un **único acceso**:
+**Decisión**: esta capacidad **solo lee** el costo de cada salida, por un **único acceso**:
 
-- `DTOS/Salida.py` agrega un campo opcional `costo` (`None` si no viene), al final del constructor con valor por
-  defecto, para no romper llamadas como `Salida(2, False, None, None)`, y lo lee y escribe en `desde_json`/`a_json`.
-- `MotorSimulacion.costo_salida(salida)` devuelve el costo propio, o `COSTO_MOVER = 100` si no tiene. Es la regla de
-  `mover` de la Parte I, no un dato de una cripta (Principio IV), y va junto a `COSTO_USAR`.
-- `mover_jugador`, `MapaConocido` y `GrafoConocido` usan solo ese acceso. **Ni `Conocimiento`, ni `Viaje`, ni
-  `rutas_ir_a` contienen un número de costo.**
+- `MotorSimulacion.costo_salida(salida)` devuelve `getattr(salida, "costo", None)`, o `COSTO_MOVER = 100` si la salida
+  no trae costo. Es la regla de `mover` de la Parte I, no un dato de una cripta (Principio IV), y va junto a
+  `COSTO_USAR`. No escribe nada.
+- `MapaConocido` y `GrafoConocido` usan solo ese acceso. **Ni `Conocimiento`, ni `Viaje`, ni `rutas_ir_a` contienen
+  un número de costo.**
+- Esta capacidad **no** agrega el campo `costo` a `DTOS/Salida.py` ni cambia el movimiento de ningún actor
+  (`mover_jugador`, `mover_enemigo`, `ejecutar_evento`). Ambas cosas son de la capacidad de terreno y costos
+  (spec, Assumptions; tareas T006 a T012).
 
-**Justificación**: cuando la otra capacidad defina el costo, solo cambia de dónde sale el dato. Y se evita la
-incoherencia de H5: si `mover` siguiera con 100 fijo y la ruta usara el dato, el viaje elegiría rutas por un costo y
-el reloj cobraría otro, violando FR-025. Con costo por defecto el comportamiento de la Parte I no cambia.
+**Justificación**: cuando la otra capacidad agregue el campo, solo cambia de dónde sale el dato; el acceso ya existe y
+nada más hay que tocar aquí. Mientras ninguna salida traiga costo, todas valen 100 y la ruta y el reloj coinciden, así
+que se cumple FR-025 y el comportamiento de la Parte I no cambia. Para no romper FR-025, la otra capacidad debe agregar
+el campo y cobrarlo en `mover` en el mismo cambio (T010 y T011).
 
-Las salidas de los dobles de prueba no tienen el atributo, por lo que el acceso usa `getattr(salida, "costo", None)`.
+Las salidas de los dobles de prueba y el DTO actual no tienen el atributo, por eso el acceso usa `getattr`.
 
 **Alternativas descartadas**:
 
 - **Fijar 100 en el esqueleto o en `desde_json`**: no distingue «sin costo propio» de «cuesta 100», y escribe la regla
   en un DTO y en la caché de disco.
 - **Constante en `rutas_ir_a`**: es exactamente lo que se pide evitar.
-- **Dejar `mover_jugador` para la otra capacidad**: deja el sistema incoherente en cuanto una salida traiga costo.
+- **Agregar el campo y cambiar `mover` en esta capacidad**: invade la capacidad de terreno y costos y cambia un
+  contrato compartido (`Salida`) sin ser su responsable.
 
 **Resuelto** (enunciado §3.1 y §4.1; P-02 del plan): el campo JSON se llama `costo`, es un entero mayor o igual que 1,
 vale 100 si la salida no lo declara y es el mismo en ambos sentidos. Con ese dominio se cumple la precondición de
-costos no negativos de la búsqueda.
-
-**Sigue pendiente**: confirmar con el grupo quién cambia `mover_jugador`.
+costos no negativos de la búsqueda. Quién agrega el campo y cambia `mover`: la capacidad de terreno y costos.
 
 ---
 

@@ -36,13 +36,16 @@ Los `§` citados (§3.1, §6.1…) son del enunciado, que no está en el reposit
 pedido: reúne lo que las fases 1 a 7 necesitan y que no pertenece a ninguna de ellas.
 
 - [X] T001 Instalar `requests` en `.venv` y registrar la línea base con `python -m unittest discover -s tests -v`. Esperado: 128 de 128 (research, línea base). Si no da eso, detenerse y aclararlo antes de seguir. Atiende: SC-006, PR-16. Archivo: tests/ (solo lectura).
-- [ ] T002 [a cargo de quien implemente §3.1] Avisar del cambio del DTO `Salida` (contrato compartido) y resolver la parte pendiente de P-02: quién cambia `mover_jugador`. Anotar la respuesta en P-02. Atiende: FR-005, FR-025, PR-13. Archivo: specs/001-niebla-mapa-ir-a/plan.md.
-- [ ] T003 [a cargo de quien implemente §3.1, en lo referido a enemigos] Corregir la spec, en una confirmación separada y anterior al código (Principio IX): la suposición «Esta capacidad no define ni modifica costos» deja de ser cierta, porque esta capacidad agrega el campo y `mover` lo cobra (R7, H5). Registrar además el dominio de `costo` de §3.1 y qué pasa con un dato inválido o asimétrico (decisión tomada en T006 y T008). Depende de T002. **Nota**: la suposición de costos ya se corrigió en la spec y reemplaza lo anterior: esta capacidad solo lee el costo. Aquí solo falta confirmar ese cambio y SC-007 en Git antes del código, sin esperar a T002. Atiende: FR-005, FR-024, FR-025, PR-13. Archivo: specs/001-niebla-mapa-ir-a/spec.md.
+- [ ] T002 [a cargo de quien implemente §3.1] Avisar al grupo, antes de T010, del cambio del DTO `Salida` (contrato compartido). Es solo de la capacidad de terreno y costos, que también cambia `mover` (P-02 resuelta): no bloquea esta capacidad, que solo lee el costo (T118). Atiende: FR-005, FR-025. Archivo: DTOS/Salida.py (aviso previo).
+- [X] T003 Corregir la spec en una confirmación separada y anterior al código (Principio IX): esta capacidad solo lee el costo, el campo `costo` y su cobro en `mover` son de la capacidad de terreno y costos, y se agrega SC-007. **Hecho en `6ed5b92`**, anterior al primer código (`89dcb7a`). Registrar el dominio de `costo` de §3.1 y qué pasa con un dato inválido o asimétrico queda a cargo de la capacidad de terreno y costos (T006, T008). Atiende: FR-005, FR-024, PR-13, SC-007. Archivo: specs/001-niebla-mapa-ir-a/spec.md.
 - [X] T005 [P] Crear las utilidades de prueba: `crear_paquete_niebla(carpeta, salas, ...)`, que genera un paquete offline con topología, costos, puertas, llaves, antorcha, pergaminos, veneno, enemigos y trampas (formato de `crear_paquete_offline`), y `partida_niebla(...)`, que devuelve motor y controlador con `VistaFalsa`. El archivo no lleva prefijo `test`, así que `discover` no lo ejecuta. Atiende: SC-001, PR-16. Archivo: tests/utiles_niebla.py.
 - [ ] T061 [PERSONAS: grupo, P-05] Confirmar que «las dos salas que conecta» observa la salida dirigida `A→B` desde `B`, y que el viaje puede volver por `B→A`. Anotar la respuesta en P-05. Si es negativa, corregir la spec y luego T026 y T016. Atiende: FR-006, PR-02. Archivo: specs/001-niebla-mapa-ir-a/plan.md.
 
-**Punto de control 0**: línea base conocida y spec corregida y confirmada. Sin esto no empieza la Fase 1. P-05 (T061) debe
-responderse antes de la Fase 2, porque T016 y T026 aplican esa lectura; si no llega, se sigue con la lectura del plan.
+**Punto de control 0**: línea base conocida (T001) y spec corregida y confirmada en Git (T003, `6ed5b92`). Sin esto no
+empieza la Fase 1. T002 es solo de la capacidad de terreno y costos y no bloquea ninguna fase de esta. P-05 (T061) debe
+responderse antes de la Fase 4, porque el viaje de vuelta por `B→A` depende de esa lectura; T016 y T026 ya la aplican.
+Si la respuesta es negativa, se corrigen la spec, T026 y T016 antes de empezar la Fase 4; si no llega, se sigue con la
+lectura del plan.
 
 ---
 
@@ -171,7 +174,7 @@ sin efectos (T058), de modo que la suite sigue en verde en `main` y el juego rea
 
 ### Pruebas
 
-- [ ] T043 [P] [US4] Escribir la prueba de contrato, parametrizada por buscador: ruta única, más barata con más saltos, sin ruta, empate en cualquier orden de `aristas`, empate decidido lejos del origen, costos distintos de 100, y que no modifica nada. Corre ya contra `buscador_prueba`; contra `primer_paso` queda con `skip` hasta T063. No fijar resultado para P-03. Atiende: FR-023, FR-024, PR-10. Archivo: tests/test_ruta_contrato.py.
+- [ ] T043 [P] [US4] Escribir la prueba de contrato, parametrizada por buscador: ruta única, más barata con más saltos, sin ruta, empate en cualquier orden de `aristas`, empate decidido lejos del origen, costos distintos de 100, y que no modifica nada. Corre ya contra `buscador_prueba`; contra `primer_paso` queda con `skip` hasta T063. Incluir el desempate de P-03 (FR-024): dos salidas a la misma vecina con igual costo, gana la primera en el orden N, S, E, O. Atiende: FR-023, FR-024, PR-10. Archivo: tests/test_ruta_contrato.py.
 - [ ] T044 [P] [US2] [US4] Probar `GrafoConocido`, y con él el Escenario US2-4, parte de «ir a»: `aristas` no entrega salidas cerradas, sin observar ni hacia salas no exploradas, y el costo viene de `costo_salida`. Atiende: FR-011, FR-023, FR-029, SC-002, PR-10. Archivo: tests/test_viaje.py.
 - [ ] T045 [P] [US4] Escenario US4-1: hacia sala avistada o desconocida, rechazo con aviso; reloj, acciones y bitácora iguales. Apéndice B: «ir a» hacia sala no explorada. Atiende: FR-022, SC-005, PR-09. Archivo: tests/test_viaje.py.
 - [ ] T046 [P] [US4] Escenario US4-2: puerta recordada abierta y cerrada en realidad. Con otra ruta, el viaje sigue por ella; sin otra ruta, se detiene con aviso y sin tiempo adicional. Son dos pruebas. Apéndice B: puerta recordada abierta que está cerrada. Atiende: FR-026, FR-027, PR-09. Archivo: tests/test_viaje.py.
@@ -194,7 +197,7 @@ sin efectos (T058), de modo que la suite sigue en verde en `main` y el juego rea
 
 ### Dependen de otras personas
 
-- [ ] T060 [US4] [PERSONAS: grupo, P-04] Definir el motivo que se informa cuando el motor rechaza un paso en pleno viaje; corregir primero FR-027 en la spec, en confirmación separada (Principio IX), y luego `Viaje`, el aviso y su prueba. Mientras tanto, el viaje se detiene con `PASO_RECHAZADO`, sin prometer un texto. Atiende: FR-027, PR-09. Archivo: specs/001-niebla-mapa-ir-a/spec.md, Modelo/Viaje.py, tests/test_viaje.py.
+- [ ] T060 [US4] Aplicar FR-027f (P-04 resuelta): si el motor rechaza un paso en pleno viaje, el viaje se detiene con `PASO_RECHAZADO`, informa el mismo mensaje de rechazo que daría `mover` y no consume tiempo adicional. La spec ya está corregida; falta confirmarla en Git, en confirmación separada y anterior al código (Principio IX), y luego `Viaje`, el aviso y su prueba. Atiende: FR-027, PR-09. Archivo: specs/001-niebla-mapa-ir-a/spec.md, Modelo/Viaje.py, tests/test_viaje.py.
 - [ ] T062 [US4] [BLOQUEADA: D-PEND-01] [PERSONAS: grupo, quien lleve el cazador] Escribir el cuerpo de `primer_paso`: delegar en el módulo común (opción A) o implementar la búsqueda con cola de prioridad propia en `Modelo/ColaPrioridad.py` (opción B). Cumplir las 7 obligaciones del contrato, sin `heapq` ni `sorted()`, con complejidad documentada. Con la opción B, justificar la duplicación en T114. Atiende: FR-011, FR-023, FR-024, FR-029, PR-10. Archivo: Modelo/rutas_ir_a.py.
 - [ ] T063 [US4] [BLOQUEADA: D-PEND-01] Quitar el `skip` y correr el contrato contra `primer_paso`. Con la opción A, correr la misma tabla de desempates contra el cazador. Depende de T062. Atiende: FR-024, PR-10. Archivo: tests/test_ruta_contrato.py.
 - [ ] T064 [US4] [BLOQUEADA: D-PEND-01] Escenario US4-5, búsqueda real: con el buscador por defecto, el primer paso va a la vecina de menor id, y hacer el recorrido completo de un viaje sin inyección. Depende de T062. Atiende: FR-021, FR-023, FR-024, PR-09, PR-10. Archivo: tests/test_viaje.py.
@@ -317,17 +320,17 @@ pedido, pero T111, T112 y T113 **suben junto con su fase** si esa fase llega a `
 | 6 | `### Mediciones (`--bench`)` y `### Archivos generados` | Sin tarea propia: sube con T107 |
 | 7 | Ninguna nueva: se revisan las anteriores | — |
 
-- [ ] T111 [PERSONAS: aviso al grupo] Documentar `mapa`, la niebla, el estado recordado y que «Una puerta se cerró sola.» solo aparece si el jugador la observa. La parte de niebla sube con la Fase 2; la de `mapa` depende de T040. Atiende: FR-018, FR-019, FR-020, PR-08, PR-16. Archivo: README.md.
+- [X] T111 [PERSONAS: aviso al grupo] Documentar `mapa`, la niebla, el estado recordado y que «Una puerta se cerró sola.» solo aparece si el jugador la observa. La parte de niebla sube con la Fase 2; la de `mapa` depende de T040. **Hecho**: niebla, estado recordado y mensaje de cierre en `c74fd6a`; `mapa` en `919ad9f`. Atiende: FR-018, FR-019, FR-020, PR-08, PR-16. Archivo: README.md.
 - [ ] T112 [PERSONAS: aviso al grupo] Documentar `ir a <sala>`, rechazos y motivos de parada. Mientras T065 no esté hecha, decir que el comando aún no está disponible. Depende de T058. Atiende: FR-020, FR-021, FR-027, PR-09, PR-16. Archivo: README.md.
 - [ ] T113 [PERSONAS: aviso al grupo] Documentar `CRPT` 3 y `CRIPTA-LOG` 2, comentarios, `@cargar`, y corregir «`cargar` no se anota». Actualizar el ejemplo de bitácora. Depende de T094. Atiende: FR-016, FR-017, FR-030, PR-06, PR-11, PR-12, PR-16. Archivo: README.md.
 
 ### Documentos
 
 - [ ] T114 [PERSONAS: revisión del grupo] Agregar al Documento de Decisiones las decisiones 1 a 6 del plan, con alternativas y datos de `resultados_bench_niebla.txt`, marcando como hipótesis lo no medido. Incluir la resolución de D-PEND-01 y, si es la opción B, la justificación de la duplicación. Es un `.docx`: se edita con Word, no como texto. Depende de T107. Atiende: PR-16, Principio VIII, sin FR. Archivo: Proyecto Cripta.docx.
-- [ ] T115 Crear la matriz de trazabilidad: una fila por cada uno de los 31 FR y los 6 SC, con PR, tareas, prueba o `partida.log` de evidencia y estado (hecho, bloqueado o pendiente), más los 9 casos de SC-001. Atiende: SC-001, FR-001 a FR-031, PR-16. Archivo: specs/001-niebla-mapa-ir-a/trazabilidad.md.
+- [ ] T115 Crear la matriz de trazabilidad: una fila por cada uno de los 31 FR y los 7 SC, con PR, tareas, prueba o `partida.log` de evidencia y estado (hecho, bloqueado o pendiente), más los 9 casos de SC-001. Las filas de FR-005 y FR-024 deben indicar que dependen de T010 (capacidad de terreno y costos) para probarse con costos reales: hasta entonces solo se prueban con costos puestos a mano en la salida o con grafos de prueba. Atiende: SC-001, FR-001 a FR-031, PR-16. Archivo: specs/001-niebla-mapa-ir-a/trazabilidad.md.
 - [ ] T116 Recorrer los escenarios 1 a 8 de quickstart y correr la suite completa. Anotar el resultado en la matriz, incluido lo que siga bloqueado. Depende de T115. Atiende: SC-001, SC-002, SC-003, SC-004, SC-005, SC-006, PR-16. Archivo: specs/001-niebla-mapa-ir-a/trazabilidad.md.
 - [ ] T117 [PERSONAS: otra persona del grupo] Revisar los cambios en `Modelo/`, `Persistencia/` y `Bitacora/` (Flujo de desarrollo). Atiende: PR-16, sin FR. Archivo: Modelo/, Persistencia/, Bitacora/ (revisión).
-- [ ] T004 [PERSONAS: grupo] Al final, pasar los prompts de cada persona al Word, con fecha, comando, texto enviado y persona. Atiende: Principio XI, sin FR. Archivo: Prompts.docx.
+- [ ] T004 [PERSONAS: grupo] Al final, armar `PROMPTS_LLM.md` en la raíz del repositorio a partir de las notas de cada persona, con fecha, modelo, prompt textual y para qué se usó. Atiende: Principio XI, sin FR. Archivo: PROMPTS_LLM.md.
 
 **Punto de control 7**: matriz completa, ninguna afirmación de rendimiento sin medición, suite en verde. La capacidad se
 da por terminada solo cuando no quede ninguna fila bloqueada.
@@ -356,9 +359,8 @@ T080, T092, T093 ─ T094 ─ T096 ─ T097
 
 | Tarea | Quién | Qué necesita | Si no llega |
 |-------|-------|--------------|-------------|
-| T002, T003 (enemigos), T006 a T012 | Quien implemente §3.1 | Capacidad de terreno y costos | `costo_salida` sigue en 100 y esta capacidad continúa |
-| T004 | Cada persona del grupo | Pasar sus prompts a `Prompts.docx`, donde ya se lleva el registro | El Principio XI está resuelto; solo quedaría sin pasar parte del registro |
-| T060 | Grupo | P-04 | Queda `PASO_RECHAZADO` provisional |
+| T002, T006 a T012 | Quien implemente §3.1 | Capacidad de terreno y costos | `costo_salida` sigue en 100 y esta capacidad continúa |
+| T004 | Cada persona del grupo | Sus notas de prompts (fecha, modelo, prompt textual, para qué se usó) para armar `PROMPTS_LLM.md` | Falta parte del registro del Principio XI |
 | T061 | Grupo | P-05 | Se mantiene la lectura del plan |
 | T062 a T065, T109 | Grupo y quien lleve el cazador | D-PEND-01 | `ir a` no funciona en el juego real |
 | T066, T067 | Grupo | Aviso de contratos; P-07 | No empieza la Fase 5 |

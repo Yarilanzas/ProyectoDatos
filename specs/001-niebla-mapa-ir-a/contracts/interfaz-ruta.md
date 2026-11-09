@@ -40,7 +40,7 @@ determinista, pero no está ordenado por id: el desempate es responsabilidad de 
 | # | Obligación | FR / Principio |
 |---|------------|----------------|
 | 1 | Devolver el primer paso de una ruta de costo total mínimo | FR-024 |
-| 2 | Entre rutas de igual costo, el primer paso va a la vecina de menor id | FR-024 |
+| 2 | Entre rutas de igual costo, el primer paso va a la vecina de menor id; entre dos salidas hacia esa misma vecina con igual costo, gana la primera en el orden N, S, E, O | FR-024 |
 | 3 | Devolver `None` si el destino no es alcanzable | FR-022, FR-027d |
 | 4 | Usar solo `grafo`, sin leer el mapa real | FR-012 |
 | 5 | Ser determinista | Principio III |
@@ -49,8 +49,8 @@ determinista, pero no está ordenado por id: el desempate es responsabilidad de 
 
 Precondición: costos no negativos. El costo es un entero mayor o igual que 1 (enunciado §3.1).
 
-El desempate entre **dos salidas a la misma vecina con igual costo** no está definido (P-03). Mientras no se resuelva,
-la implementación solo debe ser determinista, y la prueba de contrato no fija un resultado.
+El desempate entre **dos salidas a la misma vecina con igual costo** lo fija FR-024 (P-03 resuelta): gana la primera en
+el orden N, S, E, O, sin importar el orden en que `aristas` las entregue.
 
 ## Prueba de contrato
 
@@ -59,6 +59,7 @@ la implementación solo debe ser determinista, y la prueba de contrato no fija u
 - ruta única, ruta más barata con más saltos, y sin ruta;
 - empate con primeros pasos a vecinas distintas, en cualquier orden de `aristas`;
 - empate decidido lejos del origen: el criterio es el **primer** paso, no el último;
+- dos salidas a la misma vecina con igual costo: gana la primera en el orden N, S, E, O;
 - costos distintos de 100, para demostrar que nada asume el valor por defecto.
 
 Si se elige la opción A, la misma tabla de casos de desempate debe correr también contra el cazador.
