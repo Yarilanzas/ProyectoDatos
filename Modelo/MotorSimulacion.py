@@ -1,5 +1,6 @@
 import random
-from Modelo.Conocimiento import Conocimiento
+from DTOS.MapaConocido import MapaConocido, SalaConocida, SalidaConocida
+from Modelo.Conocimiento import Conocimiento, EXPLORADA
 from Modelo.Evento import Evento
 from Modelo.RegistroMensajes import RegistroMensajes
 from Modelo.AgendaEventos import AgendaEventos
@@ -1112,6 +1113,37 @@ class MotorSimulacion:
             resultado.append((direccion, estado, getattr(salida, "llave", None)))
 
         return resultado
+
+    def mapa_conocido(self):
+        """Lo que el jugador sabe del mapa, como DTO para la vista (FR-005, FR-012, FR-018, PR-04).
+
+        Recorre solo `conocimiento.reveladas` (k salas no desconocidas), así que nunca lee una sala
+        desconocida. Exploradas y avistadas se ordenan por id con `elegir_algoritmo` (no `sorted`).
+        El estado de cada salida es el recuerdo, no la puerta real, y el costo sale de `costo_salida`.
+        Solo lee: no cambia reloj, acciones, historial ni bitácora (FR-019).
+
+        Complejidad: O(k log k + Σ salidas de las exploradas); con k <= 32 el ordenamiento es por
+        inserción, O(k²) acotado por esa constante (ver `Modelo/ordenamiento.py`).
+        Sin conocimiento (motor armado a mano, H7) devuelve un mapa vacío.
+        """
+        if self.conocimiento is None:
+            return MapaConocido([], [])
+
+        exploradas, avistadas = [], []
+        for sala in self.conocimiento.reveladas:
+            if self.conocimiento.estado(sala) == EXPLORADA:
+                exploradas.append(sala)
+            else:
+                avistadas.append(sala)
+
+        salas = []
+        for sala in self._ordenado(exploradas, lambda s: s.id):
+            salidas = [SalidaConocida(direccion, salida.sala_destino, self.costo_salida(salida),
+                                      self.conocimiento.texto_recuerdo(salida))
+                       for direccion, salida in sala.salidas.items()]
+            salas.append(SalaConocida(sala.id, getattr(sala, "nombre", ""), salidas))
+
+        return MapaConocido(salas, [sala.id for sala in self._ordenado(avistadas, lambda s: s.id)])
 
     def mover_jugador(self, direccion):
         jugador = self.jugador

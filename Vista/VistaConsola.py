@@ -11,6 +11,7 @@ AYUDA = """Comandos:
   equipar ID       usar ID               esperar
   retroceder       (usa un pergamino de retroceso)
   inventario [peso|valor|nombre]         mensajes
+  mapa             (salas exploradas y avistadas)
   red              (solicitudes y cache)
   puntajes [mejores|acciones|tiempo|derrotados|nombre]
   guardar [ARCHIVO]                      cargar ARCHIVO
@@ -103,6 +104,18 @@ class VistaConsola:
         self.mostrar("Últimos mensajes:")
         for texto in mensajes:
             self.mostrar(f"  · {texto}")
+
+    def mostrar_mapa(self, mapa):
+        # `mapa` es un MapaConocido ya ordenado por el motor: aquí solo se le da formato
+        # (contracts/comandos.md, FR-018). O(salas exploradas + sus salidas + avistadas).
+        self.mostrar("Mapa conocido:")
+        for sala in mapa.exploradas:
+            self.mostrar(f"  Sala {sala.id}: {sala.nombre}")
+            for salida in sala.salidas:
+                self.mostrar(f"    {salida.direccion} -> sala {salida.destino_id}   "
+                             f"costo {salida.costo}   {salida.estado}")
+        avistadas = ", ".join(str(id_sala) for id_sala in mapa.avistadas)
+        self.mostrar(f"Avistadas: {avistadas or 'ninguna'}")
 
     def mostrar_inventario_ordenado(self, nodos, criterio, inventario):
         # vista_ordenada (persona C) no cambia el orden real del inventario

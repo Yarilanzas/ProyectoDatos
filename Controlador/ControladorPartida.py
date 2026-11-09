@@ -191,6 +191,9 @@ class ControladorPartida:
             self.vista.mostrar_ayuda()
         elif comando == "inventario":
             self._inventario(argumento.lower())
+        elif comando == "mapa":
+            # consulta, igual que inventario: no consume tiempo ni va a la bitacora (FR-018, FR-019)
+            self.vista.mostrar_mapa(self.motor.mapa_conocido())
         elif comando == "mensajes":
             self.vista.mostrar_mensajes(self.motor.mensajes.ultimos())
         elif comando == "red":

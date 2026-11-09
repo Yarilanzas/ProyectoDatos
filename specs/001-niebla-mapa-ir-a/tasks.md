@@ -135,17 +135,17 @@ No se debe declarar FR-015 ni FR-017 como cumplidos antes de la Fase 5.
 
 ### Pruebas
 
-- [ ] T033 [P] [US3] Escenario US3-1: exploradas 1 y 2, `mapa` lista cada salida con dirección, destino, costo y estado, y aparte las avistadas; ninguna sala desconocida como entrada propia. Atiende: FR-005, FR-012, FR-018, PR-04, PR-08. Archivo: tests/test_mapa.py.
-- [ ] T034 [P] [US3] Escenario US3-2: `mapa` no cambia reloj, acciones ni bitácora, en cualquier estado. Atiende: FR-019, PR-08. Archivo: tests/test_mapa.py.
-- [ ] T035 [P] [US2] [US3] Escenario US2-4, parte de `mapa`: `C→D` aparece con destino y costo y estado `sin observar`. Atiende: FR-011, FR-018, SC-002, PR-08. Archivo: tests/test_mapa.py.
-- [ ] T036 [P] [US3] Probar el contrato de salida: salas por id ascendente, `Avistadas: ninguna`, avistada solo por id, sin llaves, enemigos, trampas ni objetos, costo distinto de 100, y puerta recordada distinta de la real. Atiende: FR-005, FR-010, FR-012, FR-018, SC-002, PR-04. Archivo: tests/test_mapa.py.
+- [X] T033 [P] [US3] Escenario US3-1: exploradas 1 y 2, `mapa` lista cada salida con dirección, destino, costo y estado, y aparte las avistadas; ninguna sala desconocida como entrada propia. Atiende: FR-005, FR-012, FR-018, PR-04, PR-08. Archivo: tests/test_mapa.py.
+- [X] T034 [P] [US3] Escenario US3-2: `mapa` no cambia reloj, acciones ni bitácora, en cualquier estado. Atiende: FR-019, PR-08. Archivo: tests/test_mapa.py.
+- [X] T035 [P] [US2] [US3] Escenario US2-4, parte de `mapa`: `C→D` aparece con destino y costo y estado `sin observar`. Atiende: FR-011, FR-018, SC-002, PR-08. Archivo: tests/test_mapa.py.
+- [X] T036 [P] [US3] Probar el contrato de salida: salas por id ascendente, `Avistadas: ninguna`, avistada solo por id, sin llaves, enemigos, trampas ni objetos, costo distinto de 100, y puerta recordada distinta de la real. Atiende: FR-005, FR-010, FR-012, FR-018, SC-002, PR-04. Archivo: tests/test_mapa.py.
 
 ### Implementación
 
-- [ ] T037 [P] [US3] Crear los DTO `MapaConocido`, `SalaConocida` (`id`, `nombre`, `salidas`) y `SalidaConocida` (`direccion`, `destino_id`, `costo`, `estado`, que es `abierta`, `cerrada` o `sin observar`). Atiende: FR-018, PR-04. Archivo: DTOS/MapaConocido.py.
-- [ ] T038 [US3] Agregar `mapa_conocido()`, que recorre `reveladas`, ordena con `elegir_algoritmo` y no con `sorted`, y toma el costo de `costo_salida`. O(k log k + salidas de las exploradas). Depende de T037. Atiende: FR-005, FR-012, FR-018, PR-04. Archivo: Modelo/MotorSimulacion.py.
-- [ ] T039 [US3] Agregar `mostrar_mapa(mapa)` con el formato de contracts/comandos.md, sin reglas de juego, y agregar `mapa` a `AYUDA`. Atiende: FR-018, FR-020, PR-08. Archivo: Vista/VistaConsola.py.
-- [ ] T040 [US3] Agregar `mapa` a `ejecutar` como consulta, igual que `inventario`, sin tocar `ACCIONES`. Depende de T038 y T039. Atiende: FR-018, FR-019, PR-08. Archivo: Controlador/ControladorPartida.py.
+- [X] T037 [P] [US3] Crear los DTO `MapaConocido`, `SalaConocida` (`id`, `nombre`, `salidas`) y `SalidaConocida` (`direccion`, `destino_id`, `costo`, `estado`, que es `abierta`, `cerrada` o `sin observar`). Atiende: FR-018, PR-04. Archivo: DTOS/MapaConocido.py.
+- [X] T038 [US3] Agregar `mapa_conocido()`, que recorre `reveladas`, ordena con `elegir_algoritmo` y no con `sorted`, y toma el costo de `costo_salida`. O(k log k + salidas de las exploradas). Depende de T037. Atiende: FR-005, FR-012, FR-018, PR-04. Archivo: Modelo/MotorSimulacion.py.
+- [X] T039 [US3] Agregar `mostrar_mapa(mapa)` con el formato de contracts/comandos.md, sin reglas de juego, y agregar `mapa` a `AYUDA`. Atiende: FR-018, FR-020, PR-08. Archivo: Vista/VistaConsola.py.
+- [X] T040 [US3] Agregar `mapa` a `ejecutar` como consulta, igual que `inventario`, sin tocar `ACCIONES`. Depende de T038 y T039. Atiende: FR-018, FR-019, PR-08. Archivo: Controlador/ControladorPartida.py.
 
 **Punto de control 3**: T033 a T036 en verde. Sube junto con T111 (ver [Orden del README](#orden-del-readme)).
 
