@@ -221,8 +221,8 @@ comparar el mapa; luego reproducir la bitácora y comparar reloj, posición y co
 
 ### Aviso
 
-- [ ] T066 [PERSONAS: grupo] Avisar antes de cambiar nada: `CRPT` 2→3, `CRIPTA-LOG` 1→2, firmas de `guardar_partida` y `ejecutar_replay`, función nueva `guardar_motor`, y que `partida.cripta`, `partida.cripta.log` y `partida.log` dejan de cargarse. Atiende: FR-016, FR-030, PR-06, PR-11, PR-12, PR-14. Archivo: specs/001-niebla-mapa-ir-a/contracts/formato-partida.md, specs/001-niebla-mapa-ir-a/contracts/formato-bitacora.md (referencia).
-- [ ] T067 [PERSONAS: grupo, P-07] Obtener la aceptación de que `@cargar` hace falso «`cargar` no se anota». Anotar la respuesta en P-07. Bloquea T084 a T094. Atiende: FR-017, PR-12. Archivo: specs/001-niebla-mapa-ir-a/plan.md.
+- [ ] T066 [PERSONAS: grupo] Avisar antes de cambiar nada: `CRPT` 2→3, `CRIPTA-LOG` 1→2, firmas de `guardar_partida` y `ejecutar_replay`, función nueva `guardar_motor`, y que `partida.cripta`, `partida.cripta.log` y `partida.log` dejan de cargarse. **Respuesta de Persona D** (línea de tiempo y persistencia, spec 004): aceptado, con las cuatro condiciones de P-07: (a) `@cargar` queda escrito en contracts/formato-bitacora.md; (b) `--replay --hasta t` cuenta el reloj a través de las líneas `@cargar`; (c) una versión incompatible se rechaza con código 2, como hoy; (d) se actualiza el README (T113). La disposición del `CRPT` 3 la define D (P-10). Falta confirmar el aviso al resto del grupo. Atiende: FR-016, FR-030, PR-06, PR-11, PR-12, PR-14. Archivo: specs/001-niebla-mapa-ir-a/contracts/formato-partida.md, specs/001-niebla-mapa-ir-a/contracts/formato-bitacora.md (referencia).
+- [X] T067 [PERSONAS: grupo, P-07] Obtener la aceptación de que `@cargar` hace falso «`cargar` no se anota». Anotar la respuesta en P-07. Bloquea T084 a T094. **Hecho**: aceptado por Persona D (spec 004) y anotado en P-07, con cuatro condiciones que obligan a las tareas de la fase: (a) `@cargar` queda escrito en contracts/formato-bitacora.md; (b) `--replay --hasta t` cuenta el reloj a través de las líneas `@cargar` (T084, T093); (c) una versión incompatible se rechaza con código 2, como hoy (T082, T084); (d) se actualiza el README (T113). Atiende: FR-017, PR-12. Archivo: specs/001-niebla-mapa-ir-a/plan.md.
 
 ### Pruebas de persistencia v3
 
@@ -237,7 +237,7 @@ comparar el mapa; luego reproducir la bitácora y comparar reloj, posición y co
 
 - [ ] T074 [US5] Implementar `exportar` y `restaurar` (sin historial; recalcula avistadas por FR-004), ordenando con `elegir_algoritmo`. Atiende: FR-004, FR-015, PR-06. Archivo: Modelo/Conocimiento.py.
 - [ ] T075 [P] [US5] Crear `RegistroConocimiento` con `to_bytes`, `from_bytes`, `to_dict` y `from_dict`, y el formato exacto de contracts/formato-partida.md: `<I`, `<H+s`, `<B`, little endian y sin relleno. Recuerdos `1 = abierta, 2 = cerrada`; puertas reales `0 = abierta, 1 = cerrada`. Atiende: FR-015, PR-06. Archivo: Persistencia/RegistroConocimiento.py.
-- [ ] T076 [US5] Subir `VERSION_FORMATO` a 3 y agregar `[largo conocimiento][conocimiento]`; `guardar_partida(..., conocimiento=None)` escribe largo 0; `_inicio_salas` y `_validar_encabezado` usan el bloque; agregar `leer_conocimiento()`, de una sola vez. Depende de T075. Atiende: FR-015, FR-016, PR-06. Archivo: Persistencia/FormatoBinario.py, Persistencia/ArchivoPartida.py.
+- [ ] T076 [US5] Subir `VERSION_FORMATO` a 3 y agregar `[largo conocimiento][conocimiento]`; `guardar_partida(..., conocimiento=None)` escribe largo 0; `_inicio_salas` y `_validar_encabezado` usan el bloque; agregar `leer_conocimiento()`, de una sola vez. La posición del bloque y la convivencia con el bloque de línea de tiempo siguen la disposición que define Persona D (P-10), en el mismo salto a la versión 3. Depende de T075. Atiende: FR-015, FR-016, PR-06. Archivo: Persistencia/FormatoBinario.py, Persistencia/ArchivoPartida.py.
 - [ ] T077 [US5] Exportar el conocimiento y las puertas reales, solo las que están cerradas o tienen llave o cierre automático; aplicar la tabla de puertas reales sin leer bloques de sala (H2). Depende de T074 y T076. Atiende: FR-006, FR-015, PR-06, PR-07. Archivo: Persistencia/ConversorPartida.py.
 - [ ] T078 [P] [US5] Agregar la clave `conocimiento`. Depende de T075. Atiende: FR-015, PR-06. Archivo: Persistencia/ExportadorJSON.py.
 - [ ] T079 [US5] En `cargar_partida`, seguir el orden de data-model: leer jugador y conocimiento, `_crear_motor`, aplicar puertas reales, `restaurar`, restaurar jugador y reloj, `preparar_sala`. Rechazar la falta de bloque y la sala del jugador no explorada. Depende de T077. Atiende: FR-015, FR-016, PR-06, PR-07. Archivo: Gestor/PreparadorPartida.py.
@@ -270,8 +270,12 @@ comparar el mapa; luego reproducir la bitácora y comparar reloj, posición y co
 - [ ] T097 [US5] Ajustar las llamadas a `ejecutar_replay` que pasan `VistaFalsa`. Son los únicos cambios permitidos a estas pruebas. Depende de T096. Atiende: SC-006, PR-14. Archivo: tests/test_integracion.py, tests/test_puntajes.py.
 - [ ] T098 [PERSONAS: grupo] Decidir si `partida.cripta` y `partida.cripta.log`, que quedan obsoletos y que la constitución dice que no deberían versionarse, se retiran, y regenerar `partida.log` si sirve de evidencia. Atiende: FR-016, FR-030, SC-001, PR-16. Archivo: partida.log, partida.cripta, partida.cripta.log.
 
-**Punto de control 5**: T068 a T073, T081 a T083 y T086 a T090, T095 en verde; suite completa en verde; quickstart 5, 6 y 7
-correctos. Sube junto con T113, que es contrato de formatos.
+### Puntos de control de la línea de tiempo (pedido de Persona D)
+
+- [ ] T119 [US5] Hacer que `Conocimiento` pueda copiarse y serializarse, con cambios reversibles, porque los puntos de control de la línea de tiempo de Persona D (spec 004) lo necesitan. **Prueba primero**: escribir las pruebas y comprobar que fallan antes del código. Probar que (1) una copia es independiente: cambiar el original no cambia la copia y viceversa, y la copia da el mismo `MapaConocido`; (2) serializar y reconstruir da el mismo estado de salas, recuerdos, `reveladas` y `observadas`, y el mismo estado da la misma serialización; (3) cada lote de cambios se puede invertir y volver a aplicar (`invertir`/`aplicar`) en cualquier secuencia válida, y el estado coincide en cada punto con una foto tomada antes; (4) `revertir` del `Historial` sigue funcionando igual y `Modelo/retroceso.py` no cambia. Implementar: `copiar()`; serialización reusando `exportar`/`restaurar` de T074; lotes que guardan valor anterior y nuevo, con `aplicar(lote)` e `invertir(lote)`. Sin `dict`/`set` como índice, complejidad documentada en el docstring (copia y serialización O(n + e); aplicar e invertir O(tamaño del lote)). Depende de T074. Atiende: FR-015, FR-016, PR-05, PR-06. Archivo: tests/test_persistencia_conocimiento.py, Modelo/Conocimiento.py.
+
+**Punto de control 5**: T068 a T073, T081 a T083, T086 a T090, T095 y T119 en verde; suite completa en verde; quickstart 5,
+6 y 7 correctos. Sube junto con T113, que es contrato de formatos.
 
 ---
 
@@ -329,7 +333,7 @@ pedido, pero T111, T112 y T113 **suben junto con su fase** si esa fase llega a `
 - [ ] T114 [PERSONAS: revisión del grupo] Agregar al Documento de Decisiones las decisiones 1 a 6 del plan, con alternativas y datos de `resultados_bench_niebla.txt`, marcando como hipótesis lo no medido. Incluir la resolución de D-PEND-01 y, si es la opción B, la justificación de la duplicación. Es un `.docx`: se edita con Word, no como texto. Depende de T107. Atiende: PR-16, Principio VIII, sin FR. Archivo: Proyecto Cripta.docx.
 - [ ] T115 Crear la matriz de trazabilidad: una fila por cada uno de los 31 FR y los 7 SC, con PR, tareas, prueba o `partida.log` de evidencia y estado (hecho, bloqueado o pendiente), más los 9 casos de SC-001. Las filas de FR-005 y FR-024 deben indicar que dependen de T010 (capacidad de terreno y costos) para probarse con costos reales: hasta entonces solo se prueban con costos puestos a mano en la salida o con grafos de prueba. Atiende: SC-001, FR-001 a FR-031, PR-16. Archivo: specs/001-niebla-mapa-ir-a/trazabilidad.md.
 - [ ] T116 Recorrer los escenarios 1 a 8 de quickstart y correr la suite completa. Anotar el resultado en la matriz, incluido lo que siga bloqueado. Depende de T115. Atiende: SC-001, SC-002, SC-003, SC-004, SC-005, SC-006, PR-16. Archivo: specs/001-niebla-mapa-ir-a/trazabilidad.md.
-- [ ] T117 [PERSONAS: otra persona del grupo] Revisar los cambios en `Modelo/`, `Persistencia/` y `Bitacora/` (Flujo de desarrollo). Atiende: PR-16, sin FR. Archivo: Modelo/, Persistencia/, Bitacora/ (revisión).
+- [ ] T117 [PERSONAS: otra persona del grupo; Persona D] Revisar los cambios en `Modelo/`, `Persistencia/`, `Bitacora/` y `main.py` (Flujo de desarrollo). Quien revisa los cambios en `Bitacora/`, `Persistencia/` y `main.py` es Persona D. Atiende: PR-16, sin FR. Archivo: Modelo/, Persistencia/, Bitacora/, main.py (revisión).
 - [ ] T004 [PERSONAS: grupo] Al final, armar `PROMPTS_LLM.md` en la raíz del repositorio a partir de las notas de cada persona, con fecha, modelo, prompt textual y para qué se usó. Atiende: Principio XI, sin FR. Archivo: PROMPTS_LLM.md.
 
 **Punto de control 7**: matriz completa, ninguna afirmación de rendimiento sin medición, suite en verde. La capacidad se
@@ -348,6 +352,7 @@ Fase 0 ─ Fase 1 ─ Fase 2 ─┬─ Fase 3 (mapa) ─────────
 T066 + T067 (aviso) ─ todas las demás tareas de la Fase 5
 T084 (bitácora v2) ─ T085, T092, T093
 T080, T092, T093 ─ T094 ─ T096 ─ T097
+T074 (exportar/restaurar) ─ T119 (copia, serialización y lotes reversibles, para Persona D)
 ```
 
 - Las fases 3 y 4 necesitan a la 1 porque muestran y usan `costo_salida`.
@@ -363,11 +368,12 @@ T080, T092, T093 ─ T094 ─ T096 ─ T097
 | T004 | Cada persona del grupo | Sus notas de prompts (fecha, modelo, prompt textual, para qué se usó) para armar `PROMPTS_LLM.md` | Falta parte del registro del Principio XI |
 | T061 | Grupo | P-05 | Se mantiene la lectura del plan |
 | T062 a T065, T109 | Grupo y quien lleve el cazador | D-PEND-01 | `ir a` no funciona en el juego real |
-| T066, T067 | Grupo | Aviso de contratos; P-07 | No empieza la Fase 5 |
+| T066 | Grupo | Aviso de contratos. Persona D ya aceptó (P-07, con cuatro condiciones); falta confirmar el resto del grupo | No empieza la Fase 5 |
+| T076 | Persona D | Disposición final del `CRPT` 3 (P-10) | El bloque de conocimiento queda como propuesta |
 | T098 | Grupo | Destino de los archivos versionados | Quedan archivos obsoletos en el repositorio |
 | T110 | Curso | Publicación de la cripta de referencia | §6.1 queda sin veredicto definitivo |
 | T111 a T113 | Grupo | Aviso antes de editar el README | No se sube la fase correspondiente |
-| T114, T117 | Grupo | Revisión | Sin cierre de la capacidad |
+| T114, T117 | Grupo; Persona D revisa `Bitacora/`, `Persistencia/` y `main.py` | Revisión | Sin cierre de la capacidad |
 
 ## Paralelismo
 

@@ -3,18 +3,29 @@
 Cambia de la versión 2 a la **3** (FR-016, Principio VI). Es un contrato compartido: el README se actualiza en el
 mismo cambio y se avisa al grupo.
 
-## Disposición
+**Quién define la disposición**: Persona D (línea de tiempo y persistencia, spec 004), pregunta P-10 del plan. Lo que
+sigue es la **propuesta** de esta capacidad, pendiente de la disposición final de D.
+
+## Disposición (propuesta)
+
+El salto a la versión 3 lleva **dos bloques nuevos**: el de conocimiento (de esta capacidad, detallado abajo) y el de
+línea de tiempo (de Persona D, que define su contenido). Ninguno de los dos justifica un salto de versión aparte.
 
 ```text
-v2: [encabezado][largo jugador][jugador]                                 [salas][índice]
-v3: [encabezado][largo jugador][jugador][largo conocimiento][conocimiento][salas][índice]
+v2: [encabezado][largo jugador][jugador]                                                                        [salas][índice]
+v3: [encabezado][largo jugador][jugador][largo conocimiento][conocimiento][largo línea de tiempo][línea de tiempo][salas][índice]
 ```
 
-Encabezado, bloques de sala e índice no cambian, salvo el número de versión.
+El orden de los dos bloques nuevos lo fija D. Encabezado, bloques de sala e índice no cambian, salvo el número de
+versión.
 
 - `largo conocimiento`: `<I`. Vale 0 si no hay conocimiento (solo los benchmarks de registros sueltos).
-- `_inicio_salas = TAMANO_ENCABEZADO + 4 + largo_jugador + 4 + largo_conocimiento`.
-- `_validar_encabezado` exige que el índice esté después de ambos campos de largo.
+- `largo línea de tiempo` y su bloque: los define D.
+- `_inicio_salas` suma los dos campos de largo y los dos bloques; la fórmula exacta queda con la disposición final de D.
+- `_validar_encabezado` exige que el índice esté después de todos los campos de largo.
+
+**Costo de las salidas**: el `CRPT` no lo guarda. Al cargar se toma del esqueleto, igual que la topología (decisión de
+D).
 
 ## Bloque de conocimiento
 
@@ -61,8 +72,9 @@ La lectura de `leer_conocimiento` es de una sola vez y no lee bloques de sala: l
 
 ## Qué no se guarda
 
-Igual que hoy: antorcha, veneno, velocidad, cierres automáticos pendientes e historial de retroceso. El conocimiento
-ganado con la antorcha sí se conserva. `Viaje` no se guarda.
+Igual que hoy: antorcha, veneno, velocidad, cierres automáticos pendientes e historial de retroceso, salvo lo que el
+bloque de línea de tiempo de D defina guardar. El conocimiento ganado con la antorcha sí se conserva. `Viaje` no se
+guarda. Tampoco el costo de las salidas: sale del esqueleto.
 
 ## `ExportadorJSON`
 

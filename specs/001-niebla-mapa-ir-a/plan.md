@@ -25,7 +25,8 @@ El análisis encontró dos defectos existentes que este plan debe corregir para 
 
 **Primary Dependencies**: `requests` (única permitida); no se agrega ninguna
 
-**Storage**: archivo binario `CRPT` (versión 2 → 3), bitácora de texto `CRIPTA-LOG` (versión 1 → 2)
+**Storage**: archivo binario `CRPT` (versión 2 → 3, disposición definida por Persona D, P-10), bitácora de texto
+`CRIPTA-LOG` (versión 1 → 2)
 
 **Testing**: `unittest`, sin red, con paquetes offline temporales
 
@@ -78,7 +79,7 @@ excepciones.
 |---|------|------------|---------|
 | 1 | Conocimiento | Arreglos densos por ordinal, y listas de lo revelado | [R1](research.md#r1-representación-del-conocimiento-fr-001-a-fr-011) |
 | 2 | Historial | Un lote de deltas por operación; `retroceso.py` no cambia | [R2](research.md#r2-registro-de-cambios-en-el-historial-fr-014-fr-031) |
-| 3 | Persistencia y replay | Bloque nuevo en `CRPT` 3; directiva `@cargar` en la bitácora | [R3](research.md#r3-persistencia-del-conocimiento-fr-015-y-fr-016), [R4](research.md#r4-replay-de-partidas-cargadas-fr-017) |
+| 3 | Persistencia y replay | Bloque de conocimiento en `CRPT` 3, junto al bloque de línea de tiempo de Persona D en el mismo salto de versión (disposición final de D, P-10); directiva `@cargar` en la bitácora (P-07, aceptada por D con condiciones) | [R3](research.md#r3-persistencia-del-conocimiento-fr-015-y-fr-016), [R4](research.md#r4-replay-de-partidas-cargadas-fr-017) |
 | 4 | Comandos | `mapa` e `ir a`, con `Viaje` en el modelo y orquestación en el controlador | [R5](research.md#r5-comandos-nuevos-y-bitácora-fr-018-a-fr-022-fr-030) |
 | 5 | Ruta | **PENDIENTE D-PEND-01.** Interfaz `primer_paso` decidida | [R6](research.md#r6-búsqueda-de-la-ruta-de-ir-a-fr-023-fr-024-fr-026) |
 | 6 | Costo | Solo lectura por el único acceso `motor.costo_salida` (100 si la salida no trae costo). El campo `costo` de `Salida` y el cambio de `mover` son de la capacidad de terreno y costos | [R7](research.md#r7-costo-de-cada-salida) |
@@ -128,7 +129,8 @@ Solo el cuerpo de `primer_paso` espera a D-PEND-01. `Viaje` se puede probar ante
 | **P-04** | ✅ **Resuelta** (FR-027f): si el motor rechaza un paso en pleno viaje, el viaje se detiene e informa el mismo mensaje de rechazo que daría `mover`, sin consumir tiempo adicional | — | Nada | Motivo `PASO_RECHAZADO` (T060) |
 | **P-05** | Las salidas son dirigidas y `A→B` cerrada convive con `B→A` abierta. ¿Se confirma que «las dos salas que conecta» observa la salida dirigida `A→B` desde `B`, y que el viaje puede volver por `B→A`? | Grupo | Nada del diseño; confirma la lectura de FR-006 | El plan aplica esa lectura |
 | **P-06** | «La trampa X se rearmó.» se muestra aunque sea en una sala desconocida. ¿Debe filtrarse? Queda fuera de la letra de FR-010 y FR-012 | Grupo | Nada | Sin cambio |
-| **P-07** | `@cargar` hace falso el texto del README «`cargar` no se anota». ¿El grupo lo acepta como contrato nuevo? | Grupo | PR-12 | Es la solución de este plan |
+| **P-07** | ✅ **Aceptada por Persona D** (línea de tiempo y persistencia, spec 004): `@cargar` hace falso el texto del README «`cargar` no se anota» y se acepta como contrato nuevo, con cuatro condiciones: (a) queda escrito en [contracts/formato-bitacora.md](contracts/formato-bitacora.md); (b) `--replay --hasta t` cuenta el reloj a través de las líneas `@cargar`; (c) una versión incompatible se rechaza con código 2, como hoy; (d) se actualiza el README, porque «`cargar` no se anota» deja de ser cierto (T113) | Persona D | Nada | PR-12 sigue con `@cargar`, cumpliendo las cuatro condiciones |
+| **P-10** | Disposición final del `CRPT` 3. **La define Persona D** (spec 004). Propuesta: un bloque de conocimiento (de esta capacidad) y uno de línea de tiempo (de D), ambos dentro del mismo salto a la versión 3. D no guarda el costo de las salidas en el `CRPT`: lo toma del esqueleto | Persona D | T076 (posiciones y `_inicio_salas`) | El bloque de conocimiento de [contracts/formato-partida.md](contracts/formato-partida.md) es una propuesta |
 | **P-08** | ✅ **Resuelta** (enunciado §6.1): el cálculo de un paso de «ir a» tiene un límite de 5 ms con el mapa conocido completo de la cripta de referencia. El valor puede ajustarse por enmienda | — | Nada | M4 verifica el límite |
 | **P-09** | ✅ **Resuelta** (enunciado §3.4): manda FR-027. El enunciado lista exactamente las condiciones de parada: llegar al destino, entrar a una sala con enemigos, recibir daño, o que deje de existir una ruta conocida. Un enemigo que entra durante un paso sin hacer daño no detiene el viaje | — | Nada | Se aplica FR-027 |
 
