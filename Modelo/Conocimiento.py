@@ -1,6 +1,8 @@
-# Lo que el jugador sabe de la cripta (niebla de guerra). FR-001 a FR-011, FR-014, PR-01, PR-02, PR-03, PR-05.
-# Es parte del estado de la partida, separado del mapa real para proteger FR-012.
+# Lo que el jugador sabe de la cripta (niebla de guerra). FR-001 a FR-011, FR-014, FR-015, PR-01, PR-02, PR-03,
+# PR-05, PR-06. Es parte del estado de la partida, separado del mapa real para proteger FR-012.
 # No conoce la vista, ni el motor, ni archivos (Principio II).
+
+from Modelo.ordenamiento import elegir_algoritmo
 
 # Estado de una sala.
 DESCONOCIDA = 0
@@ -13,7 +15,7 @@ ABIERTA = 1
 CERRADA = 2
 TEXTO_RECUERDO = ("sin observar", "abierta", "cerrada")  # por valor del recuerdo
 
-# Primer campo de cada entrada de un lote: (tipo, ordinal, valor_anterior).
+# Cada entrada de un lote es (tipo, ordinal, valor_anterior, valor_nuevo); este es el primer campo (T119).
 _CAMBIO_SALA = 0
 _CAMBIO_PUERTA = 1
 
@@ -40,9 +42,25 @@ class Conocimiento:
     | destino(salida)                | O(1) tras resolverla una vez                                 |
     | explorada_por_texto(texto)     | O(k), k salas reveladas                                      |
     | _explorar(sala, lote) (interna)| O(salidas de la sala)                                        |
-    | revertir(lote)                 | O(tamaño del lote)                                           |
+    | aplicar(lote) / invertir(lote) | O(tamaño del lote)                                           |
+    | revertir(lote)                 | O(tamaño del lote): es invertir, lo que llama el Historial   |
+    | exportar()                     | O(k log k + p log p), con elegir_algoritmo (k <= 32: O(k²))  |
+    | restaurar(exploradas, recuerd.)| O(n + e + Σ salidas de las exploradas + (k + p) log n), más  |
+    |                                | O(n log n) una sola vez para el índice por id                |
+    | copiar()                       | O(n + e)                                                     |
 
-    Memoria: O(n + e), más los lotes de los últimos 5 intervalos del Historial.
+    k salas reveladas, p puertas observadas. Memoria: O(n + e), más los lotes de los últimos 5
+    intervalos del Historial.
+
+    Lotes (PR-05, T119): cada cambio guarda el valor anterior y el nuevo, así que un lote se puede
+    invertir y volver a aplicar. Una secuencia es válida si se invierte siempre el último lote
+    aplicado y se aplica el siguiente al último: `reveladas` y `observadas` se deshacen con `pop`.
+    Una secuencia inválida lanza ValueError y deja todo como estaba.
+
+    Serialización (FR-015, T074, T119): `exportar` da las exploradas y los recuerdos en orden canónico
+    (por id, y por (sala, dirección)), y `restaurar` reconstruye todo a partir de eso, recalculando las
+    avistadas (FR-004). Es lo que guarda `RegistroConocimiento`. El orden de revelación de `reveladas` y
+    `observadas` no es parte del estado guardado: tras restaurar queda en orden canónico.
 
     Reglas que se mantienen:
     - Una sala es AVISTADA si y solo si no está explorada y es destino de una salida de una sala
@@ -61,15 +79,22 @@ class Conocimiento:
         self.reveladas = []
         self.observadas = []
         self.entrantes = [[] for _ in salas]  # infraestructura: nunca se muestra (FR-013)
+        # Por ordinal, para que aplicar un lote y restaurar encuentren el objeto. Solo lectura tras crearse:
+        # una copia los comparte.
+        self._salas = list(salas)
+        self._salidas = []
+        self._por_id = None  # salas ordenadas por id; se arma la primera vez que restaurar lo necesita
 
         for ordinal, sala in enumerate(salas):
             sala._ordinal = ordinal
 
         for sala in salas:
-            for salida in sala.salidas.values():
+            for direccion, salida in sala.salidas.items():
                 salida._ordinal = len(self.recuerdo_puerta)
                 salida._origen = sala
+                salida._direccion = direccion
                 self.recuerdo_puerta.append(SIN_OBSERVAR)
+                self._salidas.append(salida)
 
                 destino = destino_de(salida)
                 if destino is not None:
@@ -121,6 +146,7 @@ class Conocimiento:
                     self._explorar(vecina, lote)
 
         self._registrar(lote, historial)
+        return lote
 
     def observar_puerta(self, salida, historial):
         # Copia el estado real al recuerdo. Es el único lugar, junto con `entrar`, que lee el estado
@@ -128,6 +154,7 @@ class Conocimiento:
         lote = []
         self._observar(salida, lote)
         self._registrar(lote, historial)
+        return lote
 
     def _explorar(self, sala, lote):
         if self.estado_sala[sala._ordinal] == EXPLORADA:
@@ -151,7 +178,7 @@ class Conocimiento:
             self.observadas.append(salida)
 
         self.recuerdo_puerta[salida._ordinal] = valor
-        lote.append((_CAMBIO_PUERTA, salida._ordinal, anterior))
+        lote.append((_CAMBIO_PUERTA, salida._ordinal, anterior, valor))
 
     def _cambiar_sala(self, sala, valor, lote):
         anterior = self.estado_sala[sala._ordinal]
@@ -160,7 +187,7 @@ class Conocimiento:
             self.reveladas.append(sala)
 
         self.estado_sala[sala._ordinal] = valor
-        lote.append((_CAMBIO_SALA, sala._ordinal, anterior))
+        lote.append((_CAMBIO_SALA, sala._ordinal, anterior, valor))
 
     def _registrar(self, lote, historial):
         # Sin cambios no hay Cambio. Antes de la primera acción `registrar` no hace nada: por eso la
@@ -169,20 +196,166 @@ class Conocimiento:
             historial.registrar(deshacer=lambda: self.revertir(lote),
                                 description="conocimiento del jugador")
 
-    def revertir(self, lote):
-        # Recorre el lote al revés. Los lotes se deshacen en orden inverso (LIFO), así que lo último
-        # agregado a `reveladas` y `observadas` es lo primero en salir: basta `pop` (FR-014).
-        for indice in range(len(lote) - 1, -1, -1):
-            tipo, ordinal, anterior = lote[indice]
+    # Lotes reversibles (PR-05, T119).
 
-            if tipo == _CAMBIO_SALA:
-                self.estado_sala[ordinal] = anterior
-                if anterior == DESCONOCIDA:
-                    self.reveladas.pop()
-            else:
-                self.recuerdo_puerta[ordinal] = anterior
-                if anterior == SIN_OBSERVAR:
-                    self.observadas.pop()
+    def revertir(self, lote):
+        # Lo que registra `_registrar` en el Historial. El Historial deshace en orden inverso (LIFO), que es
+        # una secuencia válida de `invertir` (FR-014). Modelo/retroceso.py no cambia.
+        self.invertir(lote)
+
+    def invertir(self, lote):
+        # Deshace el lote recorriéndolo al revés. Si no es el último aplicado, ValueError y nada cambia.
+        for indice in range(len(lote) - 1, -1, -1):
+            if not self._deshacer_cambio(lote[indice]):
+                for hecho in range(indice + 1, len(lote)):
+                    self._hacer_cambio(lote[hecho])
+                raise ValueError("El lote no es el último aplicado: no se puede invertir")
+
+    def aplicar(self, lote):
+        # Vuelve a hacer el lote en su orden. Si el estado no es el de antes del lote, ValueError y nada cambia.
+        for indice in range(len(lote)):
+            if not self._hacer_cambio(lote[indice]):
+                for hecho in range(indice - 1, -1, -1):
+                    self._deshacer_cambio(lote[hecho])
+                raise ValueError("El estado no es el anterior al lote: no se puede aplicar")
+
+    def _hacer_cambio(self, cambio):
+        tipo, ordinal, anterior, nuevo = cambio
+        if tipo == _CAMBIO_SALA:
+            if self.estado_sala[ordinal] != anterior:
+                return False
+            self.estado_sala[ordinal] = nuevo
+            if anterior == DESCONOCIDA:
+                self.reveladas.append(self._salas[ordinal])
+        else:
+            if self.recuerdo_puerta[ordinal] != anterior:
+                return False
+            self.recuerdo_puerta[ordinal] = nuevo
+            if anterior == SIN_OBSERVAR:
+                self.observadas.append(self._salidas[ordinal])
+        return True
+
+    def _deshacer_cambio(self, cambio):
+        tipo, ordinal, anterior, nuevo = cambio
+        if tipo == _CAMBIO_SALA:
+            if self.estado_sala[ordinal] != nuevo:
+                return False
+            if anterior == DESCONOCIDA:
+                if not self.reveladas or self.reveladas[-1] is not self._salas[ordinal]:
+                    return False
+                self.reveladas.pop()
+            self.estado_sala[ordinal] = anterior
+        else:
+            if self.recuerdo_puerta[ordinal] != nuevo:
+                return False
+            if anterior == SIN_OBSERVAR:
+                if not self.observadas or self.observadas[-1] is not self._salidas[ordinal]:
+                    return False
+                self.observadas.pop()
+            self.recuerdo_puerta[ordinal] = anterior
+        return True
+
+    # Copia y serialización (FR-015, T074, T119).
+
+    def copiar(self):
+        """Copia independiente: cambiar una no cambia la otra. Comparte solo lo que no cambia tras crearse
+        (salas, salidas, entrantes, índice por id), así que no reasigna ordinales. O(n + e)."""
+        copia = Conocimiento.__new__(Conocimiento)
+        copia._destino_de = self._destino_de
+        copia.estado_sala = list(self.estado_sala)
+        copia.recuerdo_puerta = list(self.recuerdo_puerta)
+        copia.reveladas = list(self.reveladas)
+        copia.observadas = list(self.observadas)
+        copia.entrantes = self.entrantes
+        copia._salas = self._salas
+        copia._salidas = self._salidas
+        copia._por_id = self._por_id
+        return copia
+
+    def exportar(self):
+        """Exploradas y recuerdos en orden canónico, para el bloque de conocimiento (FR-015).
+
+        Devuelve (exploradas, recuerdos): ids de las salas exploradas, ascendentes (incluye las exploradas
+        con antorcha), y (id de la sala de origen, dirección, ABIERTA o CERRADA) de cada puerta observada,
+        por (sala, dirección), aunque su sala de origen no esté explorada. Las avistadas no se exportan:
+        se recalculan (FR-004). El mismo estado da siempre lo mismo.
+
+        Recorre solo lo revelado. O(k log k + p log p) con `elegir_algoritmo` (no `sorted`).
+        """
+        exploradas = [sala for sala in self.reveladas if self.estado_sala[sala._ordinal] == EXPLORADA]
+        exploradas = _ordenado(exploradas, lambda sala: sala.id)
+
+        recuerdos = [(salida._origen.id, salida._direccion, self.recuerdo_puerta[salida._ordinal])
+                     for salida in self.observadas]
+        recuerdos = _ordenado(recuerdos, lambda recuerdo: (recuerdo[0], recuerdo[1]))
+
+        return [sala.id for sala in exploradas], recuerdos
+
+    def restaurar(self, exploradas, recuerdos):
+        """Reemplaza todo el conocimiento por el exportado, sin historial (FR-015).
+
+        Explora cada sala de `exploradas`, lo que recalcula las avistadas (FR-004), y copia cada recuerdo.
+        Primero valida todo: una sala o dirección que no existe, un recuerdo que no es ABIERTA ni CERRADA o
+        una puerta repetida lanzan ValueError sin cambiar nada.
+
+        O(n + e + Σ salidas de las exploradas + (k + p) log n), más O(n log n) la primera vez, para el
+        índice por id (`elegir_algoritmo` y búsqueda binaria; sin `dict`).
+        """
+        salas = []
+        for id_sala in exploradas:
+            salas.append(self._sala_existente(id_sala))
+
+        vista = [False] * len(self.recuerdo_puerta)
+        puertas = []
+        for id_sala, direccion, valor in recuerdos:
+            salida = self._sala_existente(id_sala).salidas.get(direccion)
+            if salida is None:
+                raise ValueError(f"La sala {id_sala} no tiene salida {direccion}")
+            if valor not in (ABIERTA, CERRADA):
+                raise ValueError(f"Recuerdo inválido para la salida {direccion} de la sala {id_sala}: {valor}")
+            if vista[salida._ordinal]:
+                raise ValueError(f"La salida {direccion} de la sala {id_sala} está repetida")
+            vista[salida._ordinal] = True
+            puertas.append((salida, valor))
+
+        self.estado_sala = [DESCONOCIDA] * len(self.estado_sala)
+        self.recuerdo_puerta = [SIN_OBSERVAR] * len(self.recuerdo_puerta)
+        self.reveladas = []
+        self.observadas = []
+
+        descartado = []  # restaurar no va al Historial
+        for sala in salas:
+            self._explorar(sala, descartado)
+        for salida, valor in puertas:
+            self.observadas.append(salida)
+            self.recuerdo_puerta[salida._ordinal] = valor
+
+    def _sala_existente(self, id_sala):
+        # Búsqueda binaria en las salas ordenadas por id. O(log n); ValueError si no está.
+        if self._por_id is None:
+            self._por_id = _ordenado(self._salas, lambda sala: sala.id)
+
+        ini, fin = 0, len(self._por_id)
+        try:
+            while ini < fin:
+                medio = (ini + fin) // 2
+                if self._por_id[medio].id < id_sala:
+                    ini = medio + 1
+                else:
+                    fin = medio
+        except TypeError:
+            raise ValueError(f"La sala {id_sala!r} no existe en la cripta") from None
+
+        if ini < len(self._por_id) and self._por_id[ini].id == id_sala:
+            return self._por_id[ini]
+        raise ValueError(f"La sala {id_sala!r} no existe en la cripta")
+
+
+def _ordenado(elementos, clave):
+    # Ordenamiento propio del proyecto (prohibido sorted()/list.sort()).
+    elementos = list(elementos)
+    resultado, _ = elegir_algoritmo(len(elementos))(elementos, clave)
+    return resultado
 
 
 class GrafoConocido:
