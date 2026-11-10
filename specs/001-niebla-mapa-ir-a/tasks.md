@@ -21,7 +21,7 @@ y no usa la red.
 |-------|-------------|
 | `[P]` | Se puede hacer en paralelo con tareas de **otros archivos** de su bloque. Dos tareas del mismo archivo van en serie, aunque ambas lleven `[P]` |
 | `[US1]`…`[US5]` | Historia de la spec. Las fases 0, 1, 6 y 7 no llevan historia |
-| `[BLOQUEADA: D-PEND-01]` | No se puede empezar hasta que el grupo decida si la búsqueda se comparte con el cazador |
+| `[BLOQUEADA: BusquedaRuta.py]` | No se puede empezar hasta que Persona A suba `Modelo/BusquedaRuta.py`, la búsqueda compartida con el cazador (D-PEND-01, resuelta con la opción A) |
 | `[PERSONAS: …]` | Depende de otra persona o de una respuesta del grupo |
 | `[a cargo de quien implemente §3.1]` | Corresponde a la capacidad de terreno y costos. Se conserva como referencia y esta capacidad no la ejecuta |
 | `Escenario USx-n` | Escenario de aceptación n de la historia x. Tabla completa en [Cobertura](#cobertura-de-escenarios-de-aceptación) |
@@ -39,13 +39,11 @@ pedido: reúne lo que las fases 1 a 7 necesitan y que no pertenece a ninguna de 
 - [ ] T002 [a cargo de quien implemente §3.1] Avisar al grupo, antes de T010, del cambio del DTO `Salida` (contrato compartido). Es solo de la capacidad de terreno y costos, que también cambia `mover` (P-02 resuelta): no bloquea esta capacidad, que solo lee el costo (T118). Atiende: FR-005, FR-025. Archivo: DTOS/Salida.py (aviso previo).
 - [X] T003 Corregir la spec en una confirmación separada y anterior al código (Principio IX): esta capacidad solo lee el costo, el campo `costo` y su cobro en `mover` son de la capacidad de terreno y costos, y se agrega SC-007. **Hecho en `6ed5b92`**, anterior al primer código (`89dcb7a`). Registrar el dominio de `costo` de §3.1 y qué pasa con un dato inválido o asimétrico queda a cargo de la capacidad de terreno y costos (T006, T008). Atiende: FR-005, FR-024, PR-13, SC-007. Archivo: specs/001-niebla-mapa-ir-a/spec.md.
 - [X] T005 [P] Crear las utilidades de prueba: `crear_paquete_niebla(carpeta, salas, ...)`, que genera un paquete offline con topología, costos, puertas, llaves, antorcha, pergaminos, veneno, enemigos y trampas (formato de `crear_paquete_offline`), y `partida_niebla(...)`, que devuelve motor y controlador con `VistaFalsa`. El archivo no lleva prefijo `test`, así que `discover` no lo ejecuta. Atiende: SC-001, PR-16. Archivo: tests/utiles_niebla.py.
-- [ ] T061 [PERSONAS: grupo, P-05] Confirmar que «las dos salas que conecta» observa la salida dirigida `A→B` desde `B`, y que el viaje puede volver por `B→A`. Anotar la respuesta en P-05. Si es negativa, corregir la spec y luego T026 y T016. Atiende: FR-006, PR-02. Archivo: specs/001-niebla-mapa-ir-a/plan.md.
+- [X] T061 [PERSONAS: grupo, P-05] Confirmar que «las dos salas que conecta» observa la salida dirigida `A→B` desde `B`, y que el viaje puede volver por `B→A`. Anotar la respuesta en P-05. Si es negativa, corregir la spec y luego T026 y T016. **Hecho**: confirmada por Personas A y B y anotada en P-05; se mantiene la lectura del plan y no cambian la spec, T016 ni T026. Atiende: FR-006, PR-02. Archivo: specs/001-niebla-mapa-ir-a/plan.md.
 
 **Punto de control 0**: línea base conocida (T001) y spec corregida y confirmada en Git (T003, `6ed5b92`). Sin esto no
-empieza la Fase 1. T002 es solo de la capacidad de terreno y costos y no bloquea ninguna fase de esta. P-05 (T061) debe
-responderse antes de la Fase 4, porque el viaje de vuelta por `B→A` depende de esa lectura; T016 y T026 ya la aplican.
-Si la respuesta es negativa, se corrigen la spec, T026 y T016 antes de empezar la Fase 4; si no llega, se sigue con la
-lectura del plan.
+empieza la Fase 1. T002 es solo de la capacidad de terreno y costos y no bloquea ninguna fase de esta. P-05 (T061) está
+confirmada por Personas A y B: el viaje puede volver por `B→A`, y T016 y T026 ya aplican esa lectura.
 
 ---
 
@@ -157,14 +155,14 @@ No se debe declarar FR-015 ni FR-017 como cumplidos antes de la Fase 5.
 ## Fase 4: Viaje «ir a» (Historia 4)
 
 **Propósito**: la orden `ir a <sala>` como sucesión de `mover`. Todo se prueba con un **buscador de prueba inyectado**;
-solo el cuerpo de `primer_paso` espera a D-PEND-01.
+solo el cuerpo de `primer_paso` espera a que Persona A suba `Modelo/BusquedaRuta.py` (D-PEND-01, opción A).
 
 **Prueba independiente**: con rutas y costos conocidos, comprobar la secuencia de salas, el reloj final y el motivo de parada.
 
 **Alcance por el orden de fases**: `comentar` no existe hasta la Fase 5, así que aquí cada paso anota solo su `mover`. El
 comentario `# ir a <sala>` lo agrega T085, y el Escenario US4-7 se prueba en T083.
 
-**Mientras D-PEND-01 siga abierta**: `primer_paso` lanza `NotImplementedError` y el controlador lo convierte en un aviso
+**Mientras Persona A no suba `Modelo/BusquedaRuta.py`**: `primer_paso` lanza `NotImplementedError` y el controlador lo convierte en un aviso
 sin efectos (T058), de modo que la suite sigue en verde en `main` y el juego real no se cae.
 
 ### Base
@@ -180,7 +178,7 @@ sin efectos (T058), de modo que la suite sigue en verde en `main` y el juego rea
 - [ ] T046 [P] [US4] Escenario US4-2: puerta recordada abierta y cerrada en realidad. Con otra ruta, el viaje sigue por ella; sin otra ruta, se detiene con aviso y sin tiempo adicional. Son dos pruebas. Apéndice B: puerta recordada abierta que está cerrada. Atiende: FR-026, FR-027, PR-09. Archivo: tests/test_viaje.py.
 - [ ] T047 [P] [US4] Escenario US4-3: al entrar a una sala con enemigos dormidos, se activan según §2.4 y el viaje se detiene ahí con su motivo. Una sala con enemigos ya derrotados no detiene. Apéndice B: «ir a» entra a sala con enemigos dormidos. Atiende: FR-027, PR-09. Archivo: tests/test_viaje.py.
 - [ ] T048 [P] [US4] Escenario US4-4: tras un viaje completo y otro detenido, un pergamino deshace solo el último paso, con conocimiento incluido, y el viaje no se reanuda. Apéndice B: pergamino durante un viaje. Atiende: FR-014, FR-031, PR-05, PR-09. Archivo: tests/test_viaje.py.
-- [ ] T049 [P] [US4] Escenario US4-5, parte que no depende de D-PEND-01: con `buscador_prueba`, dos rutas de igual costo van a la vecina de menor id, y el viaje sigue el paso que el buscador entrega. La prueba con la búsqueda real es T064. Atiende: FR-024, PR-09. Archivo: tests/test_viaje.py.
+- [ ] T049 [P] [US4] Escenario US4-5, parte que no depende de `Modelo/BusquedaRuta.py`: con `buscador_prueba`, dos rutas de igual costo van a la vecina de menor id, y el viaje sigue el paso que el buscador entrega. La prueba con la búsqueda real es T064. Atiende: FR-024, PR-09. Archivo: tests/test_viaje.py.
 - [ ] T050 [P] [US4] Escenario US4-6: el viaje se detiene al terminar el paso en que pierde vida, incluido el veneno activo desde antes de la orden. Atiende: FR-027, PR-09. Archivo: tests/test_viaje.py.
 - [ ] T051 [P] [US4] Escenario US4-8: una ruta que solo existe por una puerta cerrada de la que el jugador tiene la llave no cuenta, y la puerta sigue cerrada. Atiende: FR-023, FR-029, PR-09. Archivo: tests/test_viaje.py.
 - [ ] T052 [P] [US4] Escenario US4-9: la orden se acepta con enemigos activos o dormidos en la sala actual, y la parada por enemigos solo se evalúa al entrar. Atiende: FR-027, FR-028, PR-09. Archivo: tests/test_viaje.py.
@@ -198,10 +196,10 @@ sin efectos (T058), de modo que la suite sigue en verde en `main` y el juego rea
 ### Dependen de otras personas
 
 - [ ] T060 [US4] Aplicar FR-027f (P-04 resuelta): si el motor rechaza un paso en pleno viaje, el viaje se detiene con `PASO_RECHAZADO`, informa el mismo mensaje de rechazo que daría `mover` y no consume tiempo adicional. La spec ya está corregida; falta confirmarla en Git, en confirmación separada y anterior al código (Principio IX), y luego `Viaje`, el aviso y su prueba. Atiende: FR-027, PR-09. Archivo: specs/001-niebla-mapa-ir-a/spec.md, Modelo/Viaje.py, tests/test_viaje.py.
-- [ ] T062 [US4] [BLOQUEADA: D-PEND-01] [PERSONAS: grupo, quien lleve el cazador] Escribir el cuerpo de `primer_paso`: delegar en el módulo común (opción A) o implementar la búsqueda con cola de prioridad propia en `Modelo/ColaPrioridad.py` (opción B). Cumplir las 7 obligaciones del contrato, sin `heapq` ni `sorted()`, con complejidad documentada. Con la opción B, justificar la duplicación en T114. Atiende: FR-011, FR-023, FR-024, FR-029, PR-10. Archivo: Modelo/rutas_ir_a.py.
-- [ ] T063 [US4] [BLOQUEADA: D-PEND-01] Quitar el `skip` y correr el contrato contra `primer_paso`. Con la opción A, correr la misma tabla de desempates contra el cazador. Depende de T062. Atiende: FR-024, PR-10. Archivo: tests/test_ruta_contrato.py.
-- [ ] T064 [US4] [BLOQUEADA: D-PEND-01] Escenario US4-5, búsqueda real: con el buscador por defecto, el primer paso va a la vecina de menor id, y hacer el recorrido completo de un viaje sin inyección. Depende de T062. Atiende: FR-021, FR-023, FR-024, PR-09, PR-10. Archivo: tests/test_viaje.py.
-- [ ] T065 [US4] [BLOQUEADA: D-PEND-01] Retirar la captura de `NotImplementedError` y el aviso temporal de T058. Depende de T062. Atiende: FR-021, PR-09. Archivo: Controlador/ControladorPartida.py.
+- [ ] T062 [US4] [BLOQUEADA: BusquedaRuta.py] [PERSONAS: Persona A] Escribir el cuerpo de `primer_paso`: delega en `Modelo/BusquedaRuta.py` de Persona A (D-PEND-01, opción A), sin implementar búsqueda ni cola de prioridad aquí. Que la búsqueda cumpla las 7 obligaciones del contrato, sin `heapq` ni `sorted()`, con la cola de prioridad a mano en `Modelo/ColaPrioridad.py` y la complejidad documentada, es responsabilidad de Persona A. Sigue bloqueada hasta que A suba su módulo. Atiende: FR-011, FR-023, FR-024, FR-029, PR-10. Archivo: Modelo/rutas_ir_a.py.
+- [ ] T063 [US4] [BLOQUEADA: BusquedaRuta.py] Quitar el `skip` y correr la prueba de contrato contra `primer_paso` y contra el cazador, con la misma tabla de casos de desempate para los dos. Depende de T062. Atiende: FR-024, PR-10. Archivo: tests/test_ruta_contrato.py.
+- [ ] T064 [US4] [BLOQUEADA: BusquedaRuta.py] Escenario US4-5, búsqueda real: con el buscador por defecto (`primer_paso`, que delega en `Modelo/BusquedaRuta.py`), el primer paso va a la vecina de menor id, y hacer el recorrido completo de un viaje sin inyección. Depende de T062. Atiende: FR-021, FR-023, FR-024, PR-09, PR-10. Archivo: tests/test_viaje.py.
+- [ ] T065 [US4] [BLOQUEADA: BusquedaRuta.py] Retirar la captura de `NotImplementedError` y el aviso temporal de T058. Depende de T062. Atiende: FR-021, PR-09. Archivo: Controlador/ControladorPartida.py.
 
 **Punto de control 4**: T043 a T054 en verde con el buscador de prueba, y `ir a` en el juego real da el aviso temporal
 hasta T065. **La Historia 4 no está terminada** hasta T062 a T065 y T083. Sube junto con T112.
@@ -291,16 +289,16 @@ comparar el mapa; luego reproducir la bitácora y comparar reloj, posición y co
 - [ ] T101 M1: consultar estado de sala y recuerdo de puerta con arreglos densos, lista ordenada con binaria y lista lineal, n = 20, 200, 2000, 20000. Hipótesis: los arreglos no crecen con `n`. Depende de T100. Atiende: FR-001, FR-005, PR-15. Archivo: tests/bench_niebla.py.
 - [ ] T102 M2: revelar `r` fijo con k = 10, 100, 1000, 10000, arreglos frente a lista ordenada. Hipótesis: con arreglos no crece con `k`. Depende de T100. Atiende: FR-003, FR-009, PR-15. Archivo: tests/bench_niebla.py.
 - [ ] T103 M3: registrar y deshacer una entrada con antorcha con lote, cierres por escritura y copia completa, varios `r` y `n`. Hipótesis: lote y cierres crecen con `r`, la copia con `n`. Depende de T100. Atiende: FR-014, PR-15. Archivo: tests/bench_niebla.py.
-- [ ] T104 M4: medir un paso y un viaje completo **por la interfaz `primer_paso`**, con grilla y cadena de T099. Compara contra `LIMITE_PASO_IR_A_MS` e informa cumple o no cumple. Si `primer_paso` no tiene cuerpo, informa `pendiente D-PEND-01`; no mide `buscador_prueba`, porque ese número no significaría nada. Depende de T100. Atiende: FR-024, FR-026, SC-007, PR-15. Archivo: tests/bench_niebla.py.
+- [ ] T104 M4: medir un paso y un viaje completo **por la interfaz `primer_paso`**, con grilla y cadena de T099. Compara contra `LIMITE_PASO_IR_A_MS` e informa cumple o no cumple. Si `primer_paso` no tiene cuerpo, informa `pendiente BusquedaRuta.py`; no mide `buscador_prueba`, porque ese número no significaría nada. Depende de T100. Atiende: FR-024, FR-026, SC-007, PR-15. Archivo: tests/bench_niebla.py.
 - [ ] T105 M5: tamaño y tiempo del bloque de conocimiento y bytes leídos al cargar, k = 20, 200, 2000, binario frente a JSON. Depende de T100 y T076. Atiende: FR-015, PR-15. Archivo: tests/bench_niebla.py.
 - [ ] T106 M6: ciclo completo con y sin conocimiento, 10 a 500 enemigos, con p95, reusando `tests/bench_ciclo.py`. Hipótesis: sin regresión frente a 20 ms (§5.2). Depende de T100. Atiende: FR-014, SC-006, PR-15. Archivo: tests/bench_niebla.py.
 - [ ] T107 Agregar la medición a la rama `--bench`, sin red y sin vista. Depende de T101 a T106. Atiende: PR-15, Principio VIII, sin FR. Archivo: main.py.
 - [ ] T108 [P] Agregar una prueba rápida con tamaños mínimos: M1 a M6 corren sin red, sin `VistaConsola`, y M4 compara contra la constante, sin afirmar tiempos. Depende de T107. Atiende: SC-006, PR-15. Archivo: tests/test_bench_niebla.py.
-- [ ] T109 [BLOQUEADA: D-PEND-01] Correr M4 con `primer_paso` real y guardar el resultado, marcado como provisional. Si no cumple, corregir el diseño o el documento (R9). Depende de T062 y T107. Atiende: FR-024, PR-15. Archivo: resultados_bench_niebla.txt.
+- [ ] T109 [BLOQUEADA: BusquedaRuta.py] Correr M4 con `primer_paso` real y guardar el resultado, marcado como provisional. Si no cumple, corregir el diseño o el documento (R9). Depende de T062 y T107. Atiende: FR-024, PR-15. Archivo: resultados_bench_niebla.txt.
 - [ ] T110 [PERSONAS: curso, publicación de la cripta de referencia] Agregar a M4 el mapa conocido completo de la cripta de referencia y dar el veredicto definitivo de §6.1. Sus datos se obtienen de la fuente o quedan en `tests/` (Principio IV). Depende de T109. Atiende: FR-024, PR-15. Archivo: tests/bench_niebla.py.
 
 **Punto de control 6**: `python main.py --bench` genera `resultados_bench_niebla.txt`, con M1, M2, M3, M5 y M6 medidas, y M4
-como provisional o `pendiente D-PEND-01`. **El límite de §6.1 no se da por cumplido hasta T110.**
+como provisional o `pendiente BusquedaRuta.py`. **El límite de §6.1 no se da por cumplido hasta T110.**
 
 ---
 
@@ -330,7 +328,7 @@ pedido, pero T111, T112 y T113 **suben junto con su fase** si esa fase llega a `
 
 ### Documentos
 
-- [ ] T114 [PERSONAS: revisión del grupo] Agregar al Documento de Decisiones las decisiones 1 a 6 del plan, con alternativas y datos de `resultados_bench_niebla.txt`, marcando como hipótesis lo no medido. Incluir la resolución de D-PEND-01 y, si es la opción B, la justificación de la duplicación. Es un `.docx`: se edita con Word, no como texto. Depende de T107. Atiende: PR-16, Principio VIII, sin FR. Archivo: Proyecto Cripta.docx.
+- [ ] T114 [PERSONAS: revisión del grupo] Agregar al Documento de Decisiones las decisiones 1 a 6 del plan, con alternativas y datos de `resultados_bench_niebla.txt`, marcando como hipótesis lo no medido. Incluir la resolución de D-PEND-01 (opción A: búsqueda compartida con el cazador en `Modelo/BusquedaRuta.py`, de Persona A). Es un `.docx`: se edita con Word, no como texto. Depende de T107. Atiende: PR-16, Principio VIII, sin FR. Archivo: Proyecto Cripta.docx.
 - [ ] T115 Crear la matriz de trazabilidad: una fila por cada uno de los 31 FR y los 7 SC, con PR, tareas, prueba o `partida.log` de evidencia y estado (hecho, bloqueado o pendiente), más los 9 casos de SC-001. Las filas de FR-005 y FR-024 deben indicar que dependen de T010 (capacidad de terreno y costos) para probarse con costos reales: hasta entonces solo se prueban con costos puestos a mano en la salida o con grafos de prueba. Atiende: SC-001, FR-001 a FR-031, PR-16. Archivo: specs/001-niebla-mapa-ir-a/trazabilidad.md.
 - [ ] T116 Recorrer los escenarios 1 a 8 de quickstart y correr la suite completa. Anotar el resultado en la matriz, incluido lo que siga bloqueado. Depende de T115. Atiende: SC-001, SC-002, SC-003, SC-004, SC-005, SC-006, PR-16. Archivo: specs/001-niebla-mapa-ir-a/trazabilidad.md.
 - [ ] T117 [PERSONAS: otra persona del grupo; Persona D] Revisar los cambios en `Modelo/`, `Persistencia/`, `Bitacora/` y `main.py` (Flujo de desarrollo). Quien revisa los cambios en `Bitacora/`, `Persistencia/` y `main.py` es Persona D. Atiende: PR-16, sin FR. Archivo: Modelo/, Persistencia/, Bitacora/, main.py (revisión).
@@ -347,7 +345,7 @@ da por terminada solo cuando no quede ninguna fila bloqueada.
 Fase 0 ─ Fase 1 ─ Fase 2 ─┬─ Fase 3 (mapa) ──────────────┐
                           └─ Fase 4 (ir a, con buscador) ┤
                                                          ├─ Fase 5 ─ Fase 6 ─ Fase 7
-             D-PEND-01 ─ T062 ─ T063, T064, T065, T109 ──┘
+  BusquedaRuta.py (A) ─ T062 ─ T063, T064, T065, T109 ──┘
 
 T066 + T067 (aviso) ─ todas las demás tareas de la Fase 5
 T084 (bitácora v2) ─ T085, T092, T093
@@ -358,7 +356,7 @@ T074 (exportar/restaurar) ─ T119 (copia, serialización y lotes reversibles, p
 - Las fases 3 y 4 necesitan a la 1 porque muestran y usan `costo_salida`.
 - Las fases 3 y 4 son independientes entre sí, salvo que tocan `Modelo/MotorSimulacion.py`, `Vista/VistaConsola.py` y
   `Controlador/ControladorPartida.py`: si las llevan dos personas, conviene un `git pull` frecuente.
-- T062 a T065 no bloquean las fases 5, 6 y 7: se pueden integrar en cuanto el grupo decida.
+- T062 a T065 no bloquean las fases 5, 6 y 7: se pueden integrar en cuanto Persona A suba `Modelo/BusquedaRuta.py`.
 
 ### Tareas que dependen de otras personas
 
@@ -366,8 +364,8 @@ T074 (exportar/restaurar) ─ T119 (copia, serialización y lotes reversibles, p
 |-------|-------|--------------|-------------|
 | T002, T006 a T012 | Quien implemente §3.1 | Capacidad de terreno y costos | `costo_salida` sigue en 100 y esta capacidad continúa |
 | T004 | Cada persona del grupo | Sus notas de prompts (fecha, modelo, prompt textual, para qué se usó) para armar `PROMPTS_LLM.md` | Falta parte del registro del Principio XI |
-| T061 | Grupo | P-05 | Se mantiene la lectura del plan |
-| T062 a T065, T109 | Grupo y quien lleve el cazador | D-PEND-01 | `ir a` no funciona en el juego real |
+| T061 | Grupo | P-05 (✅ confirmada por Personas A y B) | Se mantiene la lectura del plan |
+| T062 a T065, T109 | Persona A | Que suba `Modelo/BusquedaRuta.py` (D-PEND-01 resuelta con la opción A) | `ir a` no funciona en el juego real |
 | T066 | Grupo | Aviso de contratos. Persona D ya aceptó (P-07, con cuatro condiciones); falta confirmar el resto del grupo | No empieza la Fase 5 |
 | T076 | Persona D | Disposición final del `CRPT` 3 (P-10) | El bloque de conocimiento queda como propuesta |
 | T098 | Grupo | Destino de los archivos versionados | Quedan archivos obsoletos en el repositorio |
@@ -408,7 +406,7 @@ Los 21 escenarios de la spec.
 | US4-2 | T046 | FR-026, FR-027 | |
 | US4-3 | T047 | FR-027 | |
 | US4-4 | T048 | FR-014, FR-031 | |
-| US4-5 | T049, T064 | FR-024 | T064 bloqueada por D-PEND-01 |
+| US4-5 | T049, T064 | FR-024 | T064 bloqueada hasta que A suba `Modelo/BusquedaRuta.py` |
 | US4-6 | T050 | FR-027 | |
 | US4-7 | T083 | FR-022, FR-030 | En la Fase 5, tras la bitácora v2 |
 | US4-8 | T051 | FR-023, FR-029 | |
@@ -420,6 +418,6 @@ Los 21 escenarios de la spec.
 
 - **MVP**: fases 0 a 2. El conocimiento existe y se revierte, y se verifica por pruebas.
 - **Primer valor visible**: Fase 3, `mapa`.
-- **Entrega completa de la spec**: fases 4 y 5. La Historia 4 funciona en el juego real cuando D-PEND-01 se resuelva.
+- **Entrega completa de la spec**: fases 4 y 5. La Historia 4 funciona en el juego real cuando Persona A suba `Modelo/BusquedaRuta.py`.
 - Cada subida a `main` lleva la suite en verde, y las pruebas con búsqueda real quedan con `skip` hasta T063.
 - Antes de T079, no presentar guardar y cargar como cumplidos; antes de T110, no afirmar que se cumple §6.1.

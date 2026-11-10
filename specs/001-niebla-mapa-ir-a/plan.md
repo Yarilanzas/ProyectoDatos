@@ -11,8 +11,9 @@ arreglos densos con consulta O(1), y exploración cuyo costo depende de lo revel
 se registra como un lote en el `Historial` existente, sin modificarlo. El conocimiento se guarda en un bloque nuevo
 del archivo de partida (formato 3). La bitácora pasa a la versión 2, con comentarios y una directiva `@cargar`.
 
-«ir a» es una sucesión de `mover` ordinarios, con la ruta detrás de una interfaz de una sola función. **Si esa búsqueda
-se comparte con el cazador sigue pendiente (D-PEND-01)**, y el resto del plan no depende de eso.
+«ir a» es una sucesión de `mover` ordinarios, con la ruta detrás de una interfaz de una sola función. **La búsqueda se
+comparte con el cazador (D-PEND-01 resuelta con la opción A)**: la implementa Persona A en `Modelo/BusquedaRuta.py`, y
+«ir a» solo la llama. El resto del plan no depende de esa implementación.
 
 El análisis encontró dos defectos existentes que este plan debe corregir para cumplir la spec:
 
@@ -63,7 +64,7 @@ personas o al enunciado está en [Preguntas abiertas](#preguntas-abiertas).
 | **VI. Persistencia versionada** | ✅ | ✅ | `CRPT` 3 y `CRIPTA-LOG` 2, rechazo con código 2, README actualizado |
 | **VII. Presupuesto** | ✅ | ⚠️ Verificar | Explorar con antorcha no hace solicitudes. `@cargar` puede repetir solicitudes en un replay con red: PR-12 exige una prueba |
 | **VIII. Decisiones medidas** | ✅ | ✅ | M1 a M6 definidas; hasta medirlas, son hipótesis |
-| **IX. Spec antes que código** | ✅ | ✅ | Spec confirmada en `c8067f0`, y su corrección de costos y SC-007 en `6ed5b92`, antes del código. FR-024 (P-03) y FR-027f (P-04) se corrigieron en la spec y deben confirmarse en Git antes del código de la Fase 4. Si P-05 cambia requisitos, primero se corrige la spec |
+| **IX. Spec antes que código** | ✅ | ✅ | Spec confirmada en `c8067f0`, y su corrección de costos y SC-007 en `6ed5b92`, antes del código. FR-024 (P-03) y FR-027f (P-04) se corrigieron en la spec y deben confirmarse en Git antes del código de la Fase 4. P-05 confirmada por Personas A y B: no cambia requisitos |
 | **X. Trazabilidad** | ✅ | ✅ | [Tabla de requisitos](#requisitos-del-plan) y cobertura de los 31 FR |
 | **XI. Registro de prompts** | ✅ | ✅ | `PROMPTS_LLM.md` en la raíz, armado al final a partir de las notas de cada persona: fecha, modelo, prompt textual y para qué se usó (T004) |
 | **Contratos compartidos** | — | ⚠️ Avisar | Formatos de archivo y de bitácora, `ejecutar_replay`, `guardar_partida`: avisar al grupo antes de cambiarlos. `Salida` no cambia en esta capacidad |
@@ -81,7 +82,7 @@ excepciones.
 | 2 | Historial | Un lote de deltas por operación; `retroceso.py` no cambia | [R2](research.md#r2-registro-de-cambios-en-el-historial-fr-014-fr-031) |
 | 3 | Persistencia y replay | Bloque de conocimiento en `CRPT` 3, junto al bloque de línea de tiempo de Persona D en el mismo salto de versión (disposición final de D, P-10); directiva `@cargar` en la bitácora (P-07, aceptada por D con condiciones) | [R3](research.md#r3-persistencia-del-conocimiento-fr-015-y-fr-016), [R4](research.md#r4-replay-de-partidas-cargadas-fr-017) |
 | 4 | Comandos | `mapa` e `ir a`, con `Viaje` en el modelo y orquestación en el controlador | [R5](research.md#r5-comandos-nuevos-y-bitácora-fr-018-a-fr-022-fr-030) |
-| 5 | Ruta | **PENDIENTE D-PEND-01.** Interfaz `primer_paso` decidida | [R6](research.md#r6-búsqueda-de-la-ruta-de-ir-a-fr-023-fr-024-fr-026) |
+| 5 | Ruta | **Opción A (D-PEND-01 resuelta)**: búsqueda compartida con el cazador, implementada por Persona A en `Modelo/BusquedaRuta.py` con la cola de prioridad en `Modelo/ColaPrioridad.py`. `Modelo/rutas_ir_a.py` solo la llama y cumple la interfaz `primer_paso`. La opción B queda descartada | [R6](research.md#r6-búsqueda-de-la-ruta-de-ir-a-fr-023-fr-024-fr-026) |
 | 6 | Costo | Solo lectura por el único acceso `motor.costo_salida` (100 si la salida no trae costo). El campo `costo` de `Salida` y el cambio de `mover` son de la capacidad de terreno y costos | [R7](research.md#r7-costo-de-cada-salida) |
 
 ## Requisitos del plan
@@ -97,7 +98,7 @@ excepciones.
 | PR-07 | Tabla de puertas reales aplicada al cargar (hallazgo H2) | FR-006, FR-015 | `Persistencia/ConversorPartida.py`, `Gestor/PreparadorPartida.py` |
 | PR-08 | Comando `mapa`, ayuda y README | FR-018, FR-019, FR-020 | `Controlador/ControladorPartida.py`, `Vista/VistaConsola.py`, `README.md` |
 | PR-09 | Comando `ir a`, `Viaje`, recálculo, paradas con motivo, y rechazos sin efectos | FR-021, FR-022, FR-025, FR-026, FR-027, FR-028, FR-029, FR-031, SC-005 | `Modelo/Viaje.py` (nuevo), `Controlador/ControladorPartida.py`, `mover_jugador` |
-| PR-10 | Interfaz `primer_paso`, `GrafoConocido` y prueba de contrato. **Implementación bloqueada por D-PEND-01** | FR-011, FR-023, FR-024, FR-029 | `Modelo/rutas_ir_a.py` (nuevo), `Modelo/Conocimiento.py`, `tests/test_ruta_contrato.py` (nuevo) |
+| PR-10 | Interfaz `primer_paso`, `GrafoConocido` y prueba de contrato. `primer_paso` delega en `Modelo/BusquedaRuta.py` de Persona A (opción A, D-PEND-01). **El cuerpo espera a que A suba su módulo** | FR-011, FR-023, FR-024, FR-029 | `Modelo/rutas_ir_a.py` (nuevo), `Modelo/Conocimiento.py`, `tests/test_ruta_contrato.py` (nuevo) |
 | PR-11 | Bitácora v2 con comentarios; `--replay` los ignora | FR-030, SC-004 | `Bitacora/BitacoraPartida.py`, `Controlador/ControladorPartida.py` |
 | PR-12 | `@cargar`, recarga en el replay, guardado extraído sin vista; verificar presupuesto (H1) | FR-017, SC-004 | `Bitacora/Reproductor.py`, `Bitacora/BitacoraPartida.py`, `Controlador/ControladorPartida.py`, `main.py` |
 | PR-13 | Lectura del costo por el acceso único `motor.costo_salida`, 100 si la salida no lo trae, sin cambiar el movimiento de ningún actor | FR-005, FR-024 | `Modelo/MotorSimulacion.py`, `tests/test_costo_salida.py` |
@@ -117,17 +118,18 @@ PR-01/02/03/05 conocimiento ─┬─ PR-04/08 mapa
 PR-15 y PR-16 acompañan a cada bloque
 ```
 
-Solo el cuerpo de `primer_paso` espera a D-PEND-01. `Viaje` se puede probar antes, inyectando un buscador de prueba.
+Solo el cuerpo de `primer_paso` espera a que Persona A suba `Modelo/BusquedaRuta.py`. `Viaje` se puede probar antes,
+inyectando un buscador de prueba.
 
 ## Preguntas abiertas
 
 | ID | Pregunta | Quién | Bloquea | Mientras tanto |
 |----|----------|-------|---------|----------------|
-| **D-PEND-01** | ¿La búsqueda de «ir a» comparte implementación con el cazador? | Grupo, con quien lleva el cazador | Cuerpo de `primer_paso` | **Decisión pendiente.** Opciones en [R6](research.md#r6-búsqueda-de-la-ruta-de-ir-a-fr-023-fr-024-fr-026) |
+| **D-PEND-01** | ✅ **Resuelta con la opción A**: la búsqueda se comparte con el cazador. Persona A la implementa en `Modelo/BusquedaRuta.py`, con la cola de prioridad en `Modelo/ColaPrioridad.py`, y cumple la interfaz `primer_paso` de [contracts/interfaz-ruta.md](contracts/interfaz-ruta.md). `Modelo/rutas_ir_a.py` solo la llama. La opción B queda descartada | Persona A | Cuerpo de `primer_paso` (T062 a T065, T109) hasta que A suba `Modelo/BusquedaRuta.py` | `primer_paso` lanza `NotImplementedError` y el controlador da el aviso temporal (T058). Detalle en [R6](research.md#r6-búsqueda-de-la-ruta-de-ir-a-fr-023-fr-024-fr-026) |
 | **P-02** | ✅ **Resuelta** (enunciado §3.1 y §4.1): el campo se llama `costo`, es un entero mayor o igual que 1, vale 100 si la salida no lo declara y es el mismo en ambos sentidos. Agregar el campo a `Salida` y cobrarlo en `mover` (jugador y enemigos) corresponde a la capacidad de terreno y costos (spec, Assumptions); esta capacidad solo lo lee | — | Nada | Acceso único de solo lectura `motor.costo_salida`, ver [R7](research.md#r7-costo-de-cada-salida) |
 | **P-03** | ✅ **Resuelta** (FR-024): ante dos salidas hacia la misma vecina con el mismo costo, gana la primera en el orden N, S, E, O | — | Nada | La prueba de contrato fija ese desempate (T043) |
 | **P-04** | ✅ **Resuelta** (FR-027f): si el motor rechaza un paso en pleno viaje, el viaje se detiene e informa el mismo mensaje de rechazo que daría `mover`, sin consumir tiempo adicional | — | Nada | Motivo `PASO_RECHAZADO` (T060) |
-| **P-05** | Las salidas son dirigidas y `A→B` cerrada convive con `B→A` abierta. ¿Se confirma que «las dos salas que conecta» observa la salida dirigida `A→B` desde `B`, y que el viaje puede volver por `B→A`? | Grupo | Nada del diseño; confirma la lectura de FR-006 | El plan aplica esa lectura |
+| **P-05** | ✅ **Confirmada por Personas A y B**: las salidas son dirigidas y `A→B` cerrada convive con `B→A` abierta; «las dos salas que conecta» observa la salida dirigida `A→B` desde `B`, y el viaje puede volver por `B→A`. Se mantiene la lectura del plan | — | Nada | El plan aplica esa lectura (T016, T026) |
 | **P-06** | «La trampa X se rearmó.» se muestra aunque sea en una sala desconocida. ¿Debe filtrarse? Queda fuera de la letra de FR-010 y FR-012 | Grupo | Nada | Sin cambio |
 | **P-07** | ✅ **Aceptada por Persona D** (línea de tiempo y persistencia, spec 004): `@cargar` hace falso el texto del README «`cargar` no se anota» y se acepta como contrato nuevo, con cuatro condiciones: (a) queda escrito en [contracts/formato-bitacora.md](contracts/formato-bitacora.md); (b) `--replay --hasta t` cuenta el reloj a través de las líneas `@cargar`; (c) una versión incompatible se rechaza con código 2, como hoy; (d) se actualiza el README, porque «`cargar` no se anota» deja de ser cierto (T113) | Persona D | Nada | PR-12 sigue con `@cargar`, cumpliendo las cuatro condiciones |
 | **P-10** | Disposición final del `CRPT` 3. **La define Persona D** (spec 004). Propuesta: un bloque de conocimiento (de esta capacidad) y uno de línea de tiempo (de D), ambos dentro del mismo salto a la versión 3. D no guarda el costo de las salidas en el `CRPT`: lo toma del esqueleto | Persona D | T076 (posiciones y `_inicio_salas`) | El bloque de conocimiento de [contracts/formato-partida.md](contracts/formato-partida.md) es una propuesta |
@@ -169,7 +171,9 @@ specs/001-niebla-mapa-ir-a/
 Modelo/
 ├── Conocimiento.py          # nuevo: Conocimiento, GrafoConocido
 ├── Viaje.py                 # nuevo
-├── rutas_ir_a.py            # nuevo: frontera de D-PEND-01
+├── rutas_ir_a.py            # nuevo: primer_paso, delega en BusquedaRuta.py
+├── BusquedaRuta.py          # de Persona A: búsqueda compartida con el cazador
+├── ColaPrioridad.py         # de Persona A: cola de prioridad a mano
 ├── MotorSimulacion.py       # hooks, costo_salida (solo lectura), mapa_conocido, preparar_viaje
 └── retroceso.py             # sin cambios
 DTOS/
@@ -194,5 +198,5 @@ tests/                       # pruebas nuevas y bench_niebla.py
 
 ## Complexity Tracking
 
-No hay excepciones a la constitución que justificar. Si se eligiera la opción B de D-PEND-01, la duplicación del
-algoritmo se justificaría en el Documento de Decisiones, no como excepción a la constitución.
+No hay excepciones a la constitución que justificar. D-PEND-01 se resolvió con la opción A (búsqueda compartida), así
+que no hay duplicación del algoritmo que justificar.

@@ -1,7 +1,8 @@
 # Contrato: interfaz de la ruta de «ir a»
 
-Esta interfaz es la frontera de la **decisión pendiente D-PEND-01** ([research.md](../research.md#r6-búsqueda-de-la-ruta-de-ir-a-fr-023-fr-024-fr-026)).
-Permite adoptar la implementación compartida (A) o la separada (B) cambiando solo el cuerpo de `Modelo/rutas_ir_a.py`.
+Esta interfaz es la frontera de la **decisión D-PEND-01, resuelta con la opción A** ([research.md](../research.md#r6-búsqueda-de-la-ruta-de-ir-a-fr-023-fr-024-fr-026)):
+la búsqueda se comparte con el cazador. Persona A la implementa en `Modelo/BusquedaRuta.py`, con la cola de prioridad
+en `Modelo/ColaPrioridad.py`, y `Modelo/rutas_ir_a.py` solo la llama. La opción B queda descartada.
 
 ## Función
 
@@ -37,6 +38,9 @@ determinista, pero no está ordenado por id: el desempate es responsabilidad de 
 
 ## Obligaciones de toda implementación
 
+La implementación de Persona A en `Modelo/BusquedaRuta.py` debe cumplir las 7 obligaciones y pasar la prueba de
+contrato.
+
 | # | Obligación | FR / Principio |
 |---|------------|----------------|
 | 1 | Devolver el primer paso de una ruta de costo total mínimo | FR-024 |
@@ -62,12 +66,14 @@ el orden N, S, E, O, sin importar el orden en que `aristas` las entregue.
 - dos salidas a la misma vecina con igual costo: gana la primera en el orden N, S, E, O;
 - costos distintos de 100, para demostrar que nada asume el valor por defecto.
 
-Si se elige la opción A, la misma tabla de casos de desempate debe correr también contra el cazador.
+La implementación de Persona A debe pasar esta prueba por `primer_paso`, y la misma tabla de casos de desempate corre
+también contra el cazador.
 
-## Qué cambia según D-PEND-01
+## Reparto con la opción A
 
-| | Opción A: compartida | Opción B: separada |
+| Pieza | Responsable | Contenido |
 |---|---|---|
-| `Modelo/rutas_ir_a.py` | Delega en el módulo común | Contiene la búsqueda |
-| Cola de prioridad | La del módulo común | `Modelo/ColaPrioridad.py` |
-| `Viaje`, `GrafoConocido`, controlador, pruebas, M4 | Sin cambios | Sin cambios |
+| `Modelo/BusquedaRuta.py` | Persona A | La búsqueda compartida con el cazador. Cumple las 7 obligaciones y pasa la prueba de contrato |
+| `Modelo/ColaPrioridad.py` | Persona A | La cola de prioridad a mano, sin `heapq` ni `sorted()` |
+| `Modelo/rutas_ir_a.py` | Esta capacidad | `primer_paso`, que solo llama a `Modelo/BusquedaRuta.py` |
+| `Viaje`, `GrafoConocido`, controlador, pruebas, M4 | Esta capacidad | Sin cambios por la decisión |

@@ -90,7 +90,7 @@ Orden «ir a» en ejecución. **No se guarda ni se reanuda** (spec, Entidades cl
 | Campo | Contenido |
 |-------|-----------|
 | `destino` | Sala destino, explorada |
-| `buscar` | Función `primer_paso` inyectada (frontera de D-PEND-01) |
+| `buscar` | Función `primer_paso` inyectada (frontera de la búsqueda compartida (D-PEND-01, opción A)) |
 | `motivo` | `None` mientras sigue; al terminar, uno de los motivos de parada |
 
 **Estados**:

@@ -251,11 +251,14 @@ luego llegada.
 
 ## R6. Búsqueda de la ruta de «ir a» (FR-023, FR-024, FR-026)
 
-### DECISIÓN PENDIENTE (D-PEND-01): ¿comparte implementación con el cazador?
+### DECISIÓN (D-PEND-01): ¿comparte implementación con el cazador?
 
-**Estado: sin decidir.** Se resuelve con la otra persona del grupo. Lo que sigue la prepara, no la toma.
+**Estado: ✅ resuelta con la opción A.** Persona A implementa la búsqueda compartida en `Modelo/BusquedaRuta.py`, con la
+cola de prioridad en `Modelo/ColaPrioridad.py`, y cumple la interfaz `primer_paso` de
+[contracts/interfaz-ruta.md](contracts/interfaz-ruta.md). `Modelo/rutas_ir_a.py` solo la llama. **La opción B queda
+descartada.** La comparación que preparó la decisión se conserva como registro.
 
-| | **Opción A: implementación compartida** | **Opción B: implementaciones separadas** |
+| | **Opción A: implementación compartida (elegida)** | **Opción B: implementaciones separadas (descartada)** |
 |---|---|---|
 | **Qué es** | Un solo Dijkstra con desempate, parametrizado por el grafo. «ir a» le pasa `GrafoConocido`; el cazador, su vista del mapa real. | «ir a» tiene su búsqueda y el cazador la suya. |
 | **Ventajas** | Una sola definición del desempate, y FR-024 pide «el mismo desempate que el cazador». Una sola estructura que documentar, probar y medir. Menos código. | Cada una se ajusta a su uso. Sin dependencia de calendario. Un cambio en una no puede romper la otra. Más simple de revisar. |
@@ -263,17 +266,17 @@ luego llegada.
 | **Riesgo principal** | Las dos búsquedas pueden no ser la misma consulta: «ir a» pide origen → destino una vez por paso; el cazador podría necesitar distancias desde el jugador para muchos enemigos. | Que el desempate difiera sin que nadie lo note. Se mitiga con una tabla de casos de desempate común a ambas pruebas. |
 | **Qué cambia en este plan** | Solo el cuerpo de `Modelo/rutas_ir_a.py`, que delega | Solo el cuerpo de `Modelo/rutas_ir_a.py`, que implementa |
 
-**Lo que hace falta saber para decidir**: la búsqueda del cazador no está implementada ni especificada en este
-repositorio, así que estos datos los debe aportar quien la lleve:
+**Lo que hacía falta saber para decidir** (registro; con la opción A, son responsabilidad de Persona A en
+`Modelo/BusquedaRuta.py`):
 
 1. ¿Es una consulta origen → destino, o de una fuente hacia todas las salas?
 2. ¿Sobre qué grafo corre (puertas reales, solo abiertas, costos)?
 3. ¿Con qué frecuencia se recalcula, y cuenta para el límite de 20 ms del ciclo?
-4. ¿Quién mantiene el código compartido si se elige A?
+4. ¿Quién mantiene el código compartido si se elige A? **Persona A.**
 
 ### Lo que se decide: la frontera
 
-La decisión queda detrás de una **interfaz de una sola función**
+La búsqueda queda detrás de una **interfaz de una sola función**
 ([contracts/interfaz-ruta.md](contracts/interfaz-ruta.md)):
 
 ```text
@@ -284,11 +287,12 @@ primer_paso(grafo, origen, destino) -> Paso | None
 `grafo` solo expone las aristas transitables. Como la ruta se recalcula antes de cada paso (FR-026), basta devolver
 el primer paso.
 
-**Qué no depende de D-PEND-01**: `Conocimiento`, `GrafoConocido`, `Viaje`, controlador, vista, persistencia, bitácora,
-las pruebas de viaje (pueden correr con un buscador de prueba) y las pruebas de contrato. **Qué sí depende**: el cuerpo
-de `primer_paso`, y si la cola de prioridad la aporta esta capacidad o el código compartido.
+**Qué no depende de `Modelo/BusquedaRuta.py`**: `Conocimiento`, `GrafoConocido`, `Viaje`, controlador, vista,
+persistencia, bitácora, las pruebas de viaje (pueden correr con un buscador de prueba) y las pruebas de contrato. **Qué
+sí depende**: el cuerpo de `primer_paso`, que delega en el módulo de Persona A. La cola de prioridad la aporta ese código
+compartido (`Modelo/ColaPrioridad.py`), no esta capacidad.
 
-### Requisitos que debe cumplir cualquiera de las dos opciones
+### Requisitos que debe cumplir la implementación compartida (Persona A)
 
 - Corre solo sobre `GrafoConocido`: salas exploradas y salidas recordadas abiertas. Las salidas cerradas o sin
   observar no existen para la búsqueda (FR-011, FR-023, FR-029).
@@ -301,7 +305,8 @@ de `primer_paso`, y si la cola de prioridad la aporta esta capacidad o el códig
 Un Dijkstra hacia adelante con etiqueta lexicográfica `(costo, id de la primera vecina)` y cola binaria propia cuesta
 O((V + E) log V) por cálculo, y S pasos cuestan S veces eso. La etiqueta es correcta porque sumar un costo conserva el
 orden entre etiquetas, y permite parar al extraer el destino. Marcar cada arreglo con un número de «época» evita
-limpiar O(n) en cada búsqueda. Esto describe una forma posible de cumplir el contrato; **no elige opción**.
+limpiar O(n) en cada búsqueda. Esto describe una forma posible de cumplir el contrato; **no obliga a Persona A**, que
+documenta la complejidad de su implementación (obligación 7).
 
 ### Alternativas de frontera descartadas
 
