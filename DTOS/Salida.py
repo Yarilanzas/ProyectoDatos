@@ -8,6 +8,9 @@ class Salida:
     def __init__(self, sala_destino, cerrada, llave, cierre_automatico, costo=COSTO_POR_DEFECTO):
         self.sala_destino= sala_destino
         self.cerrada= cerrada
+        # estado con el que llega del esqueleto; `cerrada` cambia durante la partida y este no.
+        # Lo usa la tabla de puertas reales del guardado (FR-006, PR-07)
+        self.cerrada_en_esqueleto = bool(cerrada)
         self.llave= llave
         self.cierre_automatico= cierre_automatico
         self.costo = costo

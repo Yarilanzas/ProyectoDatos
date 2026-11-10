@@ -55,8 +55,12 @@ Little endian y sin relleno, como el resto del archivo. Textos con largo `<H` + 
 - **Avistadas**: no se guardan; se recalculan con FR-004.
 - **Puertas recordadas**: solo las observadas. Lo que no figura está «sin observar». Incluye salidas de salas no
   exploradas, cuando el jugador ya las observó desde la otra sala.
-- **Puertas reales**: toda salida que hoy esté cerrada o que tenga llave o cierre automático, es decir, las únicas que
-  pueden diferir del esqueleto.
+- **Puertas reales**: toda salida que hoy esté cerrada, **o** que estuviera cerrada en el esqueleto, **o** que tenga
+  llave, **o** que tenga cierre automático: las únicas que pueden diferir del esqueleto. Una puerta cerrada en el
+  esqueleto sin llave ni cierre automático se puede abrir libremente; abierta hoy, solo la segunda condición la
+  conserva (H2). El valor guardado es siempre el estado **actual** (`0 = abierta, 1 = cerrada`); el formato en
+  bytes no cambia. El estado del esqueleto se conserva en la salida al crearla (`Salida.cerrada_en_esqueleto`),
+  porque `cerrada` cambia durante la partida.
 - **Orden canónico**: el mismo estado produce los mismos bytes. Se ordena con `elegir_algoritmo`.
 
 ## Lectura

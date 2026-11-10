@@ -120,8 +120,10 @@ def registro_jugador_desde_motor(motor):
 
 
 def _puerta_puede_diferir(salida):
-    # contracts/formato-partida.md: hoy cerrada, o con llave, o con cierre automatico
-    return (bool(salida.cerrada) or getattr(salida, "llave", None) is not None
+    # contracts/formato-partida.md: hoy cerrada, o cerrada en el esqueleto (se pudo abrir sin llave),
+    # o con llave, o con cierre automatico. Las demas estan abiertas y nunca cambian. O(1)
+    return (bool(salida.cerrada) or bool(getattr(salida, "cerrada_en_esqueleto", False))
+            or getattr(salida, "llave", None) is not None
             or bool(getattr(salida, "cierre_automatico", None)))
 
 

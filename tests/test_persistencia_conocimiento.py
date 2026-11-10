@@ -508,6 +508,47 @@ class TestPuertasReales(BaseGuardado):
         self.assertEqual(self.recuerdo(cargado, 1, "E"), ABIERTA)
         self.assertFalse(self.puerta(cargado, 1, "E").cerrada)
 
+    def test_fr006_fr015_h2_puerta_cerrada_en_el_esqueleto_sin_llave_ni_cierre(self):
+        # 1 -E-> 2 viene cerrada en el esqueleto, sin llave ni cierre automático: se abre libremente.
+        # Abierta hoy, solo la regla «estaba cerrada en el esqueleto» la mete en la tabla (PR-07).
+        motor = self.partida(mapa_cuadro(cerrada=True))
+        self.acciones(motor, ("abrir", "E"), ("mover", "E"))
+        self.guardar()
+
+        cargado = self.cargar()
+        self.assertFalse(self.puerta(cargado, 1, "E").cerrada)
+        self.assertEqual(cargado._salas_contenido_cargado, [2])  # no se leyó el bloque de la sala 1
+        self.assertEqual(self.recuerdo(cargado, 1, "E"), ABIERTA)
+
+    def test_fr006_fr015_h2_doble_ida_y_vuelta_tras_leer_el_bloque_de_la_sala(self):
+        # Tras cargar se visita 1 (se lee su bloque) y se vuelve a guardar: restaurar la sala no debe hacer
+        # que la puerta pierda «cerrada en el esqueleto» y salga de la tabla de puertas reales (PR-07).
+        from Controlador.ControladorPartida import ControladorPartida
+        from Persistencia.ArchivoPartida import LectorPartida
+        from tests.test_integracion import VistaFalsa
+
+        motor = self.partida(mapa_cuadro(cerrada=True))
+        self.acciones(motor, ("abrir", "E"), ("mover", "E"))
+        self.guardar()
+
+        controlador = ControladorPartida(self.gestor_nuevo(), VistaFalsa(), os.path.join(self.carpeta, "segunda.log"))
+        self.addCleanup(controlador._cerrar)
+        controlador.cargar(self.ruta())
+        self.assertTrue(controlador.motor.ejecutar_accion("mover", "O"))
+        self.assertIn(1, controlador.motor._salas_contenido_cargado)  # se leyó el bloque de la sala 1
+        self.assertTrue(self.puerta(controlador.motor, 1, "E").cerrada_en_esqueleto)
+
+        segunda = self.ruta("segunda.cripta")
+        self.assertTrue(controlador.guardar(segunda))
+        with LectorPartida(segunda) as lector:
+            self.assertIn((1, "E", False), [tuple(p) for p in lector.leer_conocimiento().puertas_reales])
+
+        cargado = cargar_partida(segunda, self.gestor_nuevo())
+        self.addCleanup(cargado.restaurador.cerrar)
+        self.assertEqual(cargado.jugador.sala.id, 1)
+        self.assertFalse(self.puerta(cargado, 1, "E").cerrada)
+        self.assertEqual(self.recuerdo(cargado, 1, "E"), ABIERTA)
+
 
 class TestCargaConAntorcha(BaseGuardado):
 
