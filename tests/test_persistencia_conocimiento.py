@@ -1,9 +1,7 @@
-# Pruebas de persistencia del conocimiento: T069 (RegistroConocimiento, con exportar/restaurar de T074) y
-# T119 (copia, serialización y lotes reversibles para los puntos de control de Persona D, spec 004).
-# FR-004, FR-014, FR-015, FR-016, PR-05, PR-06. Contrato: contracts/formato-partida.md (bloque de conocimiento).
-#
-# Estas pruebas no tocan el archivo de partida: el bloque dentro del CRPT 3 es T076 a T080 y espera la
-# disposición de Persona D (P-10).
+# Pruebas de persistencia del conocimiento: T069 (RegistroConocimiento, con exportar/restaurar de T074),
+# T119 (copia, serialización y lotes reversibles para los puntos de control de Persona D, spec 004) y
+# T068, T070 a T072 (guardar y cargar el CRPT 3 con el bloque de conocimiento).
+# FR-004, FR-006, FR-014, FR-015, FR-016, PR-05, PR-06, PR-07. Contrato: contracts/formato-partida.md.
 
 import os
 import sys
@@ -17,13 +15,20 @@ import json
 import struct
 import unittest
 
+from API.Fuentes import FuenteDatosOffline
 from DTOS.Salida import Salida
+from Gestor.GestorDatos import GestorDatos
+from Gestor.PreparadorPartida import cargar_partida
 from Modelo.Conocimiento import ABIERTA, AVISTADA, CERRADA, Conocimiento, DESCONOCIDA, EXPLORADA
 from Modelo.retroceso import Historial
+from Persistencia.ArchivoPartida import guardar_partida
+from Persistencia.ConversorPartida import registro_jugador_desde_motor, registros_desde_motor
+from Persistencia.FormatoBinario import FORMATO_PREFIJO, VersionIncompatible
 from Persistencia.RegistroConocimiento import RegistroConocimiento
 from Vista.VistaConsola import VistaConsola
-from tests.test_antorcha import CONTENIDO as CONTENIDO_ANTORCHA, ID_ANTORCHA
+from tests.test_antorcha import CONTENIDO as CONTENIDO_ANTORCHA, ID_ANTORCHA, ID_PERGAMINO
 from tests.test_antorcha import mapa as mapa_antorcha
+from tests.utiles_niebla import CRIPTA_NIEBLA, LLAVE, contenido_sala
 from tests.test_conocimiento import BaseConocimiento, foto
 from tests.test_conocimiento import mapa as mapa_cuadro
 
@@ -344,6 +349,206 @@ class TestHistorialDelMotor(BasePersistencia):
         self.acciones(motor, ("mover", "E"))
         self.assertTrue(motor.historial.deshacer_ultimo())
         self.assertEqual(foto(motor.conocimiento), antes)
+
+
+# T068, T070 a T072: guardar y cargar el CRPT 3.
+
+class BloqueCrudo:
+    # Se pasa a guardar_partida como `conocimiento` para escribir bytes arbitrarios en el bloque.
+    def __init__(self, datos):
+        self.datos = datos
+
+    def to_bytes(self):
+        return self.datos
+
+
+class BaseGuardado(BasePersistencia):
+
+    def ruta(self, nombre="prueba.cripta"):
+        return os.path.join(self.carpeta, nombre)
+
+    def gestor_nuevo(self):
+        return GestorDatos(FuenteDatosOffline(os.path.join(self.carpeta, "paquete")),
+                           ruta_base=os.path.join(self.carpeta, "cache_carga"), cache_size=25)
+
+    def guardar(self):
+        self.assertTrue(self.controlador.guardar(self.ruta()))
+        return self.ruta()
+
+    def cargar(self):
+        cargado = cargar_partida(self.ruta(), self.gestor_nuevo())
+        self.addCleanup(cargado.restaurador.cerrar)
+        return cargado
+
+    def escribir(self, motor, conocimiento, nombre="prueba.cripta"):
+        # Igual que `guardar`, pero con el bloque de conocimiento que da la prueba.
+        gestor = self.controlador.gestor
+        guardar_partida(self.ruta(nombre), motor.cripta_id, gestor.version_cripta(motor.cripta_id),
+                        gestor.version_catalogo(), motor.semilla, motor.reloj, registros_desde_motor(motor),
+                        registro_jugador_desde_motor(motor), conocimiento=conocimiento)
+        return self.ruta(nombre)
+
+    def assertRechazo(self, ruta):
+        # VersionIncompatible es el código de salida 2 en main.py (FR-016). Nada queda cargado: el
+        # archivo quedó cerrado, porque en Windows no se puede borrar un archivo abierto.
+        with self.assertRaises(VersionIncompatible):
+            cargar_partida(ruta, self.gestor_nuevo())
+        os.remove(ruta)
+
+    def texto_mapa(self, motor):
+        lineas = []
+        VistaConsola(salida=lineas.append).mostrar_mapa(motor.mapa_conocido())
+        return lineas
+
+
+class TestGuardarYCargar(BaseGuardado):
+
+    def test_fr015_sc003_escenario_us5_1_el_mapa_conocido_es_identico(self):
+        # Apéndice B: exploradas 1, 2, 4 y 3, avistada 5, y 1 -E-> 2 recordada abierta pero cerrada en
+        # realidad sin que el jugador lo vea.
+        motor = self.partida(mapa_cuadro())
+        self.acciones(motor, ("mover", "E"), ("mover", "S"), ("mover", "O"))
+        self.puerta(motor, 1, "E").cerrada = True
+        self.assertEqual(self.recuerdo(motor, 1, "E"), ABIERTA)
+        self.assertEqual(self.estados(motor), ([1, 2, 3, 4], [5], [6]))
+        mapa = self.texto_mapa(motor)
+
+        self.guardar()
+        cargado = self.cargar()
+
+        self.assertMismoConocimiento(cargado.conocimiento, motor.conocimiento)
+        self.assertEqual(cargado.conocimiento.exportar(), motor.conocimiento.exportar())
+        self.assertEqual(self.estados(cargado), ([1, 2, 3, 4], [5], [6]))
+        self.assertEqual(self.texto_mapa(cargado), mapa)
+        self.assertEqual(self.recuerdo(cargado, 1, "E"), ABIERTA)
+        self.assertTrue(self.puerta(cargado, 1, "E").cerrada)
+
+
+class TestRechazosAlCargar(BaseGuardado):
+
+    def preparar(self):
+        motor = self.partida(mapa_cuadro())
+        self.acciones(motor, ("mover", "E"))  # el jugador queda en 2
+        return motor
+
+    def valido(self, motor):
+        return RegistroConocimiento(*motor.conocimiento.exportar(), []).to_bytes()
+
+    def test_fr016_version_2(self):
+        self.preparar()
+        ruta = self.guardar()
+        with open(ruta, "r+b") as archivo:
+            archivo.write(struct.pack(FORMATO_PREFIJO, b"CRPT", 2))
+        self.assertRechazo(ruta)
+
+    def test_fr016_sin_bloque_de_conocimiento(self):
+        motor = self.preparar()
+        self.assertRechazo(self.escribir(motor, None))
+
+    def test_fr016_bloque_truncado_o_con_bytes_sobrantes(self):
+        motor = self.preparar()
+        valido = self.valido(motor)
+        for indice, datos in enumerate((valido[:-1], valido + b"\x00", b"\x01\x00")):
+            with self.subTest(largo=len(datos)):
+                self.assertRechazo(self.escribir(motor, BloqueCrudo(datos), f"caso{indice}.cripta"))
+
+    def test_fr016_valor_invalido(self):
+        motor = self.preparar()
+        exploradas = struct.pack("<I", 2) + struct.pack("<I", 1) + struct.pack("<I", 2)
+        recuerdo_7 = struct.pack("<I", 1) + struct.pack("<I", 1) + texto("E") + struct.pack("<B", 7)
+        real_5 = struct.pack("<I", 1) + struct.pack("<I", 1) + texto("E") + struct.pack("<B", 5)
+        ninguno = struct.pack("<I", 0)
+        for indice, datos in enumerate((exploradas + recuerdo_7 + ninguno, exploradas + ninguno + real_5)):
+            with self.subTest(datos=datos):
+                self.assertRechazo(self.escribir(motor, BloqueCrudo(datos), f"caso{indice}.cripta"))
+
+    def test_fr016_sala_o_direccion_inexistente(self):
+        motor = self.preparar()
+        casos = (
+            RegistroConocimiento([1, 2, 99], [], []),
+            RegistroConocimiento([1, 2], [(1, "N", ABIERTA)], []),
+            RegistroConocimiento([1, 2], [(99, "E", ABIERTA)], []),
+            RegistroConocimiento([1, 2], [], [(1, "N", True)]),
+            RegistroConocimiento([1, 2], [], [(99, "E", True)]),
+        )
+        for indice, registro in enumerate(casos):
+            with self.subTest(registro=campos(registro)):
+                self.assertRechazo(self.escribir(motor, registro, f"caso{indice}.cripta"))
+
+    def test_fr016_sala_del_jugador_no_explorada(self):
+        motor = self.preparar()
+        self.assertRechazo(self.escribir(motor, RegistroConocimiento([1], [], [])))
+
+    def test_fr016_el_controlador_conserva_la_partida_en_curso(self):
+        motor = self.preparar()
+        ruta = self.escribir(motor, None)
+        self.assertTrue(self.controlador.ejecutar(f"cargar {ruta}"))
+        self.assertIs(self.controlador.motor, motor)
+        self.assertEqual(self.controlador.vista.lineas[-1][0], "mostrar_error")
+
+
+class TestPuertasReales(BaseGuardado):
+
+    def test_fr006_fr015_h2_puerta_abierta_de_una_sala_no_restaurada(self):
+        # 1 -E-> 2 cerrada con llave: se abre, se pasa a 2 y se guarda. Al cargar solo se lee el bloque
+        # de 2, pero 1 -E-> 2 sigue abierta en memoria (tabla de puertas reales, PR-07).
+        id_llave = f"obj-{CRIPTA_NIEBLA}-1-{LLAVE}-0"
+        motor = self.partida(mapa_cuadro(cerrada=True, llave=LLAVE), [contenido_sala(1, objetos=[LLAVE])])
+        self.acciones(motor, ("recoger", id_llave), ("abrir", "E"), ("mover", "E"))
+        self.guardar()
+
+        cargado = self.cargar()
+        self.assertEqual(cargado._salas_contenido_cargado, [2])
+        self.assertFalse(self.puerta(cargado, 1, "E").cerrada)
+        self.assertEqual(cargado._salas_contenido_cargado, [2])  # no se leyó el bloque de la sala 1
+        self.assertEqual(self.recuerdo(cargado, 1, "E"), ABIERTA)
+
+        # Al volver a 1 se observa con su estado real: el recuerdo sigue siendo correcto.
+        self.acciones(cargado, ("mover", "O"))
+        self.assertEqual(self.recuerdo(cargado, 1, "E"), ABIERTA)
+        self.assertFalse(self.puerta(cargado, 1, "E").cerrada)
+
+
+class TestCargaConAntorcha(BaseGuardado):
+
+    def test_fr015_pr06_antorcha_conserva_lo_ganado_queda_apagada_y_no_reobserva(self):
+        motor = self.partida(mapa_antorcha(), CONTENIDO_ANTORCHA)
+        self.acciones(motor, ("recoger", ID_ANTORCHA), ("recoger", ID_PERGAMINO), ("usar", ID_ANTORCHA),
+                      ("mover", "E"))
+        # 2 -N-> 3 quedó recordada cerrada; se abre sin que el jugador lo vea. Si cargar volviera a
+        # observar las puertas de la sala actual, el recuerdo pasaría a abierta.
+        self.puerta(motor, 2, "N").cerrada = False
+        guardado = motor.conocimiento.exportar()
+        self.assertEqual(guardado[0], [1, 2, 3, 5])
+        self.assertIn((2, "N", CERRADA), guardado[1])
+        self.guardar()
+
+        cargado = self.cargar()
+        self.assertEqual(cargado.conocimiento.exportar(), guardado)
+        self.assertFalse(getattr(cargado.jugador, "antorcha_encendida", False))
+        self.assertEqual(cargado._salas_contenido_cargado, [2])  # la carga sigue perezosa
+
+    def test_fr015_pr07_retroceder_tras_cargar_como_en_la_parte_i(self):
+        motor = self.partida(mapa_antorcha(), CONTENIDO_ANTORCHA)
+        self.acciones(motor, ("recoger", ID_ANTORCHA), ("recoger", ID_PERGAMINO), ("usar", ID_ANTORCHA),
+                      ("mover", "E"))
+        guardado = motor.conocimiento.exportar()
+        self.guardar()
+
+        cargado = self.cargar()
+        # Sin historial no hay nada que deshacer y el pergamino no se consume.
+        self.assertFalse(cargado.ejecutar_accion("retroceder", ""))
+        self.assertEqual(cargado.conocimiento.exportar(), guardado)
+        self.assertTrue(any(o.clase == "pergamino_retroceso" for o in cargado.jugador.inventario))
+
+        # Tras jugar después de cargar, retroceder deshace el último paso con su conocimiento.
+        self.assertTrue(cargado.ejecutar_accion("mover", "S"))
+        antes = cargado.conocimiento.exportar()
+        self.assertTrue(cargado.ejecutar_accion("mover", "E"))  # 4 no estaba explorada
+        self.assertNotEqual(cargado.conocimiento.exportar(), antes)
+        self.assertTrue(cargado.ejecutar_accion("retroceder", ""))
+        self.assertEqual(cargado.jugador.sala.id, 5)
+        self.assertEqual(cargado.conocimiento.exportar(), antes)
 
 
 if __name__ == "__main__":

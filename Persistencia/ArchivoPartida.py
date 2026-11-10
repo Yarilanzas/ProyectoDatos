@@ -1,6 +1,8 @@
 # Escritura y lectura del archivo binario de la partida (S4.10)
-# disposicion: [encabezado][largo jugador][bloque jugador][bloques de sala][indice de salas]
+# disposicion (CRPT 3, contracts/formato-partida.md):
+# [encabezado][largo jugador][jugador][largo conocimiento][conocimiento][largo linea de tiempo][linea de tiempo][salas][indice]
 # el indice son registros de tamaño fijo ordenados por id de sala asi una sala se busca con busqueda binaria directo sobre el archivo, sin cargarlo completo
+# la linea de tiempo es de Persona D (spec 004): aqui es un bloque opaco, se escribe con largo 0 y al leer solo se salta con su largo
 
 import struct
 import os
@@ -8,6 +10,7 @@ import tempfile
 
 from Modelo.ordenamiento import elegir_algoritmo
 from Persistencia.FormatoBinario import EncabezadoPartida, VersionIncompatible, TAMANO_ENCABEZADO
+from Persistencia.RegistroConocimiento import RegistroConocimiento
 from Persistencia.RegistroSala import RegistroSala
 from Persistencia.RegistroJugador import RegistroJugador
 
@@ -15,15 +18,26 @@ from Persistencia.RegistroJugador import RegistroJugador
 FORMATO_ENTRADA = "<IQI"
 TAMANO_ENTRADA = struct.calcsize(FORMATO_ENTRADA)
 
-# I largo del bloque del jugador (0 si la partida no tiene jugador, p. ej. en el benchmark)
+# I largo de un bloque: jugador (0 si la partida no tiene jugador, p. ej. en el benchmark),
+# conocimiento (0 si no hay conocimiento) y linea de tiempo (opaco, por ahora siempre 0)
 FORMATO_LARGO_JUGADOR = "<I"
 TAMANO_LARGO_JUGADOR = struct.calcsize(FORMATO_LARGO_JUGADOR)
+FORMATO_LARGO_BLOQUE = "<I"
+TAMANO_LARGO_BLOQUE = struct.calcsize(FORMATO_LARGO_BLOQUE)
+
+# lo minimo antes de las salas: el encabezado y los tres campos de largo
+INICIO_MINIMO_SALAS = TAMANO_ENCABEZADO + TAMANO_LARGO_JUGADOR + 2 * TAMANO_LARGO_BLOQUE
 
 
 def guardar_partida(
     ruta, cripta_id, version_cripta, version_catalogo,
-    semilla, reloj, registros, jugador=None
+    semilla, reloj, registros, jugador=None, conocimiento=None
 ):
+    """Escribe el CRPT 3. `conocimiento` es un RegistroConocimiento (o cualquier objeto con
+    `to_bytes()`); None escribe largo 0. La linea de tiempo se escribe con largo 0.
+
+    O(s log s + B): ordenar las s salas con `elegir_algoritmo` y escribir los B bytes del archivo.
+    """
     # ordena las salas por ID para construir el índice
     algoritmo = elegir_algoritmo(len(registros))
     ordenados, _ = algoritmo(
@@ -37,13 +51,16 @@ def guardar_partida(
 
     # serializa todo antes de tocar el archivo final
     datos_jugador = jugador.to_bytes() if jugador is not None else b""
+    datos_conocimiento = conocimiento.to_bytes() if conocimiento is not None else b""
+    datos_linea_tiempo = b""  # bloque de Persona D: por ahora vacio
     bloques = []
 
     for registro in ordenados:
         bloques.append((registro.sala_id, registro.to_bytes()))
 
-    # calcula las posiciones de cada registro (las salas van despues del jugador)
-    posicion = TAMANO_ENCABEZADO + TAMANO_LARGO_JUGADOR + len(datos_jugador)
+    # calcula las posiciones de cada registro (las salas van despues de los tres bloques con largo)
+    posicion = (INICIO_MINIMO_SALAS + len(datos_jugador) + len(datos_conocimiento)
+                + len(datos_linea_tiempo))
     entradas = []
     bloques_serializados = []
 
@@ -84,6 +101,10 @@ def guardar_partida(
             archivo.write(bytes(TAMANO_ENCABEZADO))
             archivo.write(struct.pack(FORMATO_LARGO_JUGADOR, len(datos_jugador)))
             archivo.write(datos_jugador)
+            archivo.write(struct.pack(FORMATO_LARGO_BLOQUE, len(datos_conocimiento)))
+            archivo.write(datos_conocimiento)
+            archivo.write(struct.pack(FORMATO_LARGO_BLOQUE, len(datos_linea_tiempo)))
+            archivo.write(datos_linea_tiempo)
 
             for datos in bloques_serializados:
                 archivo.write(datos)
@@ -116,7 +137,7 @@ class LectorPartida:
             self.encabezado = EncabezadoPartida.desde_archivo(self._archivo)
             self.bytes_leidos = TAMANO_ENCABEZADO
             self._validar_encabezado()
-            self._leer_largo_jugador()
+            self._leer_largos()
         except Exception:
             self._archivo.close()
             raise
@@ -127,7 +148,8 @@ class LectorPartida:
         if encabezado.cantidad_salas < 0:
             raise VersionIncompatible("La cantidad de salas del archivo es inválida")
 
-        if encabezado.offset_indice < TAMANO_ENCABEZADO + TAMANO_LARGO_JUGADOR:
+        # el indice va despues de los tres campos de largo (jugador, conocimiento y linea de tiempo)
+        if encabezado.offset_indice < INICIO_MINIMO_SALAS:
             raise VersionIncompatible("La posición del índice está fuera del archivo" )
 
         fin_indice = (encabezado.offset_indice  + encabezado.cantidad_salas * TAMANO_ENTRADA)
@@ -135,16 +157,29 @@ class LectorPartida:
         if fin_indice > self._tamano_archivo:
             raise VersionIncompatible( "El índice de salas está incompleto")
 
-    def _leer_largo_jugador(self):
-        # solo se leen 4 bytes, el bloque del jugador se lee cuando se pide
-        datos = self._leer(TAMANO_ENCABEZADO, TAMANO_LARGO_JUGADOR)
-        (self._largo_jugador,) = struct.unpack(FORMATO_LARGO_JUGADOR, datos)
+    def _leer_largo(self, posicion, nombre):
+        # lee un campo de largo y comprueba que su bloque no invada las salas. Devuelve donde
+        # empieza el bloque y su largo. O(1): solo 4 bytes
+        datos = self._leer(posicion, TAMANO_LARGO_BLOQUE)
+        (largo,) = struct.unpack(FORMATO_LARGO_BLOQUE, datos)
+        inicio = posicion + TAMANO_LARGO_BLOQUE
 
-        # las salas empiezan justo despues del jugador
-        self._inicio_salas = TAMANO_ENCABEZADO + TAMANO_LARGO_JUGADOR + self._largo_jugador
+        if inicio + largo > self.encabezado.offset_indice:
+            raise VersionIncompatible(f"El bloque {nombre} invade las salas del archivo")
 
-        if self._inicio_salas > self.encabezado.offset_indice:
-            raise VersionIncompatible("El bloque del jugador invade las salas del archivo")
+        return inicio, largo
+
+    def _leer_largos(self):
+        # solo se leen los tres campos de largo (12 bytes); los bloques se leen cuando se piden
+        self._inicio_jugador, self._largo_jugador = self._leer_largo(TAMANO_ENCABEZADO, "del jugador")
+        self._inicio_conocimiento, self._largo_conocimiento = self._leer_largo(
+            self._inicio_jugador + self._largo_jugador, "de conocimiento")
+        # linea de tiempo de Persona D: opaca, solo se salta con su largo
+        inicio_linea, largo_linea = self._leer_largo(
+            self._inicio_conocimiento + self._largo_conocimiento, "de línea de tiempo")
+
+        # las salas empiezan justo despues de la linea de tiempo
+        self._inicio_salas = inicio_linea + largo_linea
 
     def _leer(self, posicion, cantidad):
         if posicion < 0 or cantidad < 0:
@@ -166,12 +201,28 @@ class LectorPartida:
         if self._largo_jugador == 0:
             return None
 
-        datos = self._leer(TAMANO_ENCABEZADO + TAMANO_LARGO_JUGADOR, self._largo_jugador)
+        datos = self._leer(self._inicio_jugador, self._largo_jugador)
 
         try:
             return RegistroJugador.from_bytes(datos)
         except (ValueError, struct.error, IndexError, UnicodeDecodeError) as error:
             raise VersionIncompatible("El registro del jugador está dañado") from error
+
+    def leer_conocimiento(self):
+        """RegistroConocimiento del bloque, leido de una sola vez; None si el largo es 0.
+
+        Un bloque truncado, con un valor invalido o con bytes sobrantes lanza VersionIncompatible
+        (FR-016). O(c) en los c bytes del bloque; no lee bloques de sala.
+        """
+        if self._largo_conocimiento == 0:
+            return None
+
+        datos = self._leer(self._inicio_conocimiento, self._largo_conocimiento)
+
+        try:
+            return RegistroConocimiento.from_bytes(datos)
+        except ValueError as error:
+            raise VersionIncompatible(f"El bloque de conocimiento está dañado: {error}") from error
 
     def buscar_sala(self, sala_id):
         inicio = 0

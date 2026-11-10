@@ -2,9 +2,11 @@
 # - preparar_partida: partida nueva. Es tambien la "fabrica" que usa el --replay, por eso con la misma cripta y la misma semilla siempre deja el mismo estado inicial.
 # - cargar_partida: partida guardada en el archivo binario (S4.10)
 
+from Modelo.Conocimiento import EXPLORADA
 from Modelo.Jugador import Jugador
 from Modelo.MotorSimulacion import MotorSimulacion
-from Persistencia.ConversorPartida import RestauradorPartida, restaurar_jugador
+from Persistencia.ConversorPartida import (RestauradorPartida, aplicar_puertas_reales, restaurar_conocimiento,
+                                           restaurar_jugador)
 from Persistencia.FormatoBinario import VersionIncompatible
 
 ID_JUGADOR = "jugador"
@@ -81,15 +83,29 @@ def cargar_partida(ruta, gestor):
                 f"La partida se guardó con el catálogo {encabezado.version_catalogo} "
                 f"y el actual es {version_catalogo}")
 
+        # orden de data-model.md (Carga de una partida): leer jugador y conocimiento, crear el motor,
+        # puertas reales, conocimiento, jugador y reloj, y por ultimo la sala actual
         registro_jugador = restaurador.leer_jugador()
         if registro_jugador is None:
             raise VersionIncompatible("El archivo no tiene los datos del jugador")
 
+        registro_conocimiento = restaurador.leer_conocimiento()
+        if registro_conocimiento is None:
+            raise VersionIncompatible("El archivo no tiene el bloque de conocimiento")
+
         motor = _crear_motor(encabezado.cripta_id, encabezado.semilla, gestor)
+
+        # corrige las puertas de todas las salas sin leer sus bloques (H2), y despues el conocimiento,
+        # sin historial (FR-015); las avistadas se recalculan (FR-004)
+        aplicar_puertas_reales(motor, registro_conocimiento)
+        restaurar_conocimiento(motor, registro_conocimiento)
 
         # iniciar_partida marco el rastro de la sala inicial con 0; el valor real viene del archivo
         motor.jugador.sala.rastro = None
         restaurar_jugador(motor, registro_jugador)
+
+        if motor.conocimiento.estado(motor.jugador.sala) != EXPLORADA:
+            raise VersionIncompatible(f"La sala {motor.jugador.sala.id} del jugador no está explorada en el archivo")
 
         # el jugador retoma en su punto de decision, en el instante guardado
         motor.reloj = encabezado.reloj

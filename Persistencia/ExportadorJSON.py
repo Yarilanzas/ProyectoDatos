@@ -2,6 +2,7 @@
 # guarda los mismos datos que ArchivoPartida: el encabezado, el jugador y los registros de sala
 
 import json
+from Persistencia.RegistroConocimiento import RegistroConocimiento
 from Persistencia.RegistroSala import RegistroSala
 from Persistencia.RegistroJugador import RegistroJugador
 
@@ -26,7 +27,9 @@ def _json_a_sala(datos):
         puertas=[tuple(puerta) for puerta in datos["puertas"]],
     )
 
-def guardar_partida_json(ruta, cripta_id, version_cripta, version_catalogo, semilla, reloj, registros, jugador=None):
+def guardar_partida_json(ruta, cripta_id, version_cripta, version_catalogo, semilla, reloj, registros, jugador=None, conocimiento=None):
+    # `conocimiento` (RegistroConocimiento) va con los mismos tres campos que el bloque binario,
+    # asi la comparacion binario frente a JSON es de los mismos datos (FR-015)
     datos = {
         "cripta_id": cripta_id,
         "version_cripta": version_cripta,
@@ -34,6 +37,7 @@ def guardar_partida_json(ruta, cripta_id, version_cripta, version_catalogo, semi
         "semilla": semilla,
         "reloj": reloj,
         "jugador": jugador.to_dict() if jugador is not None else None,
+        "conocimiento": conocimiento.to_dict() if conocimiento is not None else None,
         "salas": [_sala_a_json(registro) for registro in registros],
     }
     with open(ruta, "w", encoding="utf-8") as archivo:
@@ -53,6 +57,13 @@ def cargar_jugador_json(ruta):
     if datos["jugador"] is None:
         return None
     return RegistroJugador.from_dict(datos["jugador"])
+
+def cargar_conocimiento_json(ruta):
+    with open(ruta, "r", encoding="utf-8") as archivo:
+        datos = json.load(archivo)
+    if datos.get("conocimiento") is None:
+        return None
+    return RegistroConocimiento.from_dict(datos["conocimiento"])
 
 # json no permite leer una sola parte, hay que cargar todo el archivo y recorrer la lista
 def leer_sala_json(ruta, sala_id):

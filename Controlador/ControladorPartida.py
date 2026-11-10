@@ -12,7 +12,8 @@ from Gestor.PreparadorPartida import preparar_partida, cargar_partida
 from Modelo.rutas_ir_a import primer_paso
 from Modelo.Viaje import (DANO, DESTINO, ENEMIGOS, RECHAZO_ACTUAL, RECHAZO_SIN_RUTA, SIN_RUTA)
 from Persistencia.ArchivoPartida import guardar_partida
-from Persistencia.ConversorPartida import (RestauradorPartida, registros_desde_motor, registro_jugador_desde_motor)
+from Persistencia.ConversorPartida import (RestauradorPartida, registros_desde_motor, registro_jugador_desde_motor,
+                                           registro_conocimiento_desde_motor)
 from Persistencia.FormatoBinario import VersionIncompatible
 from Persistencia.TablaPuntajes import TablaPuntajes, Puntaje, CRITERIOS_PUNTAJES
 
@@ -135,6 +136,7 @@ class ControladorPartida:
         # primero se arma todo en memoria (puede leer salas pendientes del archivo cargado)
         registros = registros_desde_motor(motor)
         jugador = registro_jugador_desde_motor(motor)
+        conocimiento = registro_conocimiento_desde_motor(motor)  # FR-015
 
         # el archivo cargado se cierra antes de reemplazarlo (en Windows no se puede
         # reemplazar un archivo abierto) y se vuelve a abrir al terminar
@@ -149,7 +151,7 @@ class ControladorPartida:
             guardar_partida(
                 ruta, motor.cripta_id,
                 self.gestor.version_cripta(motor.cripta_id), self.gestor.version_catalogo(),
-                motor.semilla, motor.reloj, registros, jugador,
+                motor.semilla, motor.reloj, registros, jugador, conocimiento=conocimiento,
             )
             if anterior is not None:
                 ruta_lectura = ruta  # las salas pendientes ahora estan en el archivo nuevo

@@ -1053,11 +1053,8 @@ class MotorSimulacion:
         # En una partida cargada, la sala se toma del archivo si está guardada ahí.
 
         if self.restaurador is not None and self.restaurador.restaurar_sala(self, sala.id):
-            # Provisional hasta T079: el conocimiento no se guarda, y restaurar la sala cambia sus
-            # puertas después de crearlo. Sin esto, la sala donde retoma el jugador no estaría
-            # explorada y `Salidas:` mostraría lo que trae el esqueleto (FR-003, FR-006).
-            if self.jugador is not None and sala is self.jugador.sala:
-                self._entrar_conocimiento(sala)
+            # El conocimiento ya viene del archivo (T079): restaurar una sala no vuelve a observar
+            # sus puertas (FR-015); las puertas reales se aplicaron antes, al cargar (FR-006).
             return
 
         if self.gestor_datos is None or self.cripta_id is None:

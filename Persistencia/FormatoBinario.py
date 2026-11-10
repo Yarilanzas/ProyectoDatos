@@ -4,7 +4,9 @@
 import struct
 
 MAGIA = b"CRPT"
-VERSION_FORMATO = 2 # v2: se agrega el bloque del jugador y los enemigos/objetos guardan su instancia
+# v2: se agrega el bloque del jugador y los enemigos/objetos guardan su instancia
+# v3: se agregan el bloque de conocimiento y el de linea de tiempo de Persona D (FR-016, P-10)
+VERSION_FORMATO = 3
 LARGO_TEXTO = 32
 
 # el prefijo (magia + version) siempre va en las mismas posiciones, asi una version nueva del formato se detecta antes de intentar leer el resto del encabezado

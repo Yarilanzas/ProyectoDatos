@@ -9,9 +9,11 @@
 from DTOS.ContenidoSala import ContenidoSala
 from DTOS.EnemigoInstancia import EnemigoInstancia
 from DTOS.TrampaInstancia import TrampaInstancia
+from Modelo.ordenamiento import elegir_algoritmo
 from Modelo.retroceso import Historial
 from Persistencia.ArchivoPartida import LectorPartida
 from Persistencia.FormatoBinario import VersionIncompatible
+from Persistencia.RegistroConocimiento import RegistroConocimiento
 from Persistencia.RegistroJugador import RegistroJugador
 from Persistencia.RegistroSala import RegistroSala
 
@@ -117,6 +119,35 @@ def registro_jugador_desde_motor(motor):
     )
 
 
+def _puerta_puede_diferir(salida):
+    # contracts/formato-partida.md: hoy cerrada, o con llave, o con cierre automatico
+    return (bool(salida.cerrada) or getattr(salida, "llave", None) is not None
+            or bool(getattr(salida, "cierre_automatico", None)))
+
+
+def registro_conocimiento_desde_motor(motor):
+    """Bloque de conocimiento del motor (FR-015, PR-06, PR-07); None si el motor no tiene conocimiento.
+
+    Exploradas y recuerdos salen de `Conocimiento.exportar`. Las puertas reales son las salidas que
+    `_puerta_puede_diferir`, de TODAS las salas (tambien las que no tienen bloque), para que al cargar se
+    corrijan sin leer bloques de sala (H2). El costo de las salidas no se guarda: sale del esqueleto.
+
+    O(n + e) para recorrer las n salas y sus e salidas, mas el orden canonico del registro
+    (O(k log k + p log p + r log r) con `elegir_algoritmo`).
+    """
+    if motor.conocimiento is None:
+        return None
+
+    exploradas, recuerdos = motor.conocimiento.exportar()
+    reales = []
+    for sala in motor.salas:
+        for direccion, salida in sala.salidas.items():
+            if _puerta_puede_diferir(salida):
+                reales.append((sala.id, direccion, bool(salida.cerrada)))
+
+    return RegistroConocimiento(exploradas, recuerdos, reales)
+
+
 # cargar: registros -> motor
 
 def restaurar_jugador(motor, registro):
@@ -133,6 +164,59 @@ def restaurar_jugador(motor, registro):
     motor.acciones_jugador = registro.acciones
     motor.enemigos_derrotados = registro.derrotados
     motor._llave_salida_usada = registro.llave_usada
+
+
+def _salas_por_id(motor):
+    # Salas ordenadas por id, para buscar con busqueda binaria (sin dict). O(n log n).
+    ordenadas, _ = elegir_algoritmo(len(motor.salas))(list(motor.salas), lambda sala: sala.id)
+    return ordenadas
+
+
+def _buscar_por_id(ordenadas, id_sala):
+    # Busqueda binaria sobre las salas ordenadas por id. O(log n); None si no esta.
+    inicio, fin = 0, len(ordenadas)
+    while inicio < fin:
+        medio = (inicio + fin) // 2
+        if ordenadas[medio].id < id_sala:
+            inicio = medio + 1
+        else:
+            fin = medio
+    if inicio < len(ordenadas) and ordenadas[inicio].id == id_sala:
+        return ordenadas[inicio]
+    return None
+
+
+def aplicar_puertas_reales(motor, registro):
+    """Pone cada puerta real en su estado guardado, sin leer bloques de sala (FR-006, PR-07, H2).
+
+    Primero valida todo: una sala o direccion que no existe lanza VersionIncompatible sin cambiar nada.
+    No pasa por el Historial: cargar no es una accion del jugador. O(n log n + r log n).
+    """
+    ordenadas = _salas_por_id(motor)
+    cambios = []
+    for id_sala, direccion, cerrada in registro.puertas_reales:
+        sala = _buscar_por_id(ordenadas, id_sala)
+        if sala is None:
+            raise VersionIncompatible(f"La sala {id_sala} de una puerta guardada no existe en la cripta")
+        salida = sala.salidas.get(direccion)
+        if salida is None:
+            raise VersionIncompatible(f"La sala {id_sala} no tiene la salida {direccion} guardada")
+        cambios.append((salida, cerrada))
+
+    for salida, cerrada in cambios:
+        salida.cerrada = cerrada
+
+
+def restaurar_conocimiento(motor, registro):
+    """Reemplaza el conocimiento del motor por el guardado, sin Historial (FR-015).
+
+    Una sala o direccion inexistente, o un recuerdo invalido, lanza VersionIncompatible (FR-016).
+    Complejidad: la de `Conocimiento.restaurar`.
+    """
+    try:
+        motor.conocimiento.restaurar(registro.exploradas, registro.recuerdos)
+    except ValueError as error:
+        raise VersionIncompatible(f"El conocimiento guardado no corresponde a la cripta: {error}") from error
 
 
 def _reactivar_enemigo(motor, enemigo, tiempo):
@@ -213,6 +297,9 @@ class RestauradorPartida:
 
     def leer_jugador(self):
         return self.lector.leer_jugador()
+
+    def leer_conocimiento(self):
+        return self.lector.leer_conocimiento()
 
     def restaurar_sala(self, motor, id_sala):
         registro = self.lector.leer_sala(id_sala)
