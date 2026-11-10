@@ -79,7 +79,7 @@ Ids duplicados en el esqueleto: se conserva la primera aparición. Id no entero 
 
 | Campo | Tipo | Descripción |
 |-------|------|-------------|
-| `cola` | `Queue` (`Cache/Estructuras.py`) | salas por visitar; solo `enqueue`, `dequeue`, `is_empty` |
+| `cola` | `Queue` (`Modelo/Estructuras.py`) | salas por visitar; solo `enqueue`, `dequeue`, `is_empty` |
 | `visitada` | arreglo de `bool`, largo `max_id + 1` | se marca al encolar |
 | `obtenida` | arreglo de `bool`, largo K | |
 | `en_ronda` | arreglo de `bool`, largo K | llave ya anotada en la oleada en curso |
@@ -169,7 +169,7 @@ ordena nada.
 | Archivo | Contenido | Versión |
 |---------|-----------|---------|
 | `<paquete>/criptas/<id>/llaves.json` | mismo cuerpo que `GET /criptas/<id>/llaves` | el de la cripta (`version.json`) |
-| `datos_locales/llaves_<id>.json` | `{"version": <versión de cripta>, "llaves": [...]}` | se descarta si la versión cambia, igual que `esqueleto_<id>.json` |
+| `datos_locales/llaves_<id>.json` | `{"formato": "CRIPTA-LLAVES", "version_formato": 1, "version": <versión de cripta>, "llaves": [...]}` | se descarta si cambia el formato, la versión de formato o la versión de la cripta |
 
 El resultado de la verificación **no se guarda** en la partida, la bitácora ni los puntajes (Key Entities).
 Detalle en [contracts/fuente-llaves.md](contracts/fuente-llaves.md).

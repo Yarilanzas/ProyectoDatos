@@ -66,7 +66,7 @@ O(1) y no hace falta ninguna búsqueda. El `dict` `sala.salidas` del DTO solo se
 
 ## R2. Cola FIFO del recorrido (FR-001, FR-002)
 
-**Decisión**: se reutiliza `Queue` de `Cache/Estructuras.py` (lista enlazada con `front` y `rear`). Solo se usan
+**Decisión**: se reutiliza `Queue` de `Modelo/Estructuras.py` (movida desde `Cache/`, P-12; lista enlazada con `front` y `rear`). Solo se usan
 `enqueue`, `dequeue` e `is_empty`, todas O(1). **`size()` no se usa en el recorrido** porque recorre la cola completa
 (O(n)); si alguna vez hiciera falta el tamaño, se lleva un contador aparte.
 

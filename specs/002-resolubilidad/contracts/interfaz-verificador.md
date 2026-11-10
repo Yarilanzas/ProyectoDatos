@@ -14,8 +14,8 @@ def verificar(cripta_id: str,
 ```
 
 - Pura: sin red, archivos, consola, `random` ni reloj (Principio II, FR-023). No modifica sus argumentos.
-- Importa solo `DTOS/` (entradas y resultado), `Modelo/ordenamiento.merge_sort` y `Cache/Estructuras.Queue`
-  (excepción justificada en el plan).
+- Importa solo `DTOS/` (entradas y resultado), `Modelo/ordenamiento.merge_sort` y `Modelo/Estructuras.Queue`
+  (Principio II: `Modelo/` no importa adaptadores; lo comprueba T016).
 - Determinista: mismo contenido en cualquier orden → mismo resultado (FR-013).
 - Lanza `ValueError` si un id de sala no es un entero no negativo.
 - Complejidad: O(S + E + M log M) para el veredicto y el orden; más O(Σ zonas) para las dependencias cuando no es

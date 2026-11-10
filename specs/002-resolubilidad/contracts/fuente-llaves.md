@@ -61,11 +61,11 @@ documenta el archivo (FR-031).
 
 ```json
 // datos_locales/llaves_<id>.json
-{"version": "<versión de la cripta>", "llaves": [{"id": "...", "sala": 2, "enemigo": null}]}
+{"formato": "CRIPTA-LLAVES", "version_formato": 1, "version": "<versión de la cripta>", "llaves": [{"id": "...", "sala": 2, "enemigo": null}]}
 ```
 
-- Se usa solo si `version` coincide con la versión actual de la cripta; si no, se pide a la fuente y se reescribe.
-- Mismo esquema que `esqueleto_<id>.json` y `contenido_<id>.json` (`AlmacenamientoLocalApi`).
+- Se usa solo si `formato`, `version_formato` y `version` coinciden con los actuales; si no, se pide a la fuente y se reescribe.
+- Mismo manejo que `esqueleto_<id>.json` y `contenido_<id>.json` (`AlmacenamientoLocalApi`); a diferencia de ellos, lleva identificador y versión de formato (Principio VI).
 - El resultado no depende de que haya caché (FR-013).
 
 ## Orden de solicitudes de una verificación

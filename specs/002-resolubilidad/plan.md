@@ -11,7 +11,7 @@ recorrido en memoria, por oleadas**, sobre el grafo dirigido de salas. El esquel
 obtienen una sola vez antes del recorrido; durante el recorrido no hay solicitudes (FR-026).
 
 Estructuras, todas a mano (Principio I): vector de salas indexado por id, la `Queue` existente de
-`Cache/Estructuras.py` (solo `enqueue`, `dequeue`, `is_empty`), vectores de marcas, un índice de llaves en arreglo
+`Modelo/Estructuras.py` (solo `enqueue`, `dequeue`, `is_empty`), vectores de marcas, un índice de llaves en arreglo
 ordenado con búsqueda binaria propia, y puertas en espera por número de llave. Las oleadas se ordenan con el
 `merge_sort` de `Modelo/ordenamiento.py`. Si la cripta no es resoluble, el reporte es un barrido final y las
 dependencias se calculan con zonas hacia atrás marcadas con sello; los ciclos salen de seguir los enlaces.
@@ -61,7 +61,7 @@ con el grupo está en [Preguntas abiertas](#preguntas-abiertas).
 |**III. Determinismo** | ✅ | ✅ | Sin `random` ni reloj real; la verificación ocurre antes de crear el motor y no se anota. Todos los órdenes salen de id de sala, dirección fija e índice ordenado (R11) |
 | **IV. Sin datos de cripta** | ✅ | ✅ | El orden N, S, E, O es una regla, no un dato. Las criptas de prueba y del bench se generan en `tests/`. Las dimensiones de cripta-06 solo aparecen en la documentación y como parámetros del bench |
 | **V. Pruebas** | ✅ | ✅ | Un escenario por fila del [quickstart](quickstart.md), cada uno con su FR. Los paquetes temporales existentes se actualizan con `llaves.json` para no romper la suite |
-| **VI. Persistencia versionada** | ✅ | ✅ | `llaves_<id>.json` lleva la versión de la cripta y se descarta si cambia, igual que el esqueleto. No cambia `CRPT`, `CRIPTA-LOG` ni puntajes |
+| **VI. Persistencia versionada** | ✅ | ✅ | `llaves_<id>.json` lleva identificador y versión de formato (`CRIPTA-LLAVES`, 1) y la versión de la cripta; se descarta y se vuelve a pedir si cualquiera cambia. No cambia `CRPT`, `CRIPTA-LOG` ni puntajes. Límite conocido: ver Riesgos |
 | **VII. Presupuesto** | ✅ | ✅ | El presupuesto se fija tras los detalles y antes de esqueleto y llaves; todo pasa por `_hacer_solicitud`, que lo revisa antes de cada intento. Cripta-06: 9 de 63 sin caché, 2 con caché. La partida reutiliza lo ya pedido |
 | **VIII. Decisiones medidas** | ✅ | ✅ | M1 a M5 en `tests/bench_resolubilidad.py`, incluidas las alternativas A1 a A3 |
 | **IX. Spec antes que código** | ✅ | ✅ | Spec confirmada en `e07ac0a` y clarificaciones en `ba1f47d`. Las correcciones de texto de P-13 y P-14, si se aceptan, van a la spec en una confirmación propia antes del código |
@@ -70,15 +70,15 @@ con el grupo está en [Preguntas abiertas](#preguntas-abiertas).
 | **Contratos compartidos** | — | ⚠️ Avisar | `nueva_partida` gana `forzar`; `GestorDatos.obtener_llaves`; formato del paquete offline; prioridad de opciones de `main.py`. Avisar al grupo antes de cambiarlos |
 | **README en el mismo cambio** | — | ✅ | PR-09 (README en UTF-16: avisar al grupo) |
 
-**Resultado del gate**: aprobado. Una sola desviación (importar `Queue` desde `Modelo/`), pedida explícitamente y
-justificada abajo. Ningún principio bloqueante.
+**Resultado del gate**: aprobado, sin desviaciones: `Queue` ya vive en `Modelo/Estructuras.py` (P-12). El límite
+conocido de las cachés existentes frente al Principio VI está en Riesgos.
 
 ## Decisiones
 
 | # | Tema | Resolución | Detalle |
 |---|------|------------|---------|
 | 1 | Grafo | Vector de salas por id; salidas en orden N, S, E, O; llaves de cada sala, incluidas las que suelta un enemigo | [R1](research.md#r1-vector-de-salas-fr-001-fr-003-fr-005) |
-| 2 | Cola | `Queue` de `Cache/Estructuras.py`; marcar al encolar; `size()` no se usa | [R2](research.md#r2-cola-fifo-del-recorrido-fr-001-fr-002) |
+| 2 | Cola | `Queue` de `Modelo/Estructuras.py`; marcar al encolar; `size()` no se usa | [R2](research.md#r2-cola-fifo-del-recorrido-fr-001-fr-002) |
 | 3 | Marcas | `visitada`, `obtenida`, `en_ronda`: arreglos de booleanos | [R3](research.md#r3-vectores-de-marcas-fr-001-fr-007) |
 | 4 | Índice de llaves | Arreglo ordenado con `merge_sort` + búsqueda binaria propia; el número de llave indexa los demás vectores | [R4](research.md#r4-índice-de-llaves-fr-007-fr-014) |
 | 5 | Oleadas | `espera[K]`; al obtener la llave se sueltan sus puertas y forman la oleada siguiente; cada oleada se ordena con `merge_sort` | [R5](research.md#r5-recorrido-por-oleadas-y-puertas-en-espera-fr-001-fr-002-fr-006-fr-007) |
@@ -107,7 +107,7 @@ justificada abajo. Ningún principio bloqueante.
 | PR-03 | Recorrido por oleadas con `Queue`, marcas y `espera`; veredicto y orden | FR-001, FR-002, FR-006, FR-007, FR-026 | `Modelo/Resolubilidad.py` |
 | PR-04 | Barrido del reporte: no obtenibles, frontera, puertas de salida, ubicaciones | FR-008, FR-009, FR-010, FR-014 | `Modelo/Resolubilidad.py`, `DTOS/ResultadoVerificacion.py` (nuevo) |
 | PR-05 | Dependencias por zona y ciclos | FR-011, FR-014 | `Modelo/Resolubilidad.py` |
-| PR-06 | Validación de `UbicacionLlave`; `GestorDatos.obtener_llaves` con caché versionada; `verificar_cripta` con presupuesto | FR-024, FR-025, FR-026, FR-028 | `DTOS/UbicacionLlave.py`, `API/Fuentes.py`, `AlmacenamientoLocalApi/AlmacenamientoLocalApi.py`, `Gestor/GestorDatos.py`, `Gestor/PreparadorPartida.py` |
+| PR-06 | Validación de las entradas de `/llaves` en la fuente (el DTO `UbicacionLlave` no cambia); `GestorDatos.obtener_llaves` con caché versionada; `verificar_cripta` con presupuesto | FR-024, FR-025, FR-026, FR-028 | `API/Fuentes.py`, `AlmacenamientoLocalApi/AlmacenamientoLocalApi.py`, `Gestor/GestorDatos.py`, `Gestor/PreparadorPartida.py` |
 | PR-07 | `nueva_partida(..., forzar)`, `CriptaNoResoluble`, `mostrar_verificacion` | FR-018 a FR-023 | `Controlador/ControladorPartida.py`, `Vista/VistaConsola.py` |
 | PR-08 | `--verificar`, `--forzar`, prioridad y códigos | FR-015, FR-016, FR-017, FR-022, FR-024 | `main.py` |
 | PR-09 | `llaves.json` en los generadores de paquetes y en `paquete/`; README | FR-028, FR-031 | `tests/utiles_niebla.py`, `tests/test_integracion.py`, otros generadores, `README.md` |
@@ -144,6 +144,7 @@ PR-10 acompaña a cada bloque (PR-09 debe entrar junto con PR-07: sin llaves.jso
 | Cambia la prioridad de opciones, contrato público | README y pruebas en el mismo cambio |
 | `nueva_partida` cambia de firma | Parámetro nuevo con valor por defecto; avisar al grupo |
 | Peor caso de dependencias (P-11) | M3 lo vigila |
+| Las cachés existentes `esqueleto_<id>.json` y la del catálogo no llevan identificador de formato (Principio VI) | Límite conocido: no se cambian en esta capacidad porque son contrato compartido; solo la caché nueva de llaves lo lleva. Para una caché, «rechazar» se interpreta como descartar y volver a pedir; el mensaje `Versión incompatible` y el código 2 se reservan para partidas y bitácoras. Proponer al grupo corregir las demás cachés en otro cambio |
 
 ## Project Structure
 
@@ -171,8 +172,7 @@ Modelo/
 └── ordenamiento.py          # sin cambios (se usa merge_sort)
 Modelo/Estructuras.py        # Queue movida desde Cache/ (P-12)
 DTOS/
-├── ResultadoVerificacion.py # nuevo
-└── UbicacionLlave.py        # validación de campos
+└── ResultadoVerificacion.py # nuevo (UbicacionLlave.py ya existe y no cambia)
 API/Fuentes.py               # obtener_llaves_cripta: error de entrada incompleta
 AlmacenamientoLocalApi/AlmacenamientoLocalApi.py  # guardar/cargar llaves
 Gestor/
