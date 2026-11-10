@@ -43,6 +43,9 @@ región alcanzable, cuyo destino es `sala_salida` y cuya llave es `llave_salida`
 está fuera de ella y cuya llave no es obtenible (o que no indican llave).
 - **Puerta bloqueada**: salida cerrada cuyo destino está fuera de la región alcanzable y cuya llave
 no es obtenible (o que no indica llave). Su origen puede estar dentro o fuera de la región alcanzable.
+- **Puerta de salida no atravesable**: salida cuyo destino es `sala_salida`, cuya llave es `llave_salida`
+y que no se puede cruzar, porque su origen está fuera de la región alcanzable o porque `llave_salida` no es
+obtenible. A diferencia de la puerta bloqueada, su destino puede estar dentro de la región alcanzable.
 - **Zona de una sala no alcanzable**: salas fuera de la región alcanzable desde las que se llega a ella
 sin cruzar ninguna puerta bloqueada.
 - **Dependencia entre llaves**: la llave no obtenible K depende de la llave J cuando todas las puertas
@@ -190,7 +193,7 @@ cuál es el archivo que falta, la partida no inicia y el código de salida es 1.
 
 - **Puerta cerrada sin llave indicada**: nunca se puede atravesar; en la frontera aparece como «sin llave», no provoca un fallo.
 - **Frontera vacía**: si la cripta no es resoluble y no hay puertas en la frontera (por ejemplo, salas desconectadas), el reporte lo dice de forma explícita y muestra de todos modos las llaves no obtenibles y sus ubicaciones.
-- **`sala_salida` alcanzable, pero con su puerta bloqueada**: la puerta hacia `sala_salida` que requiere `llave_salida` se incluye en el reporte aunque su destino ya sea alcanzable por otra ruta.
+- **`sala_salida` alcanzable, pero sin poder cruzar su puerta**: cada puerta de salida no atravesable se incluye en el reporte aunque su destino ya sea alcanzable por otra ruta.
 - **Puerta cerrada entre dos salas alcanzables**: no está en la frontera, porque no bloquea el acceso a ninguna sala nueva.
 - **Una llave en varias ubicaciones**: es obtenible si cualquiera es alcanzable; el reporte lista todas.
 - **Ubicación en una sala inexistente, o salida hacia una sala inexistente**: no aporta alcance; una llave con una ubicación así se reporta con esa ubicación y como no obtenible si no tiene otra válida. No detiene la verificación.
@@ -222,7 +225,7 @@ cuál es el archivo que falta, la partida no inicia y el código de salida es 1.
 **Reporte cuando no es resoluble**
 
 - **FR-008**: Si la cripta no es resoluble, el sistema MUST mostrar un reporte con las llaves no obtenibles y las dependencias entre llaves.
-- **FR-009**: El reporte MUST listar cada puerta de la frontera bloqueada con su sala de origen, su sala de destino y la llave que requiere, e indicar de forma explícita si la frontera está vacía. También MUST incluir la puerta hacia `sala_salida` que requiere `llave_salida` si está bloqueada, e indicar si no existe ninguna.
+- **FR-009**: El reporte MUST listar cada puerta de la frontera bloqueada con su sala de origen, su sala de destino y la llave que requiere, e indicar de forma explícita si la frontera está vacía. También MUST incluir cada puerta de salida no atravesable (ver Definiciones), con su origen, dirección y destino, e indicar de forma explícita si no existe ninguna salida hacia `sala_salida` que requiera `llave_salida`.
 - **FR-010**: El reporte MUST indicar dónde se encuentra cada llave no obtenible y cada llave de la frontera: sala, enemigo que la suelta si aplica, o «ubicación desconocida».
 - **FR-011**: Si existen ciclos de llaves, el reporte MUST señalarlos, tanto directos como por cadena. Como cada llave depende como mucho de otra (ver Definiciones), cada llave que pertenezca a un ciclo MUST aparecer en exactamente un ciclo señalado, y las llaves sin dependencia MUST mostrarse como tales.
 
@@ -278,11 +281,11 @@ cuál es el archivo que falta, la partida no inicia y el código de salida es 1.
 - **SC-002**: En todas las criptas de prueba resolubles, seguir el orden mostrado permite obtener cada llave usando solo las anteriores.
 - **SC-003**: 100 ejecuciones sobre la misma cripta, incluidas variantes con salas, salidas y llaves entregadas en otro orden, producen una salida idéntica carácter por carácter.
 - **SC-004**: La verificación tarda menos de 200 ms en una cripta al menos tan grande como la publicada más grande, sin contar la obtención de datos, medido con `python main.py --bench`.
-- **SC-005**: Al duplicar a la vez salas, salidas y llaves en criptas sintéticas, el tiempo medido con `--bench` se multiplica por 2,5 como máximo en cada duplicación, incluidos el caso resoluble y el no resoluble con reporte.
+- **SC-005**: Al duplicar a la vez salas, salidas y llaves en criptas sintéticas, el tiempo medido con `--bench` se multiplica por 2,5 como máximo en cada duplicación, tanto en el caso resoluble como en el no resoluble con reporte. Queda fuera el peor caso del cálculo de dependencias que FR-029 acepta como excepción (zonas de distintas ubicaciones de llaves que se solapan): las criptas sintéticas de esta medición no lo producen, y si se mide se informa aparte, sin aplicarle el límite.
 - **SC-006**: En el 100 % de los intentos sin `--forzar` sobre criptas no resolubles, y de los fallos al obtener la ubicación de las llaves, no inicia ninguna partida ni cambia ningún archivo de partida, bitácora o puntajes.
 - **SC-007**: Una partida con misma cripta, semilla y acciones genera la misma bitácora y el mismo estado final, con verificación y sin ella.
 - **SC-008**: Con cualquier presupuesto, la cantidad de solicitudes realizadas nunca supera el presupuesto de la cripta.
-- **SC-009**: Con solo leer el reporte de una cripta no resoluble, sin consultar sus datos, una persona puede señalar qué puerta bloquea el avance, qué llave falta y dónde está.
+- **SC-009**: El reporte de una cripta no resoluble basta por sí solo para señalar qué puerta bloquea el avance, qué llave falta y dónde está: cada puerta de la frontera aparece con origen, dirección, destino y llave, y cada una de esas llaves aparece en «Ubicación de las llaves» con su sala, su enemigo o «ubicación desconocida».
 
 ## Assumptions
 
