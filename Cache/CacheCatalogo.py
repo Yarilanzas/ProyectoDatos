@@ -1,5 +1,5 @@
 #import Estructuras
-from Cache.Estructuras import Queue
+from Modelo.Estructuras import Queue
 
 class CacheCatalogo:
 

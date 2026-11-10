@@ -9,7 +9,7 @@ if RAIZ not in sys.path:
     sys.path.insert(0, RAIZ)
 
 from Cache.CacheCatalogo import CacheCatalogo
-from Cache.Estructuras import Queue
+from Modelo.Estructuras import Queue
 from AlmacenamientoLocalApi.AlmacenamientoLocalApi import AlmacenamientoLocalApi
 from DTOS.FichaCatalogo import FichaCatalogo
 from DTOS.SalaEsqueleto import SalaEsqueleto

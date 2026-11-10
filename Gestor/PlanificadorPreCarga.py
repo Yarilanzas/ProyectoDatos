@@ -2,7 +2,7 @@ import sys
 import os
 #provicional:
 #sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from Cache.Estructuras import Queue
+from Modelo.Estructuras import Queue
 
 ORDEN_DIRECCIONES = ["N", "S", "E", "O"]
 
