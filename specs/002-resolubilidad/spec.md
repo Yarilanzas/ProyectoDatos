@@ -200,6 +200,7 @@ cuál es el archivo que falta, la partida no inicia y el código de salida es 1.
 - **`--verificar` con una cripta inexistente**: `! Error: ...` y código de salida 1.
 - **`--forzar` con `--cargar` o `--replay`**: se ignora, porque esos modos no inician una partida nueva.
 - **Los datos cambian en el servicio**: una versión distinta de la cripta es otra cripta y puede dar otro resultado.
+- **La cripta no declara `llave_salida`**: es resoluble si `sala_salida` es alcanzable desde `sala_inicial`; el orden lista las llaves obtenibles como en cualquier cripta resoluble.
 
 ## Requirements *(mandatory)*
 
@@ -250,13 +251,13 @@ cuál es el archivo que falta, la partida no inicia y el código de salida es 1.
 
 - **FR-024**: Si no se puede obtener la ubicación de las llaves, por un error del servicio, por agotarse el presupuesto o por faltar el dato en el paquete offline, el sistema MUST informar el motivo con `! Error: ...`, no emitir veredicto, no iniciar la partida y terminar con código 1, también con `--forzar`.
 - **FR-025**: Un fallo al obtener los demás datos necesarios para verificar (datos generales de la cripta o sus salas) MUST tratarse igual que en FR-024.
-- **FR-027**: *(Retirado durante la revisión de la spec; el identificador no se reutiliza.)
 - **FR-026**: Las solicitudes de la verificación MUST contar para `presupuesto_solicitudes` y MUST NOT superarlo en ningún caso, incluidos los reintentos.
+- **FR-027**: *(Retirado durante la revisión de la spec; el identificador no se reutiliza.)*
 - **FR-028**: La ubicación de las llaves MUST obtenerse por la misma interfaz con red y con `--offline`. El formato del paquete offline MUST incorporar este dato y documentarse en el README.
 
 **Rendimiento y documentación**
 
-- **FR-029**: La verificación, una vez obtenidos los datos, MUST tardar menos de 200 ms en una cripta del tamaño de la publicada más grande, y su costo MUST crecer aproximadamente de forma lineal con la cantidad de salas, salidas y llaves.
+- **FR-029**: La verificación, una vez obtenidos los datos, MUST tardar menos de 200 ms en una cripta del tamaño de la publicada más grande, y su costo MUST crecer aproximadamente de forma lineal con la cantidad de salas, salidas y llaves. Excepción aceptada: el cálculo de dependencias del reporte de una cripta no resoluble tiene peor caso O(L·(S + E)), donde L es la cantidad de ubicaciones de llaves; se documenta como límite conocido y M3 lo vigila.
 - **FR-030**: `--bench` MUST incluir las mediciones que respaldan FR-029.
 - **FR-031**: El README MUST documentar `--verificar` y `--forzar`, la nueva prioridad de opciones, los códigos de salida de este modo y el archivo de llaves del paquete offline.
 
