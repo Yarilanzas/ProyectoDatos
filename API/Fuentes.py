@@ -36,6 +36,11 @@ class FuenteDatos:
         datos = self._obtener(ruta)
         if "llaves" not in datos:
             raise Excepciones.RespuestaInvalidaError(ruta, "falta la clave 'llaves'")
+        # FR-025: una entrada incompleta es una respuesta inválida (antes salía como KeyError).
+        # Una sala que no existe en el esqueleto no es error de lectura: la verificación la reporta.
+        for llave in datos["llaves"]:
+            if not isinstance(llave, dict) or "id" not in llave or "sala" not in llave:
+                raise Excepciones.RespuestaInvalidaError(ruta, "entrada de llave sin 'id' o 'sala'")
         return [UbicacionLlave.desde_json(llave) for llave in datos["llaves"]]
 
     def obtener_detalles_cripta(self, id):
