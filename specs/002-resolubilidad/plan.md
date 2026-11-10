@@ -57,8 +57,8 @@ con el grupo está en [Preguntas abiertas](#preguntas-abiertas).
 |---|---|---|---|
 | **I. Estructuras propias** | ✅ | ✅ | Vector de salas, vectores de marcas, índice ordenado con búsqueda binaria propia, `espera` por llave, `sello`, `depende_de`: todos arreglos indexados. Cola: `Queue` propia. Orden: `merge_sort` propio. Sin `dict`/`set` como índice; los `dict` de los DTO (`sala.salidas`, JSON) solo se recorren o parsean |
 | **I. Complejidad documentada** | ✅ | ✅ | Tablas en [data-model.md](data-model.md); se copian a los docstrings. Alternativas en [research.md](research.md) R1 a R8 |
-| **II. MVC** | ✅ | ⚠️ Justificado | La decisión vive en `Modelo/Resolubilidad.py`, sin red, archivos ni consola. La red y la caché están en `API/` y `Gestor/`; el formato en `Vista/`. El resultado cruza como DTO. **Excepción**: `Modelo/` importa `Queue` de `Cache/Estructuras.py`, que es una estructura pura sin E/S pero vive en un paquete de adaptadores ([Complexity Tracking](#complexity-tracking), P-12). `--bench` no instancia la vista |
-| **III. Determinismo** | ✅ | ✅ | Sin `random` ni reloj real; la verificación ocurre antes de crear el motor y no se anota. Todos los órdenes salen de id de sala, dirección fija e índice ordenado (R11) |
+| **II. MVC** | ✅ | ✅ | La decisión vive en `Modelo/Resolubilidad.py`, sin red, archivos ni consola. La red y la caché están en `API/` y `Gestor/`; el formato en `Vista/`. El resultado cruza como DTO. `Queue` se movió a `Modelo/Estructuras.py` (P-12), así que `Modelo/` no importa adaptadores. `--bench` no instancia la vista |
+|**III. Determinismo** | ✅ | ✅ | Sin `random` ni reloj real; la verificación ocurre antes de crear el motor y no se anota. Todos los órdenes salen de id de sala, dirección fija e índice ordenado (R11) |
 | **IV. Sin datos de cripta** | ✅ | ✅ | El orden N, S, E, O es una regla, no un dato. Las criptas de prueba y del bench se generan en `tests/`. Las dimensiones de cripta-06 solo aparecen en la documentación y como parámetros del bench |
 | **V. Pruebas** | ✅ | ✅ | Un escenario por fila del [quickstart](quickstart.md), cada uno con su FR. Los paquetes temporales existentes se actualizan con `llaves.json` para no romper la suite |
 | **VI. Persistencia versionada** | ✅ | ✅ | `llaves_<id>.json` lleva la versión de la cripta y se descarta si cambia, igual que el esqueleto. No cambia `CRPT`, `CRIPTA-LOG` ni puntajes |
@@ -129,17 +129,17 @@ PR-10 acompaña a cada bloque (PR-09 debe entrar junto con PR-07: sin llaves.jso
 
 | ID | Pregunta | Quién | Bloquea | Mientras tanto |
 |----|----------|-------|---------|----------------|
-| **P-11** | La regla de la zona exige descontar las puertas internas de cada zona; las zonas de distintas llaves pueden solaparse, así que el cálculo de dependencias es O(S + E + Σ zonas), con peor caso O(L·(S + E)). ¿Se acepta, documentado, como excepción a «aproximadamente lineal» de FR-029 en ese peor caso? | Grupo | Nada | Se implementa R7 (sello, memoria por sala, corte al primer conflicto). M3 mide el caso no resoluble; si superara 2,5, se corrige la spec antes que el código (Principio IX) |
-| **P-12** | `Modelo/` importará `Queue` desde `Cache/Estructuras.py`. ¿Se mueve la estructura a un paquete neutral (p. ej. `Estructuras/`) en otro cambio? Moverla cambia las importaciones de `CacheCatalogo` y `PlanificadorPrecarga` (contrato compartido) | Grupo | Nada | Se importa desde `Cache/` con la justificación de Complexity Tracking |
-| **P-13** | La spec salta de FR-026 a FR-028. ¿Se deja constancia en la spec de que FR-027 no existe? | Autora de la spec | Nada | El plan cubre 30 FR y no reutiliza FR-027 (Principio X) |
-| **P-14** | Assumptions dice que `/llaves` trae «llave, sala y enemigo»; el servicio usa el campo `id`. También la cabecera de la spec cita la constitución v3.0.1 | Autora de la spec | Nada | El código usa `id`, como ya hace `UbicacionLlave` |
+| **P-11** | La regla de la zona exige descontar las puertas internas de cada zona; las zonas de distintas llaves pueden solaparse, así que el cálculo de dependencias es O(S + E + Σ zonas), con peor caso O(L·(S + E)). ¿Se acepta, documentado, como excepción a «aproximadamente lineal» de FR-029 en ese peor caso? | Grupo | Nada |   **Cerrada**: se acepta como excepción documentada en FR-029; M3 la vigila|
+| **P-12** | `Modelo/` importará `Queue` desde `Cache/Estructuras.py`. ¿Se mueve la estructura a un paquete neutral (p. ej. `Estructuras/`) en otro cambio? Moverla cambia las importaciones de `CacheCatalogo` y `PlanificadorPrecarga` (contrato compartido) | Grupo | Nada |   **Cerrada**: `Queue` se movió a `Modelo/Estructuras.py` y `Cache/` y `Gestor/` la importan desde ahí|
+| **P-13** | La spec salta de FR-026 a FR-028. ¿Se deja constancia en la spec de que FR-027 no existe? | Autora de la spec | Nada |  **Cerrada**: la spec deja constancia de FR-027 retirado|
+| **P-14** | Assumptions dice que `/llaves` trae «llave, sala y enemigo»; el servicio usa el campo `id`. También la cabecera de la spec cita la constitución v3.0.1 | Autora de la spec | Nada |   **Cerrada**: la spec usa `id` y cita la constitución v3.0.2|
 
 ## Riesgos
 
 | Riesgo | Mitigación |
 |--------|------------|
 | Las pruebas existentes que inician partidas nuevas fallan porque sus paquetes no tienen `llaves.json` (FR-024) | PR-09 entra en el mismo cambio que PR-07 |
-| `paquete/` y `datos_locales/` locales quedan sin llaves | Regenerarlos; no se versionan (Restricciones técnicas) |
+| `paquete/` y `datos_locales/` quedan sin llaves | `paquete/` está versionado: agregar `llaves.json` avisando al grupo (T056); `datos_locales/` se regenera solo con la caché |
 | Ids de sala dispersos harían crecer el vector a O(max_id) | No ocurre en las criptas publicadas (ids 1..S); un id no entero falla con `! Error` |
 | Cambia la prioridad de opciones, contrato público | README y pruebas en el mismo cambio |
 | `nueva_partida` cambia de firma | Parámetro nuevo con valor por defecto; avisar al grupo |
@@ -169,7 +169,7 @@ specs/002-resolubilidad/
 Modelo/
 ├── Resolubilidad.py         # nuevo: IndiceLlaves, GrafoSalas, recorrido, reporte, dependencias, ciclos
 └── ordenamiento.py          # sin cambios (se usa merge_sort)
-Cache/Estructuras.py         # sin cambios (se usa Queue)
+Modelo/Estructuras.py        # Queue movida desde Cache/ (P-12)
 DTOS/
 ├── ResultadoVerificacion.py # nuevo
 └── UbicacionLlave.py        # validación de campos
@@ -187,7 +187,10 @@ tests/
 ├── test_verificacion_cli.py # nuevo
 ├── bench_resolubilidad.py   # nuevo
 ├── utiles_niebla.py         # llaves.json
-└── test_integracion.py      # llaves.json
+├── test_integracion.py      # llaves.json
+├── generador_criptas.py     # nuevo: criptas sintéticas
+├── test_generador_criptas.py # nuevo
+└── test_fuente_llaves.py    # nuevo
 ```
 
 **Structure Decision**: se conserva la estructura MVC por carpetas. No se crean carpetas nuevas.
@@ -196,4 +199,4 @@ tests/
 
 | Violation | Why Needed | Simpler Alternative Rejected Because |
 |-----------|------------|-------------------------------------|
-| `Modelo/Resolubilidad.py` importa `Queue` de `Cache/Estructuras.py` (paquete listado como adaptador en el Principio II) | Reutilizar la cola propia ya probada, como pide el grupo. `Estructuras.py` no hace red, archivos ni consola, así que el modelo sigue sin depender de la fuente de datos, que es el propósito del principio | Una cola nueva en `Modelo/` duplica código probado; mover `Queue` a un paquete neutral cambia importaciones de otras personas (contrato compartido) y queda como P-12 |
+| Ninguna | — | `Queue` se movió a `Modelo/Estructuras.py` (P-12) |
