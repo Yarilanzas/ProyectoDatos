@@ -1,11 +1,14 @@
 import argparse
+import os
+import shutil
+import tempfile
 
 from API.Fuentes import FuenteDatosHTTP, FuenteDatosOffline
 from Gestor.GestorDatos import GestorDatos
-from Gestor.PreparadorPartida import preparar_partida
+from Gestor.PreparadorPartida import cargar_partida, preparar_partida
 from Bitacora.BitacoraPartida import leer_bitacora
 from Bitacora.Reproductor import Reproductor
-from Controlador.ControladorPartida import ControladorPartida
+from Controlador.ControladorPartida import ControladorPartida, guardar_motor
 from Persistencia.FormatoBinario import VersionIncompatible
 from Persistencia.TablaPuntajes import ARCHIVO_PUNTAJES, CRITERIOS_PUNTAJES, TablaPuntajes
 from Vista.VistaConsola import VistaConsola
@@ -32,8 +35,21 @@ def crear_gestor(argumentos):
     )
 
 
-def ejecutar_replay(ruta, gestor, vista):
-    # S4.11: se reconstruye la partida con la misma cripta y semilla y se repiten las acciones
+def _cerrar_restaurador(motor):
+    if motor is not None and motor.restaurador is not None:
+        motor.restaurador.cerrar()
+        motor.restaurador = None
+
+
+def ejecutar_replay(ruta, gestor):
+    """S4.11: reconstruye la partida con la misma cripta y semilla y repite las acciones. Sin vista
+    (Principio II, PR-14): quien llama muestra el resultado. Devuelve el motor final.
+
+    Cada `@cargar` repite la carga real (FR-017, PR-12): guarda el motor en un archivo temporal y lo carga
+    con `cargar_partida`. La recarga NO ejecuta la verificación de resolubilidad (`--verificar`, FR-022 de
+    la spec 002): `cargar_partida` no la llama. El restaurador anterior se cierra tras cada recarga y el
+    último antes de borrar el temporal, porque en Windows no se puede borrar un archivo abierto.
+    """
     encabezado, _ = leer_bitacora(ruta)
 
     # versiones ACTUALES: si no coinciden con las de la bitacora el Reproductor lo reporta
@@ -43,13 +59,29 @@ def ejecutar_replay(ruta, gestor, vista):
     def fabrica_motor(cripta_id, semilla):
         return preparar_partida(cripta_id, semilla, gestor)
 
-    reproductor = Reproductor(fabrica_motor, version_cripta, version_catalogo)
-    motor = reproductor.reproducir(ruta)
+    carpeta = tempfile.mkdtemp(prefix="cripta_replay_")
+    abiertos = []  # motores que pueden tener el temporal abierto
 
-    vista.mostrar("Reproducción finalizada.")
-    vista.mostrar_estado(motor)
-    vista.mostrar(f"Resumen: {motor.resumen_puntaje()}")
-    return motor
+    def recargar(motor):
+        temporal = os.path.join(carpeta, f"recarga_{len(abiertos)}.cripta")
+        guardar_motor(motor, temporal, gestor)
+        _cerrar_restaurador(motor)  # el motor anterior ya no se usa
+        nuevo = cargar_partida(temporal, gestor)
+        abiertos.append(nuevo)
+        return nuevo
+
+    try:
+        reproductor = Reproductor(fabrica_motor, version_cripta, version_catalogo, recargar=recargar)
+        return reproductor.reproducir(ruta)
+    finally:
+        for motor in abiertos:
+            _cerrar_restaurador(motor)
+        shutil.rmtree(carpeta, ignore_errors=True)
+
+
+def _mostrar_error(texto):
+    # mismo formato que VistaConsola.mostrar_error, sin instanciar la vista (--replay, Principio II)
+    print(f"! Error: {texto}")
 
 
 def main():
@@ -128,6 +160,25 @@ def main():
         bench_ciclo()
         return 0
 
+    # la prioridad de opciones es contrato publico y no cambia: --bench, --mostrar-puntajes, --replay y
+    # luego la partida. --replay se atiende antes de crear la vista porque no debe instanciarla
+    # (Principio II, PR-14); por eso cede explicitamente ante --mostrar-puntajes
+    if argumentos.replay and not argumentos.mostrar_puntajes:
+        configurar_logging()
+        gestor = crear_gestor(argumentos)
+        try:
+            motor = ejecutar_replay(argumentos.replay, gestor)
+        except VersionIncompatible as error:
+            _mostrar_error(f"Versión incompatible: {error}")
+            return 2
+        except (ValueError, RuntimeError, OSError) as error:
+            _mostrar_error(str(error))
+            return 1
+        print("Reproducción finalizada.")
+        print(f"Reloj: {motor.reloj}  Sala: {motor.jugador.sala.id}  Vida: {motor.jugador.vida}")
+        print(f"Resumen: {motor.resumen_puntaje()}")
+        return 0
+
     vista = VistaConsola()
 
     if argumentos.mostrar_puntajes:
@@ -140,17 +191,6 @@ def main():
         return 0
     configurar_logging()
     gestor = crear_gestor(argumentos)
-
-    if argumentos.replay:
-        try:
-            ejecutar_replay(argumentos.replay, gestor, vista)
-        except VersionIncompatible as error:
-            vista.mostrar_error(f"Versión incompatible: {error}")
-            return 2
-        except (ValueError, RuntimeError, OSError) as error:
-            vista.mostrar_error(str(error))
-            return 1
-        return 0
 
     controlador = ControladorPartida(gestor, vista, argumentos.bitacora, argumentos.puntajes)
 

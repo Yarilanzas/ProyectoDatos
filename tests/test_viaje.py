@@ -637,7 +637,6 @@ class TestComentarioIrA(BaseViaje):
 
     def test_fr030_sc004_viaje_completo_deja_comentario_antes_del_primer_mover_y_se_reproduce(self):
         from main import ejecutar_replay
-        from tests.test_integracion import VistaFalsa
 
         motor = self.partida(mapa_cuadro())
         antes = self.recorrer_cuadro()
@@ -646,7 +645,7 @@ class TestComentarioIrA(BaseViaje):
 
         esperado = motor.obtener_estado_resumen()
         self.controlador._cerrar()
-        repetido = ejecutar_replay(os.path.join(self.carpeta, "partida.log"), self.controlador.gestor, VistaFalsa())
+        repetido = ejecutar_replay(os.path.join(self.carpeta, "partida.log"), self.controlador.gestor)
         self.assertEqual(repetido.obtener_estado_resumen(), esperado)
 
     def test_fr030_viaje_detenido_deja_solo_los_pasos_dados(self):

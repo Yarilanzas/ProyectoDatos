@@ -34,6 +34,38 @@ def ruta_bitacora_de(ruta_guardado):
     return ruta_guardado + ".log"
 
 
+def guardar_motor(motor, ruta, gestor):
+    """Guarda el motor en `ruta` (CRPT 3), sin vista ni bitácora: lo usan `guardar` y la recarga del
+    --replay (FR-015, FR-017, PR-12).
+
+    Si el motor viene de una partida cargada, su archivo se cierra antes de reemplazarlo (en Windows no se
+    puede reemplazar un archivo abierto) y el motor queda leyendo las salas pendientes del archivo nuevo.
+    """
+    # primero se arma todo en memoria (puede leer salas pendientes del archivo cargado)
+    registros = registros_desde_motor(motor)
+    jugador = registro_jugador_desde_motor(motor)
+    conocimiento = registro_conocimiento_desde_motor(motor)  # FR-015
+
+    anterior = motor.restaurador
+    ruta_lectura = None
+    if anterior is not None:
+        ruta_lectura = anterior.ruta
+        anterior.cerrar()
+        motor.restaurador = None
+
+    try:
+        guardar_partida(
+            ruta, motor.cripta_id,
+            gestor.version_cripta(motor.cripta_id), gestor.version_catalogo(),
+            motor.semilla, motor.reloj, registros, jugador, conocimiento=conocimiento,
+        )
+        if anterior is not None:
+            ruta_lectura = ruta  # las salas pendientes ahora estan en el archivo nuevo
+    finally:
+        if ruta_lectura is not None:
+            motor.restaurador = RestauradorPartida(ruta_lectura)
+
+
 def _misma_ruta(ruta_a, ruta_b):
     return os.path.abspath(ruta_a) == os.path.abspath(ruta_b)
 
@@ -122,6 +154,8 @@ class ControladorPartida:
             self.vista.mostrar_aviso("La bitácora no corresponde a esta partida; no se usará")
             return None
 
+        # el --replay repite aqui la carga: guarda y vuelve a cargar el motor (FR-017, contracts/formato-bitacora.md)
+        bitacora.marcar_carga()
         return bitacora
 
     # guardado
@@ -133,31 +167,7 @@ class ControladorPartida:
             self.vista.mostrar_aviso("La partida terminó; ya no se puede guardar")
             return False
 
-        # primero se arma todo en memoria (puede leer salas pendientes del archivo cargado)
-        registros = registros_desde_motor(motor)
-        jugador = registro_jugador_desde_motor(motor)
-        conocimiento = registro_conocimiento_desde_motor(motor)  # FR-015
-
-        # el archivo cargado se cierra antes de reemplazarlo (en Windows no se puede
-        # reemplazar un archivo abierto) y se vuelve a abrir al terminar
-        anterior = motor.restaurador
-        ruta_lectura = None
-        if anterior is not None:
-            ruta_lectura = anterior.ruta
-            anterior.cerrar()
-            motor.restaurador = None
-
-        try:
-            guardar_partida(
-                ruta, motor.cripta_id,
-                self.gestor.version_cripta(motor.cripta_id), self.gestor.version_catalogo(),
-                motor.semilla, motor.reloj, registros, jugador, conocimiento=conocimiento,
-            )
-            if anterior is not None:
-                ruta_lectura = ruta  # las salas pendientes ahora estan en el archivo nuevo
-        finally:
-            if ruta_lectura is not None:
-                motor.restaurador = RestauradorPartida(ruta_lectura)
+        guardar_motor(motor, ruta, self.gestor)
 
         if self.bitacora is not None and not _misma_ruta(self.ruta_bitacora, ruta_bitacora_de(ruta)):
             shutil.copyfile(self.ruta_bitacora, ruta_bitacora_de(ruta))

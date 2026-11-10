@@ -240,7 +240,7 @@ class PruebasComentariosYDirectivas(unittest.TestCase):
             leer_bitacora(self.ruta)
 
     def test_fr030_cripta_log_1_da_codigo_2_en_el_replay(self):
-        # ejecutar_replay lee la bitácora antes de usar el gestor o la vista: el rechazo llega a main
+        # ejecutar_replay lee la bitácora antes de usar el gestor: el rechazo llega a main
         # como VersionIncompatible, que devuelve 2.
         from main import ejecutar_replay
 
@@ -250,7 +250,7 @@ class PruebasComentariosYDirectivas(unittest.TestCase):
 
         self.escribir("mover E\n", ENCABEZADO_V1)
         with self.assertRaises(VersionIncompatible):
-            ejecutar_replay(self.ruta, GestorQueNoSeUsa(), None)
+            ejecutar_replay(self.ruta, GestorQueNoSeUsa())
 
     def test_fr017_marcar_carga_y_leer_devuelve_la_directiva_en_acciones(self):
         with self.crear() as bitacora:

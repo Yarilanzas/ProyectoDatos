@@ -201,7 +201,7 @@ class PruebasRegistroAlTerminar(BaseIntegracion):
     def test_replay_no_registra_puntajes(self):
         self.jugar_hasta_el_final(COMANDOS_VICTORIA)
         antes = TablaPuntajes(self.ruta_puntajes).leer()
-        main.ejecutar_replay(self.ruta_log, self.nuevo_gestor(), VistaFalsa())
+        main.ejecutar_replay(self.ruta_log, self.nuevo_gestor())
         self.assertEqual(len(TablaPuntajes(self.ruta_puntajes).leer()), len(antes))
 
 

@@ -28,7 +28,8 @@ from Persistencia.RegistroConocimiento import RegistroConocimiento
 from Vista.VistaConsola import VistaConsola
 from tests.test_antorcha import CONTENIDO as CONTENIDO_ANTORCHA, ID_ANTORCHA, ID_PERGAMINO
 from tests.test_antorcha import mapa as mapa_antorcha
-from tests.utiles_niebla import CRIPTA_NIEBLA, LLAVE, contenido_sala
+from tests.utiles_niebla import (CRIPTA_NIEBLA, ENEMIGO_LENTO, LLAVE, PERGAMINO, buscador_prueba,
+                                 contenido_sala)
 from tests.test_conocimiento import BaseConocimiento, foto
 from tests.test_conocimiento import mapa as mapa_cuadro
 
@@ -351,7 +352,7 @@ class TestHistorialDelMotor(BasePersistencia):
         self.assertEqual(foto(motor.conocimiento), antes)
 
 
-# T068, T070 a T072: guardar y cargar el CRPT 3.
+# T068, T070 a T072: guardar y cargar el CRPT 3. T087 a T090: replay de partidas cargadas.
 
 class BloqueCrudo:
     # Se pasa a guardar_partida como `conocimiento` para escribir bytes arbitrarios en el bloque.
@@ -590,6 +591,174 @@ class TestCargaConAntorcha(BaseGuardado):
         self.assertTrue(cargado.ejecutar_accion("retroceder", ""))
         self.assertEqual(cargado.jugador.sala.id, 5)
         self.assertEqual(cargado.conocimiento.exportar(), antes)
+
+
+# T087 a T090: replay de partidas cargadas (FR-017, SC-004, PR-12). El replay no recibe vista (PR-14).
+
+class FuenteContada(FuenteDatosOffline):
+    # Cuenta solicitudes (`solicitudes_realizadas`, de FuenteDatosOffline) y recibe el presupuesto como la
+    # fuente HTTP, para comprobar el Principio VII sin red.
+    presupuesto = None
+
+    def fijar_presupuesto(self, presupuesto_solicitudes):
+        self.presupuesto = presupuesto_solicitudes
+
+
+class BaseReplay(BaseGuardado):
+
+    def controlador_nuevo(self, nombre_log, buscar=None):
+        from Controlador.ControladorPartida import ControladorPartida
+        from tests.test_integracion import VistaFalsa
+        controlador = ControladorPartida(self.gestor_nuevo(), VistaFalsa(), os.path.join(self.carpeta, nombre_log))
+        if buscar is not None:
+            controlador.buscar_ruta = buscar
+        self.addCleanup(controlador._cerrar)
+        return controlador
+
+    def jugar(self, controlador, comandos):
+        for comando in comandos:
+            self.assertTrue(controlador.ejecutar(comando), comando)
+
+    def replay(self, nombre_log, gestor=None):
+        from main import ejecutar_replay
+        return ejecutar_replay(os.path.join(self.carpeta, nombre_log), gestor or self.gestor_nuevo())
+
+    def guardar_cargar_continuar(self, antes, despues, buscar=None):
+        # Juega `antes` en la partida de self.partida, guarda, carga en otro controlador y juega `despues`.
+        # Devuelve el controlador de la partida continuada (bitácora "continuada.log").
+        self.jugar(self.controlador, antes)
+        self.guardar()
+        self.controlador._cerrar()
+        continuada = self.controlador_nuevo("continuada.log", buscar)
+        continuada.cargar(self.ruta())
+        self.jugar(continuada, despues)
+        return continuada
+
+
+ANTES_ANTORCHA = [f"recoger {ID_ANTORCHA}", f"recoger {ID_PERGAMINO}", f"usar {ID_ANTORCHA}", "e", "abrir N"]
+DESPUES_ANTORCHA = ["n", "atacar e-rata", "atacar e-rata", "esperar", "s", "esperar"]
+
+
+class TestReplayDePartidasCargadas(BaseReplay):
+
+    def test_fr017_sc004_escenario_us5_2_guardar_cargar_continuar_y_reproducir(self):
+        # H1: antes del cambio el replay de una partida cargada divergía en todas las semillas probadas.
+        for semilla in (1, 7, 42, 1234):
+            with self.subTest(semilla=semilla):
+                motor = self.partida(mapa_antorcha(), CONTENIDO_ANTORCHA, semilla=semilla)
+                self.jugar(self.controlador, ANTES_ANTORCHA)
+                self.assertTrue(motor.jugador.antorcha_encendida)  # encendida al guardar
+                self.guardar()
+                self.controlador._cerrar()
+
+                continuada = self.controlador_nuevo("continuada.log")
+                continuada.cargar(self.ruta())
+                # apagada tras cargar (el atributo solo existe una vez encendida)
+                self.assertFalse(getattr(continuada.motor.jugador, "antorcha_encendida", False))
+                self.jugar(continuada, DESPUES_ANTORCHA)
+                esperado = continuada.motor.obtener_estado_resumen()
+                continuada._cerrar()
+
+                repetido = self.replay("continuada.log")
+                self.assertFalse(getattr(repetido.jugador, "antorcha_encendida", False))
+                resumen = repetido.obtener_estado_resumen()
+                for clave in ("reloj", "secuencia", "azar", "jugador", "conocimiento"):
+                    self.assertEqual(resumen[clave], esperado[clave], clave)
+                self.assertEqual(resumen, esperado)
+
+    def test_fr017_fr030_fr031_ir_a_y_pergaminos_sin_y_con_carga(self):
+        id_pergamino = f"obj-{CRIPTA_NIEBLA}-1-{PERGAMINO}-0"
+        contenido = [contenido_sala(1, objetos=[PERGAMINO]),
+                     contenido_sala(3, enemigos=["e-babosa"], tipo_enemigo=ENEMIGO_LENTO)]
+        antes = [f"recoger {id_pergamino}", "e", "s", "o", "n", "ir a 4"]
+        despues = ["retroceder", "ir a 1", "esperar", "ir a 4"]
+
+        for con_carga in (False, True):
+            with self.subTest(con_carga=con_carga):
+                self.partida(mapa_cuadro(), contenido)
+                self.controlador.buscar_ruta = buscador_prueba
+                if con_carga:
+                    final = self.guardar_cargar_continuar(antes, despues, buscador_prueba)
+                    log = "continuada.log"
+                else:
+                    self.jugar(self.controlador, antes + despues)
+                    final, log = self.controlador, "partida.log"
+                esperado = final.motor.obtener_estado_resumen()
+                final._cerrar()
+
+                with open(os.path.join(self.carpeta, log), encoding="utf-8") as archivo:
+                    texto_log = archivo.read()
+                self.assertIn("# ir a 4", texto_log)
+                self.assertEqual("@cargar" in texto_log.splitlines(), con_carga)
+
+                resumen = self.replay(log).obtener_estado_resumen()
+                for clave in ("reloj", "jugador", "conocimiento"):
+                    self.assertEqual(resumen[clave], esperado[clave], clave)
+                self.assertEqual(resumen, esperado)
+
+    def test_fr017_principio_vii_varios_cargar_no_superan_el_presupuesto(self):
+        self.partida(mapa_antorcha(), CONTENIDO_ANTORCHA)
+        continuada = self.guardar_cargar_continuar(ANTES_ANTORCHA, ["n", "atacar e-rata"])
+        segunda = self.ruta("segunda.cripta")
+        self.assertTrue(continuada.guardar(segunda))
+        continuada._cerrar()
+        tercera = self.controlador_nuevo("tercera.log")
+        tercera.cargar(segunda)
+        self.jugar(tercera, ["atacar e-rata", "esperar", "s"])
+        esperado = tercera.motor.obtener_estado_resumen()
+        tercera._cerrar()
+
+        with open(os.path.join(self.carpeta, "tercera.log"), encoding="utf-8") as archivo:
+            self.assertEqual(archivo.read().splitlines().count("@cargar"), 2)
+
+        fuente = FuenteContada(os.path.join(self.carpeta, "paquete"))
+        gestor = GestorDatos(fuente, ruta_base=os.path.join(self.carpeta, "cache_presupuesto"), cache_size=25)
+        repetido = self.replay("tercera.log", gestor)
+        self.assertEqual(repetido.obtener_estado_resumen(), esperado)
+        self.assertIsNotNone(fuente.presupuesto)
+        self.assertLessEqual(fuente.solicitudes_realizadas, fuente.presupuesto,
+                             f"{fuente.solicitudes_realizadas} solicitudes con presupuesto {fuente.presupuesto}")
+
+
+class TestRiesgosDelReplay(BaseReplay):
+
+    def test_fr017_bitacora_igual_al_log_del_guardado(self):
+        # --bitacora <guardado>.log: guardar no copia (es el mismo archivo) y cargar continúa sobre él. Si
+        # no se jugó nada entre el guardado y la carga, la bitácora termina en el guardado y el replay coincide.
+        self.partida(mapa_antorcha(), CONTENIDO_ANTORCHA)
+        nombre_log = "prueba.cripta.log"
+        primera = self.controlador_nuevo(nombre_log)
+        primera.nueva_partida(CRIPTA_NIEBLA, 7)
+        self.jugar(primera, ANTES_ANTORCHA)
+        self.assertTrue(primera.guardar(self.ruta()))
+        primera._cerrar()
+
+        segunda = self.controlador_nuevo(nombre_log)
+        segunda.cargar(self.ruta())
+        self.jugar(segunda, DESPUES_ANTORCHA)
+        esperado = segunda.motor.obtener_estado_resumen()
+        segunda._cerrar()
+
+        with open(os.path.join(self.carpeta, nombre_log), encoding="utf-8") as archivo:
+            lineas = archivo.read().splitlines()
+        # El log del guardado es el mismo archivo: queda con @cargar y lo jugado después.
+        self.assertEqual(lineas.count("@cargar"), 1)
+        self.assertEqual(lineas[-len(DESPUES_ANTORCHA) - 1], "@cargar")
+        self.assertEqual(self.replay(nombre_log).obtener_estado_resumen(), esperado)
+
+    def test_fr017_sc004_guardar_sin_cargar_no_toca_azar_ni_agenda(self):
+        motor = self.partida(mapa_antorcha(), CONTENIDO_ANTORCHA)
+        self.jugar(self.controlador, ANTES_ANTORCHA + ["n", "atacar e-rata"])
+        antes = motor.obtener_estado_resumen()
+        self.guardar()  # carga por _asegurar_salas_con_estado las salas que hagan falta
+        despues = motor.obtener_estado_resumen()
+        for clave in ("reloj", "secuencia", "azar", "eventos"):
+            self.assertEqual(despues[clave], antes[clave], clave)
+
+        self.jugar(self.controlador, ["atacar e-rata", "esperar", "s"])
+        esperado = motor.obtener_estado_resumen()
+        self.controlador._cerrar()
+        self.assertEqual(self.replay("partida.log").obtener_estado_resumen(), esperado)
 
 
 if __name__ == "__main__":

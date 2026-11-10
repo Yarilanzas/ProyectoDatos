@@ -175,14 +175,58 @@ class PruebasReplay(BaseIntegracion):
         esperado = controlador.motor.obtener_estado_resumen()
         controlador._cerrar()
 
-        motor = ejecutar_replay(self.ruta_log, self.nuevo_gestor("cache_replay"), VistaFalsa())
+        motor = ejecutar_replay(self.ruta_log, self.nuevo_gestor("cache_replay"))
         self.assertEqual(motor.obtener_estado_resumen(), esperado)
 
     def test_replay_detecta_catalogo_incompatible(self):
         self.jugar(COMANDOS_PARTIDA)._cerrar()
         crear_paquete_offline(self.paquete, version_catalogo="cat-2")
         with self.assertRaises(VersionIncompatible):
-            ejecutar_replay(self.ruta_log, self.nuevo_gestor("cache_nueva"), VistaFalsa())
+            ejecutar_replay(self.ruta_log, self.nuevo_gestor("cache_nueva"))
+
+
+class VistaQueFalla:
+    # Reemplaza a VistaConsola: si --replay la instancia, la prueba falla (Principio II, PR-14)
+    def __init__(self, *args, **kwargs):
+        raise AssertionError("--replay instanció la vista")
+
+
+class PruebasReplaySinVista(BaseIntegracion):
+    # T095: main --replay sin vista; códigos de salida 0, 1 y 2 (FR-017, PR-14)
+
+    def correr_main(self, ruta_bitacora):
+        import contextlib
+        import io
+        import sys
+        from unittest import mock
+        import main
+
+        argumentos = ["main.py", "--offline", self.paquete,
+                      "--datos-locales", os.path.join(self.carpeta.name, "datos"), "--replay", ruta_bitacora]
+        salida = io.StringIO()
+        with mock.patch.object(main, "VistaConsola", VistaQueFalla), \
+                mock.patch.object(main, "configurar_logging", lambda *a, **k: None), \
+                mock.patch.object(sys, "argv", argumentos), contextlib.redirect_stdout(salida):
+            codigo = main.main()
+        return codigo, salida.getvalue()
+
+    def test_fr017_pr14_replay_termina_con_codigo_0_sin_vista(self):
+        self.jugar(COMANDOS_PARTIDA)._cerrar()
+        codigo, texto = self.correr_main(self.ruta_log)
+        self.assertEqual(codigo, 0)
+        self.assertIn("Reproducción finalizada.", texto)
+
+    def test_fr017_pr14_error_da_codigo_1(self):
+        codigo, texto = self.correr_main(os.path.join(self.carpeta.name, "no_existe.log"))
+        self.assertEqual(codigo, 1)
+        self.assertTrue(texto.startswith("! Error: "), texto)
+
+    def test_fr017_pr14_version_incompatible_da_codigo_2(self):
+        with open(self.ruta_log, "w", encoding="utf-8") as archivo:
+            archivo.write(f"CRIPTA-LOG 1\ncripta_id={CRIPTA}\nversion_cripta=v1\nversion_catalogo=cat-1\nsemilla=7\n---\n")
+        codigo, texto = self.correr_main(self.ruta_log)
+        self.assertEqual(codigo, 2)
+        self.assertTrue(texto.startswith("! Error: Versión incompatible: "), texto)
 
 
 class PruebasGuardado(BaseIntegracion):
@@ -250,7 +294,9 @@ class PruebasGuardado(BaseIntegracion):
         controlador._cerrar()
 
         _, acciones = leer_bitacora(self.ruta_log)
-        self.assertEqual(len(acciones), len(COMANDOS_PARTIDA) + 1)
+        # T092: al continuar se anota @cargar, que leer_bitacora devuelve dentro de acciones (FR-017)
+        self.assertEqual(len(acciones), len(COMANDOS_PARTIDA) + 2)
+        self.assertEqual(acciones[len(COMANDOS_PARTIDA)], ("@cargar", ""))
         # la copia guardada junto a la partida no cambia
         _, guardadas = leer_bitacora(ruta_bitacora_de(self.ruta_guardado))
         self.assertEqual(len(guardadas), len(COMANDOS_PARTIDA))
