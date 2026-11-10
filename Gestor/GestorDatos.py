@@ -45,6 +45,9 @@ class GestorDatos:
         self._contenido_en_memoria = []
         self._detalles = None
         self._id_detalles = None
+        # ubicación de las llaves ya obtenida en este proceso (spec 002, FR-026)
+        self._llaves = None
+        self._id_llaves = None
 
     def _version_del_catalogo(self):
         if self._version_catalogo is None: # si no hay una guardada
@@ -167,6 +170,22 @@ class GestorDatos:
         self.almacenamiento_disco.guardar_esqueleto(id_cripta, version_actual, datos_red)
 
         return datos_red
+
+    def obtener_llaves(self, id_cripta):
+        # spec 002 (FR-013, FR-026, FR-028): memoria del proceso -> caché en disco de la versión actual -> fuente.
+        # Los errores de la fuente se propagan sin capturar.
+        if self._id_llaves == id_cripta:
+            return self._llaves
+
+        version_actual = self._version_de_cripta(id_cripta)
+        llaves = self.almacenamiento_disco.cargar_llaves(id_cripta, version_actual)
+        if llaves is None:
+            llaves = self.fuente.obtener_llaves_cripta(id_cripta)
+            self.almacenamiento_disco.guardar_llaves(id_cripta, version_actual, llaves)
+
+        self._llaves = llaves
+        self._id_llaves = id_cripta
+        return llaves
 
     def obtener_contenido_salas(self, id_cripta, ids_salas):
         version_actual = self._version_de_cripta(id_cripta)
