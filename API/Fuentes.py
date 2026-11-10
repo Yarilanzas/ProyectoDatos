@@ -165,9 +165,10 @@ class FuenteDatosHTTP(FuenteDatos): #(FuenteDatos) es herencia
                         raise Excepciones.ErrorServicio(
                             url, 429, "Se superó el máximo de esperas por límite de solicitudes"
                         )
+                    espera_429 = self._leer_espera_429(respuesta)
                     logger.warning("429 en %s; esperando %s s (espera %d de %d)",
                                    url, espera_429, esperas_429, self.MAX_ESPERAS_429)
-                    time.sleep(self._leer_espera_429(respuesta))
+                    time.sleep(espera_429)
                     continue
 
                 if respuesta.status_code == 200:
