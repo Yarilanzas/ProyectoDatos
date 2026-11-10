@@ -1,6 +1,6 @@
 # Feature Specification: Verificación de resolubilidad de una cripta
 
-**Feature Branch**: `main` (el grupo trabaja directamente sobre `main`, constitución v3.0.1)
+**Feature Branch**: `main` (el grupo trabaja directamente sobre `main`, constitución v3.0.2)
 
 **Created**: 2026-11-06
 
@@ -229,7 +229,7 @@ cuál es el archivo que falta, la partida no inicia y el código de salida es 1.
 
 - **FR-012**: La misma cripta en la misma versión MUST producir siempre el mismo veredicto, el mismo orden de llaves y el mismo reporte, con los mismos ciclos, carácter por carácter.
 - **FR-013**: El resultado MUST NOT depender de la semilla, del estado de la caché, de usar red u `--offline` con los mismos datos, ni del orden en que la fuente entregue salas, salidas o llaves.
-- **FR-014**: Las listas del reporte MUST tener un orden fijo: llaves por identificador; puertas por sala de origen y luego por dirección; ubicaciones por sala; cada ciclo empezando por su llave de menor identificador, y los ciclos ordenados por esa llave.
+- **FR-014**: Las listas del reporte MUST tener un orden fijo: llaves por identificador; puertas por sala de origen y luego por dirección en el orden N, S, E, O; ubicaciones por sala; cada ciclo empezando por su llave de menor identificador, y los ciclos ordenados por esa llave.
 
 **Modo `--verificar`**
 
@@ -250,6 +250,7 @@ cuál es el archivo que falta, la partida no inicia y el código de salida es 1.
 
 - **FR-024**: Si no se puede obtener la ubicación de las llaves, por un error del servicio, por agotarse el presupuesto o por faltar el dato en el paquete offline, el sistema MUST informar el motivo con `! Error: ...`, no emitir veredicto, no iniciar la partida y terminar con código 1, también con `--forzar`.
 - **FR-025**: Un fallo al obtener los demás datos necesarios para verificar (datos generales de la cripta o sus salas) MUST tratarse igual que en FR-024.
+- **FR-027**: *(Retirado durante la revisión de la spec; el identificador no se reutiliza.)
 - **FR-026**: Las solicitudes de la verificación MUST contar para `presupuesto_solicitudes` y MUST NOT superarlo en ningún caso, incluidos los reintentos.
 - **FR-028**: La ubicación de las llaves MUST obtenerse por la misma interfaz con red y con `--offline`. El formato del paquete offline MUST incorporar este dato y documentarse en el README.
 
@@ -291,5 +292,5 @@ cuál es el archivo que falta, la partida no inicia y el código de salida es 1.
 - **Partidas cargadas y reproducidas**: «iniciar una partida» se refiere solo a partidas nuevas. `--cargar` continúa una ya iniciada y `--replay` debe reproducir cualquier partida existente, incluidas las forzadas.
 - **Inventario**: su capacidad no bloquea la obtención de llaves, porque el jugador puede soltar objetos.
 - **Medición de los 200 ms**: el límite no incluye la obtención de datos, cuya duración depende de la red y de los reintentos.
-- **Fuente de las ubicaciones**: el servicio ofrece la ubicación de las llaves de cada cripta (`GET /criptas/<id>/llaves`: llave, sala y enemigo opcional). Los paquetes offline actuales no incluyen este archivo y deben actualizarse, porque sin él ninguna partida nueva offline podrá iniciar (FR-024). Esto incluye los paquetes temporales de las pruebas automatizadas existentes.
+- **Fuente de las ubicaciones**: el servicio ofrece la ubicación de las llaves de cada cripta (`GET /criptas/<id>/llaves`: `id` de la llave, `sala` y `enemigo` opcional). Los paquetes offline actuales no incluyen este archivo y deben actualizarse, porque sin él ninguna partida nueva offline podrá iniciar (FR-024). Esto incluye los paquetes temporales de las pruebas automatizadas existentes.
 - **Restricciones de la constitución**: los recorridos y las estructuras de esta capacidad se implementan a mano (Principio I), la decisión vive en el modelo, sin red ni consola (Principio II), y ningún dato de una cripta concreta va en el código de producción (Principio IV).
