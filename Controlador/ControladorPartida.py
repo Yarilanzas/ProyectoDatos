@@ -165,8 +165,9 @@ class ControladorPartida:
 
     # comandos
 
-    def _accion(self, nombre, argumento):
-        # la direccion se normaliza aqui para que la bitacora guarde lo mismo que el motor uso
+    def _accion(self, nombre, argumento, comentario=None):
+        # la direccion se normaliza aqui para que la bitacora guarde lo mismo que el motor uso.
+        # `comentario` va a la bitacora justo antes de la linea de la accion, y solo si el motor la acepto
         if nombre in ("mover", "abrir"):
             argumento = argumento.upper()
         if nombre in ("esperar", "retroceder"):
@@ -184,6 +185,8 @@ class ControladorPartida:
 
         # solo se anota lo que el motor acepto: el --replay debe repetir exactamente esto
         if self.bitacora is not None:
+            if comentario is not None:
+                self.bitacora.comentar(comentario)
             self.bitacora.registrar(nombre, argumento)
         return True
 
@@ -207,12 +210,18 @@ class ControladorPartida:
             self.vista.mostrar_aviso(_texto_rechazo_ir(rechazo))
             return
 
+        # "# ir a <sala>" va inmediatamente antes del primer `mover`, despues de que el motor lo acepte:
+        # si lo rechaza no queda ninguna linea (FR-030, SC-005). El --replay ignora el comentario
+        comentario = f"ir a {viaje.destino.id}"
         while True:
             paso = viaje.siguiente_paso()
             if paso is None:
                 break
             # si el motor rechaza el paso, _accion ya muestra el mismo mensaje que daria `mover` (FR-027f)
-            if viaje.terminar_paso(self._accion("mover", paso.direccion)) is not None:
+            aceptado = self._accion("mover", paso.direccion, comentario)
+            if aceptado:
+                comentario = None
+            if viaje.terminar_paso(aceptado) is not None:
                 break
 
         aviso = _texto_parada(viaje)

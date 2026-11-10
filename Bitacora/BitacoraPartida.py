@@ -4,8 +4,13 @@
 from Persistencia.FormatoBinario import VersionIncompatible
 
 MARCA = "CRIPTA-LOG"
-VERSION_BITACORA = 1
+# v2 (FR-030, FR-017, contracts/formato-bitacora.md): comentarios "# ..." y directivas "@...".
+VERSION_BITACORA = 2
 SEPARADOR = "---"
+
+COMENTARIO = "#"
+DIRECTIVA = "@"
+CARGAR = "@cargar"  # unica directiva conocida: el --replay recarga el motor como lo hizo la carga real
 
 def _validar_linea(texto):
     if not isinstance(texto, str):
@@ -59,11 +64,26 @@ class BitacoraPartida:
         if not nombre or any(caracter.isspace() for caracter in nombre):
             raise ValueError( "El nombre de la acción no puede estar vacío ni contener espacios")
 
+        # una accion nunca se confunde con un comentario ni con una directiva (FR-030)
+        if nombre[0] == COMENTARIO or nombre[0] == DIRECTIVA:
+            raise ValueError("El nombre de la acción no puede empezar con '#' ni con '@'")
+
         _validar_linea(nombre)
         _validar_linea(argumento)
 
         linea = nombre if argumento == "" else f"{nombre} {argumento}"
+        self._escribir(linea)
 
+    # comentario que el --replay ignora, p. ej. "# ir a 3" (FR-030)
+    def comentar(self, texto):
+        _validar_linea(texto)
+        self._escribir(f"{COMENTARIO} {texto}")
+
+    # se anota al continuar una partida cargada; el --replay recarga el motor al llegar aqui (FR-017)
+    def marcar_carga(self):
+        self._escribir(CARGAR)
+
+    def _escribir(self, linea):
         self._archivo.write(linea + "\n")
         self._archivo.flush()
 
@@ -91,7 +111,8 @@ def _leer_valor(archivo, clave):
 
     return valor
 
-# devuelve el encabezado y la lista de acciones como tuplas (nombre, argumento)
+# devuelve el encabezado y la lista de acciones como tuplas (nombre, argumento);
+# omite los comentarios y devuelve "@cargar" como ("@cargar", "") en su lugar (FR-017, FR-030)
 def leer_bitacora(ruta):
     with open(ruta, "r", encoding="utf-8") as archivo:
         marca, _, version = archivo.readline().rstrip("\r\n").partition(" ")
@@ -116,6 +137,16 @@ def leer_bitacora(ruta):
         for numero_linea, linea in enumerate(archivo, start=7):
             linea = linea.rstrip("\r\n")
             if linea == "":
+                continue
+
+            if linea[0] == COMENTARIO:
+                continue
+
+            if linea[0] == DIRECTIVA:
+                # una directiva desconocida no se puede reproducir con fidelidad
+                if linea != CARGAR:
+                    raise VersionIncompatible(f"Directiva desconocida en la línea {numero_linea}: {linea}")
+                acciones.append((CARGAR, ""))
                 continue
 
             nombre, separador, argumento = linea.partition(" ")

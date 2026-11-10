@@ -1,14 +1,17 @@
 # Reproduccion de una partida a partir de su bitacora (S4.11)
 # no pide nada al usuario ni conoce la vista, solo le entrega las acciones al motor en orden
-from Bitacora.BitacoraPartida import leer_bitacora
+from Bitacora.BitacoraPartida import CARGAR, leer_bitacora
 from Persistencia.FormatoBinario import VersionIncompatible
 
 class Reproductor:
+    # recargar(motor) -> motor: repite lo que hizo la carga real de la partida (FR-017, PR-12).
+    # Sin recargar, una bitacora con "@cargar" da error: no se puede ignorar sin perder fidelidad
     def __init__(self, fabrica_motor, version_cripta,
-                 version_catalogo):
+                 version_catalogo, recargar=None):
         self._fabrica_motor = fabrica_motor
         self._version_cripta = version_cripta
         self._version_catalogo = version_catalogo
+        self._recargar = recargar
 
     def reproducir(self, ruta):
         encabezado, acciones = leer_bitacora(ruta)
@@ -26,6 +29,14 @@ class Reproductor:
                 raise VersionIncompatible("El motor creado corresponde a otra cripta" )
 
         for nombre, argumento in acciones:
+            if nombre == CARGAR:
+                if self._recargar is None:
+                    raise ValueError("La reproducción se detuvo: la bitácora tiene @cargar y no hay cómo recargar la partida")
+                motor = self._recargar(motor)
+                if motor is None:
+                    raise ValueError("La reproducción se detuvo: @cargar no devolvió un motor")
+                continue
+
             resultado = motor.ejecutar_accion(nombre,  argumento)
 
             if resultado is False:

@@ -1684,4 +1684,7 @@ class MotorSimulacion:
             "derrotados": self.enemigos_derrotados,
 
             "azar": self.azar.getstate(),
+
+            # exploradas y recuerdos en orden canónico, para que el replay compare también el mapa (FR-017, SC-004)
+            "conocimiento": None if self.conocimiento is None else self.conocimiento.exportar(),
         }

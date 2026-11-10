@@ -245,7 +245,8 @@ class TestPuertaRecordadaAbierta(BaseViaje):
         antes = len(self.movimientos())
 
         self.assertEqual(self.avisos(self.ir(4)), ["Llegaste a la sala 4."])
-        self.assertEqual(self.movimientos()[antes:], ["mover E", "mover O", "mover S", "mover E"])
+        # «# ir a 4» antes del primer paso del viaje (FR-030, T085)
+        self.assertEqual(self.movimientos()[antes:], ["# ir a 4", "mover E", "mover O", "mover S", "mover E"])
         self.assertEqual(self.recuerdo(motor, 2, "S"), CERRADA)
         self.assertEqual(motor.jugador.sala.id, 4)
 
@@ -551,7 +552,9 @@ class TestEquivalenciaConMover(BaseViaje):
 
         self.assertEqual(motor.obtener_estado_resumen(), gemelo.obtener_estado_resumen())
         self.assertEqual(motor.mensajes.ultimos(), gemelo.mensajes.ultimos())
-        self.assertEqual(self.movimientos(), self.movimientos(os.path.dirname(controlador_gemelo.ruta_bitacora)))
+        # La bitácora es la de los `mover` a mano con «# ir a 4» antes del primer paso del viaje (FR-030, T085).
+        a_mano = self.movimientos(os.path.dirname(controlador_gemelo.ruta_bitacora))
+        self.assertEqual(self.movimientos(), a_mano[:len(CUADRO)] + ["# ir a 4"] + a_mano[len(CUADRO):])
 
     def test_fr026_recalcula_antes_de_cada_paso(self):
         origenes = []
@@ -620,6 +623,53 @@ class TestPasoRechazado(BaseViaje):
         self.assertEqual(self.movimientos()[-1], "mover E")
         self.assertEqual(motor.obtener_estado_resumen(), gemelo.obtener_estado_resumen())
         self.assertEqual(motor.mensajes.ultimos(), gemelo.mensajes.ultimos())
+
+
+# T083: Escenario US4-7, comentario de «ir a» en la bitácora (FR-022, FR-030, SC-004, SC-005, PR-11).
+
+class TestComentarioIrA(BaseViaje):
+
+    def recorrer_cuadro(self):
+        # Por el controlador, para que los pasos queden en la bitácora y el replay los repita.
+        for accion in CUADRO:
+            self.ejecutar(self.controlador, " ".join(accion))
+        return len(self.movimientos())
+
+    def test_fr030_sc004_viaje_completo_deja_comentario_antes_del_primer_mover_y_se_reproduce(self):
+        from main import ejecutar_replay
+        from tests.test_integracion import VistaFalsa
+
+        motor = self.partida(mapa_cuadro())
+        antes = self.recorrer_cuadro()
+        self.assertEqual(self.avisos(self.ir(4)), ["Llegaste a la sala 4."])
+        self.assertEqual(self.movimientos()[antes:], ["# ir a 4", "mover E", "mover S"])
+
+        esperado = motor.obtener_estado_resumen()
+        self.controlador._cerrar()
+        repetido = ejecutar_replay(os.path.join(self.carpeta, "partida.log"), self.controlador.gestor, VistaFalsa())
+        self.assertEqual(repetido.obtener_estado_resumen(), esperado)
+
+    def test_fr030_viaje_detenido_deja_solo_los_pasos_dados(self):
+        # Desde 2 el buscador manda N, que no existe: el motor rechaza el segundo paso (FR-027f).
+        self.partida(mapa_cuadro(), buscar=guion((1, "E"), (2, "N")))
+        antes = self.recorrer_cuadro()
+        self.ir(4)
+        self.assertEqual(self.movimientos()[antes:], ["# ir a 4", "mover E"])
+
+    def test_fr022_sc005_orden_rechazada_no_deja_linea(self):
+        self.partida(mapa_cuadro())
+        antes = self.recorrer_cuadro()
+        for destino in (1, 5, 99):  # actual, avistada, inexistente
+            with self.subTest(destino=destino):
+                self.ir(destino)
+                self.assertEqual(len(self.movimientos()), antes)
+
+    def test_fr030_sc005_rechazo_del_primer_mover_no_deja_linea(self):
+        # El primer paso va hacia N desde 1, que no existe: el motor lo rechaza y no queda ni el comentario.
+        self.partida(mapa_cuadro(), buscar=guion((1, "N")))
+        antes = self.recorrer_cuadro()
+        self.assertEqual(self.avisos(self.ir(4)), [RECHAZO_MOVER])
+        self.assertEqual(len(self.movimientos()), antes)
 
 
 if __name__ == "__main__":
