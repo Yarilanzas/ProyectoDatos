@@ -66,14 +66,21 @@ def contenido_sala(sala, enemigos=(), trampas=(), objetos=(), tipo_enemigo=ENEMI
 
 
 def crear_paquete_niebla(carpeta, salas, contenido=(), sala_inicial=None, sala_salida=None,
-                         llave_salida=None, jugador=None, inventario_max=5):
+                         llave_salida=None, jugador=None, inventario_max=5, llaves=None, escribir_llaves=True):
     """Genera un paquete offline con el formato de `crear_paquete_offline`.
 
     `salas` es la lista del esqueleto: {"id", "nombre", "salidas": {dirección: salida(...)}}.
     `contenido` trae solo las salas que tienen algo: las demás quedan vacías.
     Por defecto se empieza en la primera sala y se sale por la última.
+
+    `llaves` es la lista de `criptas/<id>/llaves.json` en el formato del servicio ({"id", "sala", "enemigo"
+    opcional}); si es None, `llave_salida` en la sala inicial, o ninguna si la cripta no declara `llave_salida`.
+    `escribir_llaves=False` deja el paquete sin ese archivo (spec 002, US5.3; FR-024, FR-028).
     """
     ids = [sala["id"] for sala in salas]
+    inicial = ids[0] if sala_inicial is None else sala_inicial
+    if llaves is None:
+        llaves = [] if llave_salida is None else [{"id": llave_salida, "sala": inicial}]
     declaradas = [c["sala"] for c in contenido]
     vacias = [contenido_sala(id_sala) for id_sala in ids if id_sala not in declaradas]
 
@@ -81,13 +88,15 @@ def crear_paquete_niebla(carpeta, salas, contenido=(), sala_inicial=None, sala_s
         {"id": CRIPTA_NIEBLA, "nombre": "Cripta de niebla", "salas": len(salas), "dificultad": "fácil"}]})
     _escribir(carpeta, f"criptas/{CRIPTA_NIEBLA}.json", {
         "id": CRIPTA_NIEBLA, "version": "v1", "salas_total": len(salas),
-        "sala_inicial": ids[0] if sala_inicial is None else sala_inicial,
+        "sala_inicial": inicial,
         "sala_salida": ids[-1] if sala_salida is None else sala_salida,
         "llave_salida": llave_salida, "presupuesto_solicitudes": 500, "inventario_max": inventario_max,
         "jugador": JUGADOR if jugador is None else jugador})
     _escribir(carpeta, f"criptas/{CRIPTA_NIEBLA}/version.json", {"version": "v1"})
     _escribir(carpeta, f"criptas/{CRIPTA_NIEBLA}/salas.json", {"salas": salas, "total_paginas": 1})
     _escribir(carpeta, f"criptas/{CRIPTA_NIEBLA}/contenido.json", {"contenido": list(contenido) + vacias})
+    if escribir_llaves:
+        _escribir(carpeta, f"criptas/{CRIPTA_NIEBLA}/llaves.json", {"llaves": list(llaves)})
     _escribir(carpeta, "catalogo.json", {"entidades": CATALOGO_NIEBLA})
     _escribir(carpeta, "catalogo/version.json", {"version": "cat-1"})
 
