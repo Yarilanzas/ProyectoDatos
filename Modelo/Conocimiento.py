@@ -37,6 +37,8 @@ class Conocimiento:
     | entrar(sala, True, historial)  | O(d(s) + Σ salidas de cada vecina v nueva). No depende de k  |
     | observar_puerta(salida, hist.) | O(1)                                                         |
     | conecta(salida, sala)          | O(1)                                                         |
+    | destino(salida)                | O(1) tras resolverla una vez                                 |
+    | explorada_por_texto(texto)     | O(k), k salas reveladas                                      |
     | _explorar(sala, lote) (interna)| O(salidas de la sala)                                        |
     | revertir(lote)                 | O(tamaño del lote)                                           |
 
@@ -81,6 +83,18 @@ class Conocimiento:
 
     def texto_recuerdo(self, salida):
         return TEXTO_RECUERDO[self.recuerdo(salida)]
+
+    def destino(self, salida):
+        # Sala a la que lleva la salida, o None. O(1) tras la primera resolución (la del motor).
+        return self._destino_de(salida)
+
+    def explorada_por_texto(self, texto):
+        # Sala explorada cuyo id, como texto, es `texto`; None si no hay. Recorre solo las reveladas: O(k).
+        # Inexistente, desconocida y avistada dan lo mismo por construcción (FR-022).
+        for sala in self.reveladas:
+            if self.estado_sala[sala._ordinal] == EXPLORADA and str(sala.id) == texto:
+                return sala
+        return None
 
     def conecta(self, salida, sala):
         # Una puerta se observa desde cualquiera de las dos salas que conecta (FR-006, lectura P-05).
@@ -169,3 +183,51 @@ class Conocimiento:
                 self.recuerdo_puerta[ordinal] = anterior
                 if anterior == SIN_OBSERVAR:
                     self.observadas.pop()
+
+
+class GrafoConocido:
+    """Grafo de lo que el jugador sabe, con la interfaz de contracts/interfaz-ruta.md. PR-10.
+
+    Adaptador de solo lectura sobre `Conocimiento`: no guarda estado propio ni conoce el motor.
+    Una arista existe si y solo si la sala de origen y la de destino están exploradas y el recuerdo de la
+    salida es ABIERTA (FR-011, FR-023, FR-029): una puerta cerrada o sin observar no existe para la
+    búsqueda, y nunca se abre. El costo lo resuelve `costo_de`, que en el juego es `motor.costo_salida`
+    (FR-005); `Conocimiento` no guarda ningún costo.
+
+    | Operación         | Complejidad              |
+    |-------------------|--------------------------|
+    | ordinal(sala)     | O(1)                     |
+    | cantidad_salas    | O(1)                     |
+    | aristas(sala)     | O(salidas de la sala)    |
+
+    `aristas` entrega en el orden de `sala.salidas` (determinista, no ordenado por id): el desempate es
+    de la búsqueda.
+    """
+
+    def __init__(self, conocimiento, costo_de):
+        self._conocimiento = conocimiento
+        self._costo_de = costo_de
+
+    @property
+    def cantidad_salas(self):
+        return len(self._conocimiento.estado_sala)
+
+    def ordinal(self, sala):
+        return sala._ordinal
+
+    def aristas(self, sala):
+        conocimiento = self._conocimiento
+        resultado = []
+
+        if conocimiento.estado_sala[sala._ordinal] != EXPLORADA:
+            return resultado
+
+        for direccion, salida in sala.salidas.items():
+            if conocimiento.recuerdo_puerta[salida._ordinal] != ABIERTA:
+                continue
+            vecina = conocimiento.destino(salida)
+            if vecina is None or conocimiento.estado_sala[vecina._ordinal] != EXPLORADA:
+                continue
+            resultado.append((direccion, vecina, self._costo_de(salida)))
+
+        return resultado

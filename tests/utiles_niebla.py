@@ -22,12 +22,17 @@ ANTORCHA = "itm_antorcha"
 PERGAMINO = "itm_pergamino"
 ANTIDOTO = "itm_antidoto"
 ENEMIGO = "ent_rata"
+# Más lenta que el jugador: al entrar a su sala, el jugador vuelve a actuar antes de que ella ataque.
+# Sirve para probar la parada por enemigos (FR-027b) sin que la tape la de daño (FR-027c).
+ENEMIGO_LENTO = "ent_babosa"
 TRAMPA = "trp_dardos"
 JUGADOR = {"vida_max": 40, "ataque": 6, "defensa": 1, "velocidad": 100}
 
 CATALOGO_NIEBLA = [
     {"id": ENEMIGO, "clase": "enemigo", "nombre": "Rata", "vida_max": 8, "ataque": 3, "defensa": 0,
      "velocidad": 100, "comportamiento": "guardian"},
+    {"id": ENEMIGO_LENTO, "clase": "enemigo", "nombre": "Babosa", "vida_max": 8, "ataque": 3, "defensa": 0,
+     "velocidad": 25, "comportamiento": "guardian"},
     {"id": LLAVE, "clase": "llave", "nombre": "Llave", "peso": 0, "valor": 0, "abre": "puerta"},
     {"id": ANTORCHA, "clase": "antorcha", "nombre": "Antorcha", "peso": 1, "valor": 2, "duracion": 1000},
     {"id": PERGAMINO, "clase": "pergamino_retroceso", "nombre": "Pergamino", "peso": 0, "valor": 10},
@@ -50,11 +55,11 @@ def salida(sala, costo=None, cerrada=False, llave=None, cierre_automatico=None):
     return datos
 
 
-def contenido_sala(sala, enemigos=(), trampas=(), objetos=()):
-    # `enemigos` y `trampas` son ids de instancia; el tipo es ENEMIGO y TRAMPA.
+def contenido_sala(sala, enemigos=(), trampas=(), objetos=(), tipo_enemigo=ENEMIGO):
+    # `enemigos` y `trampas` son ids de instancia; el tipo es `tipo_enemigo` y TRAMPA.
     return {
         "sala": sala,
-        "enemigos": [{"instancia": instancia, "tipo": ENEMIGO} for instancia in enemigos],
+        "enemigos": [{"instancia": instancia, "tipo": tipo_enemigo} for instancia in enemigos],
         "trampas": [{"instancia": instancia, "tipo": TRAMPA} for instancia in trampas],
         "objetos": list(objetos),
     }
@@ -105,3 +110,60 @@ def partida_niebla(carpeta, salas, contenido=(), semilla=7, veneno=0, **opciones
     if veneno:
         motor.aplicar_veneno(motor.jugador, veneno)
     return motor, controlador
+
+
+# Orden de desempate entre dos salidas hacia la misma vecina con igual costo (FR-024, P-03).
+ORDEN_DIRECCIONES = ("N", "S", "E", "O")
+
+
+def _indice_direccion(direccion):
+    for indice in range(len(ORDEN_DIRECCIONES)):
+        if ORDEN_DIRECCIONES[indice] == direccion:
+            return indice
+    return len(ORDEN_DIRECCIONES)
+
+
+def _etiqueta_menor(a, b):
+    # Etiquetas (costo total, id de la primera vecina, índice de la dirección del primer paso).
+    for indice in range(3):
+        if a[indice] != b[indice]:
+            return a[indice] < b[indice]
+    return False
+
+
+def buscador_prueba(grafo, origen, destino):
+    """Buscador de prueba con la firma de `primer_paso` (contracts/interfaz-ruta.md). T042.
+
+    Enumera todas las rutas simples por profundidad y se queda con la de etiqueta menor:
+    (costo total, id de la primera vecina, dirección del primer paso en el orden N, S, E, O).
+    Cumple las obligaciones 1 a 3 del contrato (FR-022, FR-024).
+
+    Complejidad: exponencial en el peor caso (todas las rutas simples). Es solo una utilidad de
+    prueba para grafos pequeños: no es candidata a implementación ni se mide en M4.
+    """
+    from Modelo.rutas_ir_a import Paso
+
+    visitada = [False] * grafo.cantidad_salas
+    visitada[grafo.ordinal(origen)] = True
+    mejor = [None, None]  # [etiqueta, (dirección, vecina)]
+
+    def recorrer(sala, costo, primero):
+        if sala is destino:
+            etiqueta = (costo, primero[1].id, _indice_direccion(primero[0]))
+            if mejor[0] is None or _etiqueta_menor(etiqueta, mejor[0]):
+                mejor[0], mejor[1] = etiqueta, primero
+            return
+
+        for direccion, vecina, costo_arista in grafo.aristas(sala):
+            ordinal = grafo.ordinal(vecina)
+            if visitada[ordinal]:
+                continue
+            visitada[ordinal] = True
+            recorrer(vecina, costo + costo_arista, primero if primero is not None else (direccion, vecina))
+            visitada[ordinal] = False
+
+    recorrer(origen, 0, None)
+
+    if mejor[0] is None:
+        return None
+    return Paso(mejor[1][0], mejor[1][1], mejor[0][0])

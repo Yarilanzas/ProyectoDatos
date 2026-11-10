@@ -1,6 +1,6 @@
 import random
 from DTOS.MapaConocido import MapaConocido, SalaConocida, SalidaConocida
-from Modelo.Conocimiento import Conocimiento, EXPLORADA
+from Modelo.Conocimiento import Conocimiento, EXPLORADA, GrafoConocido
 from Modelo.Evento import Evento
 from Modelo.RegistroMensajes import RegistroMensajes
 from Modelo.AgendaEventos import AgendaEventos
@@ -8,6 +8,8 @@ from Modelo.Enemigo import Enemigo
 from Modelo.Inventario import NodoInventario
 from Modelo.ordenamiento import elegir_algoritmo
 from Modelo.retroceso import (Historial, recoger_reversible, soltar_reversible, equipar_reversible, usar_pergamino)
+from Modelo.rutas_ir_a import primer_paso
+from Modelo.Viaje import RECHAZO_ACTUAL, RECHAZO_DESCONOCIDA, RECHAZO_SIN_RUTA, Viaje
 
 TIPOS_EFECTO = ("VENENO", "REGENERAR", "FIN_VELOCIDAD", "APAGAR_ANTORCHA")
 INTERVALO_VENENO = 80
@@ -30,6 +32,9 @@ class MotorSimulacion:
         self.enemigos = []
         self.historial = Historial()
         self.conocimiento = None  # lo crea iniciar_partida; las pruebas que arman el motor a mano no lo usan (H7)
+        # Transitorio: si había enemigos vivos en la sala a la que entró el último `mover`. Lo lee el
+        # Viaje justo después del paso (FR-027b). No es estado de la partida: no se guarda ni se revierte.
+        self.enemigos_al_entrar = False
         self.contenidos_salas = []
         self.objetos_suelo = []
         self._salas_contenido_cargado = []
@@ -1145,8 +1150,39 @@ class MotorSimulacion:
 
         return MapaConocido(salas, [sala.id for sala in self._ordenado(avistadas, lambda s: s.id)])
 
+    def grafo_conocido(self):
+        # Grafo de lo que el jugador sabe, para la búsqueda de «ir a» (FR-023). O(1): es un adaptador.
+        return GrafoConocido(self.conocimiento, self.costo_salida)
+
+    def preparar_viaje(self, texto, buscar=primer_paso):
+        """Valida la orden «ir a <texto>» (FR-022). Devuelve (Viaje, None) o (None, rechazo).
+
+        No cambia nada: un rechazo no consume tiempo, no cuenta como acción ni va a la bitácora (SC-005).
+        La sala se busca con `explorada_por_texto` (O(k)), así que inexistente, desconocida, avistada y un
+        id no válido dan por construcción el mismo rechazo. La sala de partida no se evalúa: la orden se
+        acepta aunque tenga enemigos (FR-028). Si `buscar` es `primer_paso` sin cuerpo, deja pasar su
+        NotImplementedError, todavía sin efectos (T058).
+
+        Complejidad: O(k) más un cálculo de `buscar`, que el Viaje usa como su primer paso.
+        """
+        if self.conocimiento is None or self.jugador is None or self.jugador.sala is None:
+            return None, RECHAZO_DESCONOCIDA
+
+        destino = self.conocimiento.explorada_por_texto(str(texto).strip())
+        if destino is None:
+            return None, RECHAZO_DESCONOCIDA
+        if destino is self.jugador.sala:
+            return None, RECHAZO_ACTUAL
+
+        paso = buscar(self.grafo_conocido(), self.jugador.sala, destino)
+        if paso is None:
+            return None, RECHAZO_SIN_RUTA
+
+        return Viaje(self, destino, buscar, paso), None
+
     def mover_jugador(self, direccion):
         jugador = self.jugador
+        self.enemigos_al_entrar = False
 
         if jugador is None or jugador.sala is None:
             return False
@@ -1207,6 +1243,9 @@ class MotorSimulacion:
             self.victoria = True
             self._contar_accion()
             return True
+
+        # Antes de activarlos: dormidos o activos, cuentan para detener un viaje (FR-027b).
+        self.enemigos_al_entrar = bool(self.obtener_enemigos(sala=sala_destino, solo_vivos=True))
 
         self.activar_enemigos_de_sala(sala_destino)
         self.proxima_accion(jugador, costo=100)

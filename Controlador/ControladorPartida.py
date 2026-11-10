@@ -9,6 +9,8 @@ import shutil
 
 from Bitacora.BitacoraPartida import BitacoraPartida
 from Gestor.PreparadorPartida import preparar_partida, cargar_partida
+from Modelo.rutas_ir_a import primer_paso
+from Modelo.Viaje import (DANO, DESTINO, ENEMIGOS, RECHAZO_ACTUAL, RECHAZO_SIN_RUTA, SIN_RUTA)
 from Persistencia.ArchivoPartida import guardar_partida
 from Persistencia.ConversorPartida import (RestauradorPartida, registros_desde_motor, registro_jugador_desde_motor)
 from Persistencia.FormatoBinario import VersionIncompatible
@@ -35,6 +37,29 @@ def _misma_ruta(ruta_a, ruta_b):
     return os.path.abspath(ruta_a) == os.path.abspath(ruta_b)
 
 
+def _texto_rechazo_ir(rechazo):
+    # avisos de contracts/comandos.md; el de sala desconocida es uno solo para no revelar si existe
+    if rechazo == RECHAZO_ACTUAL:
+        return "Ya estás en esa sala."
+    if rechazo == RECHAZO_SIN_RUTA:
+        return "No conoces una ruta hasta esa sala."
+    return "No conoces esa sala."
+
+
+def _texto_parada(viaje):
+    # motivo de parada (FR-027). El fin de partida lo muestra el flujo normal, y un paso rechazado ya
+    # mostro el mensaje de `mover`: en esos dos casos no se agrega nada
+    if viaje.motivo == DANO:
+        return "Viaje detenido: recibiste daño."
+    if viaje.motivo == ENEMIGOS:
+        return "Viaje detenido: hay enemigos en la sala."
+    if viaje.motivo == DESTINO:
+        return f"Llegaste a la sala {viaje.destino.id}."
+    if viaje.motivo == SIN_RUTA:
+        return "Viaje detenido: ya no conoces una ruta."
+    return None
+
+
 class ControladorPartida:
 
     # ruta_puntajes=None no registra nada: asi las pruebas y el --replay no escriben la tabla
@@ -45,6 +70,8 @@ class ControladorPartida:
         self.tabla_puntajes = TablaPuntajes(ruta_puntajes) if ruta_puntajes else None
         self.motor = None
         self.bitacora = None
+        # búsqueda de la ruta de «ir a»; las pruebas la reemplazan por un buscador de prueba (PR-10)
+        self.buscar_ruta = primer_paso
 
     # inicio de partida
 
@@ -160,6 +187,38 @@ class ControladorPartida:
             self.bitacora.registrar(nombre, argumento)
         return True
 
+    def _ir(self, argumento):
+        # «ir a <sala>» (FR-021): una sucesion de `mover` ordinarios. Cada paso pasa por _accion, asi que
+        # cuesta lo mismo, cuenta como accion, corren los eventos y se anota en la bitacora (FR-025, FR-030)
+        partes = argumento.split(maxsplit=1)
+        if len(partes) != 2 or partes[0].lower() != "a":
+            self.vista.mostrar_error("Use: ir a <sala>")
+            return
+
+        try:
+            viaje, rechazo = self.motor.preparar_viaje(partes[1], self.buscar_ruta)
+        except NotImplementedError:
+            # temporal hasta T065: la busqueda real es Modelo/BusquedaRuta.py de Persona A (D-PEND-01)
+            self.vista.mostrar_aviso("«ir a» aún no está disponible.")
+            return
+
+        if viaje is None:
+            # un rechazo no consume tiempo ni va a la bitacora (FR-022, SC-005)
+            self.vista.mostrar_aviso(_texto_rechazo_ir(rechazo))
+            return
+
+        while True:
+            paso = viaje.siguiente_paso()
+            if paso is None:
+                break
+            # si el motor rechaza el paso, _accion ya muestra el mismo mensaje que daria `mover` (FR-027f)
+            if viaje.terminar_paso(self._accion("mover", paso.direccion)) is not None:
+                break
+
+        aviso = _texto_parada(viaje)
+        if aviso is not None:
+            self.vista.mostrar_aviso(aviso)
+
     def _inventario(self, criterio):
         criterio = criterio or "nombre"
         if criterio not in CRITERIOS_INVENTARIO:
@@ -191,6 +250,8 @@ class ControladorPartida:
             self.vista.mostrar_ayuda()
         elif comando == "inventario":
             self._inventario(argumento.lower())
+        elif comando == "ir":
+            self._ir(argumento)
         elif comando == "mapa":
             # consulta, igual que inventario: no consume tiempo ni va a la bitacora (FR-018, FR-019)
             self.vista.mostrar_mapa(self.motor.mapa_conocido())

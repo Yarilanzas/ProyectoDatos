@@ -12,6 +12,7 @@ AYUDA = """Comandos:
   retroceder       (usa un pergamino de retroceso)
   inventario [peso|valor|nombre]         mensajes
   mapa             (salas exploradas y avistadas)
+  ir a SALA        (viaja por el mapa conocido)
   red              (solicitudes y cache)
   puntajes [mejores|acciones|tiempo|derrotados|nombre]
   guardar [ARCHIVO]                      cargar ARCHIVO
