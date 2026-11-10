@@ -19,12 +19,16 @@ def _buscar_sala(esqueleto, id_sala):
     return None
 
 
-def _crear_motor(cripta_id, semilla, gestor):
-    detalles = gestor.obtener_detalles(cripta_id)
-
-    # S3.3: el presupuesto de solicitudes se conoce recien con los detalles de la cripta
+def _fijar_presupuesto(detalles, gestor):
+    # S3.3: el presupuesto de solicitudes se conoce recien con los detalles de la cripta.
+    # Lo usan _crear_motor y verificar_cripta (spec 002, FR-026); la fuente offline no tiene presupuesto
     if hasattr(gestor.fuente, "fijar_presupuesto"):
         gestor.fuente.fijar_presupuesto(detalles.presupuesto_solicitudes)
+
+
+def _crear_motor(cripta_id, semilla, gestor):
+    detalles = gestor.obtener_detalles(cripta_id)
+    _fijar_presupuesto(detalles, gestor)
 
     esqueleto = gestor.iniciar_cripta(cripta_id)
     sala_inicial = _buscar_sala(esqueleto, detalles.sala_inicial)
