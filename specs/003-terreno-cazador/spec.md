@@ -143,7 +143,7 @@ En una cripta grande con decenas de cazadores activos, el juego responde sin dem
 
 - **Jugador y cazador en la misma sala**: el cazador ataca, sin calcular ruta y sin importar su rango (incluido rango 0) (FR-010).
 - **Cazador muerto**: no vuelve a actuar ni a decidir; su turno pendiente no se ejecuta; no participa en ningún cálculo de rutas ni en la medición de rendimiento como «activo» (FR-019).
-- - **Cazador dormido**: no decide, no calcula rutas y no cuenta como activo en la medición de rendimiento (FR-034).
+- **Cazador dormido**: no decide, no calcula rutas y no cuenta como activo en la medición de rendimiento (FR-034).
 - **Salida con costo ausente**: vale 100 para todo propósito: tiempo de movimiento, distancias del cazador, rutas de «ir a» y lo que muestra el mapa (FR-002).
 - **Velocidad cambiada a mitad de un movimiento**: el tiempo restante hasta el siguiente turno se escala según P1 §2.3, igual que con cualquier otra acción; el actor no vuelve a la sala anterior ni repite el movimiento (FR-007).
 - **Varios cazadores con el mismo objetivo**: cada uno decide por su cuenta, según su propia sala y su propio rango; pueden terminar en la misma sala; ninguno bloquea el paso de otro; el resultado no depende del orden en que se calculen, salvo por el orden de turnos de la agenda (FR-018).
