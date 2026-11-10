@@ -3,25 +3,27 @@
 Cambia de la versión 2 a la **3** (FR-016, Principio VI). Es un contrato compartido: el README se actualiza en el
 mismo cambio y se avisa al grupo.
 
-**Quién define la disposición**: Persona D (línea de tiempo y persistencia, spec 004), pregunta P-10 del plan. Lo que
-sigue es la **propuesta** de esta capacidad, pendiente de la disposición final de D.
+**Disposición acordada con Persona D** (línea de tiempo y persistencia, spec 004), pregunta P-10 del plan, resuelta:
+`[encabezado][jugador][conocimiento][línea de tiempo][salas][índice]`, en un solo salto a la versión 3.
 
-## Disposición (propuesta)
+## Disposición
 
 El salto a la versión 3 lleva **dos bloques nuevos**: el de conocimiento (de esta capacidad, detallado abajo) y el de
-línea de tiempo (de Persona D, que define su contenido). Ninguno de los dos justifica un salto de versión aparte.
+línea de tiempo (de Persona D, que define su contenido). Ninguno de los dos justifica un salto de versión aparte. No se
+mantienen archivos v3 intermedios: al integrar, las partidas guardadas se regeneran.
 
 ```text
 v2: [encabezado][largo jugador][jugador]                                                                        [salas][índice]
 v3: [encabezado][largo jugador][jugador][largo conocimiento][conocimiento][largo línea de tiempo][línea de tiempo][salas][índice]
 ```
 
-El orden de los dos bloques nuevos lo fija D. Encabezado, bloques de sala e índice no cambian, salvo el número de
-versión.
+El conocimiento va primero y la línea de tiempo después, antes de las salas. Encabezado, bloques de sala e índice no
+cambian, salvo el número de versión.
 
 - `largo conocimiento`: `<I`. Vale 0 si no hay conocimiento (solo los benchmarks de registros sueltos).
-- `largo línea de tiempo` y su bloque: los define D.
-- `_inicio_salas` suma los dos campos de largo y los dos bloques; la fórmula exacta queda con la disposición final de D.
+- `largo línea de tiempo` y su bloque: para esta capacidad el bloque es **opaco**: se salta con su largo, sin
+  interpretar su contenido, hasta que Persona D publique su contrato (spec 004). El contenido lo define D.
+- `_inicio_salas` suma los dos campos de largo y los dos bloques; la fórmula final la cierra D en su plan (spec 004).
 - `_validar_encabezado` exige que el índice esté después de todos los campos de largo.
 
 **Costo de las salidas**: el `CRPT` no lo guarda. Al cargar se toma del esqueleto, igual que la topología (decisión de

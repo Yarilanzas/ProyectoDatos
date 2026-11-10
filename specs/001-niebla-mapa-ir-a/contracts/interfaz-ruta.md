@@ -7,7 +7,7 @@ en `Modelo/ColaPrioridad.py`, y `Modelo/rutas_ir_a.py` solo la llama. La opción
 ## Función
 
 ```text
-primer_paso(grafo, origen, destino) -> Paso | None
+primer_paso(grafo, origen, destino, limite=None, espacio=None) -> Paso | None
 ```
 
 | Parámetro | Contenido |
@@ -15,6 +15,13 @@ primer_paso(grafo, origen, destino) -> Paso | None
 | `grafo` | Objeto con la interfaz de grafo, abajo |
 | `origen` | Sala actual |
 | `destino` | Sala destino, distinta de `origen` |
+| `limite` | Opcional, al final. Lo agrega Persona A; no cambia el contrato |
+| `espacio` | Opcional, al final: un `EspacioBusqueda` que se puede reutilizar entre los pasos de un viaje. Lo agrega Persona A; no cambia el contrato |
+
+Llamar con solo `(grafo, origen, destino)` sigue siendo válido y da el mismo resultado: las 7 obligaciones y la prueba
+de contrato no cambian.
+
+**Fechas de Persona A**: `Modelo/ColaPrioridad.py` el miércoles 11 y `Modelo/BusquedaRuta.py` el jueves 12.
 
 `Paso` tiene `direccion`, `destino` (la vecina a la que se da el paso) y `costo_total` de la ruta completa. `None`
 significa que no hay ruta. La función no modifica nada.
@@ -76,4 +83,4 @@ también contra el cazador.
 | `Modelo/BusquedaRuta.py` | Persona A | La búsqueda compartida con el cazador. Cumple las 7 obligaciones y pasa la prueba de contrato |
 | `Modelo/ColaPrioridad.py` | Persona A | La cola de prioridad a mano, sin `heapq` ni `sorted()` |
 | `Modelo/rutas_ir_a.py` | Esta capacidad | `primer_paso`, que solo llama a `Modelo/BusquedaRuta.py` |
-| `Viaje`, `GrafoConocido`, controlador, pruebas, M4 | Esta capacidad | Sin cambios por la decisión |
+| `Viaje`, `GrafoConocido`, controlador, pruebas, M4 | Esta capacidad | Sin cambios por la decisión. M4 se mide con y sin un `EspacioBusqueda` reutilizado por viaje |

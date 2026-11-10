@@ -50,6 +50,11 @@ esperar
 - Si la partida no tiene bitácora, no hay nada que anotar: se conserva el aviso actual.
 - `--replay`, al llegarle, guarda el motor en un archivo temporal, lo carga con `cargar_partida` y sigue con el
   motor resultante. Repite así lo que la carga real cambió: azar, agenda, efectos e Historial.
+- La recarga del replay **no** ejecuta la verificación de resolubilidad (`--verificar`, FR-022 de la spec 002).
+- **Reloj y `--replay --hasta t`** (condición (b) de P-07): queda cubierta por la regla de Persona D, FR-030 de la
+  spec 004. El reloj es global y continuo: tras `@cargar` sigue desde el reloj del archivo cargado, y lo jugado entre
+  ese guardado y la carga no existe en la línea, de modo que cada `t` identifica un único momento. Ver
+  [specs/004-linea-de-tiempo/contracts/formato-bitacora.md](../../004-linea-de-tiempo/contracts/formato-bitacora.md).
 
 ## Lectura
 
