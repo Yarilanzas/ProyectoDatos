@@ -1,3 +1,6 @@
+def _es_entero(valor):
+    return isinstance(valor, int) and not isinstance(valor, bool)
+
 class FichaCatalogo:
     def __init__(self, id, clase, nombre):
         self.id = id
@@ -34,7 +37,7 @@ class FichaCatalogo:
 
 
 class FichaEnemigo(FichaCatalogo):
-    def __init__(self, id, clase, nombre, vida_max, ataque, defensa, velocidad, comportamiento, suelta):
+    def __init__(self, id, clase, nombre, vida_max, ataque, defensa, velocidad, comportamiento, suelta, rango=None):
         super().__init__(id, clase, nombre)
         self.vida_max = vida_max
         self.ataque = ataque
@@ -42,6 +45,7 @@ class FichaEnemigo(FichaCatalogo):
         self.velocidad = velocidad
         self.comportamiento = comportamiento
         self.suelta = suelta
+        self.rango = rango
 
     def a_json(self):
         datos = super().a_json()
@@ -54,10 +58,26 @@ class FichaEnemigo(FichaCatalogo):
         })
         if self.suelta is not None:
             datos["suelta"] = self.suelta
+        if self.rango is not None:
+            datos["rango"] = self.rango
         return datos
 
     @classmethod
     def desde_json(cls, datos):
+        rango = None
+        if datos["comportamiento"] == "cazador":
+            if "rango" not in datos:
+                raise ValueError(
+                    f"El cazador {datos.get('id')!r} no declara rango. "
+                    f"Debe ser un entero mayor o igual que 0."
+                )
+            rango = datos["rango"]
+            if not _es_entero(rango) or rango < 0:
+                raise ValueError(
+                    f"Rango inválido para el cazador {datos.get('id')!r}: {rango!r}. "
+                    f"Debe ser un entero mayor o igual que 0."
+                )
+
         return cls(
             id=datos["id"],
             clase=datos["clase"],
@@ -67,9 +87,9 @@ class FichaEnemigo(FichaCatalogo):
             defensa=datos["defensa"],
             velocidad=datos["velocidad"],
             comportamiento=datos["comportamiento"],
-            suelta=datos.get("suelta") #no siempre van a soltar cosas por eso el . get
+            suelta=datos.get("suelta"),  # no siempre van a soltar cosas por eso el . get
+            rango=rango
         )
-
 class FichaArma(FichaCatalogo):
     def __init__(self, id, clase, nombre, peso, valor, ataque_bonus):
         super().__init__(id, clase, nombre)
