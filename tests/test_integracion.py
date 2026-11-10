@@ -62,7 +62,9 @@ def _escribir(carpeta, ruta, datos):
         json.dump(datos, f, ensure_ascii=False)
 
 
-def crear_paquete_offline(carpeta, version_cripta="v1", version_catalogo="cat-1"):
+def crear_paquete_offline(carpeta, version_cripta="v1", version_catalogo="cat-1", escribir_llaves=True):
+    # spec 002 (FR-024, FR-028): también escribe criptas/<id>/llaves.json con llave_salida en la sala inicial;
+    # escribir_llaves=False deja el paquete sin ese archivo
     _escribir(carpeta, "criptas.json", {"criptas": [
         {"id": CRIPTA, "nombre": "Cripta de prueba", "salas": 5, "dificultad": "fácil"}]})
     _escribir(carpeta, f"criptas/{CRIPTA}.json", {
@@ -72,6 +74,8 @@ def crear_paquete_offline(carpeta, version_cripta="v1", version_catalogo="cat-1"
     _escribir(carpeta, f"criptas/{CRIPTA}/version.json", {"version": version_cripta})
     _escribir(carpeta, f"criptas/{CRIPTA}/salas.json", {"salas": SALAS, "total_paginas": 1})
     _escribir(carpeta, f"criptas/{CRIPTA}/contenido.json", {"contenido": CONTENIDO})
+    if escribir_llaves:
+        _escribir(carpeta, f"criptas/{CRIPTA}/llaves.json", {"llaves": [{"id": "itm_llave_salida", "sala": 1}]})
     _escribir(carpeta, "catalogo.json", {"entidades": CATALOGO})
     _escribir(carpeta, "catalogo/version.json", {"version": version_catalogo})
 
