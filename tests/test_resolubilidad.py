@@ -175,5 +175,143 @@ class PruebasGrafoSalas(unittest.TestCase):
                 self.assertIn(repr(malo), str(ctx.exception))
 
 
+# --- T013: escenarios de US1 ------------------------------------------------------------------------------------
+
+def orden_de(resultado):
+    return [(o.id_llave, o.oleada, o.es_salida) for o in resultado.orden]
+
+
+def puertas_de(lista):
+    return [(p.origen, p.direccion, p.destino, p.destino_existe, p.llave) for p in lista]
+
+
+def verificar(esqueleto, ubicaciones, sala_inicial=1, sala_salida=None, llave_salida="ks", cripta_id="c-prueba"):
+    if sala_salida is None:
+        sala_salida = esqueleto[-1].id
+    return Resolubilidad.verificar(cripta_id, sala_inicial, sala_salida, llave_salida, esqueleto, ubicaciones)
+
+
+class PruebasEscenariosUS1(unittest.TestCase):
+
+    def test_us1_1_fr001_fr006_resoluble_sin_abrir_puertas(self):
+        esqueleto = [sala(1, E=abierta(2)), sala(2, E=cerrada(3, "ks")), sala(3)]
+        resultado = verificar(esqueleto, [llave("ks", 2)])
+        self.assertTrue(resultado.resoluble)
+        self.assertEqual(resultado.cripta_id, "c-prueba")
+        self.assertEqual((resultado.sala_salida, resultado.llave_salida), (3, "ks"))
+        self.assertEqual(orden_de(resultado), [("ks", 1, True)])
+
+    def test_us1_2_fr007_cadena_en_oleadas_1_2_3(self):
+        esqueleto = [sala(1, E=cerrada(2, "a")), sala(2, E=cerrada(3, "b")), sala(3, E=cerrada(4, "ks")), sala(4)]
+        resultado = verificar(esqueleto, [llave("ks", 3), llave("b", 2), llave("a", 1)])
+        self.assertTrue(resultado.resoluble)
+        self.assertEqual(orden_de(resultado), [("a", 1, False), ("b", 2, False), ("ks", 3, True)])
+
+    def test_fr007_ejemplo_c_d_a(self):
+        """Desde el inicio se alcanzan C y D, y C abre la sala de A: el orden es C, D, A."""
+        esqueleto = [sala(1, E=abierta(2), S=cerrada(3, "c")), sala(2), sala(3, E=cerrada(4, "a")), sala(4)]
+        resultado = verificar(esqueleto, [llave("a", 3), llave("d", 2), llave("c", 1)], llave_salida="a")
+        self.assertTrue(resultado.resoluble)
+        self.assertEqual(orden_de(resultado), [("c", 1, False), ("d", 1, False), ("a", 2, True)])
+
+    def test_us1_3_fr003_llave_de_enemigo_alcanzable_es_obtenible(self):
+        esqueleto = [sala(1, E=abierta(2)), sala(2, E=cerrada(3, "ks")), sala(3)]
+        resultado = verificar(esqueleto, [llave("ks", 2, enemigo="e-errante-1")])
+        self.assertTrue(resultado.resoluble)
+        self.assertEqual(orden_de(resultado), [("ks", 1, True)])
+
+    def test_us1_4_fr004_cierres_automaticos_no_cambian_el_veredicto(self):
+        sin = [sala(1, E=abierta(2), S=abierta(4)), sala(2, E=cerrada(3, "ks")), sala(3), sala(4, N=abierta(1))]
+        con = [sala(1, E=abierta(2, cierre=1), S=abierta(4, cierre=3)), sala(2, E=cerrada(3, "ks", cierre=2)),
+               sala(3), sala(4, N=abierta(1, cierre=1))]
+        ubicaciones = [llave("ks", 4)]
+        a, b = verificar(sin, ubicaciones, sala_salida=3), verificar(con, ubicaciones, sala_salida=3)
+        self.assertTrue(a.resoluble)
+        self.assertEqual((a.resoluble, orden_de(a)), (b.resoluble, orden_de(b)))
+
+    def test_fr005_salidas_dirigidas(self):
+        """A→B abierta y B→A cerrada sin llave: desde A se llega a B, desde B no se vuelve a A."""
+        esqueleto = [sala(1, E=abierta(2), S=cerrada(3, "ks")), sala(2, O=cerrada(1)), sala(3)]
+        desde_a = verificar(esqueleto, [llave("ks", 2)], sala_inicial=1, sala_salida=3)
+        self.assertTrue(desde_a.resoluble)
+        esqueleto = [sala(1, E=abierta(2)), sala(2, O=cerrada(1), S=cerrada(3, "ks")), sala(3)]
+        desde_b = verificar(esqueleto, [llave("ks", 1)], sala_inicial=2, sala_salida=3)
+        self.assertFalse(desde_b.resoluble)
+
+    def test_fr002_llaves_no_consumidas(self):
+        esqueleto = [sala(1, E=cerrada(2, "a")), sala(2, E=cerrada(3, "a")), sala(3, E=cerrada(4, "ks")), sala(4)]
+        resultado = verificar(esqueleto, [llave("a", 1), llave("ks", 3)])
+        self.assertTrue(resultado.resoluble)
+        self.assertEqual(orden_de(resultado), [("a", 1, False), ("ks", 2, True)])
+
+    def test_us1_6_fr009_salida_alcanzable_sin_puerta_con_llave_salida(self):
+        esqueleto = [sala(1, E=abierta(2)), sala(2)]
+        resultado = verificar(esqueleto, [llave("ks", 1)], sala_salida=2)
+        self.assertFalse(resultado.resoluble)
+        self.assertFalse(resultado.existe_puerta_salida)
+        self.assertEqual(resultado.puertas_salida, [])
+        self.assertEqual(resultado.orden, [])
+
+    def test_fr009_puertas_salida_no_atravesables(self):
+        """Todas las salidas hacia sala_salida que piden llave_salida y no se pueden cruzar, por origen y dirección."""
+        esqueleto = [sala(1, E=abierta(2), S=cerrada(4, "ks")), sala(2, S=cerrada(4, "ks"), E=cerrada(4, "otra")),
+                     sala(3, N=cerrada(4, "ks")), sala(4)]
+        resultado = verificar(esqueleto, [llave("ks", 3)], sala_salida=4)
+        self.assertFalse(resultado.resoluble)
+        self.assertTrue(resultado.existe_puerta_salida)
+        self.assertEqual(puertas_de(resultado.puertas_salida),
+                         [(1, "S", 4, True, "ks"), (2, "S", 4, True, "ks"), (3, "N", 4, True, "ks")])
+
+    def test_fr009_puerta_salida_hacia_sala_inexistente(self):
+        esqueleto = [sala(1, E=cerrada(9, "ks"))]
+        resultado = verificar(esqueleto, [llave("ks", 5)], sala_salida=9)
+        self.assertFalse(resultado.resoluble)
+        self.assertEqual(puertas_de(resultado.puertas_salida), [(1, "E", 9, False, "ks")])
+
+    def test_fr001_sala_inicial_igual_a_sala_salida_exige_la_puerta(self):
+        sin_puerta = verificar([sala(1)], [llave("ks", 1)], sala_inicial=1, sala_salida=1)
+        self.assertFalse(sin_puerta.resoluble)
+        self.assertFalse(sin_puerta.existe_puerta_salida)
+        con_puerta = verificar([sala(1, N=cerrada(1, "ks"))], [llave("ks", 1)], sala_inicial=1, sala_salida=1)
+        self.assertTrue(con_puerta.resoluble)
+
+    def test_fr006_llaves_prescindibles_y_es_salida(self):
+        esqueleto = [sala(1, E=abierta(2), S=cerrada(3, "ks")), sala(2, E=cerrada(4, "b")), sala(3), sala(4)]
+        resultado = verificar(esqueleto, [llave("z", 2), llave("ks", 1), llave("b", 1), llave("m", 4)], sala_salida=3)
+        self.assertTrue(resultado.resoluble)
+        self.assertEqual(orden_de(resultado), [("b", 1, False), ("ks", 1, True), ("z", 1, False), ("m", 2, False)])
+
+    def test_edge_fr001_sin_llave_salida_resoluble_si_sala_salida_alcanzable(self):
+        esqueleto = [sala(1, E=abierta(2)), sala(2)]
+        resultado = verificar(esqueleto, [llave("a", 1)], sala_salida=2, llave_salida=None)
+        self.assertTrue(resultado.resoluble)
+        self.assertEqual(orden_de(resultado), [("a", 1, False)])
+
+    def test_edge_fr001_sin_llave_salida_no_resoluble_si_no_alcanzable(self):
+        esqueleto = [sala(1, E=cerrada(2, "x")), sala(2)]
+        resultado = verificar(esqueleto, [llave("a", 1)], sala_salida=2, llave_salida=None)
+        self.assertFalse(resultado.resoluble)
+        self.assertEqual(resultado.puertas_salida, [])
+        for o in resultado.orden:
+            self.assertFalse(o.es_salida)
+
+    def test_edge_ubicacion_y_destino_inexistentes_no_detienen(self):
+        esqueleto = [sala(1, E=abierta(7), S=cerrada(2, "ks")), sala(2)]
+        resultado = verificar(esqueleto, [llave("ks", 50)], sala_salida=2)
+        self.assertFalse(resultado.resoluble)
+
+    def test_fr025_id_de_sala_invalido(self):
+        with self.assertRaises(ValueError):
+            verificar([sala(1), sala_con("dos", {})], [], sala_salida=1)
+
+    def test_fr013_no_modifica_sus_argumentos(self):
+        esqueleto = [sala(1, E=abierta(2), S=cerrada(3, "ks")), sala(2), sala(3)]
+        ubicaciones = [llave("ks", 2, enemigo="e-1")]
+        antes = ([s.a_json() for s in esqueleto], [(u.id_llave, u.sala, u.enemigo) for u in ubicaciones])
+        verificar(esqueleto, ubicaciones, sala_salida=3)
+        despues = ([s.a_json() for s in esqueleto], [(u.id_llave, u.sala, u.enemigo) for u in ubicaciones])
+        self.assertEqual(antes, despues)
+
+
 if __name__ == "__main__":
     unittest.main()
