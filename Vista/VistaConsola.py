@@ -169,12 +169,75 @@ class VistaConsola:
             self.mostrar(f"  {posicion}. {llave.id_llave} (oleada {llave.oleada}){marca}")
 
     def _mostrar_no_resoluble(self, resultado):
+        # secciones en el orden y con el texto de contracts/cli-verificacion.md; las listas ya llegan ordenadas
         self.mostrar(f"La cripta {resultado.cripta_id} no es resoluble.")
+        self._mostrar_no_obtenibles(resultado)
+        self._mostrar_frontera(resultado)
         self._mostrar_puertas_salida(resultado)
+        self._mostrar_ubicaciones(resultado)
+        self._mostrar_dependencias(resultado)
+        self._mostrar_ciclos(resultado)
 
     @staticmethod
     def _texto_sala(numero, existe):
         return f"sala {numero}" if existe else f"sala {numero} (no existe)"
+
+    def _mostrar_no_obtenibles(self, resultado):
+        if not resultado.no_obtenibles:
+            self.mostrar("Llaves no obtenibles: ninguna.")
+            return
+        self.mostrar("Llaves no obtenibles:")
+        for id_llave in resultado.no_obtenibles:
+            self.mostrar(f"  - {id_llave}")
+
+    def _mostrar_frontera(self, resultado):
+        if not resultado.frontera:
+            self.mostrar("Frontera bloqueada: ninguna (no hay puertas cerradas que salgan de la región alcanzable).")
+            return
+        self.mostrar("Frontera bloqueada:")
+        for puerta in resultado.frontera:
+            destino = self._texto_sala(puerta.destino, puerta.destino_existe)
+            requisito = "sin llave" if puerta.llave is None else f"requiere {puerta.llave}"
+            self.mostrar(f"  - sala {puerta.origen} ({puerta.direccion}) -> {destino}: {requisito}")
+
+    def _mostrar_ubicaciones(self, resultado):
+        if not resultado.ubicaciones:
+            self.mostrar("Ubicación de las llaves: ninguna.")
+            return
+        self.mostrar("Ubicación de las llaves:")
+        for ubicacion in resultado.ubicaciones:
+            if not ubicacion.lugares:
+                self.mostrar(f"  - {ubicacion.id_llave}: ubicación desconocida")
+                continue
+            lugares = []
+            for lugar in ubicacion.lugares:
+                texto = self._texto_sala(lugar.sala, lugar.sala_existe)
+                if lugar.enemigo is not None:
+                    texto += f" (la suelta {lugar.enemigo})"
+                lugares.append(texto)
+            self.mostrar(f"  - {ubicacion.id_llave}: {'; '.join(lugares)}")
+
+    def _mostrar_dependencias(self, resultado):
+        if not resultado.dependencias:
+            self.mostrar("Dependencias entre llaves: ninguna.")
+            return
+        self.mostrar("Dependencias entre llaves:")
+        for dependencia in resultado.dependencias:
+            if dependencia.depende_de is None:
+                self.mostrar(f"  - {dependencia.id_llave}: sin dependencia")
+            else:
+                self.mostrar(f"  - {dependencia.id_llave} -> {dependencia.depende_de}")
+
+    def _mostrar_ciclos(self, resultado):
+        if not resultado.ciclos:
+            self.mostrar("Ciclos de llaves: ninguno.")
+            return
+        self.mostrar("Ciclos de llaves:")
+        for ciclo in resultado.ciclos:
+            # el ciclo vuelve a su primera llave; la lista no la repite
+            cadena = " -> ".join(ciclo.llaves + [ciclo.llaves[0]])
+            marca = " (ciclo directo)" if ciclo.directo else ""
+            self.mostrar(f"  - {cadena}{marca}")
 
     def _mostrar_puertas_salida(self, resultado):
         # sin llave_salida declarada no se exige puerta de salida (Edge Cases): la sección no aplica
