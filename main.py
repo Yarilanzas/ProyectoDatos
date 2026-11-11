@@ -5,7 +5,7 @@ import tempfile
 
 from API.Fuentes import FuenteDatosHTTP, FuenteDatosOffline
 from Gestor.GestorDatos import GestorDatos
-from Gestor.PreparadorPartida import cargar_partida, preparar_partida
+from Gestor.PreparadorPartida import cargar_partida, preparar_partida, verificar_cripta
 from Bitacora.BitacoraPartida import leer_bitacora
 from Bitacora.Reproductor import Reproductor
 from Controlador.ControladorPartida import ControladorPartida, guardar_motor
@@ -94,6 +94,11 @@ def main():
         help="Ejecuta el benchmark de persistencia",
     )
     parser.add_argument(
+        "--verificar",
+        metavar="ID",
+        help="Solo verifica si la cripta es resoluble y muestra el resultado; no inicia partida",
+    )
+    parser.add_argument(
         "--replay",
         metavar="ARCHIVO",
         help="Reproduce una partida desde una bitácora",
@@ -160,10 +165,10 @@ def main():
         bench_ciclo()
         return 0
 
-    # la prioridad de opciones es contrato publico y no cambia: --bench, --mostrar-puntajes, --replay y
-    # luego la partida. --replay se atiende antes de crear la vista porque no debe instanciarla
-    # (Principio II, PR-14); por eso cede explicitamente ante --mostrar-puntajes
-    if argumentos.replay and not argumentos.mostrar_puntajes:
+    # la prioridad de opciones es contrato publico: --bench, --mostrar-puntajes, --verificar (spec 002,
+    # FR-017), --replay y luego la partida. --replay se atiende antes de crear la vista porque no debe
+    # instanciarla (Principio II, PR-14); por eso cede explicitamente ante --mostrar-puntajes y --verificar
+    if argumentos.replay and not argumentos.mostrar_puntajes and not argumentos.verificar:
         configurar_logging()
         gestor = crear_gestor(argumentos)
         try:
@@ -189,6 +194,20 @@ def main():
             return 1
         vista.mostrar_puntajes(puntajes, argumentos.mostrar_puntajes)
         return 0
+
+    if argumentos.verificar:
+        # spec 002 (FR-015, FR-016, FR-025): solo verifica. Sin controlador, bitácora, partida ni puntajes;
+        # código 0 sea cual sea el veredicto y 1 si no se pudieron obtener los datos
+        configurar_logging()
+        gestor = crear_gestor(argumentos)
+        try:
+            resultado = verificar_cripta(argumentos.verificar, gestor)
+        except (ValueError, RuntimeError, OSError) as error:
+            vista.mostrar_error(str(error))
+            return 1
+        vista.mostrar_verificacion(resultado)
+        return 0
+
     configurar_logging()
     gestor = crear_gestor(argumentos)
 
