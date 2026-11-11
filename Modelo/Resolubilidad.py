@@ -10,8 +10,8 @@
 # Notación (data-model.md): S salas, E salidas, K llaves distintas, L ubicaciones, C salidas cerradas con llave,
 # M = L + C + 1 menciones de llaves.
 
-from DTOS.ResultadoVerificacion import (LlaveOrdenada, LugarLlave, PuertaReporte, ResultadoVerificacion,
-                                        UbicacionesLlave)
+from DTOS.ResultadoVerificacion import (CicloLlaves, DependenciaLlave, LlaveOrdenada, LugarLlave, PuertaReporte,
+                                        ResultadoVerificacion, UbicacionesLlave)
 from Modelo.Estructuras import Queue
 from Modelo.ordenamiento import merge_sort
 
@@ -557,8 +557,9 @@ def verificar(cripta_id, sala_inicial, sala_salida, llave_salida, esqueleto, ubi
 
     Si es resoluble, `orden` lista todas las llaves obtenibles por oleada y luego por id, marcando `llave_salida`
     (FR-006, FR-007). Si no, llena `puertas_salida` con cada salida hacia `sala_salida` que pide `llave_salida` y no
-    se puede cruzar, por sala de origen y dirección, y `existe_puerta_salida` (FR-009). El resto del reporte (llaves
-    no obtenibles, frontera, ubicaciones, dependencias y ciclos) queda en listas vacías hasta US2.
+    se puede cruzar, por sala de origen y dirección, y `existe_puerta_salida` (FR-009), y el resto del reporte:
+    llaves no obtenibles, frontera y ubicaciones (barrer_reporte, FR-008 a FR-010), dependencias por cada llave no
+    obtenible (calcular_dependencias) y ciclos (hallar_ciclos) (FR-011). Todo ya ordenado (FR-014).
 
     Pura y determinista: no modifica sus argumentos y el resultado no depende del orden de la entrada (FR-012,
     FR-013); todos los órdenes salen del id de sala, del orden fijo de direcciones y del índice de llaves (R11).
@@ -570,7 +571,10 @@ def verificar(cripta_id, sala_inicial, sala_salida, llave_salida, esqueleto, ubi
     | grafo de salas                               | O(S + E + M log K) |
     | recorrido por oleadas                        | O(S + E + K log K) |
     | veredicto y puertas hacia la salida (barrido)| O(S + E + K)       |
-    | total                                        | O(S + E + M log M) |
+    | total, veredicto y orden                     | O(S + E + M log M) |
+    | si no es resoluble: reporte                  | O(S + E + K + L log L) |
+    | si no es resoluble: dependencias             | O(S + E + Σ zonas); peor caso O(L·(S + E)) |
+    | si no es resoluble: ciclos                   | O(K)               |
     """
     indice = IndiceLlaves.construir(_menciones(esqueleto, ubicaciones, llave_salida))
     grafo = GrafoSalas.desde(esqueleto, indice, ubicaciones)
@@ -603,5 +607,29 @@ def verificar(cripta_id, sala_inicial, sala_salida, llave_salida, esqueleto, ubi
         for numero, oleada in estado.orden:
             orden.append(LlaveOrdenada(indice.id_de(numero), oleada, numero == num_salida))
         return ResultadoVerificacion(cripta_id, True, sala_salida, llave_salida, orden=orden)
-    return ResultadoVerificacion(cripta_id, False, sala_salida, llave_salida, puertas_salida=puertas,
-                                 existe_puerta_salida=existe_puerta)
+
+    # solo si no es resoluble: reporte (R6), dependencias (R7) y ciclos (R8)
+    reporte = barrer_reporte(grafo, indice, estado, ubicaciones)
+    depende_de = calcular_dependencias(grafo, indice, estado)
+    no_obtenible = [False] * indice.cantidad()
+    for numero in reporte.no_obtenibles:
+        no_obtenible[numero] = True
+
+    no_obtenibles = []
+    dependencias = []
+    for numero in reporte.no_obtenibles:
+        no_obtenibles.append(indice.id_de(numero))
+        j = depende_de[numero]
+        dependencias.append(DependenciaLlave(indice.id_de(numero), None if j < 0 else indice.id_de(j)))
+
+    ciclos = []
+    for ciclo in hallar_ciclos(depende_de, no_obtenible):
+        ids = []
+        for numero in ciclo:
+            ids.append(indice.id_de(numero))
+        ciclos.append(CicloLlaves(ids, len(ciclo) == 1))
+
+    return ResultadoVerificacion(cripta_id, False, sala_salida, llave_salida, no_obtenibles=no_obtenibles,
+                                 frontera=reporte.frontera, puertas_salida=puertas,
+                                 existe_puerta_salida=existe_puerta, ubicaciones=reporte.ubicaciones,
+                                 dependencias=dependencias, ciclos=ciclos)
