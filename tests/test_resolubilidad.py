@@ -417,5 +417,80 @@ class PruebasOraculo(unittest.TestCase):
         self.assertGreater(no_resolubles, 0)
 
 
+# --- T015: determinismo (SC-003) --------------------------------------------------------------------------------
+
+SEMILLA_BARAJADO = 20261111
+
+
+def como_tupla(resultado):
+    """Todos los campos del resultado, en tuplas comparables campo por campo."""
+    return (
+        resultado.cripta_id, resultado.resoluble, resultado.sala_salida, resultado.llave_salida,
+        tuple(orden_de(resultado)),
+        tuple(resultado.no_obtenibles),
+        tuple(puertas_de(resultado.frontera)),
+        tuple(puertas_de(resultado.puertas_salida)),
+        resultado.existe_puerta_salida,
+        tuple((u.id_llave, tuple((l.sala, l.sala_existe, l.enemigo) for l in u.lugares))
+              for u in resultado.ubicaciones),
+        tuple((dep.id_llave, dep.depende_de) for dep in resultado.dependencias),
+        tuple((tuple(c.llaves), c.directo) for c in resultado.ciclos),
+    )
+
+
+def barajar(esqueleto, ubicaciones, azar):
+    salas = []
+    for s in esqueleto:
+        items = list(s.salidas.items())
+        azar.shuffle(items)
+        salas.append(SalaEsqueleto(s.id, s.nombre, dict(items)))
+    azar.shuffle(salas)
+    ubicaciones = list(ubicaciones)
+    azar.shuffle(ubicaciones)
+    return salas, ubicaciones
+
+
+class PruebasDeterminismo(unittest.TestCase):
+
+    def criptas(self):
+        from tests.generador_criptas import generar_cripta
+        return [generar_cripta(3, 40, 4), generar_cripta(4, 40, 4, llave_de_enemigo=True),
+                generar_cripta(5, 40, 4, resoluble=False), generar_cripta(6, 40, 5, resoluble=False, con_ciclo=True)]
+
+    def llamar(self, cripta, esqueleto, ubicaciones):
+        d = cripta.detalles
+        return Resolubilidad.verificar(cripta.id_cripta, d.sala_inicial, d.sala_salida, d.llave_salida,
+                                       esqueleto, ubicaciones)
+
+    def test_sc003_fr012_cien_llamadas_iguales(self):
+        for cripta in self.criptas():
+            esqueleto, ubicaciones = cripta.esqueleto(), cripta.ubicaciones()
+            primero = como_tupla(self.llamar(cripta, esqueleto, ubicaciones))
+            with self.subTest(semilla=cripta.semilla):
+                for _ in range(100):
+                    self.assertEqual(como_tupla(self.llamar(cripta, esqueleto, ubicaciones)), primero)
+
+    def test_sc003_fr013_no_depende_del_orden_de_la_fuente(self):
+        import random
+        azar = random.Random(SEMILLA_BARAJADO)
+        for cripta in self.criptas():
+            esqueleto, ubicaciones = cripta.esqueleto(), cripta.ubicaciones()
+            primero = como_tupla(self.llamar(cripta, esqueleto, ubicaciones))
+            with self.subTest(semilla=cripta.semilla):
+                for _ in range(100):
+                    salas, lugares = barajar(esqueleto, ubicaciones, azar)
+                    self.assertEqual(como_tupla(self.llamar(cripta, salas, lugares)), primero)
+
+    def test_sc003_fr013_llave_en_varias_ubicaciones_barajadas(self):
+        import random
+        azar = random.Random(SEMILLA_BARAJADO)
+        esqueleto = [sala(1, E=abierta(2), S=cerrada(3, "ks")), sala(2, E=abierta(1)), sala(3)]
+        ubicaciones = [llave("ks", 2, enemigo="e-2"), llave("ks", 1), llave("b", 3), llave("ks", 2)]
+        primero = como_tupla(verificar(esqueleto, ubicaciones, sala_salida=3))
+        for _ in range(100):
+            salas, lugares = barajar(esqueleto, ubicaciones, azar)
+            self.assertEqual(como_tupla(verificar(salas, lugares, sala_salida=3)), primero)
+
+
 if __name__ == "__main__":
     unittest.main()
