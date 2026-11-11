@@ -313,6 +313,107 @@ class PruebasEscenariosUS1(unittest.TestCase):
         self.assertEqual(antes, despues)
 
 
+# --- T025: reporte sin dependencias (US2) -----------------------------------------------------------------------
+
+def ubicaciones_de(resultado):
+    return [(u.id_llave, [(l.sala, l.sala_existe, l.enemigo) for l in u.lugares]) for u in resultado.ubicaciones]
+
+
+class PruebasReporteUS2(unittest.TestCase):
+
+    def test_us2_1_fr008_fr009_fr010_no_obtenibles_frontera_y_ubicaciones(self):
+        esqueleto = [sala(1, E=abierta(2), S=cerrada(3, "a")), sala(2, E=cerrada(5, "ks")), sala(3, E=abierta(4)),
+                     sala(4), sala(5)]
+        resultado = verificar(esqueleto, [llave("ks", 3), llave("a", 4, enemigo="e-9")], sala_salida=5)
+        self.assertFalse(resultado.resoluble)
+        self.assertEqual(resultado.no_obtenibles, ["a", "ks"])
+        self.assertEqual(puertas_de(resultado.frontera), [(1, "S", 3, True, "a"), (2, "E", 5, True, "ks")])
+        self.assertEqual(puertas_de(resultado.puertas_salida), [(2, "E", 5, True, "ks")])
+        self.assertEqual(ubicaciones_de(resultado), [("a", [(4, True, "e-9")]), ("ks", [(3, True, None)])])
+        self.assertEqual(resultado.orden, [])
+
+    def test_us2_5_fr010_llave_requerida_sin_ubicacion(self):
+        esqueleto = [sala(1, E=cerrada(2, "x")), sala(2)]
+        resultado = verificar(esqueleto, [llave("ks", 2)], sala_salida=2)
+        self.assertEqual(resultado.no_obtenibles, ["ks", "x"])
+        self.assertEqual(ubicaciones_de(resultado), [("ks", [(2, True, None)]), ("x", [])])
+
+    def test_edge_fr009_frontera_vacia_con_salas_desconectadas(self):
+        esqueleto = [sala(1), sala(2, E=cerrada(3, "ks")), sala(3)]
+        resultado = verificar(esqueleto, [llave("ks", 2)], sala_salida=3)
+        self.assertFalse(resultado.resoluble)
+        self.assertEqual(resultado.frontera, [])
+        self.assertEqual(resultado.no_obtenibles, ["ks"])
+        self.assertEqual(ubicaciones_de(resultado), [("ks", [(2, True, None)])])
+
+    def test_edge_fr009_puerta_cerrada_sin_llave_en_la_frontera(self):
+        esqueleto = [sala(1, E=cerrada(2)), sala(2, E=cerrada(3, "ks")), sala(3)]
+        resultado = verificar(esqueleto, [llave("ks", 1)], sala_salida=3)
+        self.assertFalse(resultado.resoluble)
+        self.assertEqual(puertas_de(resultado.frontera), [(1, "E", 2, True, None)])
+        self.assertEqual(puertas_de(resultado.puertas_salida), [(2, "E", 3, True, "ks")])
+        self.assertEqual(resultado.no_obtenibles, [])  # ks se obtiene; falta poder llegar a su puerta
+
+    def test_edge_fr009_puerta_cerrada_entre_salas_alcanzables_no_es_frontera(self):
+        esqueleto = [sala(1, E=abierta(2), S=cerrada(2, "z")), sala(2, E=cerrada(3, "ks")), sala(3)]
+        resultado = verificar(esqueleto, [], sala_salida=3)
+        self.assertEqual(puertas_de(resultado.frontera), [(2, "E", 3, True, "ks")])
+
+    def test_edge_fr009_sala_salida_alcanzable_con_su_puerta_bloqueada(self):
+        esqueleto = [sala(1, E=abierta(2), S=cerrada(2, "ks")), sala(2), sala(3)]
+        resultado = verificar(esqueleto, [llave("ks", 3)], sala_salida=2)
+        self.assertFalse(resultado.resoluble)
+        self.assertEqual(puertas_de(resultado.puertas_salida), [(1, "S", 2, True, "ks")])
+        self.assertEqual(resultado.frontera, [])  # su destino ya es alcanzable
+        self.assertEqual(resultado.no_obtenibles, ["ks"])
+        self.assertEqual(ubicaciones_de(resultado), [("ks", [(3, True, None)])])
+
+    def test_edge_fr010_fr014_llave_en_varias_ubicaciones_por_sala_y_enemigo(self):
+        esqueleto = [sala(1, E=cerrada(2, "q")), sala(2, E=cerrada(6, "ks")), sala(3), sala(4), sala(5), sala(6)]
+        ubicaciones = [llave("ks", 5, "e-b"), llave("ks", 3), llave("ks", 5, "e-a"), llave("ks", 5),
+                       llave("ks", 3, "e-z")]
+        resultado = verificar(esqueleto, ubicaciones, sala_salida=6)
+        self.assertEqual(ubicaciones_de(resultado), [
+            ("ks", [(3, True, None), (3, True, "e-z"), (5, True, None), (5, True, "e-a"), (5, True, "e-b")]),
+            ("q", []),
+        ])
+
+    def test_edge_fr010_ubicacion_y_destino_en_sala_inexistente(self):
+        esqueleto = [sala(1, E=cerrada(99, "a"), S=cerrada(2, "ks")), sala(2)]
+        resultado = verificar(esqueleto, [llave("a", 77, "e-x"), llave("a", 50), llave("ks", 2)], sala_salida=2)
+        self.assertFalse(resultado.resoluble)
+        self.assertEqual(resultado.no_obtenibles, ["a", "ks"])
+        self.assertEqual(puertas_de(resultado.frontera), [(1, "S", 2, True, "ks"), (1, "E", 99, False, "a")])
+        self.assertEqual(ubicaciones_de(resultado),
+                         [("a", [(50, False, None), (77, False, "e-x")]), ("ks", [(2, True, None)])])
+
+    def test_edge_fr001_llave_mas_alla_de_sala_salida(self):
+        """sala_salida se atraviesa como cualquier otra sala."""
+        resoluble = [sala(1, E=abierta(2), S=cerrada(2, "ks")), sala(2, E=abierta(3)), sala(3)]
+        self.assertTrue(verificar(resoluble, [llave("ks", 3)], sala_salida=2).resoluble)
+
+        esqueleto = [sala(1, E=abierta(2), S=cerrada(2, "ks")), sala(2, E=cerrada(3, "b")), sala(3, E=abierta(4)),
+                     sala(4)]
+        resultado = verificar(esqueleto, [llave("ks", 4), llave("b", 3)], sala_salida=2)
+        self.assertFalse(resultado.resoluble)
+        self.assertEqual(resultado.no_obtenibles, ["b", "ks"])
+        self.assertEqual(puertas_de(resultado.frontera), [(2, "E", 3, True, "b")])
+
+    def test_fr014_frontera_por_sala_de_origen_y_direccion(self):
+        """Por id de sala (no por orden de visita) y luego N, S, E, O; otras direcciones después, por texto."""
+        esqueleto = [sala(3, N=cerrada(14, "k4"), S=cerrada(13), E=cerrada(12, "k3"), O=cerrada(11, "k2"),
+                          arriba=cerrada(15, "k5"), abajo=abierta(1)),
+                     sala(1, zeta=cerrada(16, "k6"), O=cerrada(10, "k1"))]
+        esqueleto += [sala(i) for i in range(10, 17)]
+        resultado = verificar(esqueleto, [], sala_inicial=3, sala_salida=15, llave_salida="k5")
+        self.assertEqual(puertas_de(resultado.frontera), [
+            (1, "O", 10, True, "k1"), (1, "zeta", 16, True, "k6"),
+            (3, "N", 14, True, "k4"), (3, "S", 13, True, None), (3, "E", 12, True, "k3"), (3, "O", 11, True, "k2"),
+            (3, "arriba", 15, True, "k5"),
+        ])
+        self.assertEqual(resultado.no_obtenibles, ["k1", "k2", "k3", "k4", "k5", "k6"])
+
+
 # --- T014: oráculo ingenuo (SC-001, SC-002) ---------------------------------------------------------------------
 # Repite un recorrido completo por cada llave nueva. Solo listas usadas como arreglos o búsquedas lineales:
 # sin dict, set ni deque (la regla del Principio I también vale para el oráculo).
