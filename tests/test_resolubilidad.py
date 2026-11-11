@@ -414,6 +414,107 @@ class PruebasReporteUS2(unittest.TestCase):
         self.assertEqual(resultado.no_obtenibles, ["k1", "k2", "k3", "k4", "k5", "k6"])
 
 
+# --- T026: dependencias y ciclos (US2) --------------------------------------------------------------------------
+
+def dependencias_de(resultado):
+    return [(d.id_llave, d.depende_de) for d in resultado.dependencias]
+
+
+def ciclos_de(resultado):
+    return [(c.llaves, c.directo) for c in resultado.ciclos]
+
+
+def cripta_varios_ciclos():
+    """Cada llave en su propia sala, a la que solo se entra desde la sala 1 por una puerta que pide su dependencia.
+
+    m -> c -> x -> m (por cadena, menor c), b -> b (directo), f -> a -> f (por cadena, menor a) y z -> c (cola
+    hacia un ciclo, sin estar en él). llave_salida z.
+    """
+    depende = (("m", 10, "c"), ("c", 11, "x"), ("x", 12, "m"), ("b", 13, "b"), ("f", 14, "a"), ("a", 15, "f"),
+               ("z", 16, "c"))
+    salidas = {f"p_{k}": cerrada(sala_k, j) for k, sala_k, j in depende}
+    salidas["salida"] = cerrada(17, "z")
+    esqueleto = [sala_con(1, salidas)] + [sala(i) for i in range(10, 18)]
+    ubicaciones = [llave(k, sala_k) for k, sala_k, _ in depende]
+    return esqueleto, ubicaciones
+
+
+CICLOS_VARIOS = [(["a", "f"], False), (["b"], True), (["c", "x", "m"], False)]
+
+
+class PruebasDependenciasYCiclosUS2(unittest.TestCase):
+
+    def test_us2_2_fr011_ciclo_directo(self):
+        esqueleto = [sala(1, E=cerrada(2, "k")), sala(2, E=cerrada(3, "k")), sala(3)]
+        resultado = verificar(esqueleto, [llave("k", 2)], sala_salida=3, llave_salida="k")
+        self.assertEqual(dependencias_de(resultado), [("k", "k")])
+        self.assertEqual(ciclos_de(resultado), [(["k"], True)])
+
+    def test_us2_3_fr011_ciclo_por_cadena(self):
+        esqueleto = [sala(1, E=cerrada(2, "k2"), S=cerrada(3, "k1"), N=cerrada(4, "ks")), sala(2), sala(3), sala(4)]
+        resultado = verificar(esqueleto, [llave("k1", 2), llave("k2", 3)], sala_salida=4)
+        self.assertEqual(resultado.no_obtenibles, ["k1", "k2", "ks"])
+        self.assertEqual(dependencias_de(resultado), [("k1", "k2"), ("k2", "k1"), ("ks", None)])
+        self.assertEqual(ciclos_de(resultado), [(["k1", "k2"], False)])
+
+    def test_us2_4_fr011_puertas_alternativas_sin_ciclo(self):
+        """K detrás de una puerta con K y otra con J; J sin ubicación: K no depende de ninguna."""
+        esqueleto = [sala(1, E=cerrada(2, "k"), S=cerrada(2, "j")), sala(2)]
+        resultado = verificar(esqueleto, [llave("k", 2)], sala_salida=2, llave_salida="k")
+        self.assertEqual(dependencias_de(resultado), [("j", None), ("k", None)])
+        self.assertEqual(ciclos_de(resultado), [])
+
+    def test_fr011_contraejemplo_r7_puerta_interna(self):
+        """K en R; región →(K) R; R →(J) Z; Z → R abierta. La puerta R→Z es interna a la zona de R: K -> K."""
+        esqueleto = [sala(1, E=cerrada(2, "k")), sala(2, E=cerrada(3, "j")), sala(3, O=abierta(2))]
+        resultado = verificar(esqueleto, [llave("k", 2), llave("j", 3)], sala_salida=2, llave_salida="k")
+        self.assertEqual(dependencias_de(resultado), [("j", "j"), ("k", "k")])
+        self.assertEqual(ciclos_de(resultado), [(["j"], True), (["k"], True)])
+
+    def test_fr011_puerta_sin_llave_entrando_a_la_zona(self):
+        mezcla = [sala(1, E=cerrada(2, "k"), S=cerrada(2)), sala(2)]
+        resultado = verificar(mezcla, [llave("k", 2)], sala_salida=2, llave_salida="k")
+        self.assertEqual(dependencias_de(resultado), [("k", None)])
+        sola = [sala(1, E=cerrada(2), S=cerrada(3, "k")), sala(2), sala(3)]
+        resultado = verificar(sola, [llave("k", 2)], sala_salida=3, llave_salida="k")
+        self.assertEqual(dependencias_de(resultado), [("k", None)])
+        self.assertEqual(ciclos_de(resultado), [])
+
+    def test_fr011_cada_ubicacion_debe_pedir_la_misma_llave(self):
+        misma = [sala(1, E=cerrada(2, "j"), S=cerrada(3, "j"), N=cerrada(4, "k")), sala(2), sala(3), sala(4)]
+        resultado = verificar(misma, [llave("k", 2), llave("k", 3)], sala_salida=4, llave_salida="k")
+        self.assertEqual(dependencias_de(resultado), [("j", None), ("k", "j")])
+        distinta = [sala(1, E=cerrada(2, "j"), S=cerrada(3, "q"), N=cerrada(4, "k")), sala(2), sala(3), sala(4)]
+        resultado = verificar(distinta, [llave("k", 2), llave("k", 3)], sala_salida=4, llave_salida="k")
+        self.assertEqual(dependencias_de(resultado), [("j", None), ("k", None), ("q", None)])
+        inexistente = [sala(1, E=cerrada(2, "j"), N=cerrada(4, "k")), sala(2), sala(4)]
+        resultado = verificar(inexistente, [llave("k", 2), llave("k", 90)], sala_salida=4, llave_salida="k")
+        self.assertEqual(dependencias_de(resultado), [("j", None), ("k", None)])
+
+    def test_fr011_fr014_ciclos_disjuntos_empiezan_por_la_menor_y_ordenados(self):
+        esqueleto, ubicaciones = cripta_varios_ciclos()
+        resultado = verificar(esqueleto, ubicaciones, sala_salida=17, llave_salida="z")
+        self.assertEqual(dependencias_de(resultado), [("a", "f"), ("b", "b"), ("c", "x"), ("f", "a"), ("m", "c"),
+                                                      ("x", "m"), ("z", "c")])
+        self.assertEqual(ciclos_de(resultado), CICLOS_VARIOS)
+        vistas = [k for llaves_ciclo, _ in ciclos_de(resultado) for k in llaves_ciclo]
+        for k in vistas:
+            self.assertEqual(vistas.count(k), 1, f"{k} aparece en más de un ciclo")
+        self.assertNotIn("z", vistas)
+
+    def test_fr011_llaves_sin_dependencia_listadas_como_tales(self):
+        """Sin ubicación, en sala inexistente o en una zona sin puertas que entren: sin dependencia."""
+        esqueleto = [sala(1, E=cerrada(2, "ks"), S=cerrada(2, "c")), sala(2), sala(3)]
+        resultado = verificar(esqueleto, [llave("ks", 3), llave("b", 99)], sala_salida=2)
+        self.assertEqual(dependencias_de(resultado), [("b", None), ("c", None), ("ks", None)])
+        self.assertEqual(ciclos_de(resultado), [])
+
+    def test_fr011_hallar_ciclos_directo(self):
+        """hallar_ciclos sobre depende_de por número: 0 -> 1 -> 0, 2 -> 2, 3 sin dependencia, 4 -> 3."""
+        ciclos = Resolubilidad.hallar_ciclos([1, 0, 2, -1, 3], [True] * 5)
+        self.assertEqual(ciclos, [[0, 1], [2]])
+
+
 # --- T014: oráculo ingenuo (SC-001, SC-002) ---------------------------------------------------------------------
 # Repite un recorrido completo por cada llave nueva. Solo listas usadas como arreglos o búsquedas lineales:
 # sin dict, set ni deque (la regla del Principio I también vale para el oráculo).
