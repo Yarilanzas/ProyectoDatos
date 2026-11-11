@@ -2,6 +2,7 @@
 # - preparar_partida: partida nueva. Es tambien la "fabrica" que usa el --replay, por eso con la misma cripta y la misma semilla siempre deja el mismo estado inicial.
 # - cargar_partida: partida guardada en el archivo binario (S4.10)
 
+from Modelo import Resolubilidad
 from Modelo.Conocimiento import EXPLORADA
 from Modelo.Jugador import Jugador
 from Modelo.MotorSimulacion import MotorSimulacion
@@ -25,6 +26,19 @@ def _fijar_presupuesto(detalles, gestor):
     if hasattr(gestor.fuente, "fijar_presupuesto"):
         gestor.fuente.fijar_presupuesto(detalles.presupuesto_solicitudes)
 
+
+def verificar_cripta(cripta_id, gestor):
+    """Spec 002 (FR-001, FR-026, FR-028): verifica si la cripta es resoluble sin crear motor ni partida.
+
+    Detalles -> presupuesto -> esqueleto -> ubicación de las llaves -> Resolubilidad.verificar. Los errores de la
+    fuente (ErrorCliente y subclases, RuntimeError offline) se propagan sin capturar (FR-025).
+    """
+    detalles = gestor.obtener_detalles(cripta_id)
+    _fijar_presupuesto(detalles, gestor)
+    esqueleto = gestor.obtener_esqueleto(cripta_id)
+    ubicaciones = gestor.obtener_llaves(cripta_id)
+    return Resolubilidad.verificar(cripta_id, detalles.sala_inicial, detalles.sala_salida, detalles.llave_salida,
+                                   esqueleto, ubicaciones)
 
 def _crear_motor(cripta_id, semilla, gestor):
     detalles = gestor.obtener_detalles(cripta_id)
