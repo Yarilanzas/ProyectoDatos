@@ -98,8 +98,15 @@ Variantes de cada sección:
 | Destino inexistente | `- sala 3 (E) -> sala 99 (no existe): requiere llave_k1` |
 | Sin puerta de salida (US1.6) | `Puerta hacia la sala de salida: no existe ninguna salida hacia la sala 12 que requiera llave_salida_x.` |
 | Ubicación en sala inexistente | `- llave_k1: sala 99 (no existe)` |
+| Ubicación en sala inexistente soltada por un enemigo | `- llave_k1: sala 99 (no existe) (la suelta e-40)` |
 | Ciclo directo (US2.2) | `- llave_k -> llave_k (ciclo directo)` |
 | Sin ciclos | `Ciclos de llaves: ninguno.` |
+| Sin llaves no obtenibles (por ejemplo, US1.6: `llave_salida` obtenible pero sin puerta de salida) | `Llaves no obtenibles: ninguna.` |
+| Sin llaves que ubicar (no hay llaves no obtenibles) | `Ubicación de las llaves: ninguna.` |
+| Sin dependencias que listar (no hay llaves no obtenibles) | `Dependencias entre llaves: ninguna.` |
+
+Las secciones siempre aparecen en el orden del ejemplo; una sección vacía usa su texto alternativo en una sola línea,
+sin líneas `-` debajo.
 
 Reglas de orden: llaves por identificador; puertas por sala de origen y luego dirección N, S, E, O (otras después, por
 texto); ubicaciones por sala y luego enemigo; cada ciclo empieza por su menor llave y los ciclos se ordenan por esa
