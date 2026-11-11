@@ -74,3 +74,141 @@ class IndiceLlaves:
     def cantidad(self):
         """K, cantidad de llaves distintas. O(1)."""
         return len(self.ids)
+
+
+# Orden fijo de direcciones (mismo desempate que FR-024 de la spec 001); las demás van después, por su texto.
+ORDEN_DIRECCIONES = ("N", "S", "E", "O")
+
+
+def _es_id_valido(valor):
+    # entero no negativo; bool es subclase de int y no vale como id
+    return isinstance(valor, int) and not isinstance(valor, bool) and valor >= 0
+
+
+def _posicion_fija(direccion):
+    for i in range(len(ORDEN_DIRECCIONES)):
+        if ORDEN_DIRECCIONES[i] == direccion:
+            return i
+    return -1
+
+
+def _texto_direccion(salida):
+    return salida.direccion
+
+
+class SalidaVerif:
+    """Una salida dirigida (FR-005): vive solo en el arreglo de su sala de origen.
+
+    - `destino_valido`: 0 <= destino <= max_id y la sala destino existe. Si es False no aporta alcance.
+    - `num_llave`: número de la llave que pide en el índice; −1 si está abierta o cerrada sin indicar llave.
+    - `id_llave`: id de la llave que pide (para el reporte); None si está abierta o no indica llave.
+    El cierre automático no se guarda: no influye en la decisión (FR-004).
+    """
+
+    def __init__(self, direccion, origen, destino, destino_valido, cerrada, num_llave, id_llave):
+        self.direccion = direccion
+        self.origen = origen
+        self.destino = destino
+        self.destino_valido = destino_valido
+        self.cerrada = cerrada
+        self.num_llave = num_llave
+        self.id_llave = id_llave
+
+
+class SalaVerif:
+    """Una sala del grafo: `salidas` en orden N, S, E, O y otras después por texto; `llaves` con los números de las
+    llaves ubicadas aquí, incluidas las que suelta un enemigo que inicia aquí (FR-003)."""
+
+    def __init__(self, id_sala, salidas, llaves):
+        self.id = id_sala
+        self.salidas = salidas
+        self.llaves = llaves
+
+
+class GrafoSalas:
+    """Vector de salas (R1) indexado por id, de largo max_id + 1 (None = la sala no existe), y `entrantes`: por
+    cada sala, las salidas que llegan a ella (solo lo usan las dependencias de US2, R7).
+
+    Ids duplicados en el esqueleto: se conserva la primera aparición. Un id que no sea entero no negativo lanza
+    ValueError con el id. Las trampas y el contenido de las salas no se reciben (FR-004).
+
+    | Operación                                       | Complejidad       |
+    |-------------------------------------------------|-------------------|
+    | desde(esqueleto, indice, ubicaciones)           | O(S + E + M log K)|
+    | sala(id)                                        | O(1)              |
+    | existe(id)                                      | O(1)              |
+
+    (Las «otras» direcciones, fuera de N, S, E, O, se ordenan con merge_sort; en las criptas son 0 por sala.)
+    """
+
+    def __init__(self, salas, entrantes):
+        self.salas = salas
+        self.entrantes = entrantes
+
+    def existe(self, id_sala):
+        return _es_id_valido(id_sala) and id_sala < len(self.salas) and self.salas[id_sala] is not None
+
+    def sala(self, id_sala):
+        if not self.existe(id_sala):
+            return None
+        return self.salas[id_sala]
+
+    @classmethod
+    def desde(cls, esqueleto, indice, ubicaciones):
+        # 1. validar ids y hallar max_id: O(S)
+        max_id = -1
+        for dto in esqueleto:
+            if not _es_id_valido(dto.id):
+                raise ValueError(f"Id de sala inválido: {dto.id!r}. Debe ser un entero no negativo.")
+            if dto.id > max_id:
+                max_id = dto.id
+
+        # 2. primera aparición de cada id y salas vacías: O(S)
+        primera = [None] * (max_id + 1)
+        for dto in esqueleto:
+            if primera[dto.id] is None:
+                primera[dto.id] = dto
+        salas = [None] * (max_id + 1)
+        for id_sala in range(max_id + 1):
+            if primera[id_sala] is not None:
+                salas[id_sala] = SalaVerif(id_sala, [], [])
+        grafo = cls(salas, [[] for _ in range(max_id + 1)])
+
+        # 3. salidas por sala en orden fijo y entrantes: O(E log K) por la búsqueda de cada llave
+        for id_sala in range(max_id + 1):
+            dto = primera[id_sala]
+            if dto is None:
+                continue
+            fijas = [None] * len(ORDEN_DIRECCIONES)
+            otras = []
+            for direccion, salida in dto.salidas.items():
+                verif = cls._salida_verif(grafo, indice, id_sala, direccion, salida)
+                posicion = _posicion_fija(direccion)
+                if posicion >= 0:
+                    fijas[posicion] = verif
+                else:
+                    otras.append(verif)
+            otras, _ = merge_sort(otras, _texto_direccion)
+            ordenadas = [verif for verif in fijas if verif is not None]
+            ordenadas.extend(otras)
+            salas[id_sala].salidas = ordenadas
+            for verif in ordenadas:
+                if verif.destino_valido:
+                    grafo.entrantes[verif.destino].append(verif)
+
+        # 4. llaves por sala (FR-003: la de un enemigo, en la sala donde inicia): O(L log K).
+        # Una ubicación en una sala inexistente no aporta alcance (Edge Cases).
+        for ubicacion in ubicaciones:
+            if grafo.existe(ubicacion.sala):
+                numero = indice.numero(ubicacion.id_llave)
+                if numero >= 0:
+                    salas[ubicacion.sala].llaves.append(numero)
+        return grafo
+
+    @staticmethod
+    def _salida_verif(grafo, indice, origen, direccion, salida):
+        destino = salida.sala_destino
+        cerrada = bool(salida.cerrada)
+        id_llave = salida.llave if cerrada else None
+        num_llave = indice.numero(id_llave) if id_llave is not None else -1
+        return SalidaVerif(direccion, origen, destino, grafo.existe(destino), cerrada, num_llave, id_llave)
