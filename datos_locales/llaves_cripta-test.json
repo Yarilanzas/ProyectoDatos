@@ -1,0 +1,12 @@
+{
+    "formato": "CRIPTA-LLAVES",
+    "version_formato": 1,
+    "version": "v1",
+    "llaves": [
+        {
+            "id": "itm_llave_salida",
+            "sala": 2,
+            "enemigo": null
+        }
+    ]
+}
