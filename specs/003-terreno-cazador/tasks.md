@@ -37,8 +37,8 @@ Proyecto único MVC en la raíz: reglas en `Modelo/`, pruebas y bench en `tests/
 
 ### Cola de prioridad y espacio de trabajo (Persona A, D-PEND-01)
 
-- [ ] T004 [P] Pruebas propias de la cola en `tests/test_cola_prioridad.py`: extrae en orden de `(distancia, ordinal)`, entradas repetidas de un mismo ordinal (inserción perezosa), `vacia()`, `vaciar()` en O(1), orden determinista ante claves iguales, y que el módulo no importe `heapq`, `bisect` ni `collections` (FR-011, FR-021; Principio I)
-- [ ] T005 Implementar `Modelo/ColaPrioridad.py`: montículo binario mínimo en lista con `insertar(distancia, ordinal)`, `extraer_minimo()`, `vacia()`, `vaciar()`; complejidad O(log t) por operación documentada en docstrings; pasa T004 (FR-011, FR-033). **⛔ bloquea a «ir a» (001, T062)**
+- [x] T004 [P] Pruebas propias de la cola en `tests/test_cola_prioridad.py`: extrae en orden de `(distancia, ordinal)`, entradas repetidas de un mismo ordinal (inserción perezosa), `vacia()`, `vaciar()` en O(1), orden determinista ante claves iguales, y que el módulo no importe `heapq`, `bisect` ni `collections` (FR-011, FR-021; Principio I)
+- [x] T005 Implementar `Modelo/ColaPrioridad.py`: montículo binario mínimo en lista con `insertar(distancia, ordinal)`, `extraer_minimo()`, `vacia()`, `vaciar()`; complejidad O(log t) por operación documentada en docstrings; pasa T004 (FR-011, FR-033). **⛔ bloquea a «ir a» (001, T062)**
 - [ ] T006 [P] Pruebas de `EspacioBusqueda` en `tests/test_espacio_busqueda.py`: listas `dist`, `primero`, `epoca` de tamaño n; incrementar `epoca_actual` invalida todo en O(1) sin recorrer las listas; un espacio creado para n salas se rechaza con otro `cantidad_salas` (FR-033)
 - [ ] T007 Implementar `EspacioBusqueda` en `Modelo/BusquedaRuta.py` (data-model §4.3): `dist`, `primero`, `epoca`, `epoca_actual` y una `ColaPrioridad` reutilizable; creación O(n), reinicio O(1); pasa T006 (FR-033). **⛔ bloquea a «ir a» (001, T062)**
 
