@@ -10,6 +10,7 @@
 # Notación (data-model.md): S salas, E salidas, K llaves distintas, L ubicaciones, C salidas cerradas con llave,
 # M = L + C + 1 menciones de llaves.
 
+from DTOS.ResultadoVerificacion import LlaveOrdenada, PuertaReporte, ResultadoVerificacion
 from Modelo.Estructuras import Queue
 from Modelo.ordenamiento import merge_sort
 
@@ -295,3 +296,76 @@ def recorrer(grafo, indice, sala_inicial):
         oleada += 1
 
     return EstadoRecorrido(visitada, obtenida, orden)
+
+
+def _menciones(esqueleto, ubicaciones, llave_salida):
+    # las M menciones de llaves: ubicaciones, llaves de salidas cerradas que la indican y llave_salida. O(L + E)
+    menciones = []
+    for ubicacion in ubicaciones:
+        menciones.append(ubicacion.id_llave)
+    for dto in esqueleto:
+        for salida in dto.salidas.values():
+            if salida.cerrada and salida.llave is not None:
+                menciones.append(salida.llave)
+    if llave_salida is not None:
+        menciones.append(llave_salida)
+    return menciones
+
+
+def verificar(cripta_id, sala_inicial, sala_salida, llave_salida, esqueleto, ubicaciones):
+    """Decide si la cripta es resoluble (contrato: specs/002-resolubilidad/contracts/interfaz-verificador.md).
+
+    Resoluble si `llave_salida` se obtiene y existe una salida con origen visitado, destino `sala_salida` y llave
+    `llave_salida`; con `sala_inicial == sala_salida` sigue haciendo falta esa puerta (FR-001). Si la cripta no
+    declara `llave_salida` (None), es resoluble si `sala_salida` se alcanza (Edge Cases).
+
+    Si es resoluble, `orden` lista todas las llaves obtenibles por oleada y luego por id, marcando `llave_salida`
+    (FR-006, FR-007). Si no, llena `puertas_salida` con cada salida hacia `sala_salida` que pide `llave_salida` y no
+    se puede cruzar, por sala de origen y dirección, y `existe_puerta_salida` (FR-009). El resto del reporte (llaves
+    no obtenibles, frontera, ubicaciones, dependencias y ciclos) queda en listas vacías hasta US2.
+
+    Pura y determinista: no modifica sus argumentos y el resultado no depende del orden de la entrada (FR-012,
+    FR-013); todos los órdenes salen del id de sala, del orden fijo de direcciones y del índice de llaves (R11).
+    Lanza ValueError si un id de sala no es un entero no negativo.
+
+    | Paso                                         | Complejidad        |
+    |----------------------------------------------|--------------------|
+    | índice de llaves                             | O(M log M)         |
+    | grafo de salas                               | O(S + E + M log K) |
+    | recorrido por oleadas                        | O(S + E + K log K) |
+    | veredicto y puertas hacia la salida (barrido)| O(S + E + K)       |
+    | total                                        | O(S + E + M log M) |
+    """
+    indice = IndiceLlaves.construir(_menciones(esqueleto, ubicaciones, llave_salida))
+    grafo = GrafoSalas.desde(esqueleto, indice, ubicaciones)
+    estado = recorrer(grafo, indice, sala_inicial)
+
+    num_salida = -1 if llave_salida is None else indice.numero(llave_salida)
+    resoluble = False
+    existe_puerta = True
+    puertas = []
+    if llave_salida is None:
+        resoluble = grafo.existe(sala_salida) and estado.visitada[sala_salida]
+    else:
+        # barrido de todas las salidas en orden de sala y dirección: el reporte queda ya ordenado (FR-014)
+        existe_puerta = False
+        for sala in grafo.salas:
+            if sala is None:
+                continue
+            for salida in sala.salidas:
+                if salida.destino != sala_salida or salida.num_llave != num_salida:
+                    continue
+                existe_puerta = True
+                if estado.visitada[sala.id] and estado.obtenida[num_salida]:
+                    resoluble = True
+                else:
+                    puertas.append(PuertaReporte(sala.id, salida.direccion, salida.destino, salida.destino_valido,
+                                                 salida.id_llave))
+
+    if resoluble:
+        orden = []
+        for numero, oleada in estado.orden:
+            orden.append(LlaveOrdenada(indice.id_de(numero), oleada, numero == num_salida))
+        return ResultadoVerificacion(cripta_id, True, sala_salida, llave_salida, orden=orden)
+    return ResultadoVerificacion(cripta_id, False, sala_salida, llave_salida, puertas_salida=puertas,
+                                 existe_puerta_salida=existe_puerta)
