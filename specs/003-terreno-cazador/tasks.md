@@ -57,7 +57,7 @@ Proyecto único MVC en la raíz: reglas en `Modelo/`, pruebas y bench en `tests/
 
 ### Puertas y contadores en el motor
 
-- [ ] T015 [P] Pruebas en `tests/test_invalidacion_puertas.py`: `version_puertas` crece con el cierre automático, con `abrir`, y con el deshacer de cada uno; nunca decrece; `ciclo` crece al empezar cada ciclo de eventos; y una prueba que lee el código fuente de `Modelo/` y falla si aparece, fuera del método único, `.cerrada =`, `setattr(..., "cerrada", ...)` o `_asignar_reversible(..., "cerrada", ...)`, excluyendo por nombre `Modelo/prueba_actores.py` con el motivo escrito en la prueba (pruebas manuales de la Parte I que arman salas a mano) (FR-016, FR-024, FR-031)
+- [ ] T015 [P] Pruebas en `tests/test_invalidacion_puertas.py`: `version_puertas` crece con el cierre automático, con `abrir`, y con el deshacer de cada uno; nunca decrece; `ciclo` crece al empezar cada ciclo de eventos; y una prueba que lee el código fuente de `Modelo/` y falla si aparece, fuera del método único, `.cerrada =`, `setattr(..., "cerrada", ...)` o `_asignar_reversible(..., "cerrada", ...)`, excluyendo por nombre `Modelo/prueba_actores.py` con el motivo escrito en la prueba (pruebas manuales de la Parte I que arman salas a mano) (FR-016, FR-024, FR-031). Excluir además por nombre `Modelo/CopiaEstado.py` (la capacidad 004 restaura `Salida.cerrada` desde una foto en un clon desechable; motivo en `contracts/interfaz-cazador-linea.md`, §5)
 - [ ] T016 Agregar en `Modelo/MotorSimulacion.py` el contador `version_puertas` y el método único de escritura de `salida.cerrada`, que incrementa el contador y registra su deshacer llamándose a sí mismo; redirigir a ese método el evento de cierre automático (`ejecutar_evento`) y `abrir_salida`, incluidos sus dos deshacer que hoy usan `setattr(..., "cerrada", ...)`; no tocar `Persistencia/ConversorPartida.py`; pasa la parte de puertas de T015 (FR-016, FR-031)
 - [ ] T017 Agregar en `Modelo/MotorSimulacion.py` el contador `ciclo`, incrementado al empezar `avanzar_hasta_jugador`; no se guarda ni entra en la bitácora; pasa la parte de ciclo de T015 (FR-016, FR-024, FR-025)
 - [ ] T018 En `Modelo/MotorSimulacion.py`, construir un `GrafoCripta` y un `EspacioBusqueda` persistentes cuando el motor recibe sus salas (inicio y carga de partida), en O(n + m) una vez; no forman parte del estado guardado (FR-015, FR-033)
@@ -197,6 +197,8 @@ Proyecto único MVC en la raíz: reglas en `Modelo/`, pruebas y bench en `tests/
 - [ ] T073 [P] Docstrings de complejidad en `Modelo/ColaPrioridad.py`, `Modelo/BusquedaRuta.py` y `Modelo/GrafoCripta.py`, copiando las tablas de `data-model.md` (FR-033; Principio I)
 - [ ] T074 Revisar en `tests/test_terreno.py` y `tests/test_cazador.py` que cada uno de los 7 casos de «Terreno y cazador» del Apéndice B tiene su prueba y cita su FR: T022, T023, T034, T035, T050, T051, T055 (FR-027, SC-001)
 - [ ] T075 Correr `python -m unittest discover -s tests -v` sobre `tests/` y dejarla al 100 % (FR-027; Constitución V)
+- [ ] T076 Registro opcional de decisiones de los cazadores colgado del motor (apagado por defecto, reversible con la historia, sin consumir azar, fuera del guardado salvo decisión de 004): ver `contracts/interfaz-cazador-linea.md` §4; lo piden T058 y T059 (FR-024, FR-025). **⏳ el formato de consulta depende del plan de la capacidad 004**
+- [ ] T077 Validar `specs/003-terreno-cazador/quickstart.md`: recorrer sus escenarios cuando la capacidad esté implementada (FR-027)
 
 ---
 
@@ -212,9 +214,8 @@ Proyecto único MVC en la raíz: reglas en `Modelo/`, pruebas y bench en `tests/
 - **US1 (T019–T032)**: después de Foundational. T032 depende además de la capacidad de datos.
 - **US2 (T033–T049)**: después de US1 (el cazador reprograma con el costo de la salida de T028).
 - **US3 (T050–T054)**: después de US2; no agrega código.
-- **US4 (T055–T060)**: después de US2. T059 depende de la capacidad 004.
-- **US5 (T061–T070)**: después de US4 (T070 cambia la estrategia solo con la equivalencia ya probada).
-- **Polish (T071–T075)**: al final; T071–T073 pueden empezar cuando US2 termine.
+- **US4 (T055–T060)**: después de US2. T059 depende de la capacidad 004. T076 va antes de T058 y T059 (el registro de decisiones se implementa antes de esas pruebas).- **US5 (T061–T070)**: después de US4 (T070 cambia la estrategia solo con la equivalencia ya probada).
+- **Polish (T071–T077)**: al final; T071–T073 pueden empezar cuando US2 termine.
 
 ### Bloqueos con otras personas
 

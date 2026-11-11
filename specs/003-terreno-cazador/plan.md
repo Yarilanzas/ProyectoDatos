@@ -158,11 +158,16 @@ specs/003-terreno-cazador/
 ├── plan.md          # este archivo
 ├── research.md      # R1 a R9
 ├── data-model.md    # estructuras y transiciones
+├── quickstart.md    # escenarios para validar la capacidad de punta a punta
+├── contracts/
+│   └── interfaz-cazador-linea.md   # lo que la línea de tiempo (004) necesita de esta capacidad
 └── checklists/
     └── requirements.md
 ```
 
-No se generan `contracts/` ni `quickstart.md` en esta pasada. El contrato de búsqueda es el de 001
+`quickstart.md` recorre los escenarios para validar la capacidad de punta a punta cuando esté implementada (T077).
+`contracts/interfaz-cazador-linea.md` recoge lo que la línea de tiempo (004) necesita de esta capacidad, tomado de
+`specs/004-linea-de-tiempo/contracts/interfaz-linea.md`. El contrato de búsqueda no se duplica aquí: es el de 001
 (`specs/001-niebla-mapa-ir-a/contracts/interfaz-ruta.md`); con P-01 aceptada, allí se agregan `limite=None` y
 `espacio=None` como parámetros opcionales al final de `primer_paso`. `entrantes` no entra en la interfaz exigida a todo
 grafo: solo lo ofrece `GrafoCripta`. No cambia ninguna llamada existente de «ir a».
