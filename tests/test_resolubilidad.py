@@ -313,5 +313,109 @@ class PruebasEscenariosUS1(unittest.TestCase):
         self.assertEqual(antes, despues)
 
 
+# --- T014: oráculo ingenuo (SC-001, SC-002) ---------------------------------------------------------------------
+# Repite un recorrido completo por cada llave nueva. Solo listas usadas como arreglos o búsquedas lineales:
+# sin dict, set ni deque (la regla del Principio I también vale para el oráculo).
+
+def _buscar_sala_ingenuo(esqueleto, id_sala):
+    for s in esqueleto:
+        if s.id == id_sala:
+            return s
+    return None
+
+
+def alcanzables_ingenuo(esqueleto, sala_inicial, obtenidas):
+    """Salas alcanzables desde sala_inicial con las llaves `obtenidas` (lista de ids)."""
+    if _buscar_sala_ingenuo(esqueleto, sala_inicial) is None:
+        return []
+    visitadas = [sala_inicial]
+    pendiente = 0
+    while pendiente < len(visitadas):
+        actual = _buscar_sala_ingenuo(esqueleto, visitadas[pendiente])
+        pendiente += 1
+        for salida in actual.salidas.values():
+            cruzable = (not salida.cerrada) or (salida.llave is not None and salida.llave in obtenidas)
+            destino = salida.sala_destino
+            if cruzable and destino not in visitadas and _buscar_sala_ingenuo(esqueleto, destino) is not None:
+                visitadas.append(destino)
+    return visitadas
+
+
+def verificar_ingenuo(sala_inicial, sala_salida, llave_salida, esqueleto, ubicaciones):
+    """Devuelve (resoluble, llaves obtenibles en el orden en que se hallaron)."""
+    obtenidas = []
+    while True:
+        visitadas = alcanzables_ingenuo(esqueleto, sala_inicial, obtenidas)
+        nuevas = []
+        for u in ubicaciones:
+            if u.sala in visitadas and u.id_llave not in obtenidas and u.id_llave not in nuevas:
+                nuevas.append(u.id_llave)
+        if not nuevas:
+            break
+        obtenidas.extend(nuevas)
+    if llave_salida is None:
+        return sala_salida in visitadas, obtenidas
+    if llave_salida not in obtenidas:
+        return False, obtenidas
+    for id_sala in visitadas:
+        for salida in _buscar_sala_ingenuo(esqueleto, id_sala).salidas.values():
+            if salida.sala_destino == sala_salida and salida.cerrada and salida.llave == llave_salida:
+                return True, obtenidas
+    return False, obtenidas
+
+
+def criptas_oraculo():
+    from tests.generador_criptas import generar_cripta
+    criptas = []
+    for semilla in range(50):
+        variante = semilla % 4
+        salas = 15 + (semilla * 7) % 50
+        llaves = 4 + semilla % 3
+        if variante == 0:
+            cripta = generar_cripta(semilla, salas, llaves)
+        elif variante == 1:
+            cripta = generar_cripta(semilla, salas, llaves, llave_de_enemigo=True)
+        elif variante == 2:
+            cripta = generar_cripta(semilla, salas, llaves, resoluble=False)
+        else:
+            cripta = generar_cripta(semilla, salas, llaves, resoluble=False, con_ciclo=True)
+        criptas.append(cripta)
+    return criptas
+
+
+class PruebasOraculo(unittest.TestCase):
+
+    def test_sc001_sc002_fr001_fr002_fr007_mismo_veredicto_y_orden_valido(self):
+        resolubles = no_resolubles = 0
+        for cripta in criptas_oraculo():
+            d = cripta.detalles
+            esqueleto, ubicaciones = cripta.esqueleto(), cripta.ubicaciones()
+            with self.subTest(semilla=cripta.semilla):
+                resultado = Resolubilidad.verificar(cripta.id_cripta, d.sala_inicial, d.sala_salida, d.llave_salida,
+                                                    esqueleto, ubicaciones)
+                esperado, obtenibles = verificar_ingenuo(d.sala_inicial, d.sala_salida, d.llave_salida,
+                                                         esqueleto, ubicaciones)
+                self.assertEqual(resultado.resoluble, esperado)
+                if not esperado:
+                    no_resolubles += 1
+                    continue
+                resolubles += 1
+                orden = [o.id_llave for o in resultado.orden]
+                # el orden lista exactamente las llaves obtenibles (FR-006)
+                self.assertEqual(merge_sort(orden, lambda x: x)[0], merge_sort(obtenibles, lambda x: x)[0])
+                # siguiendo el orden, cada llave se obtiene usando solo las anteriores (FR-007, SC-002)
+                for i in range(len(orden)):
+                    visitadas = alcanzables_ingenuo(esqueleto, d.sala_inicial, orden[:i])
+                    lugares = [u.sala for u in ubicaciones if u.id_llave == orden[i]]
+                    self.assertTrue(any(lugar in visitadas for lugar in lugares),
+                                    f"{orden[i]} no se alcanza con {orden[:i]}")
+                # oleadas no decrecientes y, dentro de cada una, por identificador (FR-007)
+                for i in range(len(resultado.orden) - 1):
+                    a, b = resultado.orden[i], resultado.orden[i + 1]
+                    self.assertTrue(a.oleada < b.oleada or (a.oleada == b.oleada and a.id_llave < b.id_llave))
+        self.assertGreater(resolubles, 0)
+        self.assertGreater(no_resolubles, 0)
+
+
 if __name__ == "__main__":
     unittest.main()
