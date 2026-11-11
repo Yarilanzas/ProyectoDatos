@@ -92,6 +92,8 @@ Variantes de cada sección:
 
 | Sección | Texto alternativo |
 |---------|-------------------|
+| Resoluble sin ninguna llave obtenible (bloque «Resoluble») | `Orden de obtención de llaves: ninguna.` (sin líneas numeradas debajo) |
+| La cripta no declara `llave_salida` (Edge Cases) | La sección «Puerta hacia la sala de salida» no aparece, porque no se exige puerta de salida |
 | Frontera vacía (Edge Cases) | `Frontera bloqueada: ninguna (no hay puertas cerradas que salgan de la región alcanzable).` |
 | Destino inexistente | `- sala 3 (E) -> sala 99 (no existe): requiere llave_k1` |
 | Sin puerta de salida (US1.6) | `Puerta hacia la sala de salida: no existe ninguna salida hacia la sala 12 que requiera llave_salida_x.` |
