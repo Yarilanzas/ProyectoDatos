@@ -483,6 +483,57 @@ def calcular_dependencias(grafo, indice, estado):
     return depende_de
 
 
+def hallar_ciclos(depende_de, no_obtenible):
+    """Ciclos de llaves (R8) como listas de números, cada uno empezando por su menor llave y ordenados por ella.
+
+    `depende_de` forma un grafo funcional (cada llave apunta a lo sumo a una), así que los ciclos son disjuntos.
+    Detección: por cada llave no obtenible sin marca se sigue `depende_de` marcando con el número de recorrido; si se
+    vuelve a una llave del recorrido actual, desde ella se marca el ciclo en `en_ciclo`. Emisión: el barrido
+    k = 0..K−1 encuentra primero la menor llave de cada ciclo; desde ella se sigue `depende_de` hasta volver, así
+    salen en orden sin ordenar nada (FR-011, FR-014). Un ciclo de una sola llave es directo (K -> K).
+
+    | Paso                                          | Complejidad |
+    |-----------------------------------------------|-------------|
+    | detectar ciclos (cada llave se visita una vez)| O(K)        |
+    | emitir ciclos en orden (barrido por número)   | O(K)        |
+    """
+    cantidad = len(depende_de)
+    marca = [0] * cantidad
+    en_ciclo = [False] * cantidad
+
+    recorrido = 0
+    for inicio in range(cantidad):
+        if not no_obtenible[inicio] or marca[inicio] != 0:
+            continue
+        recorrido += 1
+        actual = inicio
+        while actual >= 0 and no_obtenible[actual] and marca[actual] == 0:
+            marca[actual] = recorrido
+            actual = depende_de[actual]
+        if actual >= 0 and marca[actual] == recorrido:
+            llave_ciclo = actual
+            while True:
+                en_ciclo[llave_ciclo] = True
+                llave_ciclo = depende_de[llave_ciclo]
+                if llave_ciclo == actual:
+                    break
+
+    ciclos = []
+    for menor in range(cantidad):
+        if not en_ciclo[menor]:
+            continue
+        ciclo = []
+        llave_ciclo = menor
+        while True:
+            ciclo.append(llave_ciclo)
+            en_ciclo[llave_ciclo] = False  # ya emitida
+            llave_ciclo = depende_de[llave_ciclo]
+            if llave_ciclo == menor:
+                break
+        ciclos.append(ciclo)
+    return ciclos
+
+
 def _menciones(esqueleto, ubicaciones, llave_salida):
     # las M menciones de llaves: ubicaciones, llaves de salidas cerradas que la indican y llave_salida. O(L + E)
     menciones = []
