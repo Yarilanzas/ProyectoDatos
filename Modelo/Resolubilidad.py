@@ -144,9 +144,12 @@ class GrafoSalas:
     (Las «otras» direcciones, fuera de N, S, E, O, se ordenan con merge_sort; en las criptas son 0 por sala.)
     """
 
-    def __init__(self, salas, entrantes):
+    def __init__(self, salas, entrantes, ubicacion_inexistente=None):
         self.salas = salas
         self.entrantes = entrantes
+        # ubicacion_inexistente[k]: la llave k tiene alguna ubicación en una sala que no existe (R7: no depende de
+        # ninguna). Largo K; lo llena `desde`.
+        self.ubicacion_inexistente = [] if ubicacion_inexistente is None else ubicacion_inexistente
 
     def existe(self, id_sala):
         return _es_id_valido(id_sala) and id_sala < len(self.salas) and self.salas[id_sala] is not None
@@ -200,12 +203,16 @@ class GrafoSalas:
                     grafo.entrantes[verif.destino].append(verif)
 
         # 4. llaves por sala (FR-003: la de un enemigo, en la sala donde inicia): O(L log K).
-        # Una ubicación en una sala inexistente no aporta alcance (Edge Cases).
+        # Una ubicación en una sala inexistente no aporta alcance (Edge Cases); se anota para las dependencias (R7).
+        grafo.ubicacion_inexistente = [False] * indice.cantidad()
         for ubicacion in ubicaciones:
+            numero = indice.numero(ubicacion.id_llave)
+            if numero < 0:
+                continue
             if grafo.existe(ubicacion.sala):
-                numero = indice.numero(ubicacion.id_llave)
-                if numero >= 0:
-                    salas[ubicacion.sala].llaves.append(numero)
+                salas[ubicacion.sala].llaves.append(numero)
+            else:
+                grafo.ubicacion_inexistente[numero] = True
         return grafo
 
     @staticmethod
@@ -370,6 +377,110 @@ def barrer_reporte(grafo, indice, estado, ubicaciones):
     for numero in no_obtenibles:
         reporte_ubicaciones.append(UbicacionesLlave(indice.id_de(numero), lugares[numero]))
     return ReporteBarrido(no_obtenibles, frontera, reporte_ubicaciones)
+
+
+# Valores de las dependencias (R7)
+SIN_CALCULAR = -2   # valor_zona aún no calculado para esa sala
+SIN_DEPENDENCIA = -1
+_SIN_PUERTAS = -3   # todavía no apareció ninguna puerta (o ninguna ubicación) que decida
+
+
+def _bloqueada(salida, estado):
+    # puerta bloqueada (spec, Definiciones): cerrada, destino fuera de la región y llave no obtenida o no indicada.
+    # Solo se llama con salidas de `entrantes` hacia salas no visitadas, así que el destino ya está fuera.
+    return salida.cerrada and (salida.num_llave < 0 or not estado.obtenida[salida.num_llave])
+
+
+def _combinar(actual, nuevo):
+    # reduce dos valores a ninguna (_SIN_PUERTAS) / J / conflicto (SIN_DEPENDENCIA)
+    if actual == _SIN_PUERTAS:
+        return nuevo
+    if nuevo == _SIN_PUERTAS or nuevo == actual:
+        return actual
+    return SIN_DEPENDENCIA
+
+
+def _valor_zona(grafo, estado, x, sello, numero_sello, cola):
+    """Valor de la zona de la sala no alcanzable `x` (R7): ninguna puerta → −1, todas piden J → J, conflicto → −1.
+
+    Recorre hacia atrás desde `x` con la Queue, siguiendo las salidas de `entrantes` que no son puertas bloqueadas y
+    cuyo origen está fuera de la región; las bloqueadas son candidatas. Al cerrar la zona se descartan las candidatas
+    con origen sellado (puertas internas). Las candidatas con origen en la región nunca son internas: un conflicto
+    entre ellas ya es definitivo y corta el recorrido. O(salas + entrantes de la zona).
+    """
+    sello[x] = numero_sello
+    cola.enqueue(x)
+    seguro = _SIN_PUERTAS        # combinación de las candidatas con origen en la región
+    pendientes = []              # candidatas con origen fuera de la región: se deciden al cerrar la zona
+    while not cola.is_empty():
+        destino = cola.dequeue()
+        for salida in grafo.entrantes[destino]:
+            origen = salida.origen
+            if _bloqueada(salida, estado):
+                if estado.visitada[origen]:
+                    seguro = _combinar(seguro, SIN_DEPENDENCIA if salida.num_llave < 0 else salida.num_llave)
+                    if seguro == SIN_DEPENDENCIA:
+                        while not cola.is_empty():  # corte al primer conflicto: se vacía la cola
+                            cola.dequeue()
+                        return SIN_DEPENDENCIA
+                else:
+                    pendientes.append(salida)
+            elif not estado.visitada[origen] and sello[origen] != numero_sello:
+                sello[origen] = numero_sello
+                cola.enqueue(origen)
+
+    valor = seguro
+    for salida in pendientes:
+        if sello[salida.origen] == numero_sello:
+            continue  # puerta interna: su origen también está en la zona
+        valor = _combinar(valor, SIN_DEPENDENCIA if salida.num_llave < 0 else salida.num_llave)
+        if valor == SIN_DEPENDENCIA:
+            return SIN_DEPENDENCIA
+    return SIN_DEPENDENCIA if valor == _SIN_PUERTAS else valor
+
+
+def calcular_dependencias(grafo, indice, estado):
+    """`depende_de[k]` para cada llave (R7): −1 o el número de la llave J de la que depende la llave no obtenible k.
+
+    K → J si, para cada ubicación de K, todas las puertas bloqueadas que entran a su zona piden J. Si alguna pide otra
+    llave o no indica llave, si una ubicación está en una sala inexistente, si la zona no tiene puertas que entren o
+    si K no tiene ubicación, K no depende de ninguna. Las llaves obtenidas quedan en −1.
+
+    - `sello[max_id + 1]`: número de la última zona que visitó la sala; nunca se limpia, cada zona usa uno nuevo.
+    - `valor_zona[max_id + 1]`: −2 sin calcular, −1 sin dependencia, j; las llaves de una misma sala comparten zona.
+
+    | Paso                                             | Complejidad                 |
+    |--------------------------------------------------|-----------------------------|
+    | preparar sello, valor_zona y depende_de          | O(S + K)                    |
+    | zona de una sala (recorrido hacia atrás con sello) | O(salas + entrantes de la zona) |
+    | todas las dependencias                           | O(S + E + Σ zonas)          |
+    | peor caso (zonas que se solapan, P-11)           | O(L·(S + E))                |
+    """
+    largo = len(grafo.salas)
+    cantidad = indice.cantidad()
+    sello = [0] * largo
+    valor_zona = [SIN_CALCULAR] * largo
+    acumulado = [_SIN_PUERTAS] * cantidad
+    cola = Queue()
+    numero_sello = 0
+
+    for sala in grafo.salas:
+        if sala is None or estado.visitada[sala.id]:
+            continue  # las llaves de salas visitadas son obtenidas
+        for numero in sala.llaves:
+            if estado.obtenida[numero] or acumulado[numero] == SIN_DEPENDENCIA:
+                continue
+            if valor_zona[sala.id] == SIN_CALCULAR:
+                numero_sello += 1
+                valor_zona[sala.id] = _valor_zona(grafo, estado, sala.id, sello, numero_sello, cola)
+            acumulado[numero] = _combinar(acumulado[numero], valor_zona[sala.id])
+
+    depende_de = [SIN_DEPENDENCIA] * cantidad
+    for numero in range(cantidad):
+        if estado.obtenida[numero] or grafo.ubicacion_inexistente[numero] or acumulado[numero] == _SIN_PUERTAS:
+            continue
+        depende_de[numero] = acumulado[numero]
+    return depende_de
 
 
 def _menciones(esqueleto, ubicaciones, llave_salida):
