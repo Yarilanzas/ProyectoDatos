@@ -27,7 +27,7 @@ Proyecto único MVC en la raíz: reglas en `Modelo/`, pruebas y bench en `tests/
 
 - [x] T001 Correr la suite completa y anotar en `specs/003-terreno-cazador/tasks.md` (sección Notes) cuántas pruebas pasan antes de empezar; es la referencia de no regresión de guardianes, errantes y rastreadores (FR-006, SC-006)
 - [x] T002 Medición M8 «antes»: correr la medición de la agenda de la Parte I §4.1 de `tests/bench_motor.py` (`bench_agenda`) con el código actual y guardar la salida en `resultados_bench_agenda_antes.txt`, con equipo y versión de Python, **antes** de cualquier cambio del motor (FR-022, FR-032; enunciado §5.6)
-- [ ] T003 [P] Criptas sintéticas para pruebas y bench: usar el generador de criptas sintéticas de la capacidad de datos (Persona B) cuando exista; mientras tanto, un generador mínimo propio en `tests/utiles_terreno.py`. Las criptas deben ser deterministas por semilla (enunciado §6.3). Debe ofrecer: cuadrícula de n salas con costos configurables, puertas dirigidas (A→B y B→A con estado propio), costos distintos por sentido, y colocación de jugador y k cazadores con rango dado; sin datos de criptas reales (FR-028, FR-033; Constitución IV). **⏳ bloqueada parcialmente por la capacidad de datos (generador de Persona B)**
+- [x] T003 [P] Criptas sintéticas para pruebas y bench: usar el generador de criptas sintéticas de la capacidad de datos (Persona B) cuando exista; mientras tanto, un generador mínimo propio en `tests/utiles_terreno.py`. Las criptas deben ser deterministas por semilla (enunciado §6.3). Debe ofrecer: cuadrícula de n salas con costos configurables, puertas dirigidas (A→B y B→A con estado propio), costos distintos por sentido, y colocación de jugador y k cazadores con rango dado; sin datos de criptas reales (FR-028, FR-033; Constitución IV). 
 
 ---
 
@@ -85,14 +85,14 @@ Proyecto único MVC en la raíz: reglas en `Modelo/`, pruebas y bench en `tests/
 
 ### Implementation for User Story 1
 
-- [ ] T027 [US1] En `Modelo/MotorSimulacion.py`, `mover_jugador`: cambiar `self.proxima_accion(jugador, costo=100)` por `self.proxima_accion(jugador, costo=self.costo_salida(salida))`; pasa T019, T020, T021, T026 (FR-004, FR-005)
+- [ ] T027 [US1] En `Modelo/MotorSimulacion.py`, `mover_jugador`: cambiar `self.proxima_accion(jugador, costo=100)` por `self.proxima_accion(jugador, costo=self.costo_salida(salida))`; pasa T019, T020, T021, T026 (FR-004, FR-005). Actualizar `TestMoverNoCambia` de `tests/test_costo_salida.py` (T118 de la capacidad 001), que hoy afirma que `mover` ignora el costo, a la regla nueva (`costo * 100 // velocidad`), y avisar a Persona C del cambio.
 - [ ] T028 [US1] En `Modelo/MotorSimulacion.py`, rama `Enemigo` de `ejecutar_evento`: recordar la salida usada (`salida_errante`, `salida_rastro`) y, si `mover_enemigo` devolvió `True`, reprogramar con `costo_salida(salida)`; atacar, esperar o un movimiento fallido siguen con 100; `activar_enemigo` no cambia; pasa T022 a T025 (FR-004, FR-005, FR-006, FR-007)
 - [ ] T029 [US1] Correr la suite completa de `tests/` y comparar con T001: las pruebas existentes de guardianes, errantes y rastreadores siguen pasando y solo cambian tiempos donde hay costos distintos de 100 (FR-006, SC-006)
 
-### Datos del terreno (⏳ bloqueadas por la capacidad de datos)
+### Datos del terreno 
 
-- [ ] T030 [P] [US1] En `tests/test_validacion_datos.py`: `Salida.desde_json` (`DTOS/Salida.py`) rechaza con mensaje claro un costo 0, negativo o no entero (por ejemplo `-5`, `2.5`, `"100"`), sin asumir ningún valor, y la cripta no se carga (FR-001). **⏳ bloqueada por P-02 y por la capacidad de datos**
-- [ ] T031 [P] [US1] En `tests/test_validacion_datos.py`: una conexión cuyos sentidos declaran costos distintos (o uno declarado y el otro ausente) **no** se rechaza, y cada actor tarda lo de la salida que atraviesa (FR-001, FR-003). **⏳ bloqueada por la capacidad de datos (campo `costo`)**
+- [ ] T030 [P] [US1] En `tests/test_validacion_datos.py`: `Salida.desde_json` (`DTOS/Salida.py`) rechaza con mensaje claro un costo 0, negativo o no entero (por ejemplo `0`, `-5`, `2.5`, `"100"` y `True`), sin asumir ningún valor (FR-001). Persona B ya implementó la validación en Salida.desde_json: esta tarea solo escribe la prueba.
+- [ ] T031 [P] [US1] En `tests/test_validacion_datos.py`: una conexión cuyos sentidos declaran costos distintos (o uno declarado y el otro ausente) **no** se rechaza, y cada actor tarda lo de la salida que atraviesa (FR-001, FR-003). **El campo costo ya existe en Salida.**
 - [ ] T032 [P] [US1] En `tests/test_costo_cache.py`: el costo de cada salida sobrevive a `AlmacenamientoLocalApi.guardar_esqueleto` y a la lectura posterior por `GestorDatos.obtener_esqueleto`, y al paquete `--offline`; una salida sin costo sigue sin costo (100 en el juego); sin red, con paquete temporal (FR-008, FR-002). **⏳ bloqueada por la capacidad de datos (campo `costo` y versión de formato)**
 
 **Checkpoint**: el terreno funciona solo; guardianes, errantes y rastreadores sin regresiones.
@@ -122,7 +122,7 @@ Proyecto único MVC en la raíz: reglas en `Modelo/`, pruebas y bench en `tests/
 
 ### Implementation for User Story 2
 
-- [ ] T045 [US2] Leer el rango de la ficha del enemigo y guardarlo en el enemigo (`Modelo/Enemigo.py` y la construcción de enemigos en `Modelo/MotorSimulacion.py`); «entero ≥ 0 en unidades de costo»; solo lectura, sin valor por defecto (FR-009)
+- [ ] T045 [US2] Leer el rango de la ficha del enemigo y guardarlo en el enemigo (`Modelo/Enemigo.py` y la construcción de enemigos en `Modelo/MotorSimulacion.py`); «entero ≥ 0 en unidades de costo»; solo lectura, sin valor por defecto (FR-009). FichaEnemigo ya trae rango validado (Persona B): falta copiarlo al Enemigo en `crear_enemigo`
 - [ ] T046 [US2] Implementar en `Modelo/MotorSimulacion.py` la decisión de referencia del cazador (data-model §8): misma sala → `ATACAR`; si no, `primer_paso(grafo_cripta, sala, sala_jugador, limite=rango, espacio=espacio_motor)`; `None` → `ESPERAR` con costo 100; si no → `MOVER` por esa salida con su costo; devuelve `accion`, `salida`, `costo_base` (FR-010, FR-011, FR-012, FR-013, FR-014, FR-017)
 - [ ] T047 [US2] Implementar en `Modelo/MotorSimulacion.py` el campo compartido (data-model §5): llave `(ciclo, sala del jugador, version_puertas, cota)`; si no es válido o la cota es menor que el rango del que decide, recalcular con `campo_hacia` y cota = mayor rango entre los cazadores activos y vivos; decidir aplicando FR-014 sobre las salidas abiertas de la sala del cazador (vecinas no fijadas = ∞); misma salida de datos que T046 (FR-014, FR-016, FR-018)
 - [ ] T048 [US2] Integrar en `Modelo/MotorSimulacion.py`: `accion_enemigo` devuelve la acción del cazador para `comportamiento == "cazador"`; `ejecutar_evento` mueve con `mover_enemigo`, ataca con `atacar` o espera, y reprograma con el `costo_base` de la decisión; la estrategia activa se elige en un solo lugar; la estrategia inicial es la referencia desde cero (búsqueda individual acotada, T046), y el campo compartido (T047) solo se activa si T070 lo decide con M3 y M4; pasa T033 a T044 (FR-010, FR-013, FR-019, FR-020, FR-022, FR-034)
@@ -180,7 +180,7 @@ Proyecto único MVC en la raíz: reglas en `Modelo/`, pruebas y bench en `tests/
 - [ ] T063 [P] [US5] M2 en `tests/bench_cazador.py`: `ColaPrioridad` frente a la agenda y a la búsqueda lineal del mínimo, regiones de 10 a 10 000 salas (FR-033)
 - [ ] T064 [P] [US5] M3 en `tests/bench_cazador.py`: campo compartido frente a individual con k ∈ {1, 2, 5, 10, 25, 50} y rango pequeño y grande, puertas estables; reportar el k* medido (FR-030, FR-032)
 - [ ] T065 [P] [US5] M4 en `tests/bench_cazador.py`: 50 cazadores activados antes de medir, en tres escenarios: puertas estables, puertas que cambian con frecuencia y recalcular siempre desde cero; mediana, p95, búsquedas hechas y si cumple < 20 ms (FR-030, FR-031, FR-032)
-- [ ] T066 [P] [US5] M5 en `tests/bench_cazador.py`: criptas sintéticas deterministas por semilla (enunciado §6.3), del generador de la capacidad de datos (Persona B) cuando exista o, mientras tanto, del generador mínimo de `tests/utiles_terreno.py` (T003), de 10², 10³, 10⁴ y 10⁵ salas con el mismo rango y la misma posición relativa; la más grande ≤ 1,5 × la más pequeña; incluir el control con listas nuevas por búsqueda (FR-033, SC-007)
+- [ ] T066 [P] [US5] M5 en `tests/bench_cazador.py`: criptas sintéticas deterministas por semilla (enunciado §6.3), del generador de Persona B (tests/generador_criptas.py), usado mediante tests/utiles_terreno.py (T003), de 10², 10³, 10⁴ y 10⁵ salas con el mismo rango y la misma posición relativa; la más grande ≤ 1,5 × la más pequeña; incluir el control con listas nuevas por búsqueda (FR-033, SC-007)
 - [ ] T067 [P] [US5] M6 en `tests/bench_cazador.py`: rango pequeño frente a grande en la misma cripta (FR-033)
 - [ ] T068 [P] [US5] M7 en `tests/bench_cazador.py`: 50 cazadores activos en la cripta de referencia; ciclo completo, mediana y p95 < 20 ms (FR-030, SC-004)
 - [ ] T069 [US5] M8 «después»: repetir `bench_agenda` de `tests/bench_motor.py` con la carga nueva (intervalos variables por costo) y guardar en `resultados_bench_agenda_despues.txt` junto a la comparación con T002 (FR-022, FR-032; enunciado §5.6)
@@ -209,7 +209,7 @@ Proyecto único MVC en la raíz: reglas en `Modelo/`, pruebas y bench en `tests/
   - T005 → T007 → T011 → T013 (cola, espacio, búsqueda adelante, búsqueda al revés).
   - T014 → T011: el cambio de contrato se avisa a Persona C, y ella lo hace o lo aprueba, antes de implementar `limite` y `espacio`. T014 puede hacerse en cuanto termine T010.
   - T007, T009 → T018; T016 y T017 son independientes de la búsqueda.
-- **US1 (T019–T032)**: después de Foundational. T030–T032 dependen además de la capacidad de datos.
+- **US1 (T019–T032)**: después de Foundational. T032 depende además de la capacidad de datos.
 - **US2 (T033–T049)**: después de US1 (el cazador reprograma con el costo de la salida de T028).
 - **US3 (T050–T054)**: después de US2; no agrega código.
 - **US4 (T055–T060)**: después de US2. T059 depende de la capacidad 004.
@@ -218,16 +218,17 @@ Proyecto único MVC en la raíz: reglas en `Modelo/`, pruebas y bench en `tests/
 
 ### Bloqueos con otras personas
 
-| Tarea | Relación | Con quién |
-|---|---|---|
-| T005, T007, T011 | ⛔ bloquean | «ir a» de la capacidad 001 (T062 de 001: `Modelo/rutas_ir_a.py` delega en `BusquedaRuta`) |
-| T014 | ⛔ cambia un contrato compartido | Persona C, dueña de `specs/001-niebla-mapa-ir-a/contracts/interfaz-ruta.md`: lo cambia ella o con su aprobación; se avisa al grupo (P-01 aceptada) |
-| T016 | Toca `Modelo/MotorSimulacion.py`, que otros usan | Revisión de otra persona (Constitución: cambios en `Modelo/`) |
-| T030, T031, T032 | ⏳ bloqueadas | Capacidad de datos (campo `costo`, rango en `FichaEnemigo`, versión de formato) y P-02 |
-| T045 | ⏳ bloqueada en datos reales | Capacidad de datos (rango en la ficha); con fichas de prueba puede avanzar |
-| T003, T066 | ⏳ bloqueadas parcialmente | Capacidad de datos (Persona B): generador de criptas sintéticas deterministas por semilla; mientras no exista, generador mínimo propio en `tests/utiles_terreno.py` |
-| T058 | ⏳ bloqueada parcialmente | Capacidad 004 (formato de guardado) |
-| T059 | ⏳ bloqueada | Capacidad 004 (línea de tiempo) |
+| Tarea            | Relación                                      | Con quién |
+|------------------|-----------------------------------------------|---|
+| T005, T007, T011 | ⛔ bloquean                                    | «ir a» de la capacidad 001 (T062 de 001: `Modelo/rutas_ir_a.py` delega en `BusquedaRuta`) |
+| T014             | ⛔ cambia un contrato compartido               | Persona C, dueña de `specs/001-niebla-mapa-ir-a/contracts/interfaz-ruta.md`: lo cambia ella o con su aprobación; se avisa al grupo (P-01 aceptada) |
+| T016             | Toca `Modelo/MotorSimulacion.py`, que otros usan | Revisión de otra persona (Constitución: cambios en `Modelo/`) |
+| T030, T031       | Ya no bloqueadas                              | Persona B implementó `costo` y su validación en `Salida`; solo falta escribir las pruebas |
+| T032             | ⏳ bloqueada                                   | Capacidad de datos (campo `costo`, rango en `FichaEnemigo`, versión de formato) y P-02 |
+| T045             | Ya no bloqueada                               | FichaEnemigo.rango ya existe (Persona B); solo falta copiarlo al enemigo |
+| T003, T066       | Ya no bloqueadas                              |`tests/generador_criptas.py` (Persona B) ya existe; se usa mediante `tests/utiles_terreno.py` |
+| T058             | ⏳ bloqueada parcialmente                      | Capacidad 004 (formato de guardado) |
+| T059             | ⏳ bloqueada                                   | Capacidad 004 (línea de tiempo) |
 
 ### Within Each User Story
 
