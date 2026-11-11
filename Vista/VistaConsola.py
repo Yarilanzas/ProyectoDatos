@@ -149,3 +149,43 @@ class VistaConsola:
                      f"{resumen['enemigos_derrotados']}   tiempo final: {resumen['tiempo_final']}")
         if resumen_red is not None:
             self.mostrar_red(resumen_red)
+    # --- Verificación de resolubilidad (spec 002). Texto exacto de contracts/cli-verificacion.md.
+    # Solo da formato: las listas del resultado ya vienen ordenadas y el veredicto ya está decidido.
+
+    def mostrar_verificacion(self, resultado):
+        if resultado.resoluble:
+            self._mostrar_resoluble(resultado)
+        else:
+            self._mostrar_no_resoluble(resultado)
+
+    def _mostrar_resoluble(self, resultado):
+        self.mostrar(f"La cripta {resultado.cripta_id} es resoluble.")
+        if not resultado.orden:
+            self.mostrar("Orden de obtención de llaves: ninguna.")
+            return
+        self.mostrar("Orden de obtención de llaves:")
+        for posicion, llave in enumerate(resultado.orden, start=1):
+            marca = " <- llave de salida" if llave.es_salida else ""
+            self.mostrar(f"  {posicion}. {llave.id_llave} (oleada {llave.oleada}){marca}")
+
+    def _mostrar_no_resoluble(self, resultado):
+        self.mostrar(f"La cripta {resultado.cripta_id} no es resoluble.")
+        self._mostrar_puertas_salida(resultado)
+
+    @staticmethod
+    def _texto_sala(numero, existe):
+        return f"sala {numero}" if existe else f"sala {numero} (no existe)"
+
+    def _mostrar_puertas_salida(self, resultado):
+        # sin llave_salida declarada no se exige puerta de salida (Edge Cases): la sección no aplica
+        if resultado.llave_salida is None:
+            return
+        if not resultado.existe_puerta_salida:
+            self.mostrar(f"Puerta hacia la sala de salida: no existe ninguna salida hacia la sala "
+                         f"{resultado.sala_salida} que requiera {resultado.llave_salida}.")
+            return
+        self.mostrar(f"Puerta hacia la sala de salida (sala {resultado.sala_salida}, "
+                     f"requiere {resultado.llave_salida}):")
+        for puerta in resultado.puertas_salida:
+            destino = self._texto_sala(puerta.destino, puerta.destino_existe)
+            self.mostrar(f"  - sala {puerta.origen} ({puerta.direccion}) -> {destino}: bloqueada")
