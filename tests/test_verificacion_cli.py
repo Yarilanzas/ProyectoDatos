@@ -3,6 +3,7 @@
 
 import contextlib
 import io
+import json
 import os
 import sys
 import tempfile
@@ -10,7 +11,8 @@ import unittest
 from unittest import mock
 
 import main
-from tests.generador_criptas import escribir_paquete, generar_cripta
+from tests.generador_criptas import (INVENTARIO_MAX, JUGADOR, PRESUPUESTO, VERSION, CriptaSintetica,
+                                     escribir_paquete, generar_cripta)
 
 CRIPTA_RESOLUBLE = "sint-res"
 CRIPTA_NO_RESOLUBLE = "sint-nr"
@@ -111,6 +113,178 @@ class PruebasVerificacionCli(unittest.TestCase):
                 _, primera = self.correr(paquete, "--verificar", cripta)
                 _, segunda = self.correr(paquete, "--verificar", cripta)  # la segunda ya usa la caché
                 self.assertEqual(primera, segunda)
+
+
+# --- T028: bloque «No resoluble» completo y sus variantes (US2) -------------------------------------------------
+
+def abierta(destino):
+    return {"sala": destino, "cerrada": False, "costo": 1}
+
+
+def cerrada(destino, llave=None):
+    datos = {"sala": destino, "cerrada": True, "costo": 1}
+    if llave is not None:
+        datos["llave"] = llave
+    return datos
+
+
+def escribir_a_mano(carpeta, id_cripta, total_salas, salidas, llaves_json, sala_salida, llave_salida):
+    """Paquete offline de una cripta armada a mano: salas 1..total_salas con las `salidas` dadas por sala.
+
+    `llaves_json` puede tener ubicaciones en salas que no existen: `escribir_paquete` solo recibe las que sí, y luego
+    se reescribe `llaves.json` con todas.
+    """
+    salas_json = [{"id": i, "nombre": f"Sala {i}", "salidas": salidas.get(i, {})} for i in range(1, total_salas + 1)]
+    detalles = {"id": id_cripta, "version": VERSION, "salas_total": total_salas, "sala_inicial": 1,
+                "sala_salida": sala_salida, "llave_salida": llave_salida, "presupuesto_solicitudes": PRESUPUESTO,
+                "inventario_max": INVENTARIO_MAX, "jugador": dict(JUGADOR)}
+    existentes = [u for u in llaves_json if 1 <= u["sala"] <= total_salas]
+    nombres = []
+    for u in llaves_json:
+        if u["id"] not in nombres:
+            nombres.append(u["id"])
+    escribir_paquete(carpeta, CriptaSintetica(id_cripta, 0, detalles, salas_json, existentes, nombres, [], 0))
+    with open(os.path.join(carpeta, "criptas", id_cripta, "llaves.json"), "w", encoding="utf-8") as archivo:
+        json.dump({"llaves": llaves_json}, archivo)
+
+
+# Ciclo por cadena (k1 <-> k2), frontera con y sin llave, llave de enemigo y llave sin ubicación: el ejemplo de
+# cli-verificacion.md. Región {1..6}; k2 en 7 (tras 3 -E-> 7 con k1) y en 15 (la suelta e-40, tras 14 -> 15 con k1);
+# k1 en 8 (tras 7 -> 8 con k2); llave_salida_x sin ubicación; la puerta de salida sale de 11, fuera de la región.
+SALIDAS_CRIPTA_X = {
+    1: {"E": abierta(2)},
+    2: {"E": abierta(3)},
+    3: {"S": abierta(4), "E": cerrada(7, "llave_k1")},
+    4: {"E": abierta(5)},
+    5: {"E": abierta(6), "N": cerrada(9)},
+    7: {"E": cerrada(8, "llave_k2")},
+    11: {"S": cerrada(12, "llave_salida_x")},
+    14: {"S": cerrada(15, "llave_k1")},
+}
+LLAVES_CRIPTA_X = [{"id": "llave_k1", "sala": 8}, {"id": "llave_k2", "sala": 15, "enemigo": "e-40"},
+                   {"id": "llave_k2", "sala": 7}]
+
+ESPERADO_NO_RESOLUBLE = (
+    "La cripta cripta-x no es resoluble.\n"
+    "Llaves no obtenibles:\n"
+    "  - llave_k1\n"
+    "  - llave_k2\n"
+    "  - llave_salida_x\n"
+    "Frontera bloqueada:\n"
+    "  - sala 3 (E) -> sala 7: requiere llave_k1\n"
+    "  - sala 5 (N) -> sala 9: sin llave\n"
+    "Puerta hacia la sala de salida (sala 12, requiere llave_salida_x):\n"
+    "  - sala 11 (S) -> sala 12: bloqueada\n"
+    "Ubicación de las llaves:\n"
+    "  - llave_k1: sala 8\n"
+    "  - llave_k2: sala 7; sala 15 (la suelta e-40)\n"
+    "  - llave_salida_x: ubicación desconocida\n"
+    "Dependencias entre llaves:\n"
+    "  - llave_k1 -> llave_k2\n"
+    "  - llave_k2 -> llave_k1\n"
+    "  - llave_salida_x: sin dependencia\n"
+    "Ciclos de llaves:\n"
+    "  - llave_k1 -> llave_k2 -> llave_k1\n"
+)
+
+FRONTERA_VACIA = "Frontera bloqueada: ninguna (no hay puertas cerradas que salgan de la región alcanzable).\n"
+
+
+class PruebasReporteNoResolubleCli(unittest.TestCase):
+
+    setUp = PruebasVerificacionCli.setUp
+    tearDown = PruebasVerificacionCli.tearDown
+    correr = PruebasVerificacionCli.correr
+
+    def verificar_a_mano(self, id_cripta, total_salas, salidas, llaves_json, sala_salida, llave_salida):
+        paquete = os.path.join(self.temporal.name, f"paquete_{id_cripta}")
+        escribir_a_mano(paquete, id_cripta, total_salas, salidas, llaves_json, sala_salida, llave_salida)
+        return self.correr(paquete, "--verificar", id_cripta)
+
+    def test_fr008_fr009_fr010_fr011_fr014_sc009_bloque_no_resoluble_exacto(self):
+        """El bloque completo del contrato, carácter por carácter. Con él se señala la puerta (sala 3, E), la llave que
+        falta (llave_k1) y dónde está (sala 8) sin consultar los datos (SC-009)."""
+        codigo, texto = self.verificar_a_mano("cripta-x", 15, SALIDAS_CRIPTA_X, LLAVES_CRIPTA_X, 12, "llave_salida_x")
+        self.assertEqual(codigo, 0)
+        self.assertEqual(texto, ESPERADO_NO_RESOLUBLE)
+
+    def test_fr012_bloque_no_resoluble_igual_en_dos_ejecuciones(self):
+        _, primera = self.verificar_a_mano("cripta-x", 15, SALIDAS_CRIPTA_X, LLAVES_CRIPTA_X, 12, "llave_salida_x")
+        _, segunda = self.verificar_a_mano("cripta-x", 15, SALIDAS_CRIPTA_X, LLAVES_CRIPTA_X, 12, "llave_salida_x")
+        self.assertEqual(primera, segunda)
+
+    def test_fr009_frontera_vacia(self):
+        codigo, texto = self.verificar_a_mano("v-vacia", 3, {3: {"E": cerrada(2, "ks")}},
+                                              [{"id": "ks", "sala": 3}], 2, "ks")
+        self.assertEqual(codigo, 0)
+        self.assertEqual(texto, (
+            "La cripta v-vacia no es resoluble.\n"
+            "Llaves no obtenibles:\n"
+            "  - ks\n"
+            + FRONTERA_VACIA +
+            "Puerta hacia la sala de salida (sala 2, requiere ks):\n"
+            "  - sala 3 (E) -> sala 2: bloqueada\n"
+            "Ubicación de las llaves:\n"
+            "  - ks: sala 3\n"
+            "Dependencias entre llaves:\n"
+            "  - ks: sin dependencia\n"
+            "Ciclos de llaves: ninguno.\n"
+        ))
+
+    def test_fr009_fr011_destino_inexistente_y_ciclo_directo(self):
+        codigo, texto = self.verificar_a_mano("v-destino", 2, {1: {"E": cerrada(99, "ka"), "S": cerrada(2, "ks")}},
+                                              [{"id": "ks", "sala": 2}], 2, "ks")
+        self.assertEqual(codigo, 0)
+        self.assertEqual(texto, (
+            "La cripta v-destino no es resoluble.\n"
+            "Llaves no obtenibles:\n"
+            "  - ka\n"
+            "  - ks\n"
+            "Frontera bloqueada:\n"
+            "  - sala 1 (S) -> sala 2: requiere ks\n"
+            "  - sala 1 (E) -> sala 99 (no existe): requiere ka\n"
+            "Puerta hacia la sala de salida (sala 2, requiere ks):\n"
+            "  - sala 1 (S) -> sala 2: bloqueada\n"
+            "Ubicación de las llaves:\n"
+            "  - ka: ubicación desconocida\n"
+            "  - ks: sala 2\n"
+            "Dependencias entre llaves:\n"
+            "  - ka: sin dependencia\n"
+            "  - ks -> ks\n"
+            "Ciclos de llaves:\n"
+            "  - ks -> ks (ciclo directo)\n"
+        ))
+
+    def test_fr009_fr010_sin_puerta_de_salida_y_ubicacion_en_sala_inexistente(self):
+        llaves_json = [{"id": "ks", "sala": 99}, {"id": "ks", "sala": 98, "enemigo": "e-1"}]
+        codigo, texto = self.verificar_a_mano("v-sin-puerta", 2, {1: {"E": abierta(2)}}, llaves_json, 2, "ks")
+        self.assertEqual(codigo, 0)
+        self.assertEqual(texto, (
+            "La cripta v-sin-puerta no es resoluble.\n"
+            "Llaves no obtenibles:\n"
+            "  - ks\n"
+            + FRONTERA_VACIA +
+            "Puerta hacia la sala de salida: no existe ninguna salida hacia la sala 2 que requiera ks.\n"
+            "Ubicación de las llaves:\n"
+            "  - ks: sala 98 (no existe) (la suelta e-1); sala 99 (no existe)\n"
+            "Dependencias entre llaves:\n"
+            "  - ks: sin dependencia\n"
+            "Ciclos de llaves: ninguno.\n"
+        ))
+
+    def test_fr008_fr010_fr011_secciones_vacias(self):
+        """US1.6 con llave_salida obtenible: no hay llaves no obtenibles; cada sección vacía lo dice en una línea."""
+        codigo, texto = self.verificar_a_mano("v-nada", 2, {1: {"E": abierta(2)}}, [{"id": "ks", "sala": 1}], 2, "ks")
+        self.assertEqual(codigo, 0)
+        self.assertEqual(texto, (
+            "La cripta v-nada no es resoluble.\n"
+            "Llaves no obtenibles: ninguna.\n"
+            + FRONTERA_VACIA +
+            "Puerta hacia la sala de salida: no existe ninguna salida hacia la sala 2 que requiera ks.\n"
+            "Ubicación de las llaves: ninguna.\n"
+            "Dependencias entre llaves: ninguna.\n"
+            "Ciclos de llaves: ninguno.\n"
+        ))
 
 
 if __name__ == "__main__":
