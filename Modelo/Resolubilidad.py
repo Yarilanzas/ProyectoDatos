@@ -10,6 +10,7 @@
 # Notación (data-model.md): S salas, E salidas, K llaves distintas, L ubicaciones, C salidas cerradas con llave,
 # M = L + C + 1 menciones de llaves.
 
+from Modelo.Estructuras import Queue
 from Modelo.ordenamiento import merge_sort
 
 
@@ -212,3 +213,85 @@ class GrafoSalas:
         id_llave = salida.llave if cerrada else None
         num_llave = indice.numero(id_llave) if id_llave is not None else -1
         return SalidaVerif(direccion, origen, destino, grafo.existe(destino), cerrada, num_llave, id_llave)
+
+
+class EstadoRecorrido:
+    """Resultado del recorrido por oleadas (data-model §2.4).
+
+    - `visitada[id]`: la sala se alcanzó (se marca al encolarla). Largo max_id + 1.
+    - `obtenida[k]`: la llave número k se obtuvo. Largo K. Una llave que nunca se obtiene es no obtenible.
+    - `orden`: lista de pares (número de llave, oleada) en el orden de FR-007: por oleada y, dentro de cada una, por
+      número, que es el orden por identificador (R4).
+    """
+
+    def __init__(self, visitada, obtenida, orden):
+        self.visitada = visitada
+        self.obtenida = obtenida
+        self.orden = orden
+
+
+def recorrer(grafo, indice, sala_inicial):
+    """Recorrido en anchura partido en oleadas (R5), desde `sala_inicial`.
+
+    Una llave hallada en la oleada n no cuenta como obtenida hasta que la oleada termina: las puertas que la piden
+    guardan su destino en `espera[k]` y esas salas se procesan en la oleada n+1 (FR-007). Las salidas abiertas, o
+    cerradas con una llave ya obtenida, se atraviesan (FR-002); las llaves no se consumen. Una salida cerrada sin
+    llave nunca se atraviesa. Sin solicitudes ni E/S: solo lee arreglos en memoria (FR-026).
+
+    | Operación                                            | Complejidad              |
+    |------------------------------------------------------|--------------------------|
+    | marcar / consultar visitada u obtenida               | O(1)                     |
+    | encolar / desencolar (Queue propia)                  | O(1)                     |
+    | agregar a espera[k]                                  | O(1) amortizado          |
+    | soltar espera[k] (cada entrada una vez)              | O(largo de la lista)     |
+    | ordenar `nuevas` de cada oleada con merge_sort       | O(n log n); suma O(K log K) |
+    | recorrido completo                                   | O(S + E + K log K)       |
+    """
+    visitada = [False] * len(grafo.salas)
+    cantidad = indice.cantidad()
+    obtenida = [False] * cantidad
+    en_ronda = [False] * cantidad
+    espera = [[] for _ in range(cantidad)]
+    orden = []
+    cola = Queue()
+
+    def visitar(id_sala):
+        # se marca al encolar: cada sala entra a la cola a lo sumo una vez
+        if not visitada[id_sala]:
+            visitada[id_sala] = True
+            cola.enqueue(id_sala)
+
+    if grafo.existe(sala_inicial):
+        visitar(sala_inicial)
+
+    oleada = 1
+    while True:
+        nuevas = []
+        while not cola.is_empty():
+            sala = grafo.salas[cola.dequeue()]
+            for numero in sala.llaves:
+                if not obtenida[numero] and not en_ronda[numero]:
+                    en_ronda[numero] = True
+                    nuevas.append(numero)
+            for salida in sala.salidas:
+                if not salida.destino_valido:
+                    continue
+                if not salida.cerrada or (salida.num_llave >= 0 and obtenida[salida.num_llave]):
+                    visitar(salida.destino)
+                elif salida.num_llave >= 0:
+                    espera[salida.num_llave].append(salida.destino)
+                # cerrada sin llave: nunca se atraviesa (se reporta en el barrido final, US2)
+
+        if len(nuevas) == 0:
+            break
+        nuevas, _ = merge_sort(nuevas, _identidad)
+        for numero in nuevas:
+            obtenida[numero] = True
+            en_ronda[numero] = False
+            orden.append((numero, oleada))
+            for destino in espera[numero]:
+                visitar(destino)
+            espera[numero] = []
+        oleada += 1
+
+    return EstadoRecorrido(visitada, obtenida, orden)
