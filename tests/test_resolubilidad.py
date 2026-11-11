@@ -515,6 +515,46 @@ class PruebasDependenciasYCiclosUS2(unittest.TestCase):
         self.assertEqual(ciclos, [[0, 1], [2]])
 
 
+# --- T027: US2.6, los mismos ciclos en cualquier orden de la entrada --------------------------------------------
+
+SEMILLAS_US2_6 = (7, 2026, 31337)
+
+
+class PruebasCiclosDeterministasUS2(unittest.TestCase):
+
+    def test_us2_6_fr012_fr013_fr014_mismos_ciclos_barajando(self):
+        import random
+        esqueleto, ubicaciones = cripta_varios_ciclos()
+        for semilla in SEMILLAS_US2_6:
+            azar = random.Random(semilla)
+            with self.subTest(semilla=semilla):
+                for _ in range(50):
+                    salas, lugares = barajar(esqueleto, ubicaciones, azar)
+                    resultado = verificar(salas, lugares, sala_salida=17, llave_salida="z")
+                    self.assertEqual(ciclos_de(resultado), CICLOS_VARIOS)
+
+    def test_us2_6_fr012_fr013_criptas_sinteticas_con_ciclos(self):
+        """Con el generador (ciclo directo y por cadena): mismos ciclos, mismo orden y misma llave inicial."""
+        import random
+        from tests.generador_criptas import generar_cripta
+        for semilla_cripta in (6, 21, 42):
+            cripta = generar_cripta(semilla_cripta, 40, 5, resoluble=False, con_ciclo=True)
+            d = cripta.detalles
+            esqueleto, ubicaciones = cripta.esqueleto(), cripta.ubicaciones()
+            primero = Resolubilidad.verificar(cripta.id_cripta, d.sala_inicial, d.sala_salida, d.llave_salida,
+                                              esqueleto, ubicaciones)
+            esperado = ciclos_de(primero)
+            with self.subTest(semilla=semilla_cripta):
+                self.assertTrue(any(directo for _, directo in esperado), esperado)
+                self.assertTrue(any(not directo for _, directo in esperado), esperado)
+                azar = random.Random(semilla_cripta)
+                for _ in range(30):
+                    salas, lugares = barajar(esqueleto, ubicaciones, azar)
+                    otro = Resolubilidad.verificar(cripta.id_cripta, d.sala_inicial, d.sala_salida,
+                                                   d.llave_salida, salas, lugares)
+                    self.assertEqual(ciclos_de(otro), esperado)
+
+
 # --- T014: oráculo ingenuo (SC-001, SC-002) ---------------------------------------------------------------------
 # Repite un recorrido completo por cada llave nueva. Solo listas usadas como arreglos o búsquedas lineales:
 # sin dict, set ni deque (la regla del Principio I también vale para el oráculo).
