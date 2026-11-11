@@ -492,5 +492,66 @@ class PruebasDeterminismo(unittest.TestCase):
             self.assertEqual(como_tupla(verificar(salas, lugares, sala_salida=3)), primero)
 
 
+# --- T016: prueba estática del Principio I ----------------------------------------------------------------------
+
+MODULOS_PROHIBIDOS = ("heapq", "bisect", "collections", "networkx", "igraph", "graph_tool", "rustworkx", "scipy")
+LLAMADAS_PROHIBIDAS = ("sorted", "dict", "set", "frozenset")
+# sin red, archivos ni consola (Principio II, FR-023)
+LLAMADAS_DE_E_S = ("print", "open", "input")
+IMPORTS_PERMITIDOS = ("Modelo.ordenamiento", "Modelo.Estructuras")
+
+
+def _permitido(modulo):
+    return modulo == "DTOS" or modulo.startswith("DTOS.") or modulo in IMPORTS_PERMITIDOS
+
+
+class PruebasPrincipioI(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        import ast
+        with open(RUTA_MODULO, "r", encoding="utf-8") as archivo:
+            cls.arbol = ast.parse(archivo.read(), filename=RUTA_MODULO)
+        cls.nodos = list(ast.walk(cls.arbol))
+
+    def modulos_importados(self):
+        import ast
+        modulos = []
+        for nodo in self.nodos:
+            if isinstance(nodo, ast.Import):
+                modulos.extend((alias.name, nodo.lineno) for alias in nodo.names)
+            elif isinstance(nodo, ast.ImportFrom):
+                modulos.append(("." * nodo.level + (nodo.module or ""), nodo.lineno))
+        return modulos
+
+    def test_fr029_no_importa_estructuras_ni_bibliotecas_de_grafos(self):
+        for modulo, linea in self.modulos_importados():
+            raiz = modulo.split(".")[0]
+            self.assertNotIn(raiz, MODULOS_PROHIBIDOS, f"línea {linea}: importa {modulo}")
+
+    def test_fr023_solo_importa_dtos_ordenamiento_y_estructuras(self):
+        modulos = self.modulos_importados()
+        self.assertTrue(modulos, "el módulo debería importar al menos merge_sort y Queue")
+        for modulo, linea in modulos:
+            self.assertTrue(_permitido(modulo), f"línea {linea}: importa {modulo}")
+
+    def test_fr001_fr029_no_llama_a_sorted_sort_dict_set(self):
+        import ast
+        for nodo in self.nodos:
+            if not isinstance(nodo, ast.Call):
+                continue
+            if isinstance(nodo.func, ast.Name):
+                self.assertNotIn(nodo.func.id, LLAMADAS_PROHIBIDAS, f"línea {nodo.lineno}: {nodo.func.id}(...)")
+                self.assertNotIn(nodo.func.id, LLAMADAS_DE_E_S, f"línea {nodo.lineno}: {nodo.func.id}(...)")
+            elif isinstance(nodo.func, ast.Attribute):
+                self.assertNotEqual(nodo.func.attr, "sort", f"línea {nodo.lineno}: .sort(...)")
+
+    def test_fr029_sin_literales_ni_comprensiones_de_dict_o_set(self):
+        import ast
+        for nodo in self.nodos:
+            self.assertNotIsInstance(nodo, (ast.Dict, ast.Set, ast.DictComp, ast.SetComp),
+                                     f"línea {getattr(nodo, 'lineno', '?')}: literal o comprensión de dict/set")
+
+
 if __name__ == "__main__":
     unittest.main()
