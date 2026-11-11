@@ -10,7 +10,8 @@
 # Notación (data-model.md): S salas, E salidas, K llaves distintas, L ubicaciones, C salidas cerradas con llave,
 # M = L + C + 1 menciones de llaves.
 
-from DTOS.ResultadoVerificacion import LlaveOrdenada, PuertaReporte, ResultadoVerificacion
+from DTOS.ResultadoVerificacion import (LlaveOrdenada, LugarLlave, PuertaReporte, ResultadoVerificacion,
+                                        UbicacionesLlave)
 from Modelo.Estructuras import Queue
 from Modelo.ordenamiento import merge_sort
 
@@ -296,6 +297,79 @@ def recorrer(grafo, indice, sala_inicial):
         oleada += 1
 
     return EstadoRecorrido(visitada, obtenida, orden)
+
+
+class ReporteBarrido:
+    """Lo que el barrido final (R6) saca de lo ya calculado: `no_obtenibles` (números de llave, en orden),
+    `frontera` (PuertaReporte por sala de origen y dirección) y `ubicaciones` (UbicacionesLlave por id)."""
+
+    def __init__(self, no_obtenibles, frontera, ubicaciones):
+        self.no_obtenibles = no_obtenibles
+        self.frontera = frontera
+        self.ubicaciones = ubicaciones
+
+
+def _clave_ubicacion(item):
+    # (número de llave, sala, 0 sin enemigo / 1 con enemigo, enemigo o ""): Python no compara None con texto
+    return item[0], item[1], item[2], item[3]
+
+
+def barrer_reporte(grafo, indice, estado, ubicaciones):
+    """Barrido final del reporte (R6), sin estructuras nuevas, sobre el grafo y el estado del recorrido.
+
+    - Llaves no obtenibles: k = 0..K−1 con `obtenida[k]` falso; el orden por número es el orden por id (FR-008).
+    - Frontera bloqueada: salas visitadas en orden de id y sus salidas en el orden fijo de R1; entra la salida cerrada
+      cuyo destino no está visitado (o no existe) y cuya llave no se obtuvo o no se indica (FR-009). Una puerta
+      cerrada entre dos salas alcanzables no entra. Queda por sala de origen y dirección sin ordenar (FR-014).
+    - Ubicaciones: las L ubicaciones se ordenan una vez con merge_sort por (número de llave, sala, enemigo) y se
+      agrupan por número; se informan las de cada llave no obtenible (FR-010). Toda llave de la frontera es no
+      obtenible, así que también quedan cubiertas. Sin lugares = ubicación desconocida; una sala que no existe se
+      informa tal cual, con `sala_existe` falso.
+
+    | Paso                                   | Complejidad  |
+    |----------------------------------------|--------------|
+    | llaves no obtenibles                   | O(K)         |
+    | frontera                               | O(S + E)     |
+    | ubicaciones (merge_sort y agrupación)  | O(K + L log L) |
+    | total                                  | O(S + E + K + L log L) |
+    """
+    cantidad = indice.cantidad()
+    no_obtenibles = []
+    for numero in range(cantidad):
+        if not estado.obtenida[numero]:
+            no_obtenibles.append(numero)
+
+    frontera = []
+    for sala in grafo.salas:
+        if sala is None or not estado.visitada[sala.id]:
+            continue
+        for salida in sala.salidas:
+            if not salida.cerrada:
+                continue
+            if salida.destino_valido and estado.visitada[salida.destino]:
+                continue  # no bloquea el acceso a ninguna sala nueva
+            if salida.num_llave >= 0 and estado.obtenida[salida.num_llave]:
+                continue
+            frontera.append(PuertaReporte(sala.id, salida.direccion, salida.destino, salida.destino_valido,
+                                          salida.id_llave))
+
+    items = []
+    for ubicacion in ubicaciones:
+        numero = indice.numero(ubicacion.id_llave)
+        if numero < 0:
+            continue
+        enemigo = ubicacion.enemigo
+        items.append((numero, ubicacion.sala, 0 if enemigo is None else 1, "" if enemigo is None else enemigo,
+                      ubicacion))
+    items, _ = merge_sort(items, _clave_ubicacion)
+    lugares = [[] for _ in range(cantidad)]
+    for numero, id_sala, _, _, ubicacion in items:
+        lugares[numero].append(LugarLlave(id_sala, grafo.existe(id_sala), ubicacion.enemigo))
+
+    reporte_ubicaciones = []
+    for numero in no_obtenibles:
+        reporte_ubicaciones.append(UbicacionesLlave(indice.id_de(numero), lugares[numero]))
+    return ReporteBarrido(no_obtenibles, frontera, reporte_ubicaciones)
 
 
 def _menciones(esqueleto, ubicaciones, llave_salida):
