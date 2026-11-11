@@ -25,8 +25,8 @@ Proyecto único MVC en la raíz: reglas en `Modelo/`, pruebas y bench en `tests/
 
 **Purpose**: línea base antes de tocar el motor.
 
-- [ ] T001 Correr la suite completa y anotar en `specs/003-terreno-cazador/tasks.md` (sección Notes) cuántas pruebas pasan antes de empezar; es la referencia de no regresión de guardianes, errantes y rastreadores (FR-006, SC-006)
-- [ ] T002 Medición M8 «antes»: correr la medición de la agenda de la Parte I §4.1 de `tests/bench_motor.py` (`bench_agenda`) con el código actual y guardar la salida en `resultados_bench_agenda_antes.txt`, con equipo y versión de Python, **antes** de cualquier cambio del motor (FR-022, FR-032; enunciado §5.6)
+- [x] T001 Correr la suite completa y anotar en `specs/003-terreno-cazador/tasks.md` (sección Notes) cuántas pruebas pasan antes de empezar; es la referencia de no regresión de guardianes, errantes y rastreadores (FR-006, SC-006)
+- [x] T002 Medición M8 «antes»: correr la medición de la agenda de la Parte I §4.1 de `tests/bench_motor.py` (`bench_agenda`) con el código actual y guardar la salida en `resultados_bench_agenda_antes.txt`, con equipo y versión de Python, **antes** de cualquier cambio del motor (FR-022, FR-032; enunciado §5.6)
 - [ ] T003 [P] Criptas sintéticas para pruebas y bench: usar el generador de criptas sintéticas de la capacidad de datos (Persona B) cuando exista; mientras tanto, un generador mínimo propio en `tests/utiles_terreno.py`. Las criptas deben ser deterministas por semilla (enunciado §6.3). Debe ofrecer: cuadrícula de n salas con costos configurables, puertas dirigidas (A→B y B→A con estado propio), costos distintos por sentido, y colocación de jugador y k cazadores con rango dado; sin datos de criptas reales (FR-028, FR-033; Constitución IV). **⏳ bloqueada parcialmente por la capacidad de datos (generador de Persona B)**
 
 ---
@@ -285,4 +285,4 @@ Luego en orden: T045 → T046 → T047 → T048 → T049
 - Los 7 casos del Apéndice B: T022, T023 (US1); T034, T035 (US2); T050, T051 (US3); T055 (US4).
 - No se modifican `spec.md` ni `plan.md`. Los resultados de M3 y M4 se registran en `research.md` (T070).
 - FR-008 (versión de caché y paquete) depende de la capacidad de datos; aquí solo se verifica en T032 que el costo se conserve.
-- Línea base de T001: _pendiente de anotar_.
+- Línea base de T001: 295 pruebas corridas, 285 pasan, 0 fallan, 0 errores, 10 omitidas (skip: `test_ruta_contrato`, T063 pendiente de `Modelo/BusquedaRuta.py`) — `python -m unittest discover -s tests -v`, Python 3.13.13, 2026-11-10.
