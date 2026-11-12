@@ -305,6 +305,40 @@ class PruebasGuardado(BaseIntegracion):
         _, guardadas = leer_bitacora(ruta_bitacora_de(self.ruta_guardado))
         self.assertEqual(len(guardadas), len(COMANDOS_PARTIDA))
 
+    def test_fr017_main_cargar_con_bitacora_del_guardado_da_codigo_1(self):
+        # T120 (i): --cargar X --bitacora X.log es un error de uso: código 1 antes de jugar, sin tocar X.log
+        import contextlib
+        import io
+        import sys
+        from unittest import mock
+        import main
+        from Vista.VistaConsola import VistaConsola
+
+        self.guardar_partida_jugada()
+        copia = ruta_bitacora_de(self.ruta_guardado)
+        with open(copia, "rb") as archivo:
+            antes = archivo.read()
+
+        def sin_entrada(_mensaje):
+            raise EOFError
+
+        argumentos = ["main.py", "--offline", self.paquete,
+                      "--datos-locales", os.path.join(self.carpeta.name, "datos"),
+                      "--puntajes", os.path.join(self.carpeta.name, "puntajes.json"),
+                      "--cargar", self.ruta_guardado, "--bitacora", copia]
+        salida = io.StringIO()
+        with mock.patch.object(main, "VistaConsola", lambda: VistaConsola(entrada=sin_entrada)), \
+                mock.patch.object(main, "configurar_logging", lambda *a, **k: None), \
+                mock.patch.object(sys, "argv", argumentos), contextlib.redirect_stdout(salida):
+            codigo = main.main()
+
+        texto = salida.getvalue()
+        self.assertEqual(codigo, 1)
+        self.assertTrue(texto.startswith("! Error: "), texto)
+        self.assertNotIn("=== CRIPTA ===", texto)  # no se llegó a jugar
+        with open(copia, "rb") as archivo:
+            self.assertEqual(archivo.read(), antes)
+
     def test_cargar_detecta_cripta_incompatible(self):
         self.guardar_partida_jugada()
         crear_paquete_offline(self.paquete, version_cripta="v2")

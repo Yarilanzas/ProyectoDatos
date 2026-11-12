@@ -67,7 +67,19 @@ def guardar_motor(motor, ruta, gestor):
 
 
 def _misma_ruta(ruta_a, ruta_b):
-    return os.path.abspath(ruta_a) == os.path.abspath(ruta_b)
+    # normcase: en Windows X.LOG y x.log son el mismo archivo
+    return os.path.normcase(os.path.abspath(ruta_a)) == os.path.normcase(os.path.abspath(ruta_b))
+
+
+def _rechazar_bitacora_del_guardado(ruta_bitacora, ruta_guardado):
+    """La bitácora activa no puede ser la copia de bitácora de un guardado (`<guardado>.log`): `@cargar`
+    asume que esa copia termina en el guardado. Error de uso (FR-017, pedido de Persona D, FR-030 de la spec
+    004, contracts/comandos.md). ValueError: main.py lo muestra como «! Error: ...» con código 1 al cargar,
+    y en la partida el comando se rechaza sin cerrar el juego."""
+    copia = ruta_bitacora_de(ruta_guardado)
+    if _misma_ruta(ruta_bitacora, copia):
+        raise ValueError(f"la bitácora no puede ser {copia}, que es la copia de bitácora de la partida "
+                         "guardada; use otra con --bitacora")
 
 
 def _texto_rechazo_ir(rechazo):
@@ -129,6 +141,7 @@ class ControladorPartida:
         self.vista.mostrar_aviso(f"Partida nueva en {cripta_id} (semilla {semilla})")
 
     def cargar(self, ruta):
+        _rechazar_bitacora_del_guardado(self.ruta_bitacora, ruta)  # antes de cargar y de tocar la bitácora
         motor = cargar_partida(ruta, self.gestor)  # valida version de cripta y catalogo
 
         self._cerrar()
@@ -143,9 +156,8 @@ class ControladorPartida:
             self.vista.mostrar_aviso("La partida no tiene bitácora: lo que se juegue ahora no se podrá reproducir con --replay")
             return None
 
-        # se continua sobre una copia, asi la bitacora guardada no cambia
-        if not _misma_ruta(copia, self.ruta_bitacora):
-            shutil.copyfile(copia, self.ruta_bitacora)
+        # se continua sobre una copia, asi la bitacora guardada no cambia (cargar ya rechazo que sean la misma)
+        shutil.copyfile(copia, self.ruta_bitacora)
 
         bitacora, encabezado = BitacoraPartida.continuar(self.ruta_bitacora)
 
@@ -167,9 +179,10 @@ class ControladorPartida:
             self.vista.mostrar_aviso("La partida terminó; ya no se puede guardar")
             return False
 
+        _rechazar_bitacora_del_guardado(self.ruta_bitacora, ruta)  # antes de escribir nada
         guardar_motor(motor, ruta, self.gestor)
 
-        if self.bitacora is not None and not _misma_ruta(self.ruta_bitacora, ruta_bitacora_de(ruta)):
+        if self.bitacora is not None:
             shutil.copyfile(self.ruta_bitacora, ruta_bitacora_de(ruta))
 
         self.vista.mostrar_aviso(f"Partida guardada en {ruta}")

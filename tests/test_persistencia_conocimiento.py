@@ -722,29 +722,99 @@ class TestReplayDePartidasCargadas(BaseReplay):
 
 class TestRiesgosDelReplay(BaseReplay):
 
-    def test_fr017_bitacora_igual_al_log_del_guardado(self):
-        # --bitacora <guardado>.log: guardar no copia (es el mismo archivo) y cargar continúa sobre él. Si
-        # no se jugó nada entre el guardado y la carga, la bitácora termina en el guardado y el replay coincide.
+    # T120: --bitacora igual a <guardado>.log es un error de uso (pedido de Persona D, FR-030 de la spec 004).
+    # Reemplaza la prueba de T090 que lo tomaba como caso seguro. El código 1 de main se prueba en
+    # tests/test_integracion.py.
+
+    def guardado_con_su_bitacora(self):
+        # Juega y guarda con la bitácora "partida.log"; devuelve los bytes de prueba.cripta.log.
         self.partida(mapa_antorcha(), CONTENIDO_ANTORCHA)
-        nombre_log = "prueba.cripta.log"
-        primera = self.controlador_nuevo(nombre_log)
+        primera = self.controlador_nuevo("partida.log")
         primera.nueva_partida(CRIPTA_NIEBLA, 7)
         self.jugar(primera, ANTES_ANTORCHA)
         self.assertTrue(primera.guardar(self.ruta()))
         primera._cerrar()
+        return self.leer_bytes(self.ruta("prueba.cripta.log"))
 
-        segunda = self.controlador_nuevo(nombre_log)
+    def leer_bytes(self, ruta):
+        with open(ruta, "rb") as archivo:
+            return archivo.read()
+
+    def assertCargaRechazada(self, ruta_bitacora):
+        copia = self.guardado_con_su_bitacora()
+        segunda = self.controlador_nuevo(ruta_bitacora)
+        with self.assertRaises(ValueError) as contexto:
+            segunda.cargar(self.ruta())
+        self.assertIn("prueba.cripta.log", str(contexto.exception))
+        self.assertIsNone(segunda.motor)  # no se cargó nada
+        self.assertIsNone(segunda.bitacora)
+        self.assertEqual(self.leer_bytes(self.ruta("prueba.cripta.log")), copia)  # ni se tocó la bitácora
+
+    def test_fr017_cargar_con_la_bitacora_del_guardado_se_rechaza(self):
+        self.assertCargaRechazada("prueba.cripta.log")
+
+    def test_fr017_cargar_con_ruta_equivalente_se_rechaza(self):
+        self.assertCargaRechazada(os.path.join("sub", "..", "prueba.cripta.log"))
+
+    @unittest.skipUnless(os.path.normcase("A") == "a", "solo donde las rutas no distinguen mayúsculas")
+    def test_fr017_cargar_con_mayusculas_distintas_se_rechaza(self):
+        self.assertCargaRechazada("PRUEBA.Cripta.LOG")
+
+    def test_fr017_cargar_con_otra_bitacora_sigue_funcionando(self):
+        copia = self.guardado_con_su_bitacora()
+        segunda = self.controlador_nuevo("otra.log")
         segunda.cargar(self.ruta())
         self.jugar(segunda, DESPUES_ANTORCHA)
         esperado = segunda.motor.obtener_estado_resumen()
         segunda._cerrar()
+        self.assertEqual(self.leer_bytes(self.ruta("prueba.cripta.log")), copia)
+        self.assertEqual(self.replay("otra.log").obtener_estado_resumen(), esperado)
 
-        with open(os.path.join(self.carpeta, nombre_log), encoding="utf-8") as archivo:
-            lineas = archivo.read().splitlines()
-        # El log del guardado es el mismo archivo: queda con @cargar y lo jugado después.
-        self.assertEqual(lineas.count("@cargar"), 1)
-        self.assertEqual(lineas[-len(DESPUES_ANTORCHA) - 1], "@cargar")
-        self.assertEqual(self.replay(nombre_log).obtener_estado_resumen(), esperado)
+    def partida_con_bitacora(self, nombre_log):
+        self.partida(mapa_antorcha(), CONTENIDO_ANTORCHA)
+        controlador = self.controlador_nuevo(nombre_log)
+        controlador.nueva_partida(CRIPTA_NIEBLA, 7)
+        self.jugar(controlador, ANTES_ANTORCHA)
+        return controlador
+
+    def assertGuardadoRechazado(self, nombre_log, nombre_destino="prueba.cripta"):
+        controlador = self.partida_con_bitacora(nombre_log)
+        destino = self.ruta(nombre_destino)
+        ruta_log = os.path.join(self.carpeta, nombre_log)
+        antes_log = self.leer_bytes(ruta_log)
+        reloj = controlador.motor.reloj
+        with self.assertRaises(ValueError):
+            controlador.guardar(destino)
+        self.assertFalse(os.path.exists(destino))  # no se escribió el archivo de partida
+        self.assertEqual(self.leer_bytes(ruta_log), antes_log)  # ni la bitácora
+        self.assertEqual(controlador.motor.reloj, reloj)
+        return controlador
+
+    def test_fr017_guardar_con_la_bitacora_del_destino_se_rechaza(self):
+        self.assertGuardadoRechazado("prueba.cripta.log")
+
+    @unittest.skipUnless(os.path.normcase("A") == "a", "solo donde las rutas no distinguen mayúsculas")
+    def test_fr017_guardar_con_mayusculas_distintas_se_rechaza(self):
+        self.assertGuardadoRechazado("PRUEBA.CRIPTA.LOG")
+
+    def test_fr017_guardar_rechazado_no_reemplaza_un_guardado_anterior(self):
+        controlador = self.partida_con_bitacora("prueba.cripta.log")
+        self.assertTrue(controlador.guardar(self.ruta("otro.cripta")))
+        os.replace(self.ruta("otro.cripta"), self.ruta())
+        anterior = self.leer_bytes(self.ruta())
+        with self.assertRaises(ValueError):
+            controlador.guardar(self.ruta())
+        self.assertEqual(self.leer_bytes(self.ruta()), anterior)
+
+    def test_fr017_comando_guardar_rechazado_muestra_error_y_la_partida_sigue(self):
+        controlador = self.partida_con_bitacora("prueba.cripta.log")
+        self.assertTrue(controlador.ejecutar(f"guardar {self.ruta()}"))
+        nombre, argumentos = controlador.vista.lineas[-1]
+        self.assertEqual(nombre, "mostrar_error")
+        self.assertIn("prueba.cripta.log", argumentos[0])
+        self.assertFalse(os.path.exists(self.ruta()))
+        self.jugar(controlador, ["n"])  # la partida continúa
+        self.assertTrue(controlador.guardar(self.ruta("otro.cripta")))
 
     def test_fr017_sc004_guardar_sin_cargar_no_toca_azar_ni_agenda(self):
         motor = self.partida(mapa_antorcha(), CONTENIDO_ANTORCHA)
@@ -759,6 +829,58 @@ class TestRiesgosDelReplay(BaseReplay):
         esperado = motor.obtener_estado_resumen()
         self.controlador._cerrar()
         self.assertEqual(self.replay("partida.log").obtener_estado_resumen(), esperado)
+
+
+# T122: disposición final del CRPT 3 cerrada por Persona D (contracts/formato-partida.md, FR-016, PR-05).
+
+class TestDisposicionCrpt3(unittest.TestCase):
+
+    def setUp(self):
+        import tempfile
+        self.carpeta = tempfile.TemporaryDirectory()
+        self.addCleanup(self.carpeta.cleanup)
+        self.ruta = os.path.join(self.carpeta.name, "crudo.cripta")
+
+    def escribir(self, largos, offset_indice=None):
+        # Encabezado sin salas, los tres largos con bloques de relleno y el índice (vacío) al final.
+        from Persistencia.FormatoBinario import EncabezadoPartida
+        cuerpo = b"".join(struct.pack("<I", largo) + bytes([65 + i]) * largo for i, largo in enumerate(largos))
+        from Persistencia.FormatoBinario import TAMANO_ENCABEZADO
+        if offset_indice is None:
+            offset_indice = TAMANO_ENCABEZADO + len(cuerpo)
+        encabezado = EncabezadoPartida(CRIPTA_NIEBLA, "v1", "cat-1", semilla=7, reloj=0,
+                                       cantidad_salas=0, offset_indice=offset_indice)
+        with open(self.ruta, "wb") as archivo:
+            archivo.write(encabezado.to_bytes() + cuerpo)
+
+    def lector(self):
+        from Persistencia.ArchivoPartida import LectorPartida
+        lector = LectorPartida(self.ruta)
+        self.addCleanup(lector.cerrar)
+        return lector
+
+    def test_fr016_inicio_salas_sigue_la_formula_de_d(self):
+        from Persistencia.FormatoBinario import TAMANO_ENCABEZADO
+        for jugador, conocimiento, linea in [(0, 0, 0), (5, 0, 0), (0, 7, 0), (0, 0, 9), (3, 11, 6)]:
+            with self.subTest(jugador=jugador, conocimiento=conocimiento, linea=linea):
+                self.escribir([jugador, conocimiento, linea])
+                lector = self.lector()
+                self.assertEqual(lector._inicio_salas, TAMANO_ENCABEZADO + (4 + jugador) + (4 + conocimiento)
+                                 + (4 + linea))
+                # solo se leyeron el encabezado y los tres largos de 4 bytes, ningún bloque
+                self.assertEqual(lector.bytes_leidos, TAMANO_ENCABEZADO + 12)
+                lector.cerrar()
+
+    def test_fr016_validar_encabezado_exige_indice_tras_los_tres_largos(self):
+        from Persistencia.FormatoBinario import TAMANO_ENCABEZADO
+        self.escribir([0, 0, 0], offset_indice=TAMANO_ENCABEZADO + 12)
+        self.assertEqual(self.lector()._inicio_salas, TAMANO_ENCABEZADO + 12)  # el mínimo se acepta
+
+        for offset in (TAMANO_ENCABEZADO + 11, TAMANO_ENCABEZADO + 8, TAMANO_ENCABEZADO, 0):
+            with self.subTest(offset_indice=offset):
+                self.escribir([0, 0, 0], offset_indice=offset)
+                with self.assertRaises(VersionIncompatible):
+                    self.lector()
 
 
 if __name__ == "__main__":
