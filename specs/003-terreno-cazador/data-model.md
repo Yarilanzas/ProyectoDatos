@@ -99,6 +99,7 @@ Los arreglos de trabajo de la búsqueda, separados del grafo porque `primer_paso
 | `dist`, `primero`, `epoca` | Listas de tamaño n (R2) | O(n) memoria al crearlo |
 | `epoca_actual` | Entero; se incrementa en cada búsqueda | O(1) |
 | `cola` | Una `ColaPrioridad` reutilizable | O(1) para vaciarla |
+| `sala` | Lista de tamaño n con la sala de cada ordinal, porque la cola solo guarda ordinales y el grafo no vuelve de ordinal a sala; vale solo si su `epoca` coincide con `epoca_actual` | O(n) memoria al crearlo |
 
 - **Sin `espacio`**: la función crea uno por llamada, de tamaño `grafo.cantidad_salas`: O(n) por llamada. Es lo que
   hace «ir a».
