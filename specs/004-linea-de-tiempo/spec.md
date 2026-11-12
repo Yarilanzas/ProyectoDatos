@@ -171,7 +171,7 @@ En partidas largas la consulta sigue siendo instantánea y la memoria no se disp
 - `historia` en una partida recién iniciada: válido solo para t = 0 o `#1`.
 - Partida terminada (victoria o derrota): tras terminar la partida, el pasado se consulta con `--replay --hasta`, incluido el instante final.
 - `--hasta` sin `--replay`: se rechaza como error de uso, sin ejecutar nada.
-- `--checkpoint-cada` junto con `--replay`: es válido y solo afecta al costo, no al resumen (FR-028); en `--replay`, K es el de la ejecución, también tras `@cargar`; no cambia ningún resumen (FR-028).
+- `--checkpoint-cada` junto con `--replay`: es válido y solo afecta al costo; en `--replay`, K es el de la ejecución, también tras `@cargar`; no cambia ningún resumen (FR-028).
 - `--replay --hasta` sobre una bitácora de versión incompatible: se rechaza igual que un `--replay` sin `--hasta` (versión incompatible, código de salida `2`).
 - Varias acciones consumen el mismo intervalo de tiempo o una acción cuesta 0: `#k` distingue estados que tienen el mismo reloj.
 - `--checkpoint-cada` con valor 0, negativo o no entero: se rechaza como error de uso. K = 1 es válido.
@@ -239,7 +239,7 @@ En partidas largas la consulta sigue siendo instantánea y la memoria no se disp
 
 ### Key Entities *(include if feature involves data)*
 
-- **Línea de tiempo**: registro completo y ordenado de lo que cambió en la partida vigente, desde el instante 0 hasta el reloj actual. Se guarda, se carga y se recorta cuando un pergamino revierte acciones.
+- **Línea de tiempo**: registro completo y ordenado de las acciones registradas en la partida vigente, desde el instante 0 hasta el reloj actual. Se guarda, se carga y se recorta cuando un pergamino revierte acciones.
 - **Acción registrada**: el comando aceptado del jugador con su sello (reloj y secuencia), no una diferencia de estado. Permite reconstruir el estado entre dos puntos de control. En los requisitos que citan el enunciado, «cambios» designa lo que resulta de reproducir las acciones registradas.
 - **Punto de control**: copia completa del estado en un momento de la partida; hay a lo sumo uno cada K acciones del jugador, salvo el punto de control posterior a un retroceso y el de una carga.
 - **Resumen histórico**: lo que `historia` y `--replay --hasta` muestran: reloj, sala, vida y estadísticas, inventario, efectos activos, enemigos de la sala con su vida y mapa conocido.
