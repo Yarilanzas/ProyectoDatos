@@ -62,7 +62,7 @@ esperar        decisión 3 en el reloj 200 (la del motor cargado)
 Sigue siendo `Reproductor` (T093, ya en `main`): valida versiones, crea el motor con `preparar_partida`, ejecuta cada acción y, al llegar
 a `@cargar`, llama a `recargar(motor)`, que **recibe el motor actual y devuelve el nuevo** (en `main.ejecutar_replay`: guarda el motor
 en un temporal, cierra su restaurador y llama a `cargar_partida`, T094). La línea de tiempo **observa** el recorrido mediante un
-parámetro opcional `observador` de `Reproductor` ([PERSONAS: C], cambio exacto en el [plan](../plan.md#enganches-y-requisitos-hacia-otras-personas)):
+parámetro opcional `observador` de `Reproductor` (**hecho por C**, `b1b57d7`, 001-T123/T124; contrato en [001 formato-bitacora.md](../../001-niebla-mapa-ir-a/contracts/formato-bitacora.md), «Observador y reproducción en memoria»), junto con `reproducir_acciones(encabezado, acciones) -> motor` y `reproducir(ruta) -> motor`:
 
 ```text
 Reproductor(fabrica_motor, version_cripta, version_catalogo, recargar=None, observador=None)    # firma real + observador
@@ -74,7 +74,7 @@ observador.despues_de_carga(motor)                        tras motor = recargar(
 
 `recargar(motor)` recibe el motor **actual** (el que la línea ya observó hasta ese punto) y devuelve el **nuevo**; el observador solo
 ve el nuevo, y por eso no guarda referencias al motor anterior (que `recargar` ya cerró). Sin `observador`, `Reproductor` se comporta
-exactamente como hoy. `--replay` sin `--hasta` no construye línea.
+exactamente como hoy. `--replay` sin `--hasta` no construye línea. El `Reproductor` ya avisa `despues_de_carga` tras cada `@cargar`, así que la recarga de `main.ejecutar_replay` **no** avisa al observador (se evita el doble aviso). La consulta de `--hasta` se hace dentro del `try` de `ejecutar_replay`, mediante un callback `al_terminar(motor)`, antes de que cierre los restauradores y borre la carpeta temporal.
 
 ## Condiciones de P-07
 
@@ -87,11 +87,11 @@ exactamente como hoy. `--replay` sin `--hasta` no construye línea.
 
 ## Bitácora igual a `<guardado>.log`
 
-**Propuesta [PERSONAS: C]**: si `--bitacora` es la misma ruta que `<guardado>.log` (`ruta_bitacora_de(ruta)`, comparada con
-`_misma_ruta`), **se rechaza en el origen** como error de uso, con código `1`, sin guardar ni cargar nada:
+**Hecho por C** (`b6f9f52`, 001-T120/T121): si `--bitacora` es la misma ruta que `<guardado>.log` (`ruta_bitacora_de(ruta)`, comparada con
+`_misma_ruta`), **se rechaza en el origen** como error de uso (`ValueError` de `_rechazar_bitacora_del_guardado`), sin guardar ni cargar nada. Con `--cargar F --bitacora F.log` el proceso termina con `! Error: ...` y código `1`; con el comando `guardar` o `cargar` dentro de la partida se muestra el error (`No se pudo guardar: ...` / `No se pudo cargar: ...`) y la partida sigue. Mensaje real:
 
 ```text
-! Error: --bitacora no puede ser <guardado>.log: ese archivo es la copia de la bitácora de la partida guardada
+! Error: la bitácora no puede ser <guardado>.log, que es la copia de bitácora de la partida guardada; use otra con --bitacora
 ```
 
 **El problema.** `_continuar_bitacora` (y `guardar`) no copian el archivo cuando la bitácora en uso es el propio `<guardado>.log`:
@@ -125,5 +125,5 @@ existe aunque la partida no tenga bitácora. Reproducir cualquiera de los dos da
 | Bitácora de versión incompatible (`CRIPTA-LOG 1`, o de cripta o catálogo distintos) con `--hasta` | `Versión incompatible: ...`, código `2` (FR-011) |
 | La reproducción rechaza una acción | `! Error: La reproducción se detuvo: ...`, código `1` (como hoy) |
 | La línea no coincide en un replay (sello distinto) | `! Error: La reproducción no es determinista en la acción <k>: ...`, código `1` |
-| `--bitacora` igual a `<guardado>.log` al guardar o cargar | error de uso, código `1`, nada se guarda ni se carga (sección anterior) |
+| `--bitacora` igual a `<guardado>.log` al guardar o cargar | `ValueError`, nada se guarda ni se carga: con `--cargar` el proceso termina con código `1`; con el comando `guardar`/`cargar` la partida sigue (sección anterior) |
 | `@cargar` en el replay y faltan datos locales para recargar | `! Error: No se puede reconstruir sin nuevas solicitudes: faltan datos locales (<qué>)`, código `1` |

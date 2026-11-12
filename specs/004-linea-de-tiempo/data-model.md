@@ -26,7 +26,7 @@ RegistroLinea (Persistencia)  <──>  guion + K
 | `k` | `int ≥ 1` | acciones máximas entre puntos de control (FR-018, FR-031) |
 | `guion_tipo`, `guion_nombre`, `guion_argumento`, `guion_reloj`, `guion_secuencia` | listas paralelas | un registro por comando aceptado (R3). Para `RETROCESO`: `guion_reloj` guarda las acciones vigentes que quedan; para `CARGA`: el reloj cargado |
 | `vig_guion` | lista de `int` | posición en el guion de cada acción vigente (`vig_guion[j]` es la acción `j+1`) |
-| `vig_reloj`, `vig_sec` | listas de `int` | sello de la decisión **previa** a cada acción vigente: `(motor.reloj, motor.secuencia)` |
+| `vig_reloj`, `vig_sec` | listas de `int` | sello de la decisión **previa** a cada acción vigente: `(motor.reloj, motor.secuencia)`. **Se toma al terminar el aviso anterior** (`al_crear_motor`, la acción anterior, el retroceso o `despues_de_carga`), porque `despues_de_accion` llega con el motor ya avanzado ([research.md, R3](research.md#r3-qué-se-registra-entre-puntos-de-control-fr-021)) |
 | `pc_accion`, `pc_reloj`, `pc_epoca`, `pc_punto` | listas paralelas | puntos de control, **no decrecientes** en `pc_accion` |
 | `epocas_accion`, `epocas_ruta` | listas paralelas | acción en que empezó cada época y ruta de su copia privada (`None` para la época 0) |
 | `serie_clave`, `serie_cantidad` | listas de `int` | cantidad de pergaminos, ordenada por clave (R6) |
@@ -106,6 +106,13 @@ consultar 1.85 / 7.95 / 69.4 ms respectivamente.
 Una por carga (la época 0 es la partida desde su inicio). Guarda la acción en que empezó y la **copia privada** del archivo cargado
 (`<carpeta temporal>/epoca_<i>.cripta`): sin ella un clon no podría restaurar las salas que el archivo tenía pendientes si un guardado
 posterior sobrescribió el original (research R10). El controlador crea y borra los archivos; la línea guarda solo la ruta.
+
+**Decisión pendiente de aprobación (M3, de dónde sale la ruta).** `despues_de_carga(motor)` solo recibe el motor, sin la ruta del
+archivo cargado. Propuesta: tomarla de `motor.restaurador.ruta` (el motor que devuelve `cargar_partida` abre un
+`RestauradorPartida` sobre el archivo cargado; `guardar_motor` ya usa `anterior.ruta` así). Si `motor.restaurador` es `None` no hay
+salas pendientes que restaurar: la época se abre **sin copia privada** (`epocas_ruta = None`) y la carga no falla. Hay que
+confirmarlo con una prueba contra el código real (¿`cargar_partida` deja siempre un `restaurador`?) y que el grupo lo apruebe;
+no está definitivo.
 
 ## Serie de pergaminos
 
