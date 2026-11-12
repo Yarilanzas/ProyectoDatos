@@ -573,18 +573,21 @@ class MotorSimulacion:
 
         if isinstance(actor, Enemigo):
             accion = self.accion_enemigo(actor, self.jugador)
+            costo_base = 100  # atacar, esperar o un movimiento que no se hizo (Parte I)
 
             if accion == "MOVER":
                 resultado = self.salida_errante(actor)
 
                 if resultado is not None:
-                    self.mover_enemigo(actor, self.salas, resultado[1])
+                    salida = resultado[1]
+                    if self.mover_enemigo(actor, self.salas, salida):
+                        costo_base = self.costo_salida(salida)
 
             elif accion == "MOVER_RASTRO":
                 salida = self.salida_rastro(actor)
 
-                if salida is not None:
-                    self.mover_enemigo(actor, self.salas, salida)
+                if salida is not None and self.mover_enemigo(actor, self.salas, salida):
+                    costo_base = self.costo_salida(salida)
 
             elif accion == "ATACAR":
                 self.atacar(actor, self.jugador)
@@ -592,7 +595,7 @@ class MotorSimulacion:
             # ESPERAR no hace nada: solo se reprograma la siguiente acción.
 
             if actor.esta_vivo():  # un actor muerto no ejecuta más eventos
-                self.proxima_accion(actor, 100)
+                self.proxima_accion(actor, costo_base)
 
     def cambiar_velocidad(self, actor, nueva_velocidad):
 
@@ -1245,7 +1248,7 @@ class MotorSimulacion:
         self.enemigos_al_entrar = bool(self.obtener_enemigos(sala=sala_destino, solo_vivos=True))
 
         self.activar_enemigos_de_sala(sala_destino)
-        self.proxima_accion(jugador, costo=100)
+        self.proxima_accion(jugador, costo=self.costo_salida(salida))
         self.avanzar_hasta_jugador()
 
         return True
