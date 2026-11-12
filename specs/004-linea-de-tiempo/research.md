@@ -478,6 +478,97 @@ repite y se toma la mediana, el p95 y el máximo.
 
 ---
 
+## T003: revisión de deepcopy y memo (2026-11-12)
+
+**Método.** Lectura del código de `main` (`eb92322`) y **medición real** de `copy.deepcopy(motor, memo)` con el `memo` de T015
+(`gestor_datos → None`, `restaurador → None`, `historial → Historial()` nuevo, cada `Sala` y `Salida` → ella misma). Intérpretes:
+Python 3.14.2 y 3.12.10 (Windows 10, límite de recursión 1000). Motor real armado con `crear_paquete_niebla` (paquete offline,
+`GestorDatos` y `ControladorPartida` reales); cripta en cuadrícula de N = 20, 200 y 2 000 salas (62, 742 y 7 820 salidas), con
+guardianes y trampas; **300 acciones** deterministas (`random.Random(5)`: atacar, esperar, mover; vida alta; 300 aceptadas, 0
+rechazadas); **mediana de 20 repeticiones** (`perf_counter`); memoria con `tracemalloc`. Fuente: `informe_t003_deepcopy.md` e
+`informe_estado_004.md` (locales, no versionados; los scripts de medición no se conservaron). Estas cifras **reemplazan a las
+anteriores solo en lo que miden**; M3 (T103) las repite en `tests/bench_linea.py`.
+
+### Campos de `Sala` y `Salida` (leídos del código y comprobados)
+
+| Objeto | Campo | ¿Mutable en la partida? | Quién lo escribe | Tratamiento |
+|--------|-------|-------------------------|------------------|-------------|
+| `Sala` | `rastro` | **Sí** (cada acción, reversible) | `MotorSimulacion` (`actualizar_rastro`), `ConversorPartida`, `PreparadorPartida` | `CAMPOS_MUTABLES_SALA`; va en `foto_rastros`. **Una sala que el jugador nunca pisó no tiene el atributo** (medido: `AttributeError: 'SalaEsqueleto' object has no attribute 'rastro'`) |
+| `Sala` | `_ordinal` | No (una vez, al armar `Conocimiento`) | `Conocimiento.__init__` | `copy.copy` lo conserva |
+| `Salida` | `cerrada` | **Sí** (abrir, cierre automático, restaurar sala; reversible) | `MotorSimulacion`, `ConversorPartida` | `CAMPOS_MUTABLES_SALIDA`; va en `foto_cerradas` |
+| `Salida` | `cerrada_en_esqueleto` | No (solo `__init__`) | `DTOS/Salida.py` | `copy.copy` lo conserva |
+| `Salida` | `costo` | No (solo `__init__`; campo nuevo de 003) | `DTOS/Salida.py` | `copy.copy` lo conserva |
+| `Salida` | `_ordinal`, `_direccion`, `_origen` | No (una vez, al armar `Conocimiento`) | `Conocimiento.__init__` | `copy.copy` conserva `_ordinal` y `_direccion`; `_origen` se re-liga por ordinal |
+| `Salida` | `_destino` | No (caché que solo se llena) | `MotorSimulacion._destino`; `Conocimiento.__init__` la resuelve para todas | se re-liga por ordinal |
+
+El inventario no es un atributo del motor: es `motor.jugador.inventario`.
+
+### Pruebas 1 a 9 (resultado medido)
+
+| # | Qué se probó | Resultado medido |
+|---|--------------|------------------|
+| 1 | `deepcopy(motor, memo)` sin `RecursionError` ni `TypeError`; tiempo y memoria | **Termina bien** en N = 20, 200 y 2 000, en ambos intérpretes. Tiempo mediano (incluye armar el `memo`): **0.7 a 1.4 ms** (N = 20), **2.7 a 4.4 ms** (N = 200), **17.8 a 30.0 ms** (N = 2 000); varía hasta 1.9× entre corridas. Memoria neta del clon: **20, 62 y 407 KiB** (3.14.2; 23, 66 y 412 con 3.12.10); pico con el `memo`: **53, 226 y 1 429 KiB**. El `memo` es entre el 2 % y el 12 % del tiempo. **Frente a las cifras de E2/E4 (1.1 ms y 26 KiB; 2.2 ms y 43 KiB; 11.7 ms y 285 KiB, otro método): hasta 2.6× más lento y +43 % de memoria para N ≥ 200** |
+| 2 | 50 acciones en el clon; comparar el vivo antes y después (`obtener_estado_resumen()` ampliado con `conocimiento`, mensajes, rastros, `vars` de cada `Sala` y `Salida`, agenda e historial) | En el vivo **solo cambió `Sala.rastro`** (8, 12 y 12 salas con un clon con gestor propio; 8, 4 y 4 con el clon sin gestor, que juega menos). Nada más cambió: reloj, secuencia, jugador, enemigos, eventos, puertas, acciones, azar, conocimiento, mensajes, `cerrada`, atributos de `Salida`, agenda e historial. Estas acciones no abren puertas |
+| 3 | `retroceder` en el clon (con `Historial()` vacío) | **Se rechaza** (`puede_deshacer()` es `False`), el vivo y el clon quedan intactos y el pergamino sigue en el clon. Control: en un motor real, `retroceder` devuelve `True` y `acciones_jugador` baja de 300 a 299 |
+| 4 | Inventario grande (`NodoInventario` con lista doble) | 50 y 100 nodos: OK. 200 y 400: `RecursionError: maximum recursion depth exceeded`. **Primer tamaño que falla: 165 nodos** (3.14.2) y 164 (3.12.10), con límite 1000, llamando a pocos marcos de profundidad (dentro del juego el umbral es algo menor). `inventario_max` es 5 en los paquetes de prueba y 10 por defecto en `Jugador`; **el de las criptas reales no se midió** |
+| 5 | `CERRAR_PUERTA` pendiente (puerta con `cierre_automatico = 500`, abierta en el vivo) y 7 `esperar` en el clon hasta el reloj 750 | El evento del clon apunta a la **`Salida` viva**; al ejecutarlo **`Salida.cerrada` del vivo pasó de `False` a `True`** (N = 20 y 200). El evento del vivo sigue pendiente (t = 500, sin cancelar). Leído del código: al llegar a su tiempo, el vivo verá la puerta ya cerrada y no registrará el cierre ni el aviso al conocimiento |
+| 6 | `eco = True` | **Se copia**: `clon.eco` es `True` y `clon._mensaje(...)` imprime |
+| 7 | `azar` | El `azar` del vivo no cambia con lo que haga el clon; el del clon es otro objeto con el mismo estado al copiar. Las 50 acciones usadas **no consumen azar**, así que la independencia se midió solo con sorteos directos (`clon.azar.random()`) |
+| 8 | `_indice_origen is salas` | **Se conserva** en el clon, antes y después de 50 acciones; `_indice_salas` sigue siendo la misma lista; las `Sala` del clon son las del vivo |
+| 9 | Oráculo: copiar en la acción 250, el vivo sigue 50 acciones y el clon las rehace | **Con un `GestorDatos` iniciado** (`obtener_detalles` e `iniciar_cripta`): 50/50 iguales y `obtener_estado_resumen()` idéntico en N = 20, 200 y 2 000. **Con `gestor_datos = None`**: 47/50, 46/50 y 44/50 iguales y el resumen difiere (`reloj`, `secuencia`, `jugador`, `acciones`, `conocimiento`) |
+
+**El clon sin gestor no puede jugar** (medido, prueba 2 y 9): entrar en una sala con trampa lanza
+`RuntimeError: No hay gestor de datos para consultar la ficha de la trampa.` (`MotorSimulacion.py:122`, `activar_trampas_de_sala`), y
+entrar en una sala sin contenido cargado se rechaza con `El contenido de esa sala aún no está disponible.` (11 `mover`
+rechazados con N = 200 y 2 000; el vivo tenía cargado el contenido de 32 de 200 salas).
+
+### Controles: qué pasa si el `memo` omite algo (N = 200 y 2 000)
+
+| Se omite del `memo` | Resultado medido (mensaje real) |
+|---------------------|---------------------------------|
+| `Sala` y `Salida` | `RecursionError: maximum recursion depth exceeded` |
+| `restaurador` (partida cargada, archivo abierto) | `TypeError: cannot pickle 'BufferedReader' instances`; con `restaurador → None` en el `memo` la copia termina y `clon.restaurador` queda en `None` |
+| `historial` | `retroceder` del clon **devuelve `True` y modifica el vivo** (sala del jugador 98 → 97; cambian también reloj, secuencia, acciones, conocimiento y agenda): las funciones de `deshacer` siguen atadas al motor vivo |
+| `gestor_datos` | La copia termina (4 a 19 ms), pero **copia todo el `GestorDatos` y su fuente** (con la fuente offline; con HTTP no se probó). El gestor copiado apunta al clon |
+
+Otra comprobación (N = 20): `clon.conocimiento._destino_de.__self__ is clon` es `True` (el método enlazado se re-liga) y el
+`Conocimiento` del clon es otro objeto.
+
+### Riesgos de T015 y T016, con lo medido
+
+| # | Riesgo | Estado | Tarea que lo prueba o decisión |
+|---|--------|--------|--------------------------------|
+| 1 | Los cierres de `Historial` siguen atados al vivo si el `memo` no lo sustituye | Medido (control) | El `memo` lleva `id(motor.historial) → Historial()`. Prueba: T012 (5) |
+| 2 | `restaurador` abierto: `TypeError` si no se sustituye; con `None` el clon no lee las salas pendientes del archivo | Medido | `restaurador → None` en el `memo`; `abrir_copia` en T016. Prueba: T012 (5) |
+| 3 | `RecursionError` con un inventario largo (desde 165 nodos) | Medido | T015 y T016 copian el inventario con un bucle, sin recursión, y agregan la prueba con 200 y 400 nodos (T015 en `copiar`, T016 (g) en `materializar`). Falta conocer el `inventario_max` real de las criptas (**no medido**) |
+| 4 | El clon con `gestor_datos = None` no puede jugar (trampas, salas sin contenido) | Medido | `materializar` asigna `gestor_historico`. Pruebas T016 (a) y (b); T027 (reconstruir sin red); T029 implementa el gestor |
+| 5 | La `Salida` compartida deja que el clon cierre la puerta del vivo | Medido | El `memo` de `materializar` re-liga también `Evento.actor`. Prueba T016 (c) |
+| 6 | Una sala no visitada no tiene el atributo `rastro` | Medido | `foto_rastros` con centinela; `materializar` no crea el atributo. Pruebas T016 (f) y T012 (3) |
+| 7 | `eco = True` se copia | Medido | `materializar` lo fija en `False`. Prueba T016 (d) |
+| 8 | Identidad `_indice_origen is salas` | Medido: se conserva | Sin tarea nueva: `materializar` copia `salas` e `_indice_origen` en la misma llamada de `deepcopy` (T016); lo cubre el oráculo de T012 (1) |
+| 9 | `azar` independiente | Medido solo con sorteos directos | T012 (6): una acción que consuma azar, si existe; si no, se deja escrito |
+| 10 | Costo de la copia mayor que lo anotado (hasta 2.6× y +43 % para N ≥ 200) | Medido | M3 (T103) se repite con estas cifras como referencia; T098 sigue siendo el plan B. Riesgo para FR-020 en N altas |
+| 11 | `GestorDatos.estado_juego` es único: dos clones sobre el mismo `gestor_historico` se pisan | **No medido** (leído del código) | Regla de un solo clon vivo por `gestor_historico`. Prueba T016 (e). **HIPÓTESIS** |
+| 12 | Estados con eventos pendientes distintos de `CERRAR_PUERTA` (`REARMAR_TRAMPA`, `VENENO`, `FIN_VELOCIDAD`, `APAGAR_ANTORCHA`) | **No medido** (la agenda del vivo quedó vacía en el escenario general) | El oráculo de T012 incluye estados con esos eventos pendientes. **HIPÓTESIS** |
+
+Consecuencia de 003 para el sello: por el costo de las salidas (`costo_salida`) `reloj` ya no crece linealmente con las acciones;
+el sello `(reloj, secuencia)` sigue siendo válido porque se compara por valor.
+
+### No medido (HIPÓTESIS)
+
+Lo siguiente no se pudo medir y queda como **HIPÓTESIS** hasta que lo cubra una tarea:
+
+- la fuente HTTP y `FuenteSinRed` (R10): lo medido usó una fuente offline normal;
+- `materializar`, el esqueleto propio y `AgendaConCorte` (no existen todavía);
+- dos clones vivos a la vez sobre el mismo `gestor_historico`;
+- el `inventario_max` real de las criptas del servicio;
+- eventos pendientes distintos de `CERRAR_PUERTA` (`REARMAR_TRAMPA`, `VENENO`, etc.);
+- acciones del juego que consuman `azar`.
+
+La revisión del grupo que pide T003 sigue pendiente.
+
+---
+
 ## Origen de las cifras HIPÓTESIS
 
 Las cifras marcadas **HIPÓTESIS** salen de una **exploración previa local, no versionada**; la reemplazan M1 a M10. Las etiquetas E1 a

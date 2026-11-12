@@ -43,6 +43,10 @@ RegistroLinea (Persistencia)  <──>  guion + K
 5. El guion termina con el comando más reciente aceptado; `RETROCESO` y `CARGA` no figuran en `vig_*`.
 6. `C ≤ ⌈n/K⌉ + 1 + L + P`.
 
+**Nota (costo de las salidas, 003).** Con `Salida.costo` (`costo_salida`), `reloj` **ya no crece linealmente con las acciones**: un
+`mover` cuesta lo que diga la salida. El sello `(reloj, secuencia)` sigue siendo válido porque se compara por valor, y `vig_reloj`
+sigue creciendo estrictamente.
+
 ### Operaciones y complejidad
 
 Ver la tabla de [interfaz-linea.md](contracts/interfaz-linea.md). Resumen: registrar `O(1)` + copia `O(S)` cada K; recortar `O(V + S)`;
@@ -64,20 +68,37 @@ iniciar ──► ACCION* ──┬─► RETROCESO ──► (recorte, punto de
 
 | Campo | Descripción |
 |-------|-------------|
-| `estado` | copia de `MotorSimulacion` hecha con `deepcopy(motor, memo)`: `gestor_datos → None`, `restaurador → None`, `historial → Historial()`, y cada `Sala` y `Salida` del motor real **compartidas** (no se recorren) |
-| `foto_rastros` | lista con `Sala.rastro` por ordinal de sala |
+| `estado` | copia de `MotorSimulacion` hecha con `deepcopy(motor, memo)`: `gestor_datos → None`, `restaurador → None`, `historial → Historial()`, y cada `Sala` y `Salida` del motor real **compartidas** (no se recorren). El inventario es `motor.jugador.inventario` y se copia con un bucle, sin recursión (T015 y T016). **`estado` nunca se ejecuta directamente** (ver abajo) |
+| `foto_rastros` | lista con `Sala.rastro` por ordinal de sala; una sala sin atributo `rastro` (nunca visitada) se anota con un **centinela** («sala sin atributo `rastro`», distinto de `None`) |
 | `foto_cerradas` | lista de `bool` con `Salida.cerrada` por ordinal de salida (en el orden de recorrido de las salas) |
 | `accion`, `reloj`, `secuencia` | posición y sello |
 | `epoca` | índice de la época a la que pertenece |
 
 `materializar(punto, gestor_historico, abrir_copia)` produce un **clon** nuevo:
 
-1. Esqueleto propio: para cada sala del motor real, `copy.copy` de la sala y de cada salida; `rastro` y `cerrada` de la foto;
+1. Esqueleto propio: para cada sala del motor real, `copy.copy` de la sala y de cada salida; `rastro` y `cerrada` de la foto
+   (`materializar` **no crea** el atributo `rastro` en una sala donde no existía: el centinela se respeta);
    `_origen` y `_destino` re-ligados por ordinal; `salidas` es un `dict` nuevo (es el del DTO, solo se recorre).
 2. `deepcopy(punto.estado, memo)` donde `memo` mapea cada objeto del esqueleto de respaldo → su par nuevo, y `historial → Historial()`.
+   Ese `memo` re-liga también `Evento.actor` (un evento `CERRAR_PUERTA` tiene como actor una `Salida`).
 3. `clon.gestor_datos = gestor_historico` y `gestor_historico.conectar_estado_juego(clon)`.
 4. Si la época tiene copia privada: `clon.restaurador = abrir_copia(ruta)`.
 5. `clon.eco = False`.
+
+**`punto.estado` nunca se ejecuta directamente.** Sus eventos `CERRAR_PUERTA` apuntan a la `Salida` **viva** (medido en T003: un
+clon sin re-ligar cerró la puerta del vivo, `Salida.cerrada` pasó de `False` a `True`). Solo se ejecuta un clon **materializado**,
+cuyo `memo` re-liga también `Evento.actor` al esqueleto nuevo.
+
+**El clon sin gestor no puede jugar** (medido en T003): con `gestor_datos = None`, entrar en una sala con trampa lanza
+`RuntimeError: No hay gestor de datos para consultar la ficha de la trampa.` y entrar en una sala sin contenido cargado se rechaza
+con `El contenido de esa sala aún no está disponible.`. Por eso `materializar` le asigna `gestor_historico`, que sirve
+`obtener_ficha` y `asegurar_sala` desde el almacenamiento en disco; si falta un dato local, `SinDatosParaHistoria`. Medido: con un
+`GestorDatos` iniciado, un clon copiado en la acción 250 rehace 50 acciones y queda **idéntico** al vivo (N = 20, 200 y 2 000).
+
+**Un solo clon vivo por `gestor_historico`.** `GestorDatos.estado_juego` es un único campo y `conectar_estado_juego(clon)` lo
+reemplaza: con dos clones sobre el mismo gestor, el primero quedaría consultando al segundo (`es_ficha_activa` decide qué fichas
+desaloja la caché). Se materializa un clon, se consulta, se descarta y recién entonces se materializa otro. **HIPÓTESIS**: leído del
+código, no medido.
 
 Constantes (extensibles, ver [interfaz-linea.md](contracts/interfaz-linea.md)): `CAMPOS_MUTABLES_SALA = ("rastro",)`,
 `CAMPOS_MUTABLES_SALIDA = ("cerrada",)`. `Salida._destino` es una caché del motor que se re-liga, no un campo de estado. **`Salida.cerrada_en_esqueleto`
@@ -85,6 +106,11 @@ Constantes (extensibles, ver [interfaz-linea.md](contracts/interfaz-linea.md)): 
 `bool(cerrada)` del esqueleto (en `main` ninguna otra línea la asigna: `aplicar_puertas_reales` y los eventos del motor solo cambian
 `cerrada`), así que `copy.copy` la conserva y la foto no la necesita. Si alguien la hiciera cambiar después de crear la salida, tendría
 que agregarse a esa constante.
+
+Campos de `Sala` y `Salida` que **no** son mutables en la partida y que `copy.copy` conserva (leídos del código; ver
+[research.md, T003](research.md#t003-revisión-de-deepcopy-y-memo-2026-11-12)): `Sala._ordinal`; `Salida._ordinal`, `Salida._direccion`
+y `Salida.costo` (inmutable: solo se asigna en `Salida.__init__`; campo nuevo de 003). El único campo de estado de `Sala` es `rastro`
+y el de `Salida` es `cerrada`; una sala que el jugador nunca pisó **no tiene el atributo `rastro`**.
 
 `Modelo/CopiaEstado.py` escribe `Salida.cerrada` y `Sala.rastro` solo sobre las salas y salidas **del clon** (la copia del esqueleto), nunca
 sobre las del motor vivo. Coherencia con lo que cuelga del motor de 003 (cuando exista): `ciclo` y `version_puertas` son enteros y
@@ -99,7 +125,21 @@ el clon porque `ciclo` avanza al empezar cada ciclo re-simulado (003, R5), así 
 | materializar | `O(S + N + E)` | `O(S + N + E)` temporal |
 
 Exploración previa local, no versionada (E2 y E4; **HIPÓTESIS**, la reemplaza M3): copia 1.1 ms y 26 KiB (N=20), 2.2 ms y 43 KiB (N=200), 11.7 ms y 285 KiB (N=2 000);
-consultar 1.85 / 7.95 / 69.4 ms respectivamente.
+consultar 1.85 / 7.95 / 69.4 ms respectivamente. **Esas cifras eran de otro método** (copia estructurada con el esqueleto fuera del
+`deepcopy`), no de `deepcopy(motor, memo)`.
+
+Lo medido en T003 con `deepcopy(motor, memo)` ([research.md](research.md#t003-revisión-de-deepcopy-y-memo-2026-11-12); Python 3.14.2
+y 3.12.10; 300 acciones; mediana de 20 repeticiones; incluye armar el `memo`):
+
+| N | Tiempo mediano | Memoria neta del clon | Pico con el `memo` |
+|---|----------------|-----------------------|--------------------|
+| 20 | 0.7 a 1.4 ms | 20 KiB | 53 KiB |
+| 200 | 2.7 a 4.4 ms | 62 KiB | 226 KiB |
+| 2 000 | 17.8 a 30.0 ms | 407 KiB | 1 429 KiB |
+
+Es **hasta 2.6 veces más lento y +43 % de memoria para N ≥ 200** que las cifras de E2 y E4. M3 (T103) se vuelve a medir con estas
+cifras como referencia y, mientras tanto, las de esta sección siguen siendo **HIPÓTESIS**. Riesgo para FR-020 en N altas: la copia de
+cada punto y la materialización pesan más de lo anotado; T098 sigue siendo el plan B (copia a mano por campos del estado vivo).
 
 ## Época
 
