@@ -278,8 +278,17 @@ comparar el mapa; luego reproducir la bitácora y comparar reloj, posición y co
 - [X] T121 [US5] Implementar el rechazo de T120 en `ControladorPartida.cargar` (antes de `cargar_partida` y de tocar la bitácora) y en `ControladorPartida.guardar` (antes de `guardar_motor`), y en `main.py` traducirlo a `! Error: ...` con código `1`. Quitar de `_continuar_bitacora` y de `guardar` la rama de «misma ruta», que deja de ser alcanzable. **Hecho**: `main.py` no cambió, porque ya traduce `ValueError` a `! Error: ...` con código 1; en la partida, `guardar` y `cargar` muestran el error y siguen. `_misma_ruta` usa además `os.path.normcase`. Depende de T120. Atiende: FR-017, PR-12. Archivo: Controlador/ControladorPartida.py, main.py.
 - [X] T122 [US5] Verificar con prueba la disposición final de `CRPT` 3 cerrada por D: `_validar_encabezado` exige `offset_indice >= TAMANO_ENCABEZADO + 12` (rechaza con `VersionIncompatible` un índice dentro de los tres campos de largo) y `_inicio_salas = TAMANO_ENCABEZADO + (4 + largo_jugador) + (4 + largo_conocimiento) + (4 + largo_linea)`, leyendo solo los tres largos. Si el código no coincide, corregirlo. **Hecho**: el código ya coincidía; no se corrigió nada. Atiende: FR-016, PR-05. Archivo: tests/test_persistencia_conocimiento.py, Persistencia/ArchivoPartida.py.
 
-**Punto de control 5**: pruebas T068 a T073, T081 a T083, T086 a T090, T095, T119, T120 y T122 en verde, e implementaciones T074 a T080,
-T084, T085, T091 a T094, T096, T097 y T121 hechas; suite completa en verde; quickstart 5, 6 y 7 correctos. Sube junto con T113, que es contrato de formatos.
+### Observador del `Reproductor` (pedido de Persona D, P-D02 de la spec 004)
+
+Interfaz en [contracts/formato-bitacora.md](contracts/formato-bitacora.md), «Observador y reproducción en memoria».
+Cambio exacto en specs/004-linea-de-tiempo/plan.md, «Enganches». `Reproductor` es contrato compartido: avisar al grupo al subirlo.
+
+- [ ] T123 [US5] **Prueba primero**: con un observador falso que anota el orden de las llamadas y el motor que recibe, probar que (1) sin `@cargar` el orden es `al_crear_motor`, luego un `despues_de_accion(motor, nombre, argumento)` por cada acción, en orden; (2) con `@cargar`, `despues_de_carga` recibe el motor **nuevo** que devolvió `recargar`, y las acciones siguientes se avisan con ese motor; (3) una acción rechazada da el error de hoy y no se avisa; un `@cargar` sin `recargar` o con `recargar` que devuelve `None` da error sin `despues_de_carga`; (4) `reproducir_acciones(encabezado, acciones)` con la lista de `leer_bitacora` da el mismo motor final que `reproducir(ruta)`, y rechaza versiones distintas como hoy; (5) sin observador el resultado es igual al actual. Comprobar que fallan por aserción antes del código. **Las pruebas existentes de `Reproductor` no cambian.** Atiende: FR-017, PR-12. Archivo: tests/test_bitacora.py.
+- [ ] T124 [US5] Agregar `observador=None` al final de `Reproductor(...)` y avisarlo en los tres puntos de T123; extraer `reproducir_acciones(encabezado, acciones)` con las comprobaciones de versión y el bucle, y reducir `reproducir(ruta)` a leer la bitácora y llamarla. Sin observador, igual que hoy. Depende de T123. Atiende: FR-017, PR-12. Archivo: Bitacora/Reproductor.py.
+- [ ] T125 [PERSONAS: aviso al grupo] Avisar a Persona D (P-D02) de que el observador y `reproducir_acciones` están en `main`. `main.ejecutar_replay` no cambia aquí: la rama `--replay --hasta` y el paso del observador son de la spec 004. Depende de T124. Atiende: PR-12. Archivo: specs/004-linea-de-tiempo/plan.md (P-D02).
+
+**Punto de control 5**: pruebas T068 a T073, T081 a T083, T086 a T090, T095, T119, T120, T122 y T123 en verde, e implementaciones T074 a T080,
+T084, T085, T091 a T094, T096, T097, T121 y T124 hechas; suite completa en verde; quickstart 5, 6 y 7 correctos. Sube junto con T113, que es contrato de formatos.
 
 ---
 
