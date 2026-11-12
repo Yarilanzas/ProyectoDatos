@@ -34,6 +34,8 @@
 
 No se crean códigos nuevos (spec, Assumptions).
 
+Modificadores:  --hasta y --checkpoint-cada (spec 004) no son opciones de la tabla de prioridad: solo modifican a --replay y a la partida. No cambian el orden --bench > --mostrar-puntajes > --verificar > --replay > --cargar > --cripta, y con --verificar no tienen efecto.
+
 ## Mensajes de error
 
 Todos con el formato existente `! Error: <texto>` de `VistaConsola.mostrar_error`.
