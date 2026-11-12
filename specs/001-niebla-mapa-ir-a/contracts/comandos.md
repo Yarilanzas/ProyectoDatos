@@ -87,4 +87,20 @@ rechazado tampoco consume tiempo: el viaje termina ahí, con el mensaje de recha
 | `Salidas:` de la pantalla de estado | Se muestra el estado recordado (FR-012) |
 | Mensaje «Una puerta se cerró sola.» | Solo si el jugador observa la puerta (FR-007, FR-012) |
 | `ayuda` | Agrega `mapa` e `ir a <sala>` (FR-020) |
+| `guardar <archivo>` | Si la bitácora activa es `<archivo>.log`, error de uso (ver abajo) |
+| `--cargar <archivo>` | Si `--bitacora` es `<archivo>.log`, error de uso (ver abajo) |
 | Demás comandos | Sin cambios |
+
+## `--bitacora` igual a `<guardado>.log` (FR-017)
+
+Pedido de Persona D (FR-030 de la spec 004). La bitácora activa no puede ser la copia de bitácora de un guardado
+(`ruta_bitacora_de(guardado)`). Se compara con la misma normalización de rutas que ya usa el controlador
+(`_misma_ruta`).
+
+| Caso | Cuándo se detecta | Comportamiento |
+|------|-------------------|----------------|
+| (i) `--cargar <archivo>` con `--bitacora <archivo>.log` | Al cargar, antes de jugar y antes de tocar la bitácora | `! Error: ...`, código de salida `1`; no se escribe nada |
+| (ii) `guardar <destino>` con bitácora activa `<destino>.log` | Al guardar, antes de escribir | `! Error: ...`; no se escribe ni el archivo de partida ni su bitácora |
+
+Mensaje propuesto: `! Error: la bitácora no puede ser <ruta>.log, que es la copia de bitácora de la partida guardada;
+use otra con --bitacora`. El texto puede ajustarse; el prefijo `! Error:` y el código `1` son contractuales.

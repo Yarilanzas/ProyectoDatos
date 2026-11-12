@@ -23,8 +23,17 @@ cambian, salvo el número de versión.
 - `largo conocimiento`: `<I`. Vale 0 si no hay conocimiento (solo los benchmarks de registros sueltos).
 - `largo línea de tiempo` y su bloque: para esta capacidad el bloque es **opaco**: se salta con su largo, sin
   interpretar su contenido, hasta que Persona D publique su contrato (spec 004). El contenido lo define D.
-- `_inicio_salas` suma los dos campos de largo y los dos bloques; la fórmula final la cierra D en su plan (spec 004).
-- `_validar_encabezado` exige que el índice esté después de todos los campos de largo.
+- `_inicio_salas` suma los **tres** campos de largo (jugador, conocimiento y línea de tiempo) y sus tres bloques.
+  Fórmula final, cerrada por Persona D (spec 004):
+
+  ```text
+  _inicio_salas = TAMANO_ENCABEZADO + (4 + largo_jugador) + (4 + largo_conocimiento) + (4 + largo_linea)
+  ```
+
+  Para calcularla se leen solo los tres largos `<I` de 4 bytes, saltando cada bloque con su largo: no se lee el
+  contenido de ningún bloque.
+- `_validar_encabezado` exige `offset_indice >= TAMANO_ENCABEZADO + 12`, es decir, que el índice esté después de los
+  tres campos de largo. Si no se cumple, `VersionIncompatible`, código `2`.
 
 **Costo de las salidas**: el `CRPT` no lo guarda. Al cargar se toma del esqueleto, igual que la topología (decisión de
 D).

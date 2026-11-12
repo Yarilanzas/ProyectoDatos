@@ -47,6 +47,10 @@ esperar
 
 - La escribe `_continuar_bitacora` al continuar una partida cargada, después de copiar la bitácora del guardado.
 - `guardar` no anota nada.
+- La bitácora activa nunca es la copia del guardado: `--bitacora` igual a `<guardado>.log` es un error de uso, al
+  cargar (código `1`, antes de jugar) y al guardar (no se escribe nada). Así `_continuar_bitacora` siempre copia y la
+  bitácora guardada termina exactamente en el guardado (FR-017, pedido de Persona D, FR-030 de la spec 004). Ver
+  [comandos.md](comandos.md).
 - Si la partida no tiene bitácora, no hay nada que anotar: se conserva el aviso actual.
 - `--replay`, al llegarle, guarda el motor en un archivo temporal, lo carga con `cargar_partida` y sigue con el
   motor resultante. Repite así lo que la carga real cambió: azar, agenda, efectos e Historial.

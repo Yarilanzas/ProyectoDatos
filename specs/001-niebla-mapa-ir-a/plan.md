@@ -143,7 +143,7 @@ inyectando un buscador de prueba.
 | Se rompen bitácoras y partidas versionadas (`partida.log`, `partida.cripta`) | Es esperado por FR-016 y FR-030. Regenerar las que sean evidencia |
 | El cambio toca `Modelo/`, `Persistencia/` y `Bitacora/` | Revisión de otra persona del grupo (Flujo de desarrollo) |
 | Hooks en `mover_jugador` rompen pruebas sin `iniciar_partida` | `conocimiento is None` se tolera; la suite debe quedar igual sin editarla, salvo los cambios listados |
-| `--bitacora` igual a `<guardado>.log`: no se trunca al cargar | Comportamiento existente; una prueba debe definir el resultado, porque `@cargar` asume que la bitácora termina en el guardado |
+| `--bitacora` igual a `<guardado>.log`: no se trunca al cargar | Resuelto con Persona D (FR-030 de la spec 004): es un error de uso, `! Error: ...`, código `1` al cargar y sin escribir nada al guardar (FR-017, T120 a T122) |
 | Un `guardar` sin `cargar` carga salas por `_asegurar_salas_con_estado` | No toca azar ni agenda; lo confirma la prueba de replay de SC-004 |
 | Replay con red gasta presupuesto en cada `@cargar` | Prueba de PR-12 antes de cerrar el Principio VII |
 
