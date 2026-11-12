@@ -15,11 +15,18 @@ primer_paso(grafo, origen, destino, limite=None, espacio=None) -> Paso | None
 | `grafo` | Objeto con la interfaz de grafo, abajo |
 | `origen` | Sala actual |
 | `destino` | Sala destino, distinta de `origen` |
-| `limite` | Opcional, al final. Lo agrega Persona A; no cambia el contrato |
+| `limite` | Opcional, al final: entero mayor o igual que 0, o `None`. Lo agrega Persona A; no cambia el contrato |
 | `espacio` | Opcional, al final: un `EspacioBusqueda` que se puede reutilizar entre los pasos de un viaje. Lo agrega Persona A; no cambia el contrato |
 
 Llamar con solo `(grafo, origen, destino)` sigue siendo válido y da el mismo resultado: las 7 obligaciones y la prueba
 de contrato no cambian.
+
+**`limite`**: con `None` no hay cota, que es el comportamiento anterior. Con un valor, sea `d` el costo mínimo de
+`origen` a `destino`: si `d <= limite` devuelve el paso (en particular, si `d == limite`); si `d > limite` devuelve
+`None`, igual que sin ruta.
+
+**`espacio`**: un `EspacioBusqueda` opcional y reutilizable. Si es `None`, la función crea uno por llamada. El resultado
+es idéntico con o sin `espacio`: solo cambia de dónde salen los arreglos de trabajo.
 
 **Fechas de Persona A**: `Modelo/ColaPrioridad.py` el miércoles 11 y `Modelo/BusquedaRuta.py` el jueves 12.
 
@@ -42,6 +49,9 @@ resuelto por `motor.costo_salida`.
 
 `ordinal` existe para que una implementación indexe sus arreglos sin usar `dict`. El orden de `aristas` es
 determinista, pero no está ordenado por id: el desempate es responsabilidad de la búsqueda.
+
+`entrantes` no forma parte de esta interfaz: solo lo ofrece `GrafoCripta` (capacidad 003). `GrafoConocido` no lo
+ofrece y no se le exige. `primer_paso` no lo usa; solo lo usa `campo_hacia`.
 
 ## Obligaciones de toda implementación
 

@@ -129,6 +129,7 @@ El conocimiento del jugador forma parte del estado de la partida: se guarda en e
 - Entrar con la antorcha encendida a una sala cuyas vecinas ya estaban exploradas: no cambia nada de ellas salvo lo que el jugador observe directamente.
 - Una sala explorada por la antorcha cuyos vecinos no fueron visitados: esos vecinos pasan a avistados (por la definición de avistada).
 - `retroceder` sin intervalos disponibles tras un viaje (por ejemplo, después de cargar): se comporta igual que en la Parte I.
+- `--bitacora` igual a `<guardado>.log` (la copia de bitácora del guardado que se carga, o del destino de `guardar`): es un error de uso, `! Error: ...`, y no se escribe nada; al cargar, termina con código `1` antes de jugar (FR-017).
 - Pergamino que deshace la entrada a la sala inicial nunca aplica: la sala inicial está explorada desde el instante 0, antes de cualquier acción, y no puede volver a otro estado.
 
 ## Requirements *(mandatory)*
@@ -165,7 +166,7 @@ El conocimiento del jugador forma parte del estado de la partida: se guarda en e
 - **FR-014**: Todo cambio del conocimiento del jugador causado por una acción MUST formar parte de esa acción en la línea de tiempo (§3.6), de modo que un pergamino de retroceso que deshace la acción MUST devolver el conocimiento (estados de sala y puertas recordadas) exactamente al estado anterior, incluidas las salas exploradas por la antorcha.
 - **FR-015**: El conocimiento del jugador MUST guardarse en el archivo de partida y restaurarse íntegro al cargarla.
 - **FR-016**: Como el formato del archivo de partida cambia, su número de versión de formato MUST incrementarse y el README MUST documentarlo; un archivo con la versión anterior MUST rechazarse según la regla de versión incompatible ya vigente.
-- **FR-017**: `--replay` de una bitácora MUST producir el mismo conocimiento final que la partida jugada, incluidas las partidas cargadas y continuadas.
+- **FR-017**: `--replay` de una bitácora MUST producir el mismo conocimiento final que la partida jugada, incluidas las partidas cargadas y continuadas. Usar como bitácora activa (`--bitacora`) la copia de bitácora de un guardado (`ruta_bitacora_de(guardado)`, es decir `<guardado>.log`) MUST rechazarse como error de uso, con el mensaje `! Error: ...` y sin escribir nada, porque `@cargar` asume que la bitácora termina en el guardado (pedido de Persona D, FR-030 de la spec 004): (i) al cargar una partida, si la bitácora activa es la de ese archivo, el programa MUST terminar con código `1` antes de jugar; (ii) al guardar, si la bitácora activa es la del destino, el guardado MUST rechazarse antes de escribir el archivo de partida o su bitácora.
 
 **Mapa conocido (interfaz)**
 

@@ -116,7 +116,7 @@ de B: sin cambios salvo una nota; ver el plan.)
 | `--cargar F --checkpoint-cada K` | error de uso, código `1`, sin cargar nada (FR-031) |
 | `--cargar F --hasta T` (sin `--replay`) | error de uso, código `1` |
 | `--cargar F` | carga; la línea se reconstruye con el K del archivo (si faltan datos locales: error, código `1`, nada cargado) |
-| `--cargar F --bitacora F.log` | error de uso, código `1`, sin cargar nada (la bitácora no puede ser el `.log` del guardado) |
+| `--cargar F --bitacora F.log` | `! Error: la bitácora no puede ser F.log, que es la copia de bitácora de la partida guardada; use otra con --bitacora`, código `1`, sin cargar nada (hecho por C, `b6f9f52`). El comando `guardar` con esa bitácora, dentro de la partida, solo se rechaza y la partida sigue |
 | `--cripta X --checkpoint-cada K` (o menú) | partida nueva con ese K |
 | `--cripta X --forzar --checkpoint-cada K` | verificación en silencio, partida nueva con ese K |
 
@@ -152,7 +152,7 @@ versión distinta.
 | `--replay --hasta` correcto, también con `T` mayor que el final | `0` |
 | Valor o combinación de opciones inválidos (errores de uso de arriba) | `1` |
 | `ErrorReconstruccion`, `SinDatosParaHistoria` (también al cargar: nada se carga), acción rechazada por el replay, otros errores | `1` |
-| `--bitacora` igual a `<guardado>.log` al guardar o cargar ([formato-bitacora.md](formato-bitacora.md#bitácora-igual-a-guardadolog)) | `1` |
+| `--cargar F --bitacora F.log` ([formato-bitacora.md](formato-bitacora.md#bitácora-igual-a-guardadolog)) | `1` (en la partida, `guardar` y `cargar` solo rechazan el comando) |
 | Bitácora, archivo de partida, cripta o catálogo de versión incompatible; línea que no coincide con la partida | `2` con `Versión incompatible: ...` |
 
 No se crean códigos nuevos.

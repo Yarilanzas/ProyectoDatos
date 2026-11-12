@@ -47,6 +47,10 @@ esperar
 
 - La escribe `_continuar_bitacora` al continuar una partida cargada, después de copiar la bitácora del guardado.
 - `guardar` no anota nada.
+- La bitácora activa nunca es la copia del guardado: `--bitacora` igual a `<guardado>.log` es un error de uso, al
+  cargar (código `1`, antes de jugar) y al guardar (no se escribe nada). Así `_continuar_bitacora` siempre copia y la
+  bitácora guardada termina exactamente en el guardado (FR-017, pedido de Persona D, FR-030 de la spec 004). Ver
+  [comandos.md](comandos.md).
 - Si la partida no tiene bitácora, no hay nada que anotar: se conserva el aviso actual.
 - `--replay`, al llegarle, guarda el motor en un archivo temporal, lo carga con `cargar_partida` y sigue con el
   motor resultante. Repite así lo que la carga real cambió: azar, agenda, efectos e Historial.
@@ -69,8 +73,35 @@ esperar
 ```text
 BitacoraPartida.comentar(texto)   escribe "# <texto>"; valida como las demás líneas
 BitacoraPartida.marcar_carga()    escribe "@cargar"
-Reproductor(fabrica_motor, version_cripta, version_catalogo, recargar=None)
+Reproductor(fabrica_motor, version_cripta, version_catalogo, recargar=None, observador=None)
 ```
+
+### Observador y reproducción en memoria (pedido de Persona D, P-D02 de la spec 004)
+
+Cambio exacto en [specs/004-linea-de-tiempo/plan.md, «Enganches»](../../004-linea-de-tiempo/plan.md#enganches-y-requisitos-hacia-otras-personas).
+Tareas T123 a T125.
+
+```text
+Reproductor(fabrica_motor, version_cripta, version_catalogo, recargar=None, observador=None)
+Reproductor.reproducir_acciones(encabezado, acciones) -> motor   reproduce una lista en memoria
+Reproductor.reproducir(ruta) -> motor                            solo lee la bitácora y llama a reproducir_acciones
+```
+
+- `encabezado` y `acciones` son exactamente lo que devuelve `leer_bitacora`. Las comprobaciones de versión de cripta y
+  de catálogo, y la de la cripta del motor creado, pasan a `reproducir_acciones`: valen igual para una lista en
+  memoria.
+- Si hay `observador`, el `Reproductor` lo avisa en tres puntos, siempre en el orden en que ocurren:
+
+  | Momento | Llamada |
+  |---------|---------|
+  | Tras crear el motor con `fabrica_motor` y comprobar su cripta | `observador.al_crear_motor(motor)` |
+  | Tras cada `ejecutar_accion` que no devolvió `False` (incluido `retroceder`) | `observador.despues_de_accion(motor, nombre, argumento)` |
+  | Tras `motor = self._recargar(motor)` en un `@cargar`, ya comprobado que no es `None` | `observador.despues_de_carga(motor)`, con el motor **nuevo** |
+
+- Una acción rechazada sigue deteniendo la reproducción con error, sin avisar al observador. Un `@cargar` sin
+  `recargar`, o con `recargar` que devuelve `None`, da error sin llamar a `despues_de_carga`.
+- `recargar` cierra el motor anterior: el observador no debe guardar referencias a él.
+- **Sin observador, el comportamiento es idéntico al actual**: mismos resultados, mismos errores y mismos mensajes.
 
 `registrar` sigue rechazando nombres con espacios. Además debe rechazar nombres que empiecen con `#` o `@`, para que
 una acción nunca se confunda con otro tipo de línea.

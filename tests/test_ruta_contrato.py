@@ -169,5 +169,134 @@ class TestPrimerPasoPendiente(unittest.TestCase):
             primer_paso(grafo, grafo.sala(1), grafo.sala(2))
 
 
+# ───────────────────────── Capacidad 003, T010 ─────────────────────────
+# Modelo.BusquedaRuta se importa dentro de las clases nuevas (setUpClass) y con otro nombre: mientras no exista su
+# `primer_paso`, solo fallan estas clases, y no se pisa el `primer_paso` de Modelo.rutas_ir_a importado arriba.
+
+
+class TestContratoBusquedaRuta(ContratoRuta, unittest.TestCase):
+    """T010 (a). Los casos del contrato de 001 contra `Modelo.BusquedaRuta.primer_paso`, llamado directamente
+    (FR-011, FR-014; contracts/interfaz-ruta.md)."""
+
+    @classmethod
+    def setUpClass(cls):
+        from Modelo.BusquedaRuta import primer_paso as primer_paso_busqueda
+        cls.buscar = staticmethod(primer_paso_busqueda)
+
+
+# Grafo para `limite`: 1 -E(100)-> 2 -E(150)-> 3, y un atajo caro 1 -S(400)-> 3. d(1, 3) = 250 por 2.
+LINEA = ([1, 2, 3], [(1, "S", 3, 400), (1, "E", 2, 100), (2, "E", 3, 150)])
+
+# Los mismos casos de desempate que ContratoRuta (obligación 2, FR-024): (ids, aristas, origen, destino, esperado).
+DESEMPATES = (
+    ([1, 2, 3, 4], [(1, "E", 3, 100), (1, "S", 2, 100), (3, "S", 4, 100), (2, "E", 4, 100)], 1, 4, ("S", 2, 200)),
+    ([1, 2, 3, 4, 8, 9], [(1, "S", 3, 100), (3, "E", 4, 100), (4, "E", 9, 100),
+                          (1, "E", 2, 100), (2, "E", 8, 100), (8, "S", 9, 100)], 1, 9, ("E", 2, 300)),
+    ([1, 2], [(1, "E", 2, 100), (1, "N", 2, 100)], 1, 2, ("N", 2, 100)),
+    ([1, 2], [(1, "O", 2, 100), (1, "S", 2, 100)], 1, 2, ("S", 2, 100)),
+    ([1, 2], [(1, "O", 2, 100), (1, "E", 2, 100)], 1, 2, ("E", 2, 100)),
+    ([1, 2], [(1, "N", 2, 300), (1, "E", 2, 100)], 1, 2, ("E", 2, 100)),
+)
+
+# Casos para comparar con y sin espacio: (ids, aristas, origen, destino, limite).
+CASOS_ESPACIO = (
+    LINEA + (1, 3, None),
+    LINEA + (1, 3, 250),
+    LINEA + (1, 3, 249),
+    LINEA + (1, 3, 0),
+    LINEA + (2, 1, None),                      # sin ruta
+    DESEMPATES[0][:4] + (None,),
+    DESEMPATES[1][:4] + (300,),
+)
+
+
+def resumen(paso):
+    # (dirección, id de la vecina, costo_total), o None.
+    return None if paso is None else (paso.direccion, paso.destino.id, paso.costo_total)
+
+
+class TestLimiteBusquedaRuta(unittest.TestCase):
+    """T010 (b). Los parámetros opcionales `limite` y `espacio` de `Modelo.BusquedaRuta.primer_paso`
+    (contracts/interfaz-ruta.md, P-01 aceptada; research R2 y R3). No hereda de ContratoRuta."""
+
+    @classmethod
+    def setUpClass(cls):
+        from Modelo.BusquedaRuta import EspacioBusqueda, primer_paso as primer_paso_busqueda
+        cls.buscar = staticmethod(primer_paso_busqueda)
+        cls.EspacioBusqueda = EspacioBusqueda
+
+    def paso(self, grafo, origen, destino, **opciones):
+        return self.buscar(grafo, grafo.sala(origen), grafo.sala(destino), **opciones)
+
+    def test_fr012_d_igual_a_limite_devuelve_el_paso(self):
+        """FR-012: si el costo mínimo d es igual a `limite`, la ruta está dentro del rango y se devuelve el paso."""
+        grafo = GrafoPrueba(*LINEA)
+        self.assertEqual(resumen(self.paso(grafo, 1, 3, limite=250)), ("E", 2, 250))
+
+    def test_fr012_d_mayor_que_limite_devuelve_none(self):
+        """FR-012: si d > `limite`, el resultado es None, aunque exista una ruta y su primer paso sea barato."""
+        grafo = GrafoPrueba(*LINEA)
+        self.assertIsNone(self.paso(grafo, 1, 3, limite=249))
+        self.assertIsNone(self.paso(grafo, 1, 3, limite=100))
+
+    def test_fr012_limite_cero_con_origen_distinto_de_destino_devuelve_none(self):
+        """FR-012: con `limite=0` y origen distinto de destino no hay ruta posible, porque todo costo es ≥ 1."""
+        grafo = GrafoPrueba([1, 2], [(1, "E", 2, 1)])
+        self.assertIsNone(self.paso(grafo, 1, 2, limite=0))
+
+    def test_fr033_mismo_resultado_con_y_sin_espacio(self):
+        """FR-033: dar un `espacio` no cambia el resultado (dirección, destino y costo_total, o None) respecto de
+        dejar que la función cree uno por llamada."""
+        for ids, aristas, origen, destino, limite in CASOS_ESPACIO:
+            with self.subTest(origen=origen, destino=destino, limite=limite, ids=ids):
+                grafo = GrafoPrueba(ids, aristas)
+                sin_espacio = self.paso(grafo, origen, destino, limite=limite)
+                espacio = self.EspacioBusqueda(grafo.cantidad_salas)
+                con_espacio = self.paso(grafo, origen, destino, limite=limite, espacio=espacio)
+                self.assertEqual(resumen(con_espacio), resumen(sin_espacio))
+
+    def test_fr033_llamadas_seguidas_con_el_mismo_espacio_no_se_contaminan(self):
+        """FR-033: una segunda llamada con el mismo `espacio` da lo mismo que con un espacio nuevo, aunque la primera
+        haya dejado distancias en salas que la segunda no puede alcanzar o no debe ver por su `limite`."""
+        # 1 -E(100)-> 2 -E(100)-> 4;  3 -S(500)-> 4;  3 -E(100)-> 5 -S(100)-> 4.
+        # La primera llamada (1 → 4) deja dist[2] = 100 y dist[4] = 200 con primer paso hacia 2.
+        grafo = GrafoPrueba([1, 2, 3, 4, 5], [(1, "E", 2, 100), (2, "E", 4, 100), (3, "S", 4, 500),
+                                              (3, "E", 5, 100), (5, "S", 4, 100)])
+        segundas = (
+            (3, 4, 300, ("E", 5, 200)),   # 4 vale 200 por 5; lo viejo diría «por 2», que no es vecina de 3
+            (3, 2, None, None),           # 2 no es alcanzable desde 3, aunque la primera llamada lo fijó
+            (3, 4, 199, None),            # 4 quedó a 200 en la primera llamada, pero aquí supera el límite
+            (5, 4, None, ("S", 4, 100)),
+        )
+        for origen, destino, limite, esperado in segundas:
+            with self.subTest(origen=origen, destino=destino, limite=limite):
+                compartido = self.EspacioBusqueda(grafo.cantidad_salas)
+                self.assertEqual(resumen(self.paso(grafo, 1, 4, espacio=compartido)), ("E", 2, 200))
+
+                reutilizado = self.paso(grafo, origen, destino, limite=limite, espacio=compartido)
+                nuevo = self.paso(grafo, origen, destino, limite=limite,
+                                  espacio=self.EspacioBusqueda(grafo.cantidad_salas))
+                self.assertEqual(resumen(reutilizado), resumen(nuevo))
+                self.assertEqual(resumen(reutilizado), esperado)
+
+    def test_fr014_tabla_de_desempates_con_limite_grande(self):
+        """FR-014: con un `limite` mayor que cualquier ruta, los desempates del contrato (menor id de la primera
+        vecina, primer paso y no último, N, S, E, O entre salidas a la misma vecina, la más barata) no cambian, en
+        cualquier orden de `aristas`."""
+        for ids, aristas, origen, destino, esperado in DESEMPATES:
+            for orden in (aristas, invertido(aristas)):
+                with self.subTest(ids=ids, aristas=orden):
+                    grafo = GrafoPrueba(ids, orden)
+                    self.assertEqual(resumen(self.paso(grafo, origen, destino, limite=10 ** 9)), esperado)
+
+    def test_fr012_limite_none_equivale_a_no_pasarlo(self):
+        """FR-012 (P-01): `limite=None` no pone cota; da lo mismo que llamar sin `limite`, con ruta y sin ruta."""
+        for ids, aristas, origen, destino, _ in CASOS_ESPACIO + tuple(caso[:4] + (None,) for caso in DESEMPATES):
+            with self.subTest(origen=origen, destino=destino, ids=ids):
+                grafo = GrafoPrueba(ids, aristas)
+                self.assertEqual(resumen(self.paso(grafo, origen, destino, limite=None)),
+                                 resumen(self.paso(grafo, origen, destino)))
+
+
 if __name__ == "__main__":
     unittest.main()

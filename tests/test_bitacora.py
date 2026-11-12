@@ -334,5 +334,200 @@ class PruebasReproductorConCarga(unittest.TestCase):
         self.assertEqual(motor.acciones, [("mover", "N")])
 
 
+class ObservadorFalso:
+    """Anota cada aviso del Reproductor con el motor que recibe, en el orden en que llegan."""
+
+    def __init__(self):
+        self.llamadas = []
+
+    def al_crear_motor(self, motor):
+        self.llamadas.append(("al_crear_motor", motor))
+
+    def despues_de_accion(self, motor, nombre, argumento):
+        self.llamadas.append(("despues_de_accion", motor, nombre, argumento))
+
+    def despues_de_carga(self, motor):
+        self.llamadas.append(("despues_de_carga", motor))
+
+    def eventos(self):
+        return [llamada[0] for llamada in self.llamadas]
+
+
+class MotorQueRechazaLaSegunda(MotorFalso):
+    def ejecutar_accion(self, nombre, argumento):
+        self.acciones.append((nombre, argumento))
+        return len(self.acciones) < 2
+
+
+class PruebasObservadorDelReproductor(unittest.TestCase):
+    """T123: observador del Reproductor y reproducir_acciones (P-D02 de la spec 004, FR-017, PR-12;
+    contracts/formato-bitacora.md, «Observador y reproducción en memoria»)."""
+
+    def setUp(self):
+        self.carpeta = tempfile.TemporaryDirectory()
+        self.ruta = os.path.join(self.carpeta.name, "partida.log")
+        self.creados = []
+        self.recargados = []
+
+    def tearDown(self):
+        self.carpeta.cleanup()
+
+    def escribir(self, lineas, version_catalogo="cat-2026-08-01"):
+        # lineas: ("accion", argumento) o "@cargar"
+        with BitacoraPartida(self.ruta, "cripta-01", "a3f91c", version_catalogo, 12345) as bitacora:
+            for linea in lineas:
+                if linea == "@cargar":
+                    bitacora.marcar_carga()
+                else:
+                    bitacora.registrar(*linea)
+
+    def fabrica(self, clase=MotorFalso):
+        def crear(cripta_id, semilla):
+            motor = clase(cripta_id, semilla)
+            self.creados.append(motor)
+            return motor
+        return crear
+
+    def recargar(self, motor):
+        nuevo = MotorRecargado(motor.cripta_id, motor.semilla)
+        self.recargados.append(nuevo)
+        return nuevo
+
+    def reproductor(self, observador, clase=MotorFalso, recargar="por_defecto", version_catalogo="cat-2026-08-01"):
+        if recargar == "por_defecto":
+            recargar = self.recargar
+        try:
+            return Reproductor(self.fabrica(clase), "a3f91c", version_catalogo, recargar=recargar,
+                               observador=observador)
+        except TypeError as error:
+            self.fail(f"Reproductor no acepta observador=: {error}")
+
+    def assertTieneReproducirAcciones(self):
+        self.assertTrue(hasattr(Reproductor, "reproducir_acciones"), "falta Reproductor.reproducir_acciones")
+
+    def test_pr12_sin_cargar_avisa_crear_y_cada_accion_en_orden(self):
+        self.escribir([("mover", "N"), ("recoger", "llave"), ("retroceder", "")])
+        observador = ObservadorFalso()
+        final = self.reproductor(observador).reproducir(self.ruta)
+
+        motor = self.creados[0]
+        self.assertIs(final, motor)
+        self.assertEqual(observador.llamadas, [
+            ("al_crear_motor", motor),
+            ("despues_de_accion", motor, "mover", "N"),
+            ("despues_de_accion", motor, "recoger", "llave"),
+            ("despues_de_accion", motor, "retroceder", ""),
+        ])
+
+    def test_pr12_con_cargar_avisa_la_carga_con_el_motor_nuevo(self):
+        self.escribir([("mover", "N"), "@cargar", ("esperar", ""), "@cargar", ("mover", "S")])
+        observador = ObservadorFalso()
+        final = self.reproductor(observador).reproducir(self.ruta)
+
+        original = self.creados[0]
+        primero, segundo = self.recargados
+        self.assertIs(final, segundo)
+        self.assertEqual(observador.llamadas, [
+            ("al_crear_motor", original),
+            ("despues_de_accion", original, "mover", "N"),
+            ("despues_de_carga", primero),
+            ("despues_de_accion", primero, "esperar", ""),
+            ("despues_de_carga", segundo),
+            ("despues_de_accion", segundo, "mover", "S"),
+        ])
+
+    def test_pr12_accion_rechazada_da_el_error_de_hoy_y_no_se_avisa(self):
+        self.escribir([("mover", "N"), ("mover", "E"), ("esperar", "")])
+        observador = ObservadorFalso()
+        with self.assertRaisesRegex(ValueError, "motor rechazó la acción 'mover' con argumento 'E'"):
+            self.reproductor(observador, clase=MotorQueRechazaLaSegunda).reproducir(self.ruta)
+        self.assertEqual(observador.eventos(), ["al_crear_motor", "despues_de_accion"])
+        self.assertEqual(observador.llamadas[1][2:], ("mover", "N"))
+
+    def test_pr12_cargar_sin_recargar_da_error_sin_avisar_la_carga(self):
+        self.escribir([("mover", "N"), "@cargar", ("esperar", "")])
+        observador = ObservadorFalso()
+        with self.assertRaisesRegex(ValueError, "@cargar"):
+            self.reproductor(observador, recargar=None).reproducir(self.ruta)
+        self.assertEqual(observador.eventos(), ["al_crear_motor", "despues_de_accion"])
+
+    def test_pr12_recargar_que_devuelve_none_da_error_sin_avisar_la_carga(self):
+        self.escribir([("mover", "N"), "@cargar", ("esperar", "")])
+        observador = ObservadorFalso()
+        with self.assertRaisesRegex(ValueError, "no devolvió un motor"):
+            self.reproductor(observador, recargar=lambda motor: None).reproducir(self.ruta)
+        self.assertEqual(observador.eventos(), ["al_crear_motor", "despues_de_accion"])
+
+    def test_pr12_version_incompatible_no_crea_motor_ni_avisa(self):
+        self.escribir([("mover", "N")], version_catalogo="cat-otra")
+        observador = ObservadorFalso()
+        with self.assertRaises(VersionIncompatible):
+            self.reproductor(observador).reproducir(self.ruta)
+        self.assertEqual(self.creados, [])
+        self.assertEqual(observador.llamadas, [])
+
+    def test_pr12_motor_de_otra_cripta_no_se_avisa(self):
+        self.escribir([("mover", "N")])
+        observador = ObservadorFalso()
+
+        class MotorDeOtraCripta(MotorFalso):
+            def __init__(self, cripta_id, semilla):
+                super().__init__("otra-cripta", semilla)
+
+        with self.assertRaises(VersionIncompatible):
+            self.reproductor(observador, clase=MotorDeOtraCripta).reproducir(self.ruta)
+        self.assertEqual(observador.llamadas, [])
+
+    def test_pr12_reproducir_acciones_en_memoria_igual_que_desde_el_archivo(self):
+        self.assertTieneReproducirAcciones()
+        self.escribir([("mover", "N"), "@cargar", ("esperar", "")])
+        encabezado, acciones = leer_bitacora(self.ruta)
+
+        desde_archivo, en_memoria = ObservadorFalso(), ObservadorFalso()
+        final_archivo = self.reproductor(desde_archivo).reproducir(self.ruta)
+        final_memoria = self.reproductor(en_memoria).reproducir_acciones(encabezado, list(acciones))
+
+        self.assertEqual(type(final_memoria), type(final_archivo))
+        self.assertEqual(final_memoria.acciones, final_archivo.acciones)
+        self.assertEqual(self.creados[1].acciones, self.creados[0].acciones)
+        quitar_motor = lambda llamadas: [(ll[0],) + ll[2:] for ll in llamadas]
+        self.assertEqual(quitar_motor(en_memoria.llamadas), quitar_motor(desde_archivo.llamadas))
+
+    def test_pr12_reproducir_acciones_comprueba_las_versiones(self):
+        self.assertTieneReproducirAcciones()
+        self.escribir([("mover", "N")])
+        encabezado, acciones = leer_bitacora(self.ruta)
+        observador = ObservadorFalso()
+        with self.assertRaises(VersionIncompatible):
+            self.reproductor(observador, version_catalogo="cat-otra").reproducir_acciones(encabezado, acciones)
+        self.assertEqual(self.creados, [])
+        self.assertEqual(observador.llamadas, [])
+
+    def test_pr12_reproducir_solo_lee_y_llama_a_reproducir_acciones(self):
+        self.assertTieneReproducirAcciones()
+        from unittest import mock
+        self.escribir([("mover", "N")])
+        reproductor = self.reproductor(None)
+        with mock.patch.object(reproductor, "reproducir_acciones", return_value="motor") as llamada:
+            self.assertEqual(reproductor.reproducir(self.ruta), "motor")
+        llamada.assert_called_once()
+        (encabezado, acciones), _ = llamada.call_args
+        esperado_encabezado, esperado_acciones = leer_bitacora(self.ruta)
+        self.assertEqual(encabezado.cripta_id, esperado_encabezado.cripta_id)
+        self.assertEqual(list(acciones), list(esperado_acciones))
+        self.assertEqual(self.creados, [])  # el bucle está solo en reproducir_acciones
+
+    def test_pr12_sin_observador_igual_que_hoy(self):
+        self.assertTieneReproducirAcciones()
+        self.escribir([("mover", "N"), "@cargar", ("esperar", "")])
+        encabezado, acciones = leer_bitacora(self.ruta)
+        con_none = self.reproductor(None).reproducir(self.ruta)
+        sin_parametro = Reproductor(self.fabrica(), "a3f91c", "cat-2026-08-01", recargar=self.recargar)
+        en_memoria = sin_parametro.reproducir_acciones(encabezado, acciones)
+        self.assertEqual(con_none.acciones, [("esperar", "")])
+        self.assertEqual(en_memoria.acciones, con_none.acciones)
+        self.assertEqual(self.creados[0].acciones, [("mover", "N")])
+
+
 if __name__ == "__main__":
     unittest.main()

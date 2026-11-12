@@ -30,7 +30,7 @@ la versión anterior está en HL6 y HL8.
 | HL3 | **Compartir el esqueleto entre la partida y un clon contamina el presente**: el clon cambió `rastro` en las salas de la partida real. Atributos que cuelgan hoy del esqueleto: `Sala.rastro` (mutable, **puede no existir** en salas nunca visitadas: `actualizar_rastro` lo crea y su deshacer lo borra), `Salida.cerrada` (mutable); y fijados al crear la partida y sin cambios después: `Sala._ordinal`, `Salida._ordinal`, `_origen`, `_direccion` (de `Conocimiento`), `Salida._destino` (caché del motor) y `Salida.cerrada_en_esqueleto` (de `DTOS/Salida.py`, ver [interfaz-linea.md](contracts/interfaz-linea.md#qué-le-pide-la-línea-a-los-demás)). | Exploración previa local, **HIPÓTESIS**: 404 de 404 instantes con diferencia solo en `rastros`; con ese campo excluido, 0 diferencias. Código de hoy: `Modelo/Conocimiento.py:74-100`, `MotorSimulacion.actualizar_rastro`, `DTOS/Salida.py`. | Cada clon recibe un **esqueleto propio**, rehecho con una pasada iterativa desde una foto de los campos mutables (`Sala.rastro` con su ausencia, `Salida.cerrada`); `copy.copy` conserva los fijados al crear y `materializar` re-liga `_origen` y `_destino` por ordinal (R2). |
 | HL4 | **(b)** `Historial`: máximo `MAX_INTERVALOS = 5`; cada `Cambio` es una función `deshacer` más texto; `deshacer_ultimo()` **saca** el intervalo; `to_bytes()` guarda `0` y `from_bytes()` devuelve un historial vacío. Los cierres capturan objetos vivos (`actor`, `salida`, `inventario`). `usar_pergamino` nunca llama a `abrir_intervalo`, así que cada uso revierte **una** acción (hasta 5 usos seguidos). | `Modelo/retroceso.py`; README línea 170 («deshace la última acción (máximo 5 hacia atrás)»); P1 §4.6 puntos 3 y 5. | Invertir hacia atrás con el `Historial` no sirve (R1). La spec, US2.5, habla de «un pergamino que revirtió las últimas 5»: contradice el código y a US2.1 (ver [Cambios propuestos](plan.md#cambios-propuestos-a-la-spec)). |
 | HL5 | **(c)** El `CRPT` actual (versión 3) **no** es una copia completa. Guarda, por sala: rastro, enemigos **vivos** (id, tipo, vida, instante), objetos, trampas y puertas; del jugador: sala, vida, acciones, derrotados, llave usada, inventario; y, desde T074 a T077, el **bloque de conocimiento** (exploradas y recuerdos de puertas) y la tabla de **puertas reales** (las cerradas hoy, las cerradas en el esqueleto, las de llave y las de cierre automático). **No** guarda el azar (se resiembra), la agenda (se reconstruye), `secuencia`, efectos (veneno, velocidad, antorcha), cierres automáticos pendientes, `mensajes`, enemigos muertos ni el historial. La carga además cambia el estado a propósito (`cargar_partida` fija `reloj` y `tiempo_siguiente`, y activa los enemigos de la sala). | `Persistencia/ConversorPartida.py` (comentario inicial, `registros_desde_motor`, `registro_jugador_desde_motor`, `registro_conocimiento_desde_motor`, `_aplicar_registro`); `Gestor/PreparadorPartida.py:cargar_partida`. | Un punto de control no puede reutilizar esos bloques (R2, R8): siguen siendo con pérdida. |
-| HL6 | **(d)** Estado de lo que la línea necesita de la capacidad 001, ya en `main`. **Hechas**: T076 (`VERSION_FORMATO = 3`; el `CRPT` ya trae los **tres campos de largo** `[largo jugador][largo conocimiento][largo línea de tiempo]`: la línea se escribe con largo `0` y al leer solo se salta con su largo; `_inicio_salas` y `_validar_encabezado` ya los usan), T084 (`VERSION_BITACORA = 2`, `@cargar`), T092, T093 (`Reproductor(fabrica_motor, version_cripta, version_catalogo, recargar=None)`: al llegar a `@cargar` llama a `recargar(motor)`, que **recibe el motor actual y devuelve el nuevo**), T094 (`guardar_motor(motor, ruta, gestor)`, sin vista; la recarga del replay vive en `main.ejecutar_replay`: guarda en un temporal, cierra el restaurador anterior y llama a `cargar_partida`), T096 (`ejecutar_replay(ruta, gestor)` sin vista) y T119 (`Conocimiento.copiar()`, serialización y lotes `aplicar`/`invertir`: está implementado; **esta capacidad no lo usa y no debe retirarse**). **Pendientes**: T113 (README) y T117 (revisión por la persona D). **Falta, y es de esta capacidad**: el parámetro `linea` en `guardar_partida` y `guardar_motor`; `leer_linea()` en `LectorPartida` (que además debe guardar `_inicio_linea` y `_largo_linea`, hoy locales de `_leer_largos`); el `observador` y un `reproducir_acciones` en `Reproductor` (hoy `reproducir(ruta)` solo lee una bitácora de disco, no una lista en memoria); `--hasta` y `--checkpoint-cada` en `main.py` (que además hoy no tiene `--verificar` ni `--forzar`, de la capacidad 002). | `Persistencia/ArchivoPartida.py`, `Persistencia/FormatoBinario.py`, `Bitacora/Reproductor.py`, `Controlador/ControladorPartida.py`, `Gestor/PreparadorPartida.py`, `main.py`, `specs/001-niebla-mapa-ir-a/tasks.md`. | La capacidad se escribe contra el código real de 001. Lo que falta de otras personas está en [plan.md](plan.md#enganches-y-requisitos-hacia-otras-personas). |
+| HL6 | **(d)** Estado de lo que la línea necesita de la capacidad 001, ya en `main`. **Hechas**: T076 (`VERSION_FORMATO = 3`; el `CRPT` ya trae los **tres campos de largo** `[largo jugador][largo conocimiento][largo línea de tiempo]`: la línea se escribe con largo `0` y al leer solo se salta con su largo; `_inicio_salas` y `_validar_encabezado` ya los usan), T084 (`VERSION_BITACORA = 2`, `@cargar`), T092, T093 (`Reproductor(fabrica_motor, version_cripta, version_catalogo, recargar=None)`: al llegar a `@cargar` llama a `recargar(motor)`, que **recibe el motor actual y devuelve el nuevo**), T094 (`guardar_motor(motor, ruta, gestor)`, sin vista; la recarga del replay vive en `main.ejecutar_replay`: guarda en un temporal, cierra el restaurador anterior y llama a `cargar_partida`), T096 (`ejecutar_replay(ruta, gestor)` sin vista) y T119 (`Conocimiento.copiar()`, serialización y lotes `aplicar`/`invertir`: está implementado; **esta capacidad no lo usa y no debe retirarse**). **Pendientes**: T113 (README) y T117 (revisión por la persona D). **Falta, y es de esta capacidad**: el parámetro `linea` en `guardar_partida` y `guardar_motor`; `leer_linea()` en `LectorPartida` (que además debe guardar `_inicio_linea` y `_largo_linea`, hoy locales de `_leer_largos`); (el `observador` y `reproducir_acciones` del `Reproductor` **ya están en `main`**, hechos por C en `b1b57d7`, 001-T123/T124: firma `Reproductor(fabrica_motor, version_cripta, version_catalogo, recargar=None, observador=None)`, `reproducir_acciones(encabezado, acciones) -> motor`, `reproducir(ruta) -> motor`, que solo lee la bitácora y llama a la anterior); `--hasta` y `--checkpoint-cada` en `main.py` (que además hoy no tiene `--verificar` ni `--forzar`, de la capacidad 002). | `Persistencia/ArchivoPartida.py`, `Persistencia/FormatoBinario.py`, `Bitacora/Reproductor.py`, `Controlador/ControladorPartida.py`, `Gestor/PreparadorPartida.py`, `main.py`, `specs/001-niebla-mapa-ir-a/tasks.md`. | La capacidad se escribe contra el código real de 001. Lo que falta de otras personas está en [plan.md](plan.md#enganches-y-requisitos-hacia-otras-personas). |
 | HL7 | `cargar_partida` fija `motor.reloj = encabezado.reloj` y `jugador.tiempo_siguiente` a mano. En un punto de decisión la agenda **no** contiene el evento del jugador (ya se sacó) y `jugador.evento_actual` apunta a un evento viejo tras cargar. | `Gestor/PreparadorPartida.py:cargar_partida`; `MotorSimulacion.avanzar_hasta_jugador`. | El sello de cada decisión se toma de `motor.reloj` y `motor.secuencia`, no de `jugador.evento_actual` (R3). |
 | HL8 | **(e)** El `ControladorPartida` anota la bitácora **solo** desde `_accion`, y solo después de que `motor.ejecutar_accion` devuelve `True`. Registra las ACCIONES `mover, abrir, atacar, recoger, soltar, equipar, usar, esperar, retroceder` (normalizando dirección y vaciando el argumento de `esperar` y `retroceder`). No anota `ayuda, inventario, mapa, mensajes, red, puntajes, guardar`. `cargar` no anota una acción: `_continuar_bitacora` (T092) copia la bitácora del guardado y le agrega la directiva `@cargar` con `marcar_carga()`, **solo si hay bitácora** y corresponde a la partida; el guion de la línea lleva su `CARGA` aunque no haya bitácora. El comentario `# ir a <sala>` va a la bitácora antes del primer `mover` y no entra al guion. Cada paso de `ir a` pasa por `_accion`, así que es una acción registrada. Si no hay bitácora (`self.bitacora is None`) la acción igual se ejecuta. | `Controlador/ControladorPartida.py:_accion, _ir, ejecutar`. | Punto único de enganche: justo después de `bitacora.registrar` (R3). `#k` puede apuntar a cada paso de un viaje. |
 | HL9 | **Los pergaminos quedan fuera de la reversión** (P1 §2.11, §4.6 punto 3): `recoger_reversible` y `soltar_reversible` no registran `deshacer` si la clase es `pergamino_retroceso`, y `usar_pergamino` consume el pergamino sin registrarlo. Tampoco se deshace la **carga del contenido de una sala** (`cargar_contenido_salas` no registra nada). | `Modelo/retroceso.py`; `MotorSimulacion.cargar_contenido_salas`. | Rehacer la historia vigente con solo las acciones vigentes **no** reproduce el estado real tras un retroceso (ejemplo en R5). Obliga a un punto de control tomado del estado real después de cada retroceso, y a guardar en el archivo el guion completo (con los retrocesos) y no solo la historia vigente (R5, R8). |
@@ -152,6 +152,12 @@ guion (todo lo aceptado)          vigente (solo las acciones que cuentan)
 - **Sello = (`motor.reloj`, `motor.secuencia`) en el punto de decisión previo a la acción** (HL7). El reloj es estrictamente
   creciente (cada acción cuesta ≥ 1), así que ubica `t`. La secuencia no se usa para ubicar: sirve para **verificar** la
   re-simulación y detectar un motor no determinista.
+- **De dónde sale el sello previo (regla de registro)**: `despues_de_accion` llega con el motor **ya avanzado** (el `Reproductor`
+  y `_accion` avisan después de `ejecutar_accion`), así que el sello `(reloj, secuencia)` previo de la acción *k* **se toma al
+  terminar el aviso anterior**: el que dejó `al_crear_motor` (para la acción 1), `despues_de_accion` de la acción *k − 1*,
+  `registrar_retroceso` (tras un `retroceder`) o `despues_de_carga` (tras un `@cargar`, con el motor nuevo). La línea guarda ese
+  sello al cerrar cada aviso y lo usa como `vig_reloj`/`vig_sec` de la acción siguiente; no puede leerlo del motor al recibir
+  la acción *k*.
 - **Relación con la bitácora**: el guion lleva los mismos comandos, en el mismo orden y con el mismo texto que las líneas de
   acción de la bitácora, más los sellos. Se anotan en el mismo lugar (`_accion`), así que no se desfasan. El guion existe aunque
   no haya bitácora (la bitácora es opcional, el aviso de `_continuar_bitacora`), porque FR-022 pide un archivo de partida
@@ -439,9 +445,9 @@ spec 004.
 ## R14. Enganches con otras personas
 
 Ver la sección [Enganches y requisitos hacia otras personas](plan.md#enganches-y-requisitos-hacia-otras-personas) del plan. Resumen:
-`Reproductor` necesita un `observador` opcional y una entrada en memoria [PERSONAS: C]; el campo `[largo línea]` ya existe y PR-10 solo
+el `Reproductor` ya tiene `observador` opcional y `reproducir_acciones` (hecho por C, `b1b57d7`) [PERSONAS: C]; el campo `[largo línea]` ya existe y PR-10 solo
 llena el bloque [PERSONAS: C]; T119 (copiar y serializar `Conocimiento`, lotes aplicar/invertir) está implementado: esta capacidad no
-lo usa y no debe retirarse [PERSONAS: C]; `--bitacora` igual a `<guardado>.log` se rechaza en el origen [PERSONAS: C]; A debe mantener
+lo usa y no debe retirarse [PERSONAS: C]; `--bitacora` igual a `<guardado>.log` ya se rechaza en el origen (hecho por C, `b6f9f52`) [PERSONAS: C]; A debe mantener
 todo su estado colgando del motor, declarar campos mutables nuevos del esqueleto y excluir `Modelo/CopiaEstado.py` de la prueba de T015
 [PERSONAS: A]; M10 (P1 §4.6) y la agenda (P1 §4.1, no es de esta capacidad) [PERSONAS: grupo].
 
@@ -469,6 +475,97 @@ repite y se toma la mediana, el p95 y el máximo.
 | M10 | **Repetición de P1 §4.6 con la carga nueva** (§5.6, §6.3): el `bench_retroceso` de `tests/bench_personaC.py` (5 intervalos × 50 cambios; registrar y deshacer) **antes** (solo `Historial`) y **después** (con la `LineaTiempo` registrando cada acción y recortando en cada `retroceder`); además un `retroceder` real con la línea en partidas de 500, 5 000 y 50 000 acciones | misma carga de P1 §4.6 más partidas de 5 000 acciones, 3 semillas; mediana, p95 y máximo | Tabla **antes y después** para `DECISIONES.md`. Si el `Historial` sigue siendo adecuado, se muestra con datos; si no, se cambia y se documenta (§5.6). La agenda (P1 §4.1) no se mide aquí [PERSONAS: grupo] |
 
 **Alternativa «sin puntos de control»** = un único punto en la acción 0 (K = n): es la fila de comparación de M1, M2 y M5.
+
+---
+
+## T003: revisión de deepcopy y memo (2026-11-12)
+
+**Método.** Lectura del código de `main` (`eb92322`) y **medición real** de `copy.deepcopy(motor, memo)` con el `memo` de T015
+(`gestor_datos → None`, `restaurador → None`, `historial → Historial()` nuevo, cada `Sala` y `Salida` → ella misma). Intérpretes:
+Python 3.14.2 y 3.12.10 (Windows 10, límite de recursión 1000). Motor real armado con `crear_paquete_niebla` (paquete offline,
+`GestorDatos` y `ControladorPartida` reales); cripta en cuadrícula de N = 20, 200 y 2 000 salas (62, 742 y 7 820 salidas), con
+guardianes y trampas; **300 acciones** deterministas (`random.Random(5)`: atacar, esperar, mover; vida alta; 300 aceptadas, 0
+rechazadas); **mediana de 20 repeticiones** (`perf_counter`); memoria con `tracemalloc`. Fuente: `informe_t003_deepcopy.md` e
+`informe_estado_004.md` (locales, no versionados; los scripts de medición no se conservaron). Estas cifras **reemplazan a las
+anteriores solo en lo que miden**; M3 (T103) las repite en `tests/bench_linea.py`.
+
+### Campos de `Sala` y `Salida` (leídos del código y comprobados)
+
+| Objeto | Campo | ¿Mutable en la partida? | Quién lo escribe | Tratamiento |
+|--------|-------|-------------------------|------------------|-------------|
+| `Sala` | `rastro` | **Sí** (cada acción, reversible) | `MotorSimulacion` (`actualizar_rastro`), `ConversorPartida`, `PreparadorPartida` | `CAMPOS_MUTABLES_SALA`; va en `foto_rastros`. **Una sala que el jugador nunca pisó no tiene el atributo** (medido: `AttributeError: 'SalaEsqueleto' object has no attribute 'rastro'`) |
+| `Sala` | `_ordinal` | No (una vez, al armar `Conocimiento`) | `Conocimiento.__init__` | `copy.copy` lo conserva |
+| `Salida` | `cerrada` | **Sí** (abrir, cierre automático, restaurar sala; reversible) | `MotorSimulacion`, `ConversorPartida` | `CAMPOS_MUTABLES_SALIDA`; va en `foto_cerradas` |
+| `Salida` | `cerrada_en_esqueleto` | No (solo `__init__`) | `DTOS/Salida.py` | `copy.copy` lo conserva |
+| `Salida` | `costo` | No (solo `__init__`; campo nuevo de 003) | `DTOS/Salida.py` | `copy.copy` lo conserva |
+| `Salida` | `_ordinal`, `_direccion`, `_origen` | No (una vez, al armar `Conocimiento`) | `Conocimiento.__init__` | `copy.copy` conserva `_ordinal` y `_direccion`; `_origen` se re-liga por ordinal |
+| `Salida` | `_destino` | No (caché que solo se llena) | `MotorSimulacion._destino`; `Conocimiento.__init__` la resuelve para todas | se re-liga por ordinal |
+
+El inventario no es un atributo del motor: es `motor.jugador.inventario`.
+
+### Pruebas 1 a 9 (resultado medido)
+
+| # | Qué se probó | Resultado medido |
+|---|--------------|------------------|
+| 1 | `deepcopy(motor, memo)` sin `RecursionError` ni `TypeError`; tiempo y memoria | **Termina bien** en N = 20, 200 y 2 000, en ambos intérpretes. Tiempo mediano (incluye armar el `memo`): **0.7 a 1.4 ms** (N = 20), **2.7 a 4.4 ms** (N = 200), **17.8 a 30.0 ms** (N = 2 000); varía hasta 1.9× entre corridas. Memoria neta del clon: **20, 62 y 407 KiB** (3.14.2; 23, 66 y 412 con 3.12.10); pico con el `memo`: **53, 226 y 1 429 KiB**. El `memo` es entre el 2 % y el 12 % del tiempo. **Frente a las cifras de E2/E4 (1.1 ms y 26 KiB; 2.2 ms y 43 KiB; 11.7 ms y 285 KiB, otro método): hasta 2.6× más lento y +43 % de memoria para N ≥ 200** |
+| 2 | 50 acciones en el clon; comparar el vivo antes y después (`obtener_estado_resumen()` ampliado con `conocimiento`, mensajes, rastros, `vars` de cada `Sala` y `Salida`, agenda e historial) | En el vivo **solo cambió `Sala.rastro`** (8, 12 y 12 salas con un clon con gestor propio; 8, 4 y 4 con el clon sin gestor, que juega menos). Nada más cambió: reloj, secuencia, jugador, enemigos, eventos, puertas, acciones, azar, conocimiento, mensajes, `cerrada`, atributos de `Salida`, agenda e historial. Estas acciones no abren puertas |
+| 3 | `retroceder` en el clon (con `Historial()` vacío) | **Se rechaza** (`puede_deshacer()` es `False`), el vivo y el clon quedan intactos y el pergamino sigue en el clon. Control: en un motor real, `retroceder` devuelve `True` y `acciones_jugador` baja de 300 a 299 |
+| 4 | Inventario grande (`NodoInventario` con lista doble) | 50 y 100 nodos: OK. 200 y 400: `RecursionError: maximum recursion depth exceeded`. **Primer tamaño que falla: 165 nodos** (3.14.2) y 164 (3.12.10), con límite 1000, llamando a pocos marcos de profundidad (dentro del juego el umbral es algo menor). `inventario_max` es 5 en los paquetes de prueba y 10 por defecto en `Jugador`; **el de las criptas reales no se midió** |
+| 5 | `CERRAR_PUERTA` pendiente (puerta con `cierre_automatico = 500`, abierta en el vivo) y 7 `esperar` en el clon hasta el reloj 750 | El evento del clon apunta a la **`Salida` viva**; al ejecutarlo **`Salida.cerrada` del vivo pasó de `False` a `True`** (N = 20 y 200). El evento del vivo sigue pendiente (t = 500, sin cancelar). Leído del código: al llegar a su tiempo, el vivo verá la puerta ya cerrada y no registrará el cierre ni el aviso al conocimiento |
+| 6 | `eco = True` | **Se copia**: `clon.eco` es `True` y `clon._mensaje(...)` imprime |
+| 7 | `azar` | El `azar` del vivo no cambia con lo que haga el clon; el del clon es otro objeto con el mismo estado al copiar. Las 50 acciones usadas **no consumen azar**, así que la independencia se midió solo con sorteos directos (`clon.azar.random()`) |
+| 8 | `_indice_origen is salas` | **Se conserva** en el clon, antes y después de 50 acciones; `_indice_salas` sigue siendo la misma lista; las `Sala` del clon son las del vivo |
+| 9 | Oráculo: copiar en la acción 250, el vivo sigue 50 acciones y el clon las rehace | **Con un `GestorDatos` iniciado** (`obtener_detalles` e `iniciar_cripta`): 50/50 iguales y `obtener_estado_resumen()` idéntico en N = 20, 200 y 2 000. **Con `gestor_datos = None`**: 47/50, 46/50 y 44/50 iguales y el resumen difiere (`reloj`, `secuencia`, `jugador`, `acciones`, `conocimiento`) |
+
+**El clon sin gestor no puede jugar** (medido, prueba 2 y 9): entrar en una sala con trampa lanza
+`RuntimeError: No hay gestor de datos para consultar la ficha de la trampa.` (`MotorSimulacion.py:122`, `activar_trampas_de_sala`), y
+entrar en una sala sin contenido cargado se rechaza con `El contenido de esa sala aún no está disponible.` (11 `mover`
+rechazados con N = 200 y 2 000; el vivo tenía cargado el contenido de 32 de 200 salas).
+
+### Controles: qué pasa si el `memo` omite algo (N = 200 y 2 000)
+
+| Se omite del `memo` | Resultado medido (mensaje real) |
+|---------------------|---------------------------------|
+| `Sala` y `Salida` | `RecursionError: maximum recursion depth exceeded` |
+| `restaurador` (partida cargada, archivo abierto) | `TypeError: cannot pickle 'BufferedReader' instances`; con `restaurador → None` en el `memo` la copia termina y `clon.restaurador` queda en `None` |
+| `historial` | `retroceder` del clon **devuelve `True` y modifica el vivo** (sala del jugador 98 → 97; cambian también reloj, secuencia, acciones, conocimiento y agenda): las funciones de `deshacer` siguen atadas al motor vivo |
+| `gestor_datos` | La copia termina (4 a 19 ms), pero **copia todo el `GestorDatos` y su fuente** (con la fuente offline; con HTTP no se probó). El gestor copiado apunta al clon |
+
+Otra comprobación (N = 20): `clon.conocimiento._destino_de.__self__ is clon` es `True` (el método enlazado se re-liga) y el
+`Conocimiento` del clon es otro objeto.
+
+### Riesgos de T015 y T016, con lo medido
+
+| # | Riesgo | Estado | Tarea que lo prueba o decisión |
+|---|--------|--------|--------------------------------|
+| 1 | Los cierres de `Historial` siguen atados al vivo si el `memo` no lo sustituye | Medido (control) | El `memo` lleva `id(motor.historial) → Historial()`. Prueba: T012 (5) |
+| 2 | `restaurador` abierto: `TypeError` si no se sustituye; con `None` el clon no lee las salas pendientes del archivo | Medido | `restaurador → None` en el `memo`; `abrir_copia` en T016. Prueba: T012 (5) |
+| 3 | `RecursionError` con un inventario largo (desde 165 nodos) | Medido | T015 y T016 copian el inventario con un bucle, sin recursión, y agregan la prueba con 200 y 400 nodos (T015 en `copiar`, T016 (g) en `materializar`). Falta conocer el `inventario_max` real de las criptas (**no medido**) |
+| 4 | El clon con `gestor_datos = None` no puede jugar (trampas, salas sin contenido) | Medido | `materializar` asigna `gestor_historico`. Pruebas T016 (a) y (b); T027 (reconstruir sin red); T029 implementa el gestor |
+| 5 | La `Salida` compartida deja que el clon cierre la puerta del vivo | Medido | El `memo` de `materializar` re-liga también `Evento.actor`. Prueba T016 (c) |
+| 6 | Una sala no visitada no tiene el atributo `rastro` | Medido | `foto_rastros` con centinela; `materializar` no crea el atributo. Pruebas T016 (f) y T012 (3) |
+| 7 | `eco = True` se copia | Medido | `materializar` lo fija en `False`. Prueba T016 (d) |
+| 8 | Identidad `_indice_origen is salas` | Medido: se conserva | Sin tarea nueva: `materializar` copia `salas` e `_indice_origen` en la misma llamada de `deepcopy` (T016); lo cubre el oráculo de T012 (1) |
+| 9 | `azar` independiente | Medido solo con sorteos directos | T012 (6): una acción que consuma azar, si existe; si no, se deja escrito |
+| 10 | Costo de la copia mayor que lo anotado (hasta 2.6× y +43 % para N ≥ 200) | Medido | M3 (T103) se repite con estas cifras como referencia; T098 sigue siendo el plan B. Riesgo para FR-020 en N altas |
+| 11 | `GestorDatos.estado_juego` es único: dos clones sobre el mismo `gestor_historico` se pisan | **No medido** (leído del código) | Regla de un solo clon vivo por `gestor_historico`. Prueba T016 (e). **HIPÓTESIS** |
+| 12 | Estados con eventos pendientes distintos de `CERRAR_PUERTA` (`REARMAR_TRAMPA`, `VENENO`, `FIN_VELOCIDAD`, `APAGAR_ANTORCHA`) | **No medido** (la agenda del vivo quedó vacía en el escenario general) | El oráculo de T012 incluye estados con esos eventos pendientes. **HIPÓTESIS** |
+
+Consecuencia de 003 para el sello: por el costo de las salidas (`costo_salida`) `reloj` ya no crece linealmente con las acciones;
+el sello `(reloj, secuencia)` sigue siendo válido porque se compara por valor.
+
+### No medido (HIPÓTESIS)
+
+Lo siguiente no se pudo medir y queda como **HIPÓTESIS** hasta que lo cubra una tarea:
+
+- la fuente HTTP y `FuenteSinRed` (R10): lo medido usó una fuente offline normal;
+- `materializar`, el esqueleto propio y `AgendaConCorte` (no existen todavía);
+- dos clones vivos a la vez sobre el mismo `gestor_historico`;
+- el `inventario_max` real de las criptas del servicio;
+- eventos pendientes distintos de `CERRAR_PUERTA` (`REARMAR_TRAMPA`, `VENENO`, etc.);
+- acciones del juego que consuman `azar`.
+
+La revisión del grupo que pide T003 sigue pendiente.
 
 ---
 

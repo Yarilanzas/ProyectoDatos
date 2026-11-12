@@ -19,17 +19,34 @@ El controlador llama a `despues_de_accion` desde `_accion`, **después** de que 
 `bitacora.registrar`. `Reproductor` los llama con el parámetro `observador` ([formato-bitacora.md](formato-bitacora.md)). Una acción
 rechazada no llega: no se registra nada.
 
-La firma real del `Reproductor` es `Reproductor(fabrica_motor, version_cripta, version_catalogo, recargar=None)`; al llegar a `@cargar`
+**Hecho por C** (`b1b57d7`, 001-T123/T124). La firma real del `Reproductor` es `Reproductor(fabrica_motor, version_cripta, version_catalogo, recargar=None, observador=None)`, con `reproducir_acciones(encabezado, acciones) -> motor` y `reproducir(ruta) -> motor` (lee la bitácora y llama a la anterior); los avisos van en este orden: `al_crear_motor(motor)` tras crear el motor, `despues_de_accion(motor, nombre, argumento)` tras cada acción no rechazada y `despues_de_carga(motor)` tras `@cargar`. Al llegar a `@cargar`
 llama a `recargar(motor)`, que **recibe el motor actual y devuelve el nuevo**. `despues_de_carga(motor)` recibe el motor **nuevo**
 (el que devolvió `recargar`); el adaptador no conserva el anterior. En el controlador (`cargar`) el motor nuevo viene de
 `cargar_partida` y la llamada es la misma.
+
+### De dónde sale el sello previo
+
+`despues_de_accion` llega con el motor **ya avanzado**: la acción *k* ya se ejecutó. Por eso el sello `(reloj, secuencia)` previo de
+la acción *k* (el de la decisión anterior a ella) **se toma al terminar el aviso anterior**: el que dejó `al_crear_motor` (acción
+1), `despues_de_accion` de la acción *k − 1*, `registrar_retroceso` (tras un `retroceder`) o `despues_de_carga` (tras un `@cargar`,
+con el motor nuevo). `registrar_accion(motor, nombre, argumento)` usa el sello que la línea guardó al cerrar el aviso anterior y,
+antes de volver, guarda el del motor ya avanzado para la acción siguiente. Una acción rechazada no avisa y no cambia el sello
+guardado.
+
+### Decisión pendiente de aprobación (M3): la ruta en `despues_de_carga`
+
+`despues_de_carga(motor)` no trae la ruta del archivo cargado, y la línea necesita una copia privada. **Propuesta, no definitiva**:
+tomarla de `motor.restaurador.ruta` (así lo hace `guardar_motor` con `anterior.ruta`). Si `motor.restaurador` es `None`, la época se
+abre sin copia privada (`epocas_ruta = None`) y la carga sigue. Requiere confirmar con una prueba contra el código real y la
+aprobación del grupo ([data-model.md, Época](../data-model.md#época)).
 
 ## `LineaTiempo` (Modelo)
 
 ```text
 LineaTiempo(k=50, gestor_historico=None, abrir_copia=None)
-    k                 acciones máximas entre puntos de control (>= 1)
-    gestor_historico  GestorDatos sin red para los clones (research R10); lo crea el controlador
+    k                 acciones máximas entre puntos de control (>= 1); por defecto 50, HIPÓTESIS hasta M1 y M2
+    gestor_historico  GestorDatos sin red para los clones (research R10); lo crea el controlador. Un solo clon vivo a la vez
+                      (ver «Reglas del clon y del gestor histórico»)
     abrir_copia       función(ruta_copia) -> restaurador de solo lectura, o None; la inyecta el controlador
 
 Registro (los llama el ObservadorLinea)
@@ -117,6 +134,24 @@ Rehace a lo sumo `K` acciones (FR-019).
 5. **Invariante de la historia vigente**: `acciones == acciones_jugador` del motor, salvo en un estado terminal (una muerte en una trampa
    al entrar o una victoria cuentan distinto en el motor); `len(reloj_dec) == acciones`; `pc_accion` no decreciente y sin
    puntos con `accion > acciones`; la serie de pergaminos está ordenada por clave.
+
+### Reglas del clon y del gestor histórico
+
+Medidas o leídas en T003 ([research.md](../research.md#t003-revisión-de-deepcopy-y-memo-2026-11-12)):
+
+6. **El clon se juega con `gestor_historico`.** Un clon sin gestor no puede jugar (medido): entrar en una sala con trampa lanza
+   `RuntimeError: No hay gestor de datos para consultar la ficha de la trampa.` y entrar en una sala sin contenido cargado se rechaza
+   con `El contenido de esa sala aún no está disponible.`. `materializar` le asigna `gestor_historico`, que sirve `obtener_ficha` y
+   `asegurar_sala` desde el almacenamiento en disco; si falta un dato local, `SinDatosParaHistoria`. Con un `GestorDatos` iniciado el
+   clon rehace 50 acciones y queda idéntico al vivo (medido).
+7. **Un solo clon vivo por `gestor_historico`.** `GestorDatos.estado_juego` es único y `conectar_estado_juego(clon)` lo reemplaza;
+   se materializa un clon, se consulta y se descarta antes de materializar otro. **HIPÓTESIS** (leído del código, no medido).
+8. **`materializar` fija `eco = False`.** La copia hereda `eco` (medido: un clon con `eco = True` imprime los mensajes).
+9. **Ninguna consulta llama `siguiente()` ni `esta_vacia()` sobre el motor vivo.** `AgendaEventos.siguiente()` y `esta_vacia()` no
+   son de solo lectura: sacan del heap los eventos cancelados de la raíz. `consultar_accion(acciones + 1)` devuelve el motor vivo
+   sin tocar su agenda; el corte de agenda (`AgendaConCorte`) solo se usa en clones.
+10. **La reconstrucción nunca ejecuta `retroceder` dentro de un clon.** El clon tiene un `Historial()` vacío y lo rechaza (medido).
+    Tras cada retroceso hay un punto de control del motor real en `nuevo_n`, y solo se rehacen acciones vigentes.
 
 ## Qué le pide la línea a los demás
 

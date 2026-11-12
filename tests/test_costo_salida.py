@@ -1,5 +1,5 @@
 # Pruebas de motor.costo_salida (T118). FR-005: cada salida muestra su costo, 100 si no lo declara.
-# FR-024 y PR-13: es el único acceso al costo. Esta capacidad solo lo lee: el movimiento no cambia.
+# FR-024 y PR-13: es el único acceso al costo. `mover` usa el costo de la salida: costo * 100 // velocidad.
 
 import os
 import sys
@@ -45,8 +45,8 @@ class TestCostoSalida(unittest.TestCase):
         self.assertEqual(vars(salida), {"sala_destino": 2})
 
 
-class TestMoverNoCambia(unittest.TestCase):
-    # FR-005: el costo solo se lee. `mover` sigue costando 100, aunque la salida declare otro valor.
+class TestMoverUsaElCosto(unittest.TestCase):
+    # FR-005: `mover` usa el costo de la salida que atraviesa (costo * 100 // velocidad); sin costo declarado, 100.
 
     def preparar(self, velocidad=100, costo=None):
         s1, s2 = sala("s1"), sala("s2")
@@ -68,16 +68,16 @@ class TestMoverNoCambia(unittest.TestCase):
         self.assertEqual(motor.jugador.sala.id, "s2")
         self.assertEqual(motor.reloj, 100)
 
-    def test_fr005_mover_ignora_el_costo_de_la_salida(self):
+    def test_fr005_mover_usa_el_costo_de_la_salida(self):
         motor = self.preparar(costo=250)
         self.assertEqual(motor.costo_salida(motor.jugador.sala.salidas["E"]), 250)
         self.assertTrue(motor.ejecutar_accion("mover", "E"))
-        self.assertEqual(motor.reloj, 100)
+        self.assertEqual(motor.reloj, 250)
 
-    def test_fr005_mover_ignora_el_costo_con_otra_velocidad(self):
+    def test_fr005_mover_usa_el_costo_con_otra_velocidad(self):
         motor = self.preparar(velocidad=50, costo=250)
         self.assertTrue(motor.ejecutar_accion("mover", "E"))
-        self.assertEqual(motor.reloj, 200)   # 100 * 100 // 50
+        self.assertEqual(motor.reloj, 500)   # 250 * 100 // 50
 
 
 if __name__ == "__main__":
