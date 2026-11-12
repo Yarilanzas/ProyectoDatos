@@ -1,6 +1,6 @@
 # Feature Specification: Línea de tiempo y su persistencia
 
-**Feature Branch**: `main` (el grupo trabaja directamente sobre `main`, constitución v3.0.1)
+**Feature Branch**: `main` (el grupo trabaja directamente sobre `main`, constitución v3.0.2)
 
 **Created**: 2026-11-09
 
@@ -45,7 +45,7 @@ El pergamino de retroceso de la Parte I solo deshace hasta 5 acciones y modifica
 - Q: En `--replay --hasta <t>` con una bitácora que contiene `@cargar`, ¿qué significa el instante `<t>`? → A: Reloj global continuo de la historia vigente: tras `@cargar` el reloj sigue desde el del archivo cargado, y lo jugado después de ese guardado y antes de cargar ya no existe en la línea (FR-030).
 - Q: Para `--replay --hasta <t>`, ¿qué se entiende por «final» de la partida? → A: El estado resultante de reproducir la bitácora completa (FR-012).
 - Q: Si se carga una partida guardada con un K y la nueva ejecución indica otro K, ¿cómo se comporta el programa? → A: Manda el K del archivo; combinar `--checkpoint-cada` con la carga de una partida se rechaza como error de uso (FR-031).
-- Q: Justo después de un pergamino que revirtió 5 acciones, ¿qué muestra `historia`? → A: Se aplica la regla de FR-004 sin caso especial: el estado actual es el del punto al que se retrocedió, `#(acciones restantes + 1)` lo muestra y cualquier t o k posterior se rechaza.
+- Q: Justo después de cinco pergaminos seguidos que revirtieron 5 acciones (un pergamino revierte una acción), ¿qué muestra `historia`? → A: Se aplica la regla de FR-004 sin caso especial: el estado actual es el del punto al que se retrocedió, `#(acciones restantes + 1)` lo muestra y cualquier t o k posterior se rechaza.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -83,9 +83,9 @@ Cuando el jugador usa un pergamino de retroceso, las acciones revertidas dejan d
 2. **Given** el mismo caso, **When** ejecuta `historia <t>` con t igual al reloj que tenía antes de revertir, **Then** se rechaza por ser posterior al reloj actual, y para cualquier t ≤ reloj actual el resumen no refleja ningún efecto de la acción revertida.
 3. **Given** un pergamino usado y luego una nueva acción distinta, **When** consulta un instante posterior al punto de retroceso, **Then** el resumen refleja la nueva acción y nunca la revertida.
 4. **Given** una partida con retrocesos, **When** consulta cualquier instante, **Then** el resultado coincide con el de una partida que nunca hubiera hecho las acciones revertidas, salvo la cantidad de pergaminos de retroceso, que queda fuera de la reversión (FR-029, P1 §2.11 y §4.6).
-5. **Given** una partida con 10 acciones y un pergamino que revirtió las últimas 5 (quedan 5), **When** ejecuta `historia #6`, **Then** muestra el estado actual y `historia #7` se rechaza; las acciones 6 a 10 revertidas no son consultables. *(FR-004, FR-015)*
+5. **Given** una partida con 10 acciones y cinco pergaminos seguidos que revirtieron las últimas 5 (quedan 5; un pergamino revierte una acción), **When** ejecuta `historia #6`, **Then** muestra el estado actual y `historia #7` se rechaza; las acciones 6 a 10 revertidas no son consultables. *(FR-004, FR-015)*
 6. **Given** una partida con al menos 6 acciones en la que el jugador ya usó 5 pergaminos seguidos sin hacer acciones nuevas, **When** usa un sexto pergamino, **Then** no revierte nada más allá de esas 5 acciones hacia atrás y se comporta como en la Parte I cuando no hay intervalos disponibles; la línea no cambia. *(FR-014)*
-7. **Given** un pergamino que revierte acciones de una partida larga, **When** se compara el costo de recortar la línea con la longitud de la partida, **Then** el costo es proporcional a lo recortado (las acciones revertidas y sus cambios) y no al largo total de la partida. *(FR-027)*
+7. **Given** un pergamino que revierte acciones de una partida larga, **When** se compara el costo de recortar la línea con la longitud de la partida, **Then** el costo es proporcional a lo recortado (las acciones recortadas) y no al largo total de la partida. *(FR-027)*
 8. **Given** una partida en la que el jugador tenía 3 pergaminos en el instante t y después gastó 2 en retrocesos, **When** ejecuta `historia <t>`, **Then** el inventario del resumen muestra 3 pergaminos, y la cantidad real de la partida sigue siendo la actual. *(FR-029)*
 
 ---
@@ -107,7 +107,7 @@ Si varios eventos ocurren exactamente en el instante t, `historia <t>` muestra e
 
 ### User Story 4 - Consulta sin interacción: `--replay ... --hasta <t>` (Priority: P2)
 
-El usuario ejecuta `--replay partida.log --hasta <t>` y el programa reproduce la partida hasta t e imprime el mismo resumen, sin abrir la interfaz interactiva.
+El usuario ejecuta `--replay partida.log --hasta <t>` y el programa reproduce la bitácora completa e imprime el estado en t de la historia vigente, con el mismo resumen, sin abrir la interfaz interactiva.
 
 **Why this priority**: permite verificar y automatizar consultas, pero se apoya en la consulta de la historia 1 y en el replay de la Parte I.
 
@@ -155,7 +155,7 @@ En partidas largas la consulta sigue siendo instantánea y la memoria no se disp
 **Acceptance Scenarios**:
 
 1. **Given** una partida de al menos 5 000 acciones del jugador y K por defecto, **When** se ejecuta `historia` en cualquier instante o acción, **Then** responde en menos de 50 ms.
-2. **Given** `--checkpoint-cada K`, **When** transcurren las acciones, **Then** nunca hay más de una copia completa del estado cada K acciones del jugador.
+2. **Given** `--checkpoint-cada K`, **When** transcurren las acciones, **Then** nunca hay más de una copia completa del estado cada K acciones del jugador, salvo el punto de control posterior a un retroceso y el de una carga. *(FR-017)*
 3. **Given** cualquier consulta, **When** se resuelve, **Then** no requiere aplicar ni deshacer cambios de más de K acciones del jugador.
 4. **Given** una partida más larga, **When** se mide la memoria, **Then** crece con la cantidad de cambios ocurridos más un punto de control cada K acciones, no con «acciones × tamaño del estado».
 5. **Given** una misma partida y tres valores distintos de K (por ejemplo 1, 50 y 500), **When** se ejecuta `historia` o `--replay --hasta` con el mismo t en cada uno, **Then** los resúmenes son idénticos en contenido y solo cambia el costo. *(FR-028)*
@@ -171,14 +171,16 @@ En partidas largas la consulta sigue siendo instantánea y la memoria no se disp
 - `historia` en una partida recién iniciada: válido solo para t = 0 o `#1`.
 - Partida terminada (victoria o derrota): tras terminar la partida, el pasado se consulta con `--replay --hasta`, incluido el instante final.
 - `--hasta` sin `--replay`: se rechaza como error de uso, sin ejecutar nada.
-- `--checkpoint-cada` junto con `--replay`: es válido y solo afecta al costo, no al resumen (FR-028); si la bitácora contiene `@cargar`, rige el K del archivo cargado (FR-031).
+- `--checkpoint-cada` junto con `--replay`: es válido y solo afecta al costo, no al resumen (FR-028); en `--replay`, K es el de la ejecución, también tras `@cargar`; no cambia ningún resumen (FR-028).
 - `--replay --hasta` sobre una bitácora de versión incompatible: se rechaza igual que un `--replay` sin `--hasta` (versión incompatible, código de salida `2`).
 - Varias acciones consumen el mismo intervalo de tiempo o una acción cuesta 0: `#k` distingue estados que tienen el mismo reloj.
 - `--checkpoint-cada` con valor 0, negativo o no entero: se rechaza como error de uso. K = 1 es válido.
 - Instante t entre dos acciones del jugador: el estado es el de la última acción más los eventos del reloj hasta t.
-- Consulta tras cargar una partida: los puntos de control y los cambios anteriores al guardado siguen disponibles.
+- Consulta tras cargar una partida: el guion anterior al guardado se conserva y los puntos de control se reconstruyen al cargar, de modo que las consultas sobre ese pasado siguen disponibles (FR-022).
+- Cargar una partida cuando faltan los datos locales necesarios para reproducir su historia: error con código de salida `1`, no se carga nada y la partida en curso queda intacta (FR-022, FR-025).
+- `--bitacora` igual a `<guardado>.log` al guardar o cargar: error de uso con código de salida `1` (FR-025, FR-030).
 - Una consulta durante un viaje automático «ir a»: no aplica; el viaje es un único comando no interactivo.
-- Los intervalos descartados por un pergamino no deben dejar cambios ni puntos de control huérfanos que alteren consultas posteriores.
+- Los intervalos descartados por un pergamino no deben dejar acciones registradas ni puntos de control huérfanos que alteren consultas posteriores.
 
 ## Requirements *(mandatory)*
 
@@ -186,7 +188,7 @@ En partidas largas la consulta sigue siendo instantánea y la memoria no se disp
 
 **Estado en un instante**
 
-- **FR-001**: El sistema MUST poder reconstruir el estado de la partida en cualquier instante t entre 0 y el reloj actual, definido como el estado después de ejecutar todos los eventos con tiempo ≤ t; si a t le corresponde una decisión del jugador, MUST ser el estado justo antes de tomarla.
+- **FR-001**: El sistema MUST poder reconstruir el estado de la partida en cualquier instante t entre 0 y el reloj actual, definido como el estado después de ejecutar todos los eventos con tiempo ≤ t; si a t le corresponde una decisión del jugador, MUST ser el estado justo antes de tomarla. Un evento con tiempo t y secuencia posterior a la decisión no se refleja.
 - **FR-002**: Cuando varios eventos ocurren en el mismo instante t, la reconstrucción en t MUST reflejarlos todos, en el mismo orden de resolución de la partida real.
 - **FR-003**: El sistema MUST aceptar el comando `historia <t>` con t entero no negativo menor o igual que el reloj actual.
 - **FR-004**: El sistema MUST aceptar el comando `historia #k`, que muestra el estado justo antes de la acción número k del jugador, para 1 ≤ k ≤ acciones realizadas + 1; con k = acciones + 1 MUST mostrar el estado actual.
@@ -194,8 +196,8 @@ En partidas largas la consulta sigue siendo instantánea y la memoria no se disp
 
 **Contenido del resumen**
 
-- **FR-006**: El resumen MUST incluir como mínimo: reloj, sala del jugador, vida y estadísticas, inventario, efectos activos, los enemigos de esa sala con su vida, y el mapa conocido del jugador en ese instante (tal como lo definía la capacidad 001, sin recalcularlo con información posterior).
-- **FR-029**: El inventario del resumen MUST mostrar los pergaminos de retroceso que el jugador tenía en el instante consultado, aunque después se hayan gastado en retrocesos; consultar el pasado no restaura ni modifica la cantidad real de pergaminos de la partida (P1 §2.11 y §4.6).
+- **FR-006**: El resumen MUST incluir como mínimo: el reloj consultado t (o el de la decisión, para `#k`), sala del jugador, vida y estadísticas, inventario, efectos activos, los enemigos de esa sala con su vida, y el mapa conocido del jugador en ese instante (tal como lo definía la capacidad 001, sin recalcularlo con información posterior).
+- **FR-029**: El inventario del resumen MUST mostrar los pergaminos de retroceso que el jugador tenía en el instante consultado, aunque después se hayan gastado en retrocesos; consultar el pasado no restaura ni modifica la cantidad real de pergaminos de la partida (P1 §2.11 y §4.6). En la posición a la que se retrocedió rige la última ocurrencia (el presente); antes de ella, lo que el jugador tenía entonces.
 - **FR-007**: El resumen de `historia` en la partida interactiva y el de `--replay ... --hasta` para el mismo instante MUST ser idénticos en contenido.
 
 **Consulta sin efectos**
@@ -206,7 +208,7 @@ En partidas largas la consulta sigue siendo instantánea y la memoria no se disp
 
 **Consulta sin interacción**
 
-- **FR-011**: El sistema MUST aceptar `--replay <bitácora> --hasta <t>`, reproducir la partida hasta t e imprimir el resumen del FR-006 sin instanciar la vista. `--hasta` MUST conservar todos los rechazos del replay: una bitácora o cripta de versión incompatible termina con `Versión incompatible: ...` y código de salida `2`.
+- **FR-011**: El sistema MUST aceptar `--replay <bitácora> --hasta <t>`, reproducir la bitácora completa e imprimir el estado en t de la historia vigente (el resumen del FR-006) sin instanciar la vista. `--hasta` MUST conservar todos los rechazos del replay: una bitácora o cripta de versión incompatible termina con `Versión incompatible: ...` y código de salida `2`.
 - **FR-030**: En una bitácora con directivas `@cargar`, el instante `<t>` de `--hasta` MUST ser el reloj virtual global y continuo de la historia vigente: tras `@cargar` el reloj continúa desde el del archivo cargado, y lo jugado entre ese guardado y la carga no existe en la línea, de modo que cada `<t>` identifica un único momento.
 - **FR-012**: Si t es posterior al final de la partida, `--replay --hasta` MUST mostrar el estado final e indicar que la partida terminó antes de ese instante. El «final» MUST ser el estado resultante de reproducir la bitácora completa, haya terminado o no la partida (victoria o derrota).
 - **FR-013**: `--hasta` con un valor no entero o negativo MUST terminar con error de uso (código de salida `1`), sin reproducir. `--hasta` usado sin `--replay` MUST rechazarse igualmente como error de uso.
@@ -216,20 +218,20 @@ En partidas largas la consulta sigue siendo instantánea y la memoria no se disp
 - **FR-014**: El pergamino de retroceso MUST seguir limitado a 5 acciones hacia atrás y su comportamiento de la Parte I no cambia; la línea de tiempo es independiente de ese límite.
 - **FR-015**: Las acciones revertidas con un pergamino MUST dejar de existir en la línea de tiempo: ninguna consulta posterior las refleja, ni sus eventos asociados, ni sus puntos de control.
 - **FR-016**: Las acciones nuevas tras un retroceso MUST continuar la línea desde el punto al que se retrocedió, y la numeración de acciones MUST ser la de la historia vigente.
-- **FR-027**: Recortar la línea de tiempo al usar un pergamino MUST costar en proporción a lo recortado (las acciones revertidas y sus cambios), no al largo total de la partida (§5.5).
+- **FR-027**: Recortar la línea de tiempo al usar un pergamino MUST costar en proporción a lo recortado (las acciones recortadas), no al largo total de la partida (§5.5).
 
 **Memoria y rendimiento**
 
-- **FR-017**: El sistema MUST guardar copias completas del estado (puntos de control) en no más de una cada K acciones del jugador.
+- **FR-017**: El sistema MUST guardar copias completas del estado (puntos de control) en no más de una cada K acciones del jugador, salvo el punto de control posterior a un retroceso y el de una carga.
 - **FR-018**: K MUST ser configurable con `--checkpoint-cada K` (entero ≥ 1). El valor por defecto lo fija el grupo y MUST justificarse con mediciones reproducibles de `--bench`, que se documentan en el README o en el Documento de Decisiones.
 - **FR-019**: Responder cualquier consulta MUST NOT requerir aplicar o deshacer los cambios de más de K acciones del jugador.
 - **FR-020**: La consulta `historia` MUST tardar menos de 50 ms en una partida de al menos 5 000 acciones del jugador con K por defecto.
-- **FR-021**: El consumo de memoria de la línea MUST crecer con la cantidad de cambios de estado más un punto de control cada K acciones, y no con el producto «acciones × tamaño del estado». Fuera de los puntos de control, MUST almacenarse solo la información necesaria para reconstruir los cambios.
+- **FR-021**: El consumo de memoria de la línea MUST crecer con la cantidad de cambios de estado más un punto de control cada K acciones, y no con el producto «acciones × tamaño del estado». Fuera de los puntos de control, MUST almacenarse solo la información necesaria para reconstruir las acciones.
 - **FR-028**: El resumen de cualquier consulta (`historia` y `--replay --hasta`) MUST ser idéntico para cualquier valor de K; K solo afecta al costo, nunca al contenido.
 
 **Persistencia**
 
-- **FR-022**: Guardar la partida MUST conservar la línea de tiempo completa (todos los cambios y los puntos de control vigentes); cargarla MUST restaurarla de modo que `historia` responda igual que antes de guardar para cualquier instante.
+- **FR-022**: Guardar la partida MUST conservar el guion de la línea de tiempo (las acciones registradas, incluidos los retrocesos y las cargas) y el valor de K; cargarla MUST reconstruir los puntos de control de modo que `historia` responda igual que antes de guardar para cualquier instante.
 - **FR-023**: Como el formato del archivo de partida cambia, su número de versión MUST incrementarse y el README MUST documentarlo.
 - **FR-024**: Un archivo de partida con cualquier versión de formato distinta de la vigente (incluida la de la primera parte) MUST rechazarse como incompatible (`Versión incompatible: ...`, código de salida `2`), sin cargar nada y sin conversión silenciosa.
 - **FR-031**: El archivo de partida MUST conservar el valor de K con que se guardó, y al cargarla ese valor MUST regir los límites de FR-017 y FR-019. Usar `--checkpoint-cada` junto con la carga de una partida MUST rechazarse como error de uso (código de salida `1`), sin cargar nada.
@@ -238,8 +240,8 @@ En partidas largas la consulta sigue siendo instantánea y la memoria no se disp
 ### Key Entities *(include if feature involves data)*
 
 - **Línea de tiempo**: registro completo y ordenado de lo que cambió en la partida vigente, desde el instante 0 hasta el reloj actual. Se guarda, se carga y se recorta cuando un pergamino revierte acciones.
-- **Cambio**: una modificación atómica del estado de la partida en un instante dado, atribuible a una acción del jugador o a un evento del reloj. Permite reconstruir el estado entre dos puntos de control.
-- **Punto de control**: copia completa del estado en un momento de la partida; hay a lo sumo uno cada K acciones del jugador.
+- **Acción registrada**: el comando aceptado del jugador con su sello (reloj y secuencia), no una diferencia de estado. Permite reconstruir el estado entre dos puntos de control. En los requisitos que citan el enunciado, «cambios» designa lo que resulta de reproducir las acciones registradas.
+- **Punto de control**: copia completa del estado en un momento de la partida; hay a lo sumo uno cada K acciones del jugador, salvo el punto de control posterior a un retroceso y el de una carga.
 - **Resumen histórico**: lo que `historia` y `--replay --hasta` muestran: reloj, sala, vida y estadísticas, inventario, efectos activos, enemigos de la sala con su vida y mapa conocido.
 - **Referencia temporal**: la forma de señalar un momento del pasado: un instante `<t>` o «justo antes de la acción `#k`».
 
@@ -252,7 +254,7 @@ En partidas largas la consulta sigue siendo instantánea y la memoria no se disp
 - **SC-003**: Para un conjunto de partidas de prueba, el resumen de `historia <t>` y `historia #k` coincide en el 100 % de los casos con el estado real registrado en ese momento al jugar la partida, y el resumen es idéntico para al menos tres valores distintos de K (FR-028).
 - **SC-004**: Tras ejecutar cualquier `historia` (aceptada o rechazada), el reloj, el contador de acciones, la bitácora y el historial de retroceso son idénticos a los de antes, en el 100 % de las pruebas.
 - **SC-005**: Tras guardar y cargar, el resumen de cualquier instante coincide con el previo a guardar en el 100 % de los casos probados.
-- **SC-006**: Con una partida de 5 000 acciones, ninguna consulta requiere aplicar o deshacer más de K acciones, y el número de copias completas es como máximo ⌈acciones / K⌉ + 1; duplicar las acciones duplica aproximadamente la memoria de la línea.
+- **SC-006**: Con una partida de 5 000 acciones, ninguna consulta requiere aplicar o deshacer más de K acciones, y el número de copias completas es como máximo ⌈acciones / K⌉ + 1 + cargas + usos del pergamino; duplicar las acciones duplica aproximadamente la memoria de la línea.
 - **SC-007**: El valor por defecto de K queda respaldado por mediciones de `--bench` (tiempo de consulta y memoria) con al menos tres valores de K y con la alternativa sin puntos de control (§5.5, §6.3), incluidas en la documentación.
 - **SC-008**: Un archivo de partida con cualquier versión de formato distinta de la vigente (incluida la de la primera parte) se rechaza como incompatible en el 100 % de los intentos, con salida `2` y sin cargar estado.
 - **SC-009**: La suite completa de pruebas sigue al 100 % en verde, sin red, incluidas las de la Parte I y las de la capacidad 001.
