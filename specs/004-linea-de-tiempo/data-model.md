@@ -74,16 +74,24 @@ iniciar ──► ACCION* ──┬─► RETROCESO ──► (recorte, punto de
 | `accion`, `reloj`, `secuencia` | posición y sello |
 | `epoca` | índice de la época a la que pertenece |
 
-`materializar(punto, gestor_historico, abrir_copia)` produce un **clon** nuevo:
+`materializar(punto, gestor_historico, abrir_copia=None, ruta_copia=None)` produce un **clon** nuevo:
 
 1. Esqueleto propio: para cada sala del motor real, `copy.copy` de la sala y de cada salida; `rastro` y `cerrada` de la foto
    (`materializar` **no crea** el atributo `rastro` en una sala donde no existía: el centinela se respeta);
    `_origen` y `_destino` re-ligados por ordinal; `salidas` es un `dict` nuevo (es el del DTO, solo se recorre).
 2. `deepcopy(punto.estado, memo)` donde `memo` mapea cada objeto del esqueleto de respaldo → su par nuevo, y `historial → Historial()`.
-   Ese `memo` re-liga también `Evento.actor` (un evento `CERRAR_PUERTA` tiene como actor una `Salida`).
+   Ese `memo` re-liga también `Evento.actor` (un evento `CERRAR_PUERTA` tiene como actor una `Salida`) y, por ser parte del estado,
+   el `grafo_cripta` y el `espacio_busqueda`: **se copian con `deepcopy`** y el `memo` los re-liga a las salas y al motor del clon (sus
+   métodos enlazados apuntan al clon). El grafo **no depende de `version_puertas`**: lee `cerrada` en vivo y solo guarda estructura fija.
 3. `clon.gestor_datos = gestor_historico` y `gestor_historico.conectar_estado_juego(clon)`.
-4. Si la época tiene copia privada: `clon.restaurador = abrir_copia(ruta)`.
+4. Si `abrir_copia` y `ruta_copia` no son `None` (la época tiene copia privada): `clon.restaurador = abrir_copia(ruta_copia)`; si no,
+   `clon.restaurador = None`.
 5. `clon.eco = False`.
+
+`ciclo` y `version_puertas` (enteros que solo crecen) **viajan dentro del estado** del punto: no se guardan aparte, no entran en la
+bitácora y deshacer no los baja. El oráculo de T012 **no los compara** entre el motor vivo y el clon. `materializar` escribe
+`Salida.cerrada` **directamente sobre las copias del esqueleto**, dentro de `Modelo/CopiaEstado.py` (excluido por nombre en la prueba
+de código fuente de A), antes de que exista el clon; el `version_puertas` que recibe el clon ya es el de la decisión de la foto.
 
 **`punto.estado` nunca se ejecuta directamente.** Sus eventos `CERRAR_PUERTA` apuntan a la `Salida` **viva** (medido en T003: un
 clon sin re-ligar cerró la puerta del vivo, `Salida.cerrada` pasó de `False` a `True`). Solo se ejecuta un clon **materializado**,

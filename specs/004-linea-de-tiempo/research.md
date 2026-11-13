@@ -26,7 +26,7 @@ la versión anterior está en HL6 y HL8.
 | # | Hallazgo | Evidencia | Efecto en el diseño |
 |---|----------|-----------|---------------------|
 | HL1 | **(a)** `MotorSimulacion` mezcla estado de partida con colaboradores: `gestor_datos` (con caché, planificador y una referencia de vuelta al motor, `conectar_estado_juego`), `restaurador` (archivo abierto), `historial` (cierres sobre objetos vivos), `mensajes`, el transitorio `enemigos_al_entrar`, `eco`. Sí se puede copiar el estado **sin** copiar la fuente de datos ni arrastrar el historial: `copy.deepcopy(motor, memo)` con `memo` que mapea `gestor_datos → None`, `restaurador → None` y `historial → Historial()` vacío. | `Modelo/MotorSimulacion.py:22-58` (re-verificado: sigue igual; `conocimiento` es parte del estado vivo y cuelga del motor). Lo que la capacidad 003 agregará (`ciclo`, `version_puertas`, `GrafoCripta`, `EspacioBusqueda`, `CampoDistancias`) **todavía no está en `main`**: cuando llegue, también cuelga del motor y `deepcopy` lo copia con él; `GrafoCripta` guarda referencias a las salas del esqueleto, que el `memo` de `materializar` re-liga a las del esqueleto nuevo (ver [interfaz-linea.md](contracts/interfaz-linea.md#choque-con-t015-de-a-persona-a-003)). Exploración previa local, no versionada, **HIPÓTESIS**: con 5 000 acciones y 20 salas, **2.3 a 2.6 ms** de mediana por copia; con 400 acciones, **1.8 ms y 44 KiB**; el clon re-simulado dio **0 diferencias** frente a la partida real. Hoy `Conocimiento._destino_de` es un método ligado al motor: `deepcopy` lo re-liga al motor clon. `Conocimiento.copiar()` (T119) **no** sirve para el clon: comparte `_destino_de`, `_salas` y `_salidas` con el original, es decir, apunta al motor y al esqueleto vivos. | R2: la copia usa `deepcopy` con sustitutos, no una copia campo por campo de todo el motor ni `Conocimiento.copiar()`. |
-| HL2 | **`deepcopy` del motor completo falla con `RecursionError` al crecer la cripta** (con 20 y 60 salas funciona; con 120 y 200 en línea falla) porque `Sala → Salida → _origen/_destino → Sala` forma una cadena tan larga como el diámetro del mapa. | **HIPÓTESIS** (exploración previa local, no versionada; la reemplazan M1 a M10, en este caso M3): n=20: 1.8 ms; n=60: 4.5 ms; n=200: `RecursionError`. | El esqueleto (salas y salidas) **no** se copia con `deepcopy` (R2). |
+| HL2 | **`deepcopy` del motor completo falla con `RecursionError` al crecer la cripta** (con 20 y 60 salas funciona; con 120 y 200 en línea falla en la exploración previa; **medido en T012 (2) con la topología real de `main`: funciona con 200 y falla desde unas 400**, ver R2) porque `Sala → Salida → _origen/_destino → Sala` forma una cadena tan larga como el diámetro del mapa. | **HIPÓTESIS** (exploración previa local, no versionada; la reemplazan M1 a M10, en este caso M3): n=20: 1.8 ms; n=60: 4.5 ms; n=200: `RecursionError`. | El esqueleto (salas y salidas) **no** se copia con `deepcopy` (R2). |
 | HL3 | **Compartir el esqueleto entre la partida y un clon contamina el presente**: el clon cambió `rastro` en las salas de la partida real. Atributos que cuelgan hoy del esqueleto: `Sala.rastro` (mutable, **puede no existir** en salas nunca visitadas: `actualizar_rastro` lo crea y su deshacer lo borra), `Salida.cerrada` (mutable); y fijados al crear la partida y sin cambios después: `Sala._ordinal`, `Salida._ordinal`, `_origen`, `_direccion` (de `Conocimiento`), `Salida._destino` (caché del motor) y `Salida.cerrada_en_esqueleto` (de `DTOS/Salida.py`, ver [interfaz-linea.md](contracts/interfaz-linea.md#qué-le-pide-la-línea-a-los-demás)). | Exploración previa local, **HIPÓTESIS**: 404 de 404 instantes con diferencia solo en `rastros`; con ese campo excluido, 0 diferencias. Código de hoy: `Modelo/Conocimiento.py:74-100`, `MotorSimulacion.actualizar_rastro`, `DTOS/Salida.py`. | Cada clon recibe un **esqueleto propio**, rehecho con una pasada iterativa desde una foto de los campos mutables (`Sala.rastro` con su ausencia, `Salida.cerrada`); `copy.copy` conserva los fijados al crear y `materializar` re-liga `_origen` y `_destino` por ordinal (R2). |
 | HL4 | **(b)** `Historial`: máximo `MAX_INTERVALOS = 5`; cada `Cambio` es una función `deshacer` más texto; `deshacer_ultimo()` **saca** el intervalo; `to_bytes()` guarda `0` y `from_bytes()` devuelve un historial vacío. Los cierres capturan objetos vivos (`actor`, `salida`, `inventario`). `usar_pergamino` nunca llama a `abrir_intervalo`, así que cada uso revierte **una** acción (hasta 5 usos seguidos). | `Modelo/retroceso.py`; README línea 170 («deshace la última acción (máximo 5 hacia atrás)»); P1 §4.6 puntos 3 y 5. | Invertir hacia atrás con el `Historial` no sirve (R1). La spec, US2.5, habla de «un pergamino que revirtió las últimas 5»: contradice el código y a US2.1 (ver [Cambios propuestos](plan.md#cambios-propuestos-a-la-spec)). |
 | HL5 | **(c)** El `CRPT` actual (versión 3) **no** es una copia completa. Guarda, por sala: rastro, enemigos **vivos** (id, tipo, vida, instante), objetos, trampas y puertas; del jugador: sala, vida, acciones, derrotados, llave usada, inventario; y, desde T074 a T077, el **bloque de conocimiento** (exploradas y recuerdos de puertas) y la tabla de **puertas reales** (las cerradas hoy, las cerradas en el esqueleto, las de llave y las de cierre automático). **No** guarda el azar (se resiembra), la agenda (se reconstruye), `secuencia`, efectos (veneno, velocidad, antorcha), cierres automáticos pendientes, `mensajes`, enemigos muertos ni el historial. La carga además cambia el estado a propósito (`cargar_partida` fija `reloj` y `tiempo_siguiente`, y activa los enemigos de la sala). | `Persistencia/ConversorPartida.py` (comentario inicial, `registros_desde_motor`, `registro_jugador_desde_motor`, `registro_conocimiento_desde_motor`, `_aplicar_registro`); `Gestor/PreparadorPartida.py:cargar_partida`. | Un punto de control no puede reutilizar esos bloques (R2, R8): siguen siendo con pérdida. |
@@ -108,16 +108,22 @@ para `#k`, y una más para un `t` dentro de la acción `k`).
 2. **Foto del esqueleto**: arreglos por ordinal con los campos mutables, `Sala.rastro` y `Salida.cerrada`
    (constantes `CAMPOS_MUTABLES_SALA` y `CAMPOS_MUTABLES_SALIDA`).
 
-Para **consultar**, `materializar(punto, gestor_historico)` crea un esqueleto nuevo con una pasada iterativa (`copy.copy` de cada
+Para **consultar**, `materializar(punto, gestor_historico, abrir_copia=None, ruta_copia=None)` crea un esqueleto nuevo con una pasada iterativa (`copy.copy` de cada
 sala y salida, campos mutables tomados de la foto, `_origen` y `_destino` re-ligados por ordinal), llama a `deepcopy` del estado
 con un `memo` que mapea esqueleto-de-respaldo → esqueleto-nuevo, y asigna `gestor_datos = gestor_historico`.
 
 | Alternativa | Copia | Memoria por punto | Veredicto |
 |-------------|-------|-------------------|-----------|
-| `deepcopy(motor)` a secas | 1.8 ms (N=20), 4.5 ms (N=60), **`RecursionError` (N ≥ ~120)** | 44 KiB (N=20), 95 KiB (N=60) | Descartada (HL2) |
+| `deepcopy(motor)` a secas | 1.8 ms (N=20), 4.5 ms (N=60), **`RecursionError` (N ≥ ~120 en la exploración previa; desde unas 400 salas medido en T012 (2) con la topología real de `main`, ver la nota de abajo)** | 44 KiB (N=20), 95 KiB (N=60) | Descartada (HL2) |
 | **Estructurada** (elegida) | 1.1 ms (N=20), 1.5 ms (N=60), 2.2 ms (N=200), 11.7 ms (N=2000) | 26, 29, 43, 285 KiB | Sin recursión, memoria casi plana en N |
 | Campo por campo, a mano, de todo el motor | `O(S)` | similar | Cada campo nuevo de A, B o C hay que listarlo; un olvido se vuelve un estado falso silencioso. Queda como **plan B** si M3 mostrara que `deepcopy` no alcanza |
 | Serialización (`pickle` o bloques `CRPT`) | `O(S)` + empaquetar | similar | `pickle` no admite cierres ni archivos abiertos y **ejecuta código al leer**: inaceptable en un archivo de partida. Los bloques `CRPT` son con pérdida (HL5) |
+
+**Corrección de la cifra de «200 salas» (medido en T012 (2), 2026-11-13).** Con la topología real de `main` (`cripta_terreno`, con
+`GrafoCripta` de A incluido), `deepcopy` completo del motor **funciona con 200 salas y falla con `RecursionError` desde unas 400**
+(medido: 200 bien; 400, 800 y 2 000, `RecursionError`). La copia estructurada funciona con 200 y con 600. La cifra de 200 salas de
+HL2 y de esta sección venía de otra topología de la exploración previa y no vale para `main`; la prueba usa 200 (la estructurada
+funciona) y 600 (además `deepcopy` completo falla).
 
 **Costo de consultar**, exploración previa (esqueleto nuevo + `deepcopy` + K=50 acciones; E4; **HIPÓTESIS**, la reemplaza M3): **1.85 ms** (N=20), **7.95 ms** (N=200),
 **69.4 ms** (N=2 000). Con la escala de los datos locales (5 a 20 salas) sobra margen; con miles de salas la materialización del
@@ -547,12 +553,34 @@ Otra comprobación (N = 20): `clon.conocimiento._destino_de.__self__ is clon` es
 | 7 | `eco = True` se copia | Medido | `materializar` lo fija en `False`. Prueba T016 (d) |
 | 8 | Identidad `_indice_origen is salas` | Medido: se conserva | Sin tarea nueva: `materializar` copia `salas` e `_indice_origen` en la misma llamada de `deepcopy` (T016); lo cubre el oráculo de T012 (1) |
 | 9 | `azar` independiente | Medido solo con sorteos directos | T012 (6): una acción que consuma azar, si existe; si no, se deja escrito |
-| 10 | Costo de la copia mayor que lo anotado (hasta 2.6× y +43 % para N ≥ 200) | Medido | M3 (T103) se repite con estas cifras como referencia; T098 sigue siendo el plan B. Riesgo para FR-020 en N altas |
+| 10 | Costo de la copia mayor que lo anotado (hasta 2.6× y +43 % para N ≥ 200) | Medido | M3 (T103) se repite con estas cifras como referencia, y con las de la sección «T018: medición de copiar con grafo_cripta y espacio_busqueda» como referencia nueva; T098 sigue siendo el plan B. Riesgo para FR-020 en N altas |
 | 11 | `GestorDatos.estado_juego` es único: dos clones sobre el mismo `gestor_historico` se pisan | **No medido** (leído del código) | Regla de un solo clon vivo por `gestor_historico`. Prueba T016 (e). **HIPÓTESIS** |
 | 12 | Estados con eventos pendientes distintos de `CERRAR_PUERTA` (`REARMAR_TRAMPA`, `VENENO`, `FIN_VELOCIDAD`, `APAGAR_ANTORCHA`) | **No medido** (la agenda del vivo quedó vacía en el escenario general) | El oráculo de T012 incluye estados con esos eventos pendientes. **HIPÓTESIS** |
 
 Consecuencia de 003 para el sello: por el costo de las salidas (`costo_salida`) `reloj` ya no crece linealmente con las acciones;
 el sello `(reloj, secuencia)` sigue siendo válido porque se compara por valor.
+
+### T018: medición de copiar con grafo_cripta y espacio_busqueda (2026-11-13)
+
+`copiar(motor)` ya copia `grafo_cripta` y `espacio_busqueda` con el resto del estado (`deepcopy` con el `memo`, que los re-liga a las
+salas y al motor). Método: **mediana de 20 repeticiones**, memoria neta con `tracemalloc`, motor tras **10 acciones** (T003 midió
+con 300, así que la comparación con T003 es **orientativa**). No se cambió código por esta medición.
+
+| N | Tiempo (mediana, mín–máx) | Memoria neta | `espacio_busqueda` (4 listas de N elementos) | T003 (tiempo) | T003 (memoria) |
+|---|---------------------------|--------------|----------------------------------------------|---------------|----------------|
+| 20 | 0.81 ms (0.75–1.01) | 15 KiB | ~1 KB | 0.7–1.4 ms | 20 KiB |
+| 200 | 3.87 ms (3.42–5.83) | 74 KiB | ~6.7 KB | 2.7–4.4 ms | 62 KiB |
+| 2 000 | 42.5 ms (33.6–49.7) | 664 KiB | ~64 KB | 17.8–30.0 ms | 407 KiB |
+
+Conclusión:
+
+- N = 20 y N = 200 caen dentro del rango de tiempo de T003; la memoria es 25 % menor (N = 20) y 19 % mayor (N = 200).
+- **N = 2 000 queda 42 % por encima del máximo de T003 en tiempo y 63 % por encima en memoria.**
+- `espacio_busqueda` pesa unos 32 B por sala (listas de N elementos): ~10 % de la copia en N = 2 000. El resto del aumento es el
+  grafo (`_entrantes` y sus tuplas) y el estado del motor.
+- El efecto sobre los SC (FR-020, SC-006) es **HIPÓTESIS** hasta que T103 (M3) vuelva a medir con partidas reales. T098 sigue siendo
+  el plan B.
+- Optimización posible **no aplicada**: compartir la estructura inmutable del grafo (`_entrantes`) en lugar de copiarla.
 
 ### No medido (HIPÓTESIS)
 

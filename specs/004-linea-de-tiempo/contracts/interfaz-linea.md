@@ -113,7 +113,7 @@ return resumir(clon, reloj = t, pergaminos = serie(clave <= k))
 ```text
 si k == acciones + 1:                      resumen del motor vivo (estado actual)
 c = último punto de control con accion <= k - 1        # búsqueda binaria propia
-clon = materializar(c)                     # esqueleto propio + deepcopy + gestor histórico
+clon = materializar(c, gestor_historico, abrir_copia=None, ruta_copia=None)   # esqueleto propio + deepcopy + gestor histórico
 para j = c + 1 .. k - 1:
     comparar (clon.reloj, clon.secuencia) con el sello de la acción j       # ErrorReconstruccion si difiere
     clon.ejecutar_accion(guion de la acción j)                              # rechazo -> ErrorReconstruccion
@@ -153,6 +153,40 @@ Medidas o leídas en T003 ([research.md](../research.md#t003-revisión-de-deepco
 10. **La reconstrucción nunca ejecuta `retroceder` dentro de un clon.** El clon tiene un `Historial()` vacío y lo rechaza (medido).
     Tras cada retroceso hay un punto de control del motor real en `nuevo_n`, y solo se rehacen acciones vigentes.
 
+### Lo implementado en T012 a T033 (2026-11-13)
+
+**Copia y clon**
+
+11. **Firma real**: `materializar(punto, gestor_historico, abrir_copia=None, ruta_copia=None)`. Si `abrir_copia` y `ruta_copia` no son
+    `None`, `clon.restaurador = abrir_copia(ruta_copia)`; si no, el clon no hereda el restaurador del vivo (queda en `None`).
+    `copiar(motor, accion=None, epoca=0)` devuelve el `PuntoControl` (por omisión, `accion = motor.acciones_jugador`).
+12. **`grafo_cripta` y `espacio_busqueda` se copian con `deepcopy`**; el `memo` los re-liga a las salas y al motor del clon (los
+    métodos enlazados `_destino_de` y `_costo_de` apuntan al clon). El grafo **no depende de `version_puertas`**: lee `cerrada` en vivo
+    y solo guarda estructura fija. El espacio de búsqueda es espacio de trabajo por ordinal. Medida de su costo: [research.md,
+    «T018: medición de copiar…»](../research.md).
+13. **`ciclo` y `version_puertas` viajan en el estado** del punto de control. El oráculo de T012 **no los compara** entre el motor vivo
+    y el clon (solo crecen; el clon no los baja ni los recalcula y al jugar avanzan solo en el clon).
+14. **`materializar` escribe `Salida.cerrada` directamente** sobre las copias del esqueleto, dentro de `Modelo/CopiaEstado.py`
+    (excluido por nombre en la prueba de código fuente de A), antes de que exista el clon: no hay motor al que sumarle
+    `version_puertas`, y el entero ya llega con el valor de la decisión de la foto. Ningún otro archivo escribe `cerrada`.
+
+**Gestor histórico y consultas**
+
+15. **`GestorHistorico.desde_gestor(gestor, id_cripta)`** captura versiones y detalles del gestor vivo, **comparte su
+    `almacenamiento_disco`** (solo lectura) y **no comparte contadores ni caché de fichas**. Ya viene con la cripta iniciada.
+16. **Tras cada consulta la línea desconecta el gestor** (`conectar_estado_juego(None)`): un solo clon vivo, y el gestor no queda
+    enganchado al último clon.
+17. **`SinDatosParaHistoria` llega por `FuenteSinRed.tomar_falta()`.** El motor atrapa los `RuntimeError` al cargar una sala y
+    rechaza el paso; `FuenteSinRed` recuerda la última falta y `LineaTiempo` la **relanza tras cada acción rehecha**, mirando al
+    gestor **por nombre de método** (`tomar_falta`), sin importar `Gestor/`. Sin gestor histórico o con otro tipo, no hay efecto.
+18. **Mensajes de `ReferenciaInvalida`** (`.motivo`), los del contrato de [comandos-historia.md](comandos-historia.md):
+    `Las acciones se numeran desde 1.`, `La acción <k> no existe: la próxima acción es la <acciones+1>.` y
+    `No hay historia más allá del reloj actual (<reloj>).`. Un `t` no entero o negativo también lanza `ReferenciaInvalida`.
+19. **Formatos del resumen** (`Vista/TextoResumen.py`): `Inventario (0): ninguno`; `velocidad +10 (hasta 300)`; `antorcha encendida`
+    (sin hora); `veneno (2 de daño cada 80, hasta 400)`.
+20. **`resultado`** de `ResumenHistorico` solo se llena en las referencias «actual» y «final» (y solo si la partida terminó).
+21. **`pergaminos`** de `resumir(...)` es `None` hasta T048: el inventario usa los pergaminos del clon.
+
 ## Qué le pide la línea a los demás
 
 | Requisito | A quién | Por qué |
@@ -179,6 +213,9 @@ contiene exactamente esa escritura y haría fallar la prueba en cuanto exista.
 > sobre las del motor en juego, y fuera de un ciclo de eventos (el clon no está ejecutando ninguno cuando se materializa): no puede dejar
 > desactualizado el `version_puertas` de la partida real. Es la restauración de una foto, no una escritura de juego.
 
+**Aplicado (2026-11-13)**: `materializar` escribe `cerrada` **directamente sobre las copias del esqueleto**, dentro de
+`Modelo/CopiaEstado.py`, y la exclusión por nombre ya está en la prueba de A (`EXCLUIDOS`).
+
 Por qué es correcto no pasar por el método único: ese método incrementa el `version_puertas` **del motor** y registra un deshacer en
 su `Historial`; el clon recibe un `Historial` vacío y sus contadores vienen copiados con el estado, y la materialización no es un cambio
 de partida. Usar el método único en la copia incrementaría un contador del clon sin que haya pasado nada, y registraría deshacer que
@@ -188,9 +225,9 @@ nadie usará.
 
 | Pieza de A | En el clon | Cómo queda consistente |
 |------------|-----------|------------------------|
-| `ciclo`, `version_puertas` | enteros del motor; `deepcopy` los copia | valen lo mismo que en la decisión del punto de control; al re-simular avanzan igual que en la partida real |
-| `GrafoCripta` | cuelga del motor; guarda referencias a las salas | el `memo` de `materializar` mapea cada sala del respaldo a su par nuevo, así que el grafo del clon apunta al esqueleto del clon; sus ordinales (atributo propio de la sala) se conservan con `copy.copy` |
-| `EspacioBusqueda` | listas por ordinal (`dist`, `primero`, `epoca`) y cola | se copian con el motor, sin referencias al esqueleto vivo |
+| `ciclo`, `version_puertas` | enteros del motor; `deepcopy` los copia | valen lo mismo que en la decisión del punto de control; al re-simular avanzan igual que en la partida real. **El oráculo de T012 no los compara** entre el vivo y el clon |
+| `GrafoCripta` | cuelga del motor; guarda referencias a las salas y los métodos `_destino` y `costo_salida` del motor | se copia con `deepcopy`: el `memo` de `materializar` mapea cada sala del respaldo a su par nuevo, así que el grafo del clon apunta al esqueleto y al motor del clon; sus ordinales (atributo propio de la sala) se conservan con `copy.copy`. No depende de `version_puertas`: lee `cerrada` en vivo |
+| `EspacioBusqueda` | listas por ordinal (`dist`, `primero`, `epoca`) y cola | se copian con el motor, sin referencias al esqueleto vivo (la lista `sala` se re-liga por el `memo`) |
 | `CampoDistancias` | apunta al `EspacioBusqueda` **del mismo motor** | `deepcopy` conserva la identidad dentro de una misma copia, así que apunta al espacio copiado; queda inválido en cuanto `ciclo` avanza en el clon |
 
 La prueba de oráculo (escenario 14, y T059) lo comprueba con cazadores activos. **Si `GrafoCripta` guardara las salas fuera del motor
