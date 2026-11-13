@@ -374,5 +374,131 @@ class PruebasPartidaNuevaCli(unittest.TestCase):
                 self.assertEqual(rutas.count(ruta), 1, rutas)
 
 
+# --- T035: la verificación no cambia la partida (SC-007, FR-023) ------------------------------------------------
+
+SEMILLA_SC007 = 7
+# acciones fijas sobre sint-res (sala 1 -E-> 2 -E-> 3 -E-> 4 -S-> 7, donde está llave_01); las rechazadas no van
+# a la bitácora en ninguno de los dos caminos
+ACCIONES_SC007 = ("e", "e", "esperar", "e", "s", "recoger llave_01", "mapa", "n", "o", "e", "s", "esperar")
+
+
+def _como_datos(valor):
+    # vuelve comparables los DTO sin __eq__ (MapaConocido, SalaConocida, ...)
+    if isinstance(valor, (list, tuple)):
+        return [_como_datos(v) for v in valor]
+    if isinstance(valor, dict):
+        return {k: _como_datos(v) for k, v in valor.items()}
+    if hasattr(valor, "__dict__"):
+        return {k: _como_datos(v) for k, v in vars(valor).items()}
+    return valor
+
+
+class VistaEspia(VistaConsola):
+    """Vista muda que anota cuántas veces se mostró una verificación."""
+
+    def __init__(self):
+        super().__init__(entrada=lambda _m: "salir", salida=lambda *_a, **_k: None)
+        self.verificaciones = 0
+
+    def mostrar_verificacion(self, resultado):
+        self.verificaciones += 1
+
+
+class PruebasVerificacionNoCambiaPartida(unittest.TestCase):
+
+    def setUp(self):
+        from Gestor.GestorDatos import GestorDatos
+        self.temporal = tempfile.TemporaryDirectory()
+        base = self.temporal.name
+        self.paquete = os.path.join(base, "paquete")
+        escribir_paquete(self.paquete, generar_cripta(11, 20, 3, id_cripta=CRIPTA_RESOLUBLE))
+
+        def gestor(nombre):
+            return GestorDatos(main.FuenteDatosOffline(self.paquete), ruta_base=os.path.join(base, nombre))
+
+        self.crear_gestor = gestor
+
+    def tearDown(self):
+        self.temporal.cleanup()
+
+    def _partida_con_verificacion(self):
+        from Controlador.ControladorPartida import ControladorPartida
+        vista = VistaEspia()
+        ruta = os.path.join(self.temporal.name, "con.log")
+        controlador = ControladorPartida(self.crear_gestor("datos_con"), vista, ruta)
+        controlador.nueva_partida(CRIPTA_RESOLUBLE, SEMILLA_SC007)
+        return controlador, vista, ruta
+
+    def _partida_sin_verificacion(self):
+        # mismo arranque que nueva_partida, pero llamando directamente a preparar_partida
+        from Bitacora.BitacoraPartida import BitacoraPartida
+        from Controlador.ControladorPartida import ControladorPartida
+        from Gestor.PreparadorPartida import preparar_partida
+        gestor = self.crear_gestor("datos_sin")
+        ruta = os.path.join(self.temporal.name, "sin.log")
+        controlador = ControladorPartida(gestor, VistaEspia(), ruta)
+        controlador.motor = preparar_partida(CRIPTA_RESOLUBLE, SEMILLA_SC007, gestor)
+        controlador.bitacora = BitacoraPartida(ruta, CRIPTA_RESOLUBLE, gestor.version_cripta(CRIPTA_RESOLUBLE),
+                                               gestor.version_catalogo(), SEMILLA_SC007)
+        return controlador, ruta
+
+    @staticmethod
+    def _jugar_y_leer(controlador, ruta):
+        for linea in ACCIONES_SC007:
+            controlador.ejecutar(linea)
+        motor = controlador.motor
+        estado = {
+            "reloj": motor.reloj,
+            "sala": motor.jugador.sala.id,
+            "vida": motor.jugador.vida,
+            "resumen": motor.resumen_puntaje(),
+            "azar": motor.azar.getstate(),
+            "mapa": _como_datos(motor.mapa_conocido()),
+        }
+        controlador._cerrar()
+        with open(ruta, encoding="utf-8") as archivo:
+            return archivo.read(), estado
+
+    def test_sc007_fr023_la_verificacion_se_ejecuta_al_iniciar(self):
+        # sin esto, las comparaciones de abajo pasarían sin verificar nada
+        controlador, vista, _ = self._partida_con_verificacion()
+        controlador._cerrar()
+        self.assertEqual(vista.verificaciones, 1)
+
+    def test_sc007_fr023_misma_bitacora_y_mismo_estado_final(self):
+        con, vista, ruta_con = self._partida_con_verificacion()
+        self.assertEqual(vista.verificaciones, 1)
+        sin, ruta_sin = self._partida_sin_verificacion()
+        bitacora_con, estado_con = self._jugar_y_leer(con, ruta_con)
+        bitacora_sin, estado_sin = self._jugar_y_leer(sin, ruta_sin)
+        self.assertGreaterEqual(len(bitacora_sin.splitlines()), 6 + 4, bitacora_sin)  # encabezado + acciones
+        self.assertEqual(bitacora_con, bitacora_sin)
+        self.assertEqual(estado_con, estado_sin)
+
+    def test_sc007_fr023_azar_y_conocimiento_iguales_al_iniciar(self):
+        con, vista, _ = self._partida_con_verificacion()
+        sin, _ = self._partida_sin_verificacion()
+        self.assertEqual(vista.verificaciones, 1)
+        self.assertEqual(con.motor.azar.getstate(), sin.motor.azar.getstate())
+        self.assertEqual(_como_datos(con.motor.mapa_conocido()), _como_datos(sin.motor.mapa_conocido()))
+        con._cerrar()
+        sin._cerrar()
+
+    def test_sc007_fr023_verificar_no_toca_el_azar_global(self):
+        import random
+        from Gestor.PreparadorPartida import verificar_cripta
+        antes = random.getstate()
+        verificar_cripta(CRIPTA_RESOLUBLE, self.crear_gestor("datos_global"))
+        self.assertEqual(random.getstate(), antes)
+
+    def test_sc007_fr023_la_verificacion_no_aparece_en_la_bitacora(self):
+        con, vista, ruta = self._partida_con_verificacion()
+        self.assertEqual(vista.verificaciones, 1)
+        texto, _ = self._jugar_y_leer(con, ruta)
+        for palabra in ("resoluble", "verific", "oleada", "llaves:"):
+            with self.subTest(palabra=palabra):
+                self.assertNotIn(palabra, texto.lower())
+
+
 if __name__ == "__main__":
     unittest.main()

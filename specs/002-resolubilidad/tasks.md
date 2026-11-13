@@ -134,7 +134,7 @@ description: "Lista de tareas de la verificación de resolubilidad de una cripta
 ### Tests for User Story 3 ⚠️
 
 - [X] T034 [US3] En `tests/test_verificacion_cli.py`: `--cripta <no resoluble>` → `! Error: La cripta <id> no es resoluble. Usa --forzar para jugarla de todos modos.` seguido del reporte, código 1, sin bitácora ni cambios en la tabla de puntajes (FR-020, SC-006); `--cripta <resoluble>` con entrada `salir` → muestra el orden y la partida inicia (FR-019); sin `--cripta`, eligiendo la no resoluble de la lista interactiva → igual que `--cripta` (FR-018); con fuente simulada, la verificación seguida de la partida no repite las solicitudes de detalles, versión, esqueleto ni llaves (FR-026)
-- [ ] T035 [US3] En `tests/test_verificacion_cli.py`, SC-007: misma cripta, semilla y acciones, con la verificación y llamando directamente a `preparar_partida` sin ella → misma bitácora y mismo estado final; el estado del generador de azar de la partida es el mismo antes y después de verificar; la verificación no aparece en la bitácora ; el conocimiento del jugador (mapa conocido) es el mismo con verificación y sin ella (FR-023)
+- [X] T035 [US3] En `tests/test_verificacion_cli.py`, SC-007: misma cripta, semilla y acciones, con la verificación y llamando directamente a `preparar_partida` sin ella → misma bitácora y mismo estado final; el estado del generador de azar de la partida es el mismo antes y después de verificar; la verificación no aparece en la bitácora ; el conocimiento del jugador (mapa conocido) es el mismo con verificación y sin ella (FR-023)
 
 ### Implementation for User Story 3
 
