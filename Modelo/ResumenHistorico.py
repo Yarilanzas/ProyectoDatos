@@ -16,15 +16,18 @@ def _ordenar(elementos, clave):
     return resultado
 
 
-def _inventario(motor, pergaminos):
+def _inventario(motor, pergaminos, nombre_pergamino=None):
     """Tupla de (nombre, cantidad) en el orden del inventario (primera aparición). Si `pergaminos` no es None, la
-    cantidad de pergaminos de retroceso es esa y no la del clon (FR-029; T048 la toma de la serie)."""
+    cantidad de pergaminos de retroceso es esa y no la del clon (FR-029; T048 la toma de la serie).
+
+    El nombre del pergamino es siempre el del inventario vivo (``nodo.nombre``, el mismo texto que muestra el juego): el que
+    trae `nombre_pergamino` (el que la línea vio en la partida) y, si no, el de un pergamino del clon."""
     nombres = []
     cantidades = []
-    nombre_pergamino = NOMBRE_PERGAMINO
     for nodo in motor.jugador.inventario:
         if nodo.clase == CLASE_PERGAMINO:
-            nombre_pergamino = nodo.nombre
+            if nombre_pergamino is None:
+                nombre_pergamino = nodo.nombre
             if pergaminos is not None:
                 continue
         posicion = -1
@@ -37,7 +40,7 @@ def _inventario(motor, pergaminos):
         else:
             cantidades[posicion] += 1
     if pergaminos is not None and pergaminos > 0:
-        nombres.append(nombre_pergamino)
+        nombres.append(NOMBRE_PERGAMINO if nombre_pergamino is None else nombre_pergamino)
         cantidades.append(pergaminos)
     return tuple((nombres[i], cantidades[i]) for i in range(len(nombres)))
 
@@ -63,7 +66,7 @@ def _efectos(motor):
     return efectos
 
 
-def resumir(motor, reloj, referencia, pergaminos=None):
+def resumir(motor, reloj, referencia, pergaminos=None, nombre_pergamino=None):
     """``ResumenHistorico`` de `motor` (un clon, o el vivo solo para leerlo) con el reloj consultado `reloj`.
 
     - `referencia`: ``("instante", t)``, ``("accion", k)``, ``("actual", None)`` o ``("final", None)``.
@@ -86,5 +89,5 @@ def resumir(motor, reloj, referencia, pergaminos=None):
     return ResumenHistorico(
         referencia, reloj, (sala.id, sala.nombre), jugador.vida, jugador.vida_max, jugador.ataque,
         jugador.defensa, jugador.velocidad, None if arma is None else arma.nombre,
-        None if armadura is None else armadura.nombre, _inventario(motor, pergaminos), _efectos(motor),
+        None if armadura is None else armadura.nombre, _inventario(motor, pergaminos, nombre_pergamino), _efectos(motor),
         enemigos, motor.mapa_conocido(), resultado)

@@ -64,13 +64,21 @@ def _es_entero(valor):
 CLASE_PERGAMINO = "pergamino_retroceso"
 
 
-def contar_pergaminos(motor):
-    """Pergaminos de retroceso en el inventario del jugador. O(capacidad del inventario)."""
+def leer_pergaminos(motor):
+    """``(cantidad, nombre)`` de los pergaminos de retroceso del inventario del jugador; `nombre` es el ``nombre`` del nodo
+    (el mismo texto con que el juego muestra el pergamino en el inventario vivo) o None si no hay. O(capacidad)."""
     cuenta = 0
+    nombre = None
     for nodo in motor.jugador.inventario:
         if nodo.clase == CLASE_PERGAMINO:
             cuenta += 1
-    return cuenta
+            nombre = nodo.nombre
+    return cuenta, nombre
+
+
+def contar_pergaminos(motor):
+    """Pergaminos de retroceso en el inventario del jugador. O(capacidad del inventario)."""
+    return leer_pergaminos(motor)[0]
 
 
 class SeriePergaminos:
@@ -87,6 +95,7 @@ class SeriePergaminos:
 
     def __init__(self, inicial=0):
         self.inicial = inicial
+        self.nombre = None  # nombre del pergamino tal como lo muestra el inventario vivo (el primero que se vio)
         self.serie_clave = []
         self.serie_cantidad = []
 
@@ -203,7 +212,9 @@ class LineaTiempo:
         self.pc_epoca = []
         self.pc_punto = []
         self._epoca = 0
-        self.serie = SeriePergaminos(contar_pergaminos(motor))
+        cuenta, nombre = leer_pergaminos(motor)
+        self.serie = SeriePergaminos(cuenta)
+        self.serie.nombre = nombre
         self._acciones_motor = motor.acciones_jugador
         self._agregar_punto(motor, 0)
         self._tomar_sello(motor)
@@ -233,7 +244,7 @@ class LineaTiempo:
         self.guion_secuencia.append(self._sello_secuencia)
 
         acciones = len(self.vig_guion)
-        self.serie.registrar(acciones, contar_pergaminos(motor))
+        self._registrar_pergaminos(acciones, motor)
         if acciones % self._k == 0:
             self._agregar_punto(motor, acciones)
         self._tomar_sello(motor)
@@ -275,9 +286,20 @@ class LineaTiempo:
             self.pc_punto[-1] = copiar(motor, accion=nuevo_n, epoca=self.pc_epoca[-1])
         else:
             self._agregar_punto(motor, nuevo_n)
-        self.serie.plegar(nuevo_n, contar_pergaminos(motor))
+        cuenta, nombre = leer_pergaminos(motor)
+        self._recordar_nombre(nombre)
+        self.serie.plegar(nuevo_n, cuenta)
         self._tomar_sello(motor)
         self._acciones_motor = motor.acciones_jugador
+
+    def _recordar_nombre(self, nombre):
+        if nombre is not None and self.serie.nombre is None:
+            self.serie.nombre = nombre
+
+    def _registrar_pergaminos(self, clave, motor):
+        cuenta, nombre = leer_pergaminos(motor)
+        self._recordar_nombre(nombre)
+        self.serie.registrar(clave, cuenta)
 
     @property
     def serie_clave(self):
@@ -386,7 +408,7 @@ class LineaTiempo:
             return resumir(motor, motor.reloj, (REFERENCIA_ACTUAL, None))
         try:
             clon = self._rehacer_hasta(k)
-            return resumir(clon, self.vig_reloj[k - 1], (REFERENCIA_ACCION, k), self.serie.en(k - 1))
+            return resumir(clon, self.vig_reloj[k - 1], (REFERENCIA_ACCION, k), self.serie.en(k - 1), self.serie.nombre)
         finally:
             self._soltar_clon()
 
@@ -410,7 +432,7 @@ class LineaTiempo:
         try:
             clon = self._rehacer_hasta(k)
             if indice < 0 or self.vig_reloj[indice] == t:
-                return resumir(clon, t, (REFERENCIA_INSTANTE, t), self.serie.en(k - 1))
+                return resumir(clon, t, (REFERENCIA_INSTANTE, t), self.serie.en(k - 1), self.serie.nombre)
             clon.agenda.__class__ = AgendaConCorte
             clon.agenda.corte = t
             posicion = self.vig_guion[k - 1]
@@ -418,6 +440,6 @@ class LineaTiempo:
             self._lanzar_si_falta_un_dato()
             if not aceptada:
                 raise ErrorReconstruccion(f"el clon rechazó la acción {k} ({self.guion_nombre[posicion]})")
-            return resumir(clon, t, (REFERENCIA_INSTANTE, t), self.serie.en(k))
+            return resumir(clon, t, (REFERENCIA_INSTANTE, t), self.serie.en(k), self.serie.nombre)
         finally:
             self._soltar_clon()

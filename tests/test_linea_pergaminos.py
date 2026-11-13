@@ -127,5 +127,43 @@ class PruebasPergaminosPorInstante(unittest.TestCase):
         self.assertEqual(contenido(linea.consultar_accion(linea.acciones + 1, motor)), huella(motor))
 
 
+class PruebasNombreDelPergamino(unittest.TestCase):
+    """El resumen muestra el pergamino con el mismo nombre que el inventario vivo (``nodo.nombre``, como `_texto_nodo` de la
+    vista), no con una constante cuando el clon no tiene uno."""
+
+    def test_us2_8_el_nombre_es_el_del_nodo_vivo_y_se_conserva_aunque_el_clon_no_tenga_pergamino(self):
+        from tests.utiles_niebla import contenido_sala
+        from Vista.VistaConsola import VistaConsola
+        from Modelo.ResumenHistorico import resumir
+        pl = partida_con_linea(k=3, pergaminos=0, efectos=False, contenido=[contenido_sala(1, objetos=("itm_pergamino",))])
+        self.addCleanup(pl.cerrar)
+        linea, motor = pl.linea, pl.motor
+        suelo = motor.obtener_objetos_suelo(motor.jugador.sala)[0]
+        nombre_vivo = suelo.nombre
+        self.assertEqual(nombre_vivo, "Pergamino")  # el del catálogo de prueba, no la constante del resumen
+        pl.hacer([("esperar", ""), ("recoger", suelo.instancia_id), ("esperar", "")])
+        self.assertEqual(linea.serie.nombre, nombre_vivo)
+        # así lo muestra el inventario vivo
+        self.assertTrue(VistaConsola()._texto_nodo(next(iter(motor.jugador.inventario))).startswith(nombre_vivo))
+        for k in (3, 4):
+            resumen = linea.consultar_accion(k, motor)
+            self.assertIn((nombre_vivo, 1), resumen.inventario)
+        # un clon sin pergamino (el motor de la partida antes de recoger) con la cantidad de la serie usa el mismo nombre
+        clon = linea.clon_antes_de(2, motor)
+        try:
+            self.assertEqual(sum(1 for n in clon.jugador.inventario if n.clase == "pergamino_retroceso"), 0)
+            resumen = resumir(clon, 1, ("instante", 1), pergaminos=2, nombre_pergamino=linea.serie.nombre)
+        finally:
+            linea._soltar_clon()
+        self.assertIn((nombre_vivo, 2), resumen.inventario)
+        # sin nombre conocido (la línea nunca vio un pergamino), la constante
+        clon = linea.clon_antes_de(2, motor)
+        try:
+            sin_nombre = resumir(clon, 1, ("instante", 1), pergaminos=2)
+        finally:
+            linea._soltar_clon()
+        self.assertIn(("Pergamino de retroceso", 2), sin_nombre.inventario)
+
+
 if __name__ == "__main__":
     unittest.main()
