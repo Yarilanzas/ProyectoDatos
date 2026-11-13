@@ -2,6 +2,8 @@
 # No modifica nada ni decide reglas; eso lo hace el controlador
 # entrada/salida se pueden reemplazar (por ejemplo en las pruebas) para no usar el teclado
 
+from Vista.TextoResumen import lineas_resumen
+
 NOMBRES_DIRECCION = {"N": "norte", "S": "sur", "E": "este", "O": "oeste"}
 MENSAJES_EN_PANTALLA = 6  # el registro guarda 20 (S4.8); en cada turno se muestran los ultimos
 
@@ -13,6 +15,9 @@ AYUDA = """Comandos:
   inventario [peso|valor|nombre]         mensajes
   mapa             (salas exploradas y avistadas)
   ir a SALA        (viaja por el mapa conocido)
+  historia <t>       Muestra el estado en el instante t (sin cambiar la partida)
+  historia #<k>      Muestra el estado justo antes de la acción k
+  (línea de comandos) --hasta T con --replay; --checkpoint-cada K
   red              (solicitudes y cache)
   puntajes [mejores|acciones|tiempo|derrotados|nombre]
   guardar [ARCHIVO]                      cargar ARCHIVO
@@ -117,6 +122,11 @@ class VistaConsola:
                              f"costo {salida.costo}   {salida.estado}")
         avistadas = ", ".join(str(id_sala) for id_sala in mapa.avistadas)
         self.mostrar(f"Avistadas: {avistadas or 'ninguna'}")
+
+    def mostrar_resumen_historico(self, resumen):
+        # `resumen` es un ResumenHistorico (spec 004): el texto lo arma Vista/TextoResumen.py, igual que --replay --hasta
+        for linea in lineas_resumen(resumen):
+            self.mostrar(linea)
 
     def mostrar_inventario_ordenado(self, nodos, criterio, inventario):
         # vista_ordenada (persona C) no cambia el orden real del inventario
