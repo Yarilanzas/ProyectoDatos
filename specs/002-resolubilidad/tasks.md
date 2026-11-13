@@ -179,7 +179,7 @@ description: "Lista de tareas de la verificación de resolubilidad de una cripta
 
 ### Implementation for User Story 5
 
-- [ ] T044 [US5] En `main.py` (**`git pull` antes**): revisar que la rama `--verificar` y la de partida nueva capturen `ErrorCliente` y sus subclases, `RuntimeError`, `ValueError` y `OSError` con `vista.mostrar_error` y `return 1`, sin mostrar veredicto, también con `--forzar`, y que `CriptaNoResoluble` se capture antes que ellos. Atiende: FR-024, FR-025
+- [X] T044 [US5] En `main.py` (**`git pull` antes**): revisar que la rama `--verificar` y la de partida nueva capturen `ErrorCliente` y sus subclases, `RuntimeError`, `ValueError` y `OSError` con `vista.mostrar_error` y `return 1`, sin mostrar veredicto, también con `--forzar`, y que `CriptaNoResoluble` se capture antes que ellos. Atiende: FR-024, FR-025
 
 **Checkpoint**: las cinco historias completas.
 

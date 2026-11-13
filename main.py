@@ -207,6 +207,8 @@ def main():
         gestor = crear_gestor(argumentos)
         try:
             resultado = verificar_cripta(argumentos.verificar, gestor)
+        # ErrorCliente y sus subclases (presupuesto, 429/5xx, respuesta inválida) heredan de RuntimeError, igual que
+        # la falta de un archivo offline: sin veredicto y código 1 (FR-024, FR-025)
         except (ValueError, RuntimeError, OSError) as error:
             vista.mostrar_error(str(error))
             return 1
@@ -237,6 +239,8 @@ def main():
     except VersionIncompatible as error:
         vista.mostrar_error(f"Versión incompatible: {error}")
         return 2
+    # errores de datos de la verificación o de la partida (ErrorCliente hereda de RuntimeError): sin veredicto y
+    # código 1, también con --forzar, que no los silencia (FR-024, FR-025)
     except (ValueError, RuntimeError, OSError) as error:
         vista.mostrar_error(str(error))
         return 1
