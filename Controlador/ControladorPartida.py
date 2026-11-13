@@ -8,7 +8,10 @@ import random
 import shutil
 
 from Bitacora.BitacoraPartida import BitacoraPartida
+from Controlador.ObservadorLinea import ObservadorLinea
+from Gestor.GestorHistorico import GestorHistorico, SinDatosParaHistoria
 from Gestor.PreparadorPartida import preparar_partida, cargar_partida, verificar_cripta
+from Modelo.LineaTiempo import ErrorReconstruccion, K_POR_OMISION, LineaTiempo, ReferenciaInvalida
 from Modelo.rutas_ir_a import primer_paso
 from Modelo.Viaje import (DANO, DESTINO, ENEMIGOS, RECHAZO_ACTUAL, RECHAZO_SIN_RUTA, SIN_RUTA)
 from Persistencia.ArchivoPartida import guardar_partida
@@ -132,6 +135,10 @@ class ControladorPartida:
         self.bitacora = None
         # búsqueda de la ruta de «ir a»; las pruebas la reemplazan por un buscador de prueba (PR-10)
         self.buscar_ruta = primer_paso
+        # línea de tiempo (spec 004): K de los puntos de control; main.py lo cambia con --checkpoint-cada
+        self.k_linea = K_POR_OMISION
+        self.linea = None
+        self.observador = None
 
     # inicio de partida
 
@@ -171,6 +178,10 @@ class ControladorPartida:
             self.ruta_bitacora, cripta_id,
             self.gestor.version_cripta(cripta_id), self.gestor.version_catalogo(), semilla,
         )
+        # la línea registra por el mismo camino que la bitácora (FR-025); existe aunque no haya bitácora
+        self.linea = LineaTiempo(self.k_linea, GestorHistorico.desde_gestor(self.gestor, cripta_id))
+        self.observador = ObservadorLinea(self.linea)
+        self.observador.al_crear_motor(motor)
         self.vista.mostrar_aviso(f"Partida nueva en {cripta_id} (semilla {semilla})")
 
     def cargar(self, ruta):
@@ -235,6 +246,10 @@ class ControladorPartida:
             aceptada = self.motor.ejecutar_accion(nombre, argumento)
         except RuntimeError as error:
             self.vista.mostrar_error(str(error))
+            # el motor pudo avanzar antes de fallar: la línea no se queda desfasada en silencio (FR-025)
+            if self.linea is not None and not self.linea.sincronizada(self.motor):
+                self.linea = self.observador = None
+                self.vista.mostrar_aviso("La línea de tiempo quedó desfasada: el comando historia no estará disponible")
             return False
 
         if not aceptada:
@@ -246,6 +261,8 @@ class ControladorPartida:
             if comentario is not None:
                 self.bitacora.comentar(comentario)
             self.bitacora.registrar(nombre, argumento)
+        if self.observador is not None:
+            self.observador.despues_de_accion(self.motor, nombre, argumento)
         return True
 
     def _ir(self, argumento):
@@ -281,6 +298,36 @@ class ControladorPartida:
         if aviso is not None:
             self.vista.mostrar_aviso(aviso)
 
+    def _historia(self, argumento):
+        # «historia <t>» o «historia #<k>» (spec 004, FR-003 a FR-005, FR-009): consulta, no consume tiempo, no cuenta como
+        # acción y no va a la bitácora ni al guion. Los textos de los avisos son los de contracts/comandos-historia.md
+        if argumento.startswith("#"):
+            numero, es_accion = argumento[1:], True
+        else:
+            numero, es_accion = argumento, False
+        if not (numero.isascii() and numero.isdigit()):
+            self.vista.mostrar_error("Use: historia <t> | historia #<k>")
+            return
+        if self.linea is None:
+            self.vista.mostrar_aviso("La historia no está disponible en esta partida")
+            return
+        if self.motor.estado_partida() != "en_curso":
+            self.vista.mostrar_aviso("La partida terminó: use --replay --hasta para consultar el pasado")
+            return
+
+        try:
+            if es_accion:
+                resumen = self.linea.consultar_accion(int(numero), self.motor)
+            else:
+                resumen = self.linea.consultar_instante(int(numero), self.motor)
+        except ReferenciaInvalida as error:
+            self.vista.mostrar_aviso(error.motivo)
+            return
+        except (ErrorReconstruccion, SinDatosParaHistoria) as error:
+            self.vista.mostrar_error(f"No se pudo reconstruir ese momento: {error}")
+            return
+        self.vista.mostrar_resumen_historico(resumen)
+
     def _inventario(self, criterio):
         criterio = criterio or "nombre"
         if criterio not in CRITERIOS_INVENTARIO:
@@ -314,6 +361,8 @@ class ControladorPartida:
             self._inventario(argumento.lower())
         elif comando == "ir":
             self._ir(argumento)
+        elif comando == "historia":
+            self._historia(argumento)
         elif comando == "mapa":
             # consulta, igual que inventario: no consume tiempo ni va a la bitacora (FR-018, FR-019)
             self.vista.mostrar_mapa(self.motor.mapa_conocido())
@@ -394,6 +443,9 @@ class ControladorPartida:
         self.vista.mostrar_puntajes(puntajes[:PUNTAJES_EN_PANTALLA], criterio)
 
     def _cerrar(self):
+        if self.observador is not None:
+            self.observador.cerrar()
+        self.linea = self.observador = None  # una partida cargada no tiene línea hasta T085
         if self.bitacora is not None:
             self.bitacora.cerrar()
             self.bitacora = None

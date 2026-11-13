@@ -322,6 +322,12 @@ class LineaTiempo:
 
     # ───────────── sellos ─────────────
 
+    def sincronizada(self, motor):
+        """True si `motor` está en la decisión que la línea espera (su ``(reloj, secuencia)`` es el sello guardado). Si el
+        motor avanzó sin que la línea se enterara (por ejemplo, una acción que lanzó ``RuntimeError`` a medias), es False.
+        O(1)."""
+        return (motor.reloj, motor.secuencia) == (self._sello_reloj, self._sello_secuencia)
+
     def sello_de(self, k):
         """Sello `(reloj, secuencia)` de la decisión previa a la acción `k`, con `1 <= k <= acciones + 1`
         (``k == acciones + 1`` es la decisión actual). O(1)."""
