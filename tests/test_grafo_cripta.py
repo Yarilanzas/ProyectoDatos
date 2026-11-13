@@ -340,5 +340,67 @@ class TestEstructuraPropia(ConModulo):
                                      f"`global`/`nonlocal` en la línea {getattr(nodo, 'lineno', '?')}")
 
 
+class TestGrafoYEspacioDelMotor(unittest.TestCase):
+    """T018: el motor construye un GrafoCripta y un EspacioBusqueda persistentes al recibir sus salas (FR-015,
+    FR-033). Las clases se importan en setUpClass para que un fallo aquí no afecte a las demás clases del archivo."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.GrafoCripta = importlib.import_module("Modelo.GrafoCripta").GrafoCripta
+        cls.EspacioBusqueda = importlib.import_module("Modelo.BusquedaRuta").EspacioBusqueda
+        cls.MotorSimulacion = importlib.import_module("Modelo.MotorSimulacion").MotorSimulacion
+        cls.Jugador = importlib.import_module("Modelo.Jugador").Jugador
+
+    def comprobar_grafo_y_espacio(self, motor):
+        self.assertIsInstance(motor.grafo_cripta, self.GrafoCripta)
+        self.assertIsInstance(motor.espacio_busqueda, self.EspacioBusqueda)
+        self.assertEqual(motor.grafo_cripta.cantidad_salas, len(motor.salas))
+        self.assertEqual(motor.espacio_busqueda.cantidad_salas, len(motor.salas))
+
+    def test_fr015_fr033_iniciar_partida_crea_grafo_y_espacio(self):
+        """FR-015, FR-033: tras iniciar_partida, motor.grafo_cripta es un GrafoCripta y motor.espacio_busqueda un
+        EspacioBusqueda, ambos con cantidad_salas igual a len(motor.salas)."""
+        self.comprobar_grafo_y_espacio(armar_motor(cripta_terreno(5, 30), 1, []))
+        self.comprobar_grafo_y_espacio(mapa_a_mano(MAPA_DIRIGIDO, sala_jugador="A"))
+
+    def test_fr015_grafo_del_motor_lee_puertas_en_vivo(self):
+        """FR-015: abrir una puerta con ejecutar_accion cambia al instante lo que devuelve motor.grafo_cripta.aristas."""
+        motor = mapa_a_mano([(1, [("E", 2, 250, True), ("N", 3, None, False)]), (2, []), (3, [])], sala_jugador=1)
+        uno = sala_por_id(motor, 1)
+        self.assertEqual(ids(motor.grafo_cripta.aristas(uno)), [("N", 3, 100)])
+
+        self.assertTrue(motor.ejecutar_accion("abrir", "E"))
+        self.assertEqual(ids(motor.grafo_cripta.aristas(uno)), [("E", 2, 250), ("N", 3, 100)])
+        self.assertEqual(ids(motor.grafo_cripta.entrantes(sala_por_id(motor, 2))), [("E", 1, 250)])
+
+    def test_fr015_motor_sin_iniciar_no_tiene_grafo_ni_espacio(self):
+        """FR-015, FR-033: un MotorSimulacion que no pasó por iniciar_partida tiene grafo_cripta y espacio_busqueda
+        en None."""
+        motor = self.MotorSimulacion(semilla=1)
+        self.assertIsNone(motor.grafo_cripta)
+        self.assertIsNone(motor.espacio_busqueda)
+
+    def test_fr015_fr033_reiniciar_partida_con_otras_salas_crea_grafo_nuevo(self):
+        """FR-015, FR-033: volver a llamar iniciar_partida con otras salas crea un grafo y un espacio nuevos con la
+        cantidad de salas nueva."""
+        motor = mapa_a_mano(MAPA_DIRIGIDO, sala_jugador="A")
+        grafo_viejo, espacio_viejo = motor.grafo_cripta, motor.espacio_busqueda
+        self.assertEqual(grafo_viejo.cantidad_salas, 3)
+
+        nuevas = cripta_terreno(9, 25).esqueleto()
+        anterior = motor.jugador
+        jugador = self.Jugador(anterior.id, vida=anterior.vida_max, vida_max=anterior.vida_max,
+                               ataque=anterior.ataque, defensa=anterior.defensa, velocidad=anterior.velocidad,
+                               sala=nuevas[0])
+        motor.iniciar_partida(jugador, nuevas, [])
+
+        self.assertIsNot(motor.grafo_cripta, grafo_viejo)
+        self.assertIsNot(motor.espacio_busqueda, espacio_viejo)
+        self.assertEqual(len(motor.salas), 25)
+        self.comprobar_grafo_y_espacio(motor)
+        for indice in range(len(nuevas)):
+            self.assertEqual(motor.grafo_cripta.ordinal(nuevas[indice]), indice)
+
+
 if __name__ == "__main__":
     unittest.main()
