@@ -162,11 +162,11 @@ jugador.
 
 **Prueba independiente**: una cripta de prueba donde coinciden en `t` un ataque, el fin de un efecto y el cierre de una puerta.
 
-- [ ] T049 [US3] Agregar a `tests/utiles_linea.py` el constructor de la cripta de coincidencia: un enemigo que ataca, un efecto de velocidad que termina y una puerta que se cierra sola, los tres programados exactamente en `t`, más un evento en `t + 1`; devuelve `t` y el orden de resolución observado por el motor espía. Depende de T010 (mismo archivo). Atiende: FR-002. Archivo: tests/utiles_linea.py.
-- [ ] T050 [P] [US3] Escenario US3-1 y Quickstart 3: `historia t` refleja los tres eventos, en el mismo orden de resolución que tuvieron en la partida (comparado con el motor espía). Depende de T049. Atiende: FR-001, FR-002. Archivo: tests/test_linea_mismo_instante.py.
-- [ ] T051 [US3] Escenario US3-2: el evento de `t + 1` no se refleja en `historia t`. Depende de T050 (mismo archivo). Atiende: FR-001, FR-002. Archivo: tests/test_linea_mismo_instante.py.
-- [ ] T052 [US3] Quickstart 3 (segundo caso): con una decisión del jugador en `t`, `historia t` es el estado previo a decidir, y un evento con tiempo `t` y secuencia **posterior** a la decisión no se refleja. Depende de T051. Atiende: FR-001. Archivo: tests/test_linea_mismo_instante.py.
-- [ ] T053 [US3] Si T050 a T052 fallan, corregir el corte en `consultar_instante` o en `AgendaConCorte` (sin tocar el motor); si pasan a la primera, dejarlo escrito en esta tarea y marcarla hecha sin cambios de código. Depende de T052. Atiende: FR-001, FR-002. Archivo: Modelo/LineaTiempo.py, Modelo/AgendaConCorte.py.
+- [X] T049 [US3] Agregar a `tests/utiles_linea.py` el constructor de la cripta de coincidencia: un enemigo que ataca, un efecto de velocidad que termina y una puerta que se cierra sola, los tres programados exactamente en `t`, más un evento en `t + 1`; devuelve `t` y el orden de resolución observado por el motor espía. Depende de T010 (mismo archivo). Atiende: FR-002. Archivo: tests/utiles_linea.py.
+- [X] T050 [P] [US3] Escenario US3-1 y Quickstart 3: `historia t` refleja los tres eventos, en el mismo orden de resolución que tuvieron en la partida (comparado con el motor espía). Depende de T049. Atiende: FR-001, FR-002. Archivo: tests/test_linea_mismo_instante.py.
+- [X] T051 [US3] Escenario US3-2: el evento de `t + 1` no se refleja en `historia t`. Depende de T050 (mismo archivo). Atiende: FR-001, FR-002. Archivo: tests/test_linea_mismo_instante.py.
+- [X] T052 [US3] Quickstart 3 (segundo caso): con una decisión del jugador en `t`, `historia t` es el estado previo a decidir, y un evento con tiempo `t` y secuencia **posterior** a la decisión no se refleja. Depende de T051. Atiende: FR-001. Archivo: tests/test_linea_mismo_instante.py.
+- [X] T053 [US3] Si T050 a T052 fallan, corregir el corte en `consultar_instante` o en `AgendaConCorte` (sin tocar el motor); si pasan a la primera, dejarlo escrito en esta tarea y marcarla hecha sin cambios de código. Depende de T052. **Hecha sin cambios de código (2026-11-13): T050 a T052 pasaron a la primera, el corte de `AgendaConCorte` y `consultar_instante` no se tocaron.** Atiende: FR-001, FR-002. Archivo: Modelo/LineaTiempo.py, Modelo/AgendaConCorte.py.
 
 **Punto de control 4**: T050 a T052 en verde. Las tres historias P1 completas.
 
