@@ -565,7 +565,7 @@ Lo siguiente no se pudo medir y queda como **HIPÓTESIS** hasta que lo cubra una
 - eventos pendientes distintos de `CERRAR_PUERTA` (`REARMAR_TRAMPA`, `VENENO`, etc.);
 - acciones del juego que consuman `azar`.
 
-La revisión del grupo que pide T003 sigue pendiente.
+**Decisión (2026-11-12)**: el profesor respondió: «Para este proyecto sí pueden usar el dict como caché. No hay problema». Queda autorizado `copy.deepcopy` con su `memo`; T098 queda solo como opción de rendimiento. Alcance: se usa solo para el `memo`; el resto de las estructuras de esta capacidad sigue sin `dict` ni `set` como índice mientras no se aclare el alcance por escrito.
 
 ---
 
