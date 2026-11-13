@@ -1,7 +1,9 @@
 import random
 from DTOS.MapaConocido import MapaConocido, SalaConocida, SalidaConocida
+from Modelo.BusquedaRuta import EspacioBusqueda
 from Modelo.Conocimiento import Conocimiento, EXPLORADA, GrafoConocido
 from Modelo.Evento import Evento
+from Modelo.GrafoCripta import GrafoCripta
 from Modelo.RegistroMensajes import RegistroMensajes
 from Modelo.AgendaEventos import AgendaEventos
 from Modelo.Enemigo import Enemigo
@@ -53,6 +55,10 @@ class MotorSimulacion:
         # Una única instancia del gestor para este motor.
         self.gestor_datos = gestor_datos
         self.restaurador = None
+        self.ciclo = 0
+        self.version_puertas = 0
+        self.grafo_cripta = None
+        self.espacio_busqueda = None
 
         if self.gestor_datos is not None:
             self.gestor_datos.conectar_estado_juego(self)
@@ -393,6 +399,8 @@ class MotorSimulacion:
         # abierto, así que la entrada a la sala inicial no se puede revertir (FR-002).
         self._reconstruir_indice_salas()
         self.conocimiento = Conocimiento(self._indice_salas, self._destino)
+        self.grafo_cripta = GrafoCripta(self.salas, self._destino, self.costo_salida)
+        self.espacio_busqueda = EspacioBusqueda(self.grafo_cripta.cantidad_salas)
         self._entrar_conocimiento(jugador.sala)
 
         jugador.tiempo_siguiente = 0
@@ -493,7 +501,7 @@ class MotorSimulacion:
 
         if jugador is None or not jugador.esta_vivo() or self.victoria:
             return False
-
+        self.ciclo += 1  # empieza un ciclo de eventos (FR-016, FR-024)
         while not self.agenda.esta_vacia():
             evento = self.agenda.siguiente()
 
@@ -544,11 +552,7 @@ class MotorSimulacion:
         if evento.tipo == "CERRAR_PUERTA":
             # actor es la Salida; si ya está cerrada no hay nada que hacer.
             if actor is not None and not actor.cerrada:
-                actor.cerrada = True
-                self.historial.registrar(
-                    deshacer=lambda: setattr(actor, "cerrada", False),
-                    description="cierre automático de puerta"
-                )
+                self._escribir_cerrada(actor, True, "cierre automático de puerta")
                 # El cierre real no depende de esto; solo lo que el jugador se entera (FR-007, H6).
                 if self.conocimiento is None:
                     self._mensaje("Una puerta se cerró sola.")
@@ -651,7 +655,15 @@ class MotorSimulacion:
 
         return evento_nuevo
 
-
+    def _escribir_cerrada(self, salida, cerrada, descripcion="puerta", registrar=True):
+        anterior = salida.cerrada
+        salida.cerrada = cerrada
+        self.version_puertas += 1
+        if registrar:
+            self.historial.registrar(
+                deshacer=lambda: self._escribir_cerrada(salida, anterior, descripcion, registrar=False),
+                description=descripcion
+            )
 
     def _asignar_reversible(self, objeto, nombre, valor):
         anterior = getattr(objeto, nombre, None)
@@ -1288,12 +1300,7 @@ class MotorSimulacion:
 
         self.accion_jugador()
 
-        salida.cerrada = False
-        self.historial.registrar(
-            deshacer=lambda: setattr(salida, "cerrada", True),
-            description=f"apertura de puerta {direccion}"
-        )
-
+        self._escribir_cerrada(salida, False, f"apertura de puerta {direccion}")
         if self.conocimiento is not None:
             self.conocimiento.observar_puerta(salida, self.historial)  # FR-008
 
