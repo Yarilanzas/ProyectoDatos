@@ -10,6 +10,8 @@
 # resumen_ampliado(motor) -> resumen + mensajes + rastros                 lo que se compara contra un clon
 # preparar_motor_linea(motor, espiar=True) -> motor                       lo vuelve MotorLinea: espía y cazador doble
 # partida_linea(...) -> PartidaLinea                                      motor + controlador + rutas, en carpeta propia
+# huella(motor) -> lineas del resumen histórico del estado actual, sin el título (lo que `historia` debe reproducir)
+# partida_con_linea(...) -> PartidaConLinea                              partida con línea de tiempo y espía de resúmenes
 # agregar_cazador(motor, id_enemigo, id_sala) -> Enemigo                  doble del cazador (T010)
 # agregar_enemigo(motor, id_enemigo, id_sala, comportamiento) -> Enemigo  p. ej. un «errante», que consume azar
 
@@ -25,9 +27,13 @@ if RAIZ not in sys.path:
 from API.Fuentes import FuenteDatosOffline
 from Controlador.ControladorPartida import ControladorPartida
 from Gestor.GestorDatos import GestorDatos
+from Gestor.GestorHistorico import GestorHistorico
 from Modelo.Enemigo import Enemigo
+from Modelo.LineaTiempo import LineaTiempo
 from Modelo.MotorSimulacion import MotorSimulacion
+from Modelo.ResumenHistorico import resumir
 from tests.test_integracion import VistaFalsa
+from Vista.TextoResumen import lineas_resumen
 from tests.utiles_niebla import CRIPTA_NIEBLA, ENEMIGO, TRAMPA, contenido_sala, crear_paquete_niebla, salida
 
 SIN_ATRIBUTO = "sin rastro"  # lo que `resumen_ampliado` anota de una sala sin el atributo `rastro`
@@ -250,6 +256,11 @@ class PartidaLinea:
             gestor.iniciar_cripta(CRIPTA_NIEBLA)
         return gestor
 
+    def nuevo_gestor_historico(self):
+        """El gestor sin red de los clones (T029): mismo disco que el gestor de la partida, sin compartir contadores ni
+        caché, con las versiones y los detalles capturados ahora."""
+        return GestorHistorico.desde_gestor(self.gestor, CRIPTA_NIEBLA)
+
     def cerrar(self):
         try:
             if self.controlador.bitacora is not None:
@@ -285,3 +296,84 @@ def partida_linea(salas=None, contenido=None, semilla=7, jugador=None, forzar=Fa
     if espiar:
         preparar_motor_linea(controlador.motor)
     return partida
+
+
+# ───────────────────────── Partida con línea y espía de resúmenes (T018 a T022) ─────────────────────────
+
+def huella(motor, reloj=None):
+    """Las líneas del resumen histórico del estado de `motor` (sin el título, que depende de la referencia).
+    Es lo que `consultar_instante`/`consultar_accion` deben reproducir del estado pasado."""
+    return lineas_resumen(resumir(motor, motor.reloj if reloj is None else reloj, ("instante", 0)))[1:]
+
+
+class MotorEspiaConsulta(MotorLinea):
+    """Espía independiente de la reconstrucción: anota el resumen del estado vivo (a) tras cada evento ejecutado y
+    (b) tras el efecto de cada acción del jugador, justo antes de que programe su siguiente decisión. Así `instantaneas`
+    es la línea de tiempo real, en orden, como pares (reloj, huella). `decisiones` lo llena `jugar_con_linea` con el
+    estado justo ANTES de cada decisión aceptada, como pares (reloj, huella)."""
+
+    instantaneas = None
+    decisiones = None
+
+    def ejecutar_evento(self, evento):
+        super().ejecutar_evento(evento)
+        if self.instantaneas is not None:
+            self.instantaneas.append((self.reloj, huella(self)))
+
+    def proxima_accion(self, actor, costo=100):
+        if actor is self.jugador and self.instantaneas is not None:
+            self.instantaneas.append((self.reloj, huella(self)))
+        return super().proxima_accion(actor, costo)
+
+
+class PartidaConLinea:
+    """Partida de `partida_linea` con `MotorEspiaConsulta`, una `LineaTiempo` y un gestor histórico propio."""
+
+    def __init__(self, partida, linea, generador):
+        self.partida = partida
+        self.linea = linea
+        self.generador = generador
+
+    @property
+    def motor(self):
+        return self.partida.motor
+
+    def jugar(self, acciones=None, hasta_reloj=None, observador=None):
+        """Juega con el generador hasta `acciones` aceptadas o hasta que el reloj llegue a `hasta_reloj`; cada acción
+        aceptada se registra en la línea. Devuelve las aceptadas."""
+        motor = self.motor
+        jugadas = []
+        while ((acciones is None or len(jugadas) < acciones)
+               and (hasta_reloj is None or motor.reloj < hasta_reloj)
+               and motor.jugador.esta_vivo() and not motor.victoria):
+            nombre, argumento = self.generador.siguiente(motor)
+            antes = (motor.reloj, huella(motor))
+            if motor.ejecutar_accion(nombre, argumento):
+                motor.decisiones.append(antes)
+                self.linea.registrar_accion(motor, nombre, argumento)
+                jugadas.append((nombre, argumento))
+        return jugadas
+
+    def cerrar(self):
+        self.partida.cerrar()
+
+
+def partida_con_linea(k=10, semilla=3, efectos=True, **opciones):
+    """Partida (cripta resoluble, por ControladorPartida.nueva_partida) con un errante, el cazador doble, y si
+    `efectos`: veneno, velocidad temporal y antorcha encendida con su evento de apagado, todo **antes** de
+    `linea.iniciar`, así el punto de control de la acción 0 ya los trae."""
+    partida = partida_linea(semilla=semilla, **opciones)
+    motor = preparar_motor_linea(partida.motor, espiar=False)
+    motor.__class__ = MotorEspiaConsulta
+    motor.instantaneas = []
+    motor.decisiones = []
+    agregar_enemigo(motor, "err-001", 4, "errante")
+    agregar_cazador(motor, "caz-001", 6)
+    if efectos:
+        motor.aplicar_veneno(motor.jugador, 2)
+        motor.aplicar_velocidad_temporal(motor.jugador, 10, 300)
+        motor.jugador.antorcha_encendida = True
+        motor.programar_evento(motor.reloj + 500, "APAGAR_ANTORCHA", motor.jugador)
+    linea = LineaTiempo(k=k, gestor_historico=partida.nuevo_gestor_historico())
+    linea.iniciar(motor)
+    return PartidaConLinea(partida, linea, GeneradorAcciones(semilla))
