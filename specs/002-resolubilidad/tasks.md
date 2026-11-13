@@ -155,7 +155,7 @@ description: "Lista de tareas de la verificación de resolubilidad de una cripta
 
 ### Tests for User Story 4 ⚠️
 
-- [ ] T039 [US4] En `tests/test_verificacion_cli.py`: `--cripta <no resoluble> --forzar` inicia sin reporte (FR-021, US4.1); `--cripta <resoluble> --forzar` inicia sin reporte ni orden (FR-021, US4.2); `--verificar <no resoluble> --forzar` muestra el resultado completo, código 0 y no inicia partida (FR-017, US4.3); una partida forzada guardada y su bitácora funcionan con `--cargar` y `--replay` sin `--forzar` y sin verificar (con fuente simulada: cero solicitudes a `/llaves`) (FR-022); `--cargar F --forzar` y `--replay F --forzar` ignoran la opción (FR-022)
+- [X] T039 [US4] En `tests/test_verificacion_cli.py`: `--cripta <no resoluble> --forzar` inicia sin reporte (FR-021, US4.1); `--cripta <resoluble> --forzar` inicia sin reporte ni orden (FR-021, US4.2); `--verificar <no resoluble> --forzar` muestra el resultado completo, código 0 y no inicia partida (FR-017, US4.3); una partida forzada guardada y su bitácora funcionan con `--cargar` y `--replay` sin `--forzar` y sin verificar (con fuente simulada: cero solicitudes a `/llaves`) (FR-022); `--cargar F --forzar` y `--replay F --forzar` ignoran la opción (FR-022)
 
 ### Implementation for User Story 4
 

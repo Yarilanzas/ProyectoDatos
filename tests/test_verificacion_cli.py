@@ -501,5 +501,104 @@ class PruebasVerificacionNoCambiaPartida(unittest.TestCase):
                 self.assertNotIn(palabra, texto.lower())
 
 
+# --- T039: --forzar (US4) ---------------------------------------------------------------------------------------
+
+class PruebasForzarCli(unittest.TestCase):
+
+    setUp = PruebasVerificacionCli.setUp
+    tearDown = PruebasVerificacionCli.tearDown
+    foto_de_trabajo = PruebasVerificacionCli.foto_de_trabajo
+    correr = PruebasPartidaNuevaCli.correr
+    reporte_de = PruebasPartidaNuevaCli.reporte_de
+
+    def assert_inicio_sin_reporte(self, texto, cripta):
+        self.assertIn(f"Partida nueva en {cripta} (semilla 7)\n", texto)
+        for prohibido in ("resoluble", "Orden de obtención", "oleada", "! Error"):
+            self.assertNotIn(prohibido, texto)
+
+    def test_fr021_us4_1_no_resoluble_con_forzar_inicia_sin_reporte(self):
+        codigo, texto = self.correr(self.paquete_nr, ["salir"], "--cripta", CRIPTA_NO_RESOLUBLE, "--semilla", "7",
+                                    "--forzar")
+        self.assertEqual(codigo, 0)
+        self.assert_inicio_sin_reporte(texto, CRIPTA_NO_RESOLUBLE)
+        self.assertIn("=== CRIPTA ===", texto)
+
+    def test_fr021_us4_2_resoluble_con_forzar_inicia_sin_reporte_ni_orden(self):
+        codigo, texto = self.correr(self.paquete_res, ["salir"], "--cripta", CRIPTA_RESOLUBLE, "--semilla", "7",
+                                    "--forzar")
+        self.assertEqual(codigo, 0)
+        self.assert_inicio_sin_reporte(texto, CRIPTA_RESOLUBLE)
+
+    def test_fr021_forzar_igual_verifica(self):
+        # la verificación se ejecuta igual con --forzar (cli-verificacion.md): se pide /llaves
+        FuenteOfflineContada.rutas = []
+        with mock.patch.object(main, "FuenteDatosOffline", FuenteOfflineContada):
+            codigo, _ = self.correr(self.paquete_nr, ["salir"], "--cripta", CRIPTA_NO_RESOLUBLE, "--semilla", "7",
+                                    "--forzar")
+        self.assertEqual(codigo, 0)
+        self.assertEqual(FuenteOfflineContada.rutas.count(f"/criptas/{CRIPTA_NO_RESOLUBLE}/llaves"), 1)
+
+    def test_fr017_us4_3_verificar_con_forzar_muestra_todo_y_no_inicia(self):
+        reporte = self.reporte_de(self.paquete_nr, CRIPTA_NO_RESOLUBLE)
+        antes = self.foto_de_trabajo()
+        codigo, texto = self.correr(self.paquete_nr, [], "--verificar", CRIPTA_NO_RESOLUBLE, "--forzar")
+        self.assertEqual(codigo, 0)
+        self.assertEqual(texto, reporte)
+        self.assertEqual(self.foto_de_trabajo(), antes)
+
+    def _partida_forzada_guardada(self):
+        """Juega una partida forzada en la no resoluble y la guarda. Devuelve (guardado, bitácora)."""
+        guardado = os.path.join(self.trabajo, "forzada.cripta")
+        bitacora = os.path.join(self.trabajo, "forzada.log")
+        codigo, texto = self.correr(self.paquete_nr, ["esperar", f"guardar {guardado}", "salir"],
+                                    "--cripta", CRIPTA_NO_RESOLUBLE, "--semilla", "7", "--forzar",
+                                    "--bitacora", bitacora)
+        self.assertEqual(codigo, 0, texto)
+        self.assertTrue(os.path.exists(guardado), texto)
+        return guardado, bitacora
+
+    def _sin_verificar(self, *argumentos):
+        """Corre con datos locales nuevos (sin caché de llaves) contando las solicitudes: si algo verificara,
+        tendría que pedir /llaves."""
+        FuenteOfflineContada.rutas = []
+        datos = os.path.join(self.temporal.name, f"datos_{len(os.listdir(self.temporal.name))}")
+        with mock.patch.object(main, "FuenteDatosOffline", FuenteOfflineContada):
+            codigo, texto = self.correr(self.paquete_nr, ["salir"], "--datos-locales", datos, *argumentos)
+        pedidas = [r for r in FuenteOfflineContada.rutas if r.endswith("/llaves")]
+        return codigo, texto, pedidas
+
+    def test_fr022_partida_forzada_se_carga_y_reproduce_sin_forzar_ni_verificar(self):
+        guardado, bitacora = self._partida_forzada_guardada()
+        otra_bitacora = os.path.join(self.trabajo, "continuacion.log")
+
+        codigo, texto, pedidas = self._sin_verificar("--cargar", guardado, "--bitacora", otra_bitacora)
+        self.assertEqual(codigo, 0, texto)
+        self.assertIn(f"Partida cargada desde {guardado}", texto)
+        self.assertEqual(pedidas, [])
+        self.assertNotIn("resoluble", texto)
+
+        codigo, texto, pedidas = self._sin_verificar("--replay", bitacora)
+        self.assertEqual(codigo, 0, texto)
+        self.assertIn("Reproducción finalizada.", texto)
+        self.assertEqual(pedidas, [])
+
+    def test_fr022_cargar_y_replay_ignoran_forzar(self):
+        guardado, bitacora = self._partida_forzada_guardada()
+        otra_bitacora = os.path.join(self.trabajo, "continuacion.log")
+
+        _, sin_opcion, _ = self._sin_verificar("--cargar", guardado, "--bitacora", otra_bitacora)
+        codigo, con_opcion, pedidas = self._sin_verificar("--cargar", guardado, "--bitacora", otra_bitacora,
+                                                          "--forzar")
+        self.assertEqual(codigo, 0, con_opcion)
+        self.assertEqual(con_opcion, sin_opcion)
+        self.assertEqual(pedidas, [])
+
+        _, sin_opcion, _ = self._sin_verificar("--replay", bitacora)
+        codigo, con_opcion, pedidas = self._sin_verificar("--replay", bitacora, "--forzar")
+        self.assertEqual(codigo, 0, con_opcion)
+        self.assertEqual(con_opcion, sin_opcion)
+        self.assertEqual(pedidas, [])
+
+
 if __name__ == "__main__":
     unittest.main()
