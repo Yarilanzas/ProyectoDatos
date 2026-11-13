@@ -288,7 +288,7 @@ class TestParadaPorEnemigos(BaseViaje):
         # babosa (FR-010); al entrar en viaje, se activa (§2.4) y el viaje se detiene ahí.
         contenido = [contenido_sala(1, objetos=[ANTORCHA]),
                      contenido_sala(3, enemigos=["e-babosa"], tipo_enemigo=ENEMIGO_LENTO)]
-        motor = self.partida(mapa_pasillo(), contenido)
+        motor = self.partida(mapa_pasillo(), contenido, forzar=True)  # salida inalcanzable a propósito: forzar=True (spec 002, FR-021)
         self.acciones(motor, ("recoger", id_objeto(1, ANTORCHA, 0)), ("usar", id_objeto(1, ANTORCHA, 0)),
                       ("mover", "E"), ("mover", "O"))
         # La antorcha no carga el contenido de 3: la babosa aún no está en juego (FR-010).
@@ -301,7 +301,7 @@ class TestParadaPorEnemigos(BaseViaje):
 
     def test_fr027b_se_detiene_en_la_sala_intermedia_con_enemigos_activos(self):
         contenido = [contenido_sala(2, enemigos=["e-babosa"], tipo_enemigo=ENEMIGO_LENTO)]
-        motor = self.partida(mapa_pasillo(), contenido)
+        motor = self.partida(mapa_pasillo(), contenido, forzar=True)  # salida inalcanzable a propósito: forzar=True (spec 002, FR-021)
         self.acciones(motor, ("mover", "E"), ("mover", "E"), ("mover", "E"))
         vida = motor.jugador.vida
 
@@ -311,7 +311,7 @@ class TestParadaPorEnemigos(BaseViaje):
         self.assertEqual(self.movimientos()[-2:], ["mover O", "mover O"])
 
     def test_fr027b_enemigos_ya_derrotados_no_detienen(self):
-        motor = self.partida(mapa_pasillo(), [contenido_sala(2, enemigos=["e-rata"])])
+        motor = self.partida(mapa_pasillo(), [contenido_sala(2, enemigos=["e-rata"])], forzar=True)  # salida inalcanzable a propósito: forzar=True (spec 002, FR-021)
         self.acciones(motor, ("mover", "E"))
         rata = motor.enemigos[0]
         while rata.esta_vivo():
@@ -412,7 +412,7 @@ def mapa_llave():
 class TestNoAbrePuertas(BaseViaje):
 
     def test_fr023_fr029_escenario_us4_8_puerta_cerrada_con_llave_no_cuenta(self):
-        motor = self.partida(mapa_llave(), [contenido_sala(1, objetos=[ANTORCHA, LLAVE])])
+        motor = self.partida(mapa_llave(), [contenido_sala(1, objetos=[ANTORCHA, LLAVE])], forzar=True)  # salida inalcanzable a propósito: forzar=True (spec 002, FR-021)
         self.acciones(motor, ("recoger", id_objeto(1, ANTORCHA, 0)), ("recoger", id_objeto(1, LLAVE, 1)),
                       ("usar", id_objeto(1, ANTORCHA, 0)), ("mover", "S"), ("mover", "N"))
         self.assertEqual(self.estados(motor)[0], [1, 2, 3])
@@ -431,7 +431,7 @@ class TestEnemigosEnLaSalaDePartida(BaseViaje):
         # La babosa está activa en 2, donde está el jugador. La parada por enemigos solo se evalúa al
         # entrar: el viaje sale de 2 y llega a 4 sin detenerse.
         contenido = [contenido_sala(2, enemigos=["e-babosa"], tipo_enemigo=ENEMIGO_LENTO)]
-        motor = self.partida(mapa_pasillo(), contenido)
+        motor = self.partida(mapa_pasillo(), contenido, forzar=True)  # salida inalcanzable a propósito: forzar=True (spec 002, FR-021)
         self.acciones(motor, ("mover", "E"), ("mover", "E"), ("mover", "E"), ("mover", "O"), ("mover", "O"))
         self.assertTrue(motor.enemigos[0].activo)
         self.assertEqual(motor.jugador.sala.id, 2)
@@ -465,7 +465,7 @@ class TestCasosBorde(BaseViaje):
             {"id": 2, "nombre": "B", "salidas": {"O": salida(1, cerrada=True)}},
             {"id": 9, "nombre": "Salida", "salidas": {}},
         ]
-        motor = self.partida(salas)
+        motor = self.partida(salas, forzar=True)  # salida inalcanzable a propósito: forzar=True (spec 002, FR-021)
         self.acciones(motor, ("mover", "E"))
         antes = self.sin_efectos(motor)
         self.assertEqual(self.avisos(self.ir(1)), [AVISO_SIN_RUTA])

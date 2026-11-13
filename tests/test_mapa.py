@@ -186,7 +186,7 @@ class TestContratoDeSalida(BaseMapa):
         ])
 
     def test_fr018_avistadas_ninguna(self):
-        motor = self.partida(mapa_cerrado())
+        motor = self.partida(mapa_cerrado(), forzar=True)  # salida inalcanzable a propósito: forzar=True (spec 002, FR-021)
         self.acciones(motor, ("mover", "E"))
         lineas = self.texto_mapa(motor)
         self.assertEqual(lineas[-1], "Avistadas: ninguna")

@@ -101,19 +101,22 @@ def crear_paquete_niebla(carpeta, salas, contenido=(), sala_inicial=None, sala_s
     _escribir(carpeta, "catalogo/version.json", {"version": "cat-1"})
 
 
-def partida_niebla(carpeta, salas, contenido=(), semilla=7, veneno=0, **opciones):
+def partida_niebla(carpeta, salas, contenido=(), semilla=7, veneno=0, forzar=False, **opciones):
     """Crea el paquete y empieza una partida. Devuelve (motor, controlador).
 
     El controlador usa VistaFalsa, y la cache y la bitácora quedan dentro de `carpeta`.
     Ningún dato del paquete envenena, así que `veneno` es el daño que se le aplica al jugador
     al empezar. `opciones` va tal cual a `crear_paquete_niebla`.
+
+    `forzar` va a `nueva_partida` (spec 002, FR-021): desde la spec 002 una partida nueva solo inicia si la
+    cripta es resoluble. Las pruebas con la salida inalcanzable a propósito pasan `forzar=True`.
     """
     paquete = os.path.join(carpeta, "paquete")
     crear_paquete_niebla(paquete, salas, contenido, **opciones)
 
     gestor = GestorDatos(FuenteDatosOffline(paquete), ruta_base=os.path.join(carpeta, "cache"), cache_size=25)
     controlador = ControladorPartida(gestor, VistaFalsa(), os.path.join(carpeta, "partida.log"))
-    controlador.nueva_partida(CRIPTA_NIEBLA, semilla)
+    controlador.nueva_partida(CRIPTA_NIEBLA, semilla, forzar=forzar)
 
     motor = controlador.motor
     if veneno:
