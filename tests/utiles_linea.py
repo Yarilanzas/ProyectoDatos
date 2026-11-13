@@ -29,6 +29,7 @@ from Controlador.ControladorPartida import ControladorPartida
 from Gestor.GestorDatos import GestorDatos
 from Gestor.GestorHistorico import GestorHistorico
 from Modelo.Enemigo import Enemigo
+from Modelo.Inventario import NodoInventario
 from Modelo.LineaTiempo import LineaTiempo
 from Modelo.MotorSimulacion import MotorSimulacion
 from Modelo.ResumenHistorico import resumir
@@ -354,12 +355,43 @@ class PartidaConLinea:
                 jugadas.append((nombre, argumento))
         return jugadas
 
+    def hacer(self, acciones):
+        """Ejecuta una lista explícita de (nombre, argumento) y registra en la línea las aceptadas. Devuelve cuántas se
+        aceptaron."""
+        motor = self.motor
+        aceptadas = 0
+        for nombre, argumento in acciones:
+            antes = (motor.reloj, huella(motor))
+            if motor.ejecutar_accion(nombre, argumento):
+                motor.decisiones.append(antes)
+                self.linea.registrar_accion(motor, nombre, argumento)
+                aceptadas += 1
+        return aceptadas
+
+    def retroceder(self):
+        """`retroceder` por el motor; si lo aceptó, `registrar_retroceso` y el espía descarta las decisiones revertidas.
+        Devuelve si fue aceptado (como el observador: lo rechazado no se registra)."""
+        motor = self.motor
+        if not motor.ejecutar_accion("retroceder", ""):
+            return False
+        self.linea.registrar_retroceso(motor)
+        del motor.decisiones[self.linea.acciones:]
+        return True
+
     def cerrar(self):
         self.partida.cerrar()
 
 
-def partida_con_linea(k=10, semilla=3, efectos=True, **opciones):
-    """Partida (cripta resoluble, por ControladorPartida.nueva_partida) con un errante, el cazador doble, y si
+def dar_pergaminos(motor, cantidad, desde=0):
+    """Agrega `cantidad` pergaminos de retroceso al inventario del jugador (sin pasar por el suelo)."""
+    for i in range(desde, desde + cantidad):
+        motor.jugador.inventario.recoge(
+            NodoInventario(f"pergamino-{i}", "itm_pergamino", "Pergamino de retroceso", 0, 10, "pergamino_retroceso"))
+
+
+def partida_con_linea(k=10, semilla=3, efectos=True, pergaminos=0, **opciones):
+    """`pergaminos`: cuántos pergaminos de retroceso tiene el jugador al empezar (antes de `linea.iniciar`).
+    Partida (cripta resoluble, por ControladorPartida.nueva_partida) con un errante, el cazador doble, y si
     `efectos`: veneno, velocidad temporal y antorcha encendida con su evento de apagado, todo **antes** de
     `linea.iniciar`, así el punto de control de la acción 0 ya los trae."""
     partida = partida_linea(semilla=semilla, **opciones)
@@ -374,6 +406,7 @@ def partida_con_linea(k=10, semilla=3, efectos=True, **opciones):
         motor.aplicar_velocidad_temporal(motor.jugador, 10, 300)
         motor.jugador.antorcha_encendida = True
         motor.programar_evento(motor.reloj + 500, "APAGAR_ANTORCHA", motor.jugador)
+    dar_pergaminos(motor, pergaminos)
     linea = LineaTiempo(k=k, gestor_historico=partida.nuevo_gestor_historico())
     linea.iniciar(motor)
     return PartidaConLinea(partida, linea, GeneradorAcciones(semilla))

@@ -1,7 +1,7 @@
 # Núcleo de la línea de tiempo (spec 004, T017; data-model.md#lineatiempo; FR-016, FR-017, FR-018, FR-021, PR-03).
 #
-# Solo el núcleo: guion, historia vigente, puntos de control y sellos. Las consultas, el retroceso, la carga, la serie de
-# pergaminos y la persistencia llegan en tareas posteriores. Principio I: todo son listas paralelas; sin dict ni set como
+# Guion, historia vigente, puntos de control, sellos, consultas, retroceso (T047) y serie de pergaminos (T046). La carga y la
+# persistencia llegan en tareas posteriores. Principio I: todo son listas paralelas; sin dict ni set como
 # índice, sin bisect, sorted, sort, heapq ni collections. Principio II: no importa red, archivos ni consola; lo externo
 # (gestor histórico, apertura de copias privadas) se inyecta.
 #
@@ -13,7 +13,11 @@
 #   | iniciar            | O(S + N + E)                   | O(S)                     |
 #   | registrar_accion   | O(1), más O(S + N + E) cada K  | O(1), más O(S) cada K    |
 #   | sello_de           | O(1)                           | O(1)                     |
-#   | consultar_accion   | O(log C + S + K·a)             | O(S) temporal            |
+#   | registrar_retroceso| O(V + S + N + E)               | O(S)                     |
+#   | serie: registrar   | O(capacidad del inventario)    | O(1)                     |
+#   | serie: plegar      | O(registros sacados)           | O(1)                     |
+#   | serie: en          | O(log longitud)                | O(1)                     |
+#   | consultar_accion  | O(log C + S + K·a)             | O(S) temporal            |
 #   | consultar_instante | O(log n + log C + S + K·a)     | O(S) temporal            |
 #   | clon_antes_de      | O(log C + S + K·a)             | O(S) (lo descarta quien lo pide) |
 #   | comprobar_sello    | O(1)                           | O(1)                     |
@@ -57,6 +61,64 @@ def _es_entero(valor):
     return isinstance(valor, int) and not isinstance(valor, bool)
 
 
+CLASE_PERGAMINO = "pergamino_retroceso"
+
+
+def contar_pergaminos(motor):
+    """Pergaminos de retroceso en el inventario del jugador. O(capacidad del inventario)."""
+    cuenta = 0
+    for nodo in motor.jugador.inventario:
+        if nodo.clase == CLASE_PERGAMINO:
+            cuenta += 1
+    return cuenta
+
+
+class SeriePergaminos:
+    """Cantidad de pergaminos por instante (FR-029, research R6): pares ``(clave, cantidad)`` ordenados por clave
+    estrictamente creciente. ``clave`` = acciones vigentes completadas cuando cambió la cantidad; ``inicial`` es la cantidad
+    antes de cualquier cambio. No depende de los puntos de control.
+
+    | Operación | Tiempo               |
+    |-----------|----------------------|
+    | registrar | O(1)                 |
+    | plegar    | O(registros sacados) |
+    | en        | O(log longitud)      |
+    """
+
+    def __init__(self, inicial=0):
+        self.inicial = inicial
+        self.serie_clave = []
+        self.serie_cantidad = []
+
+    def ultima(self):
+        """Cantidad vigente: la del último registro, o la inicial."""
+        return self.serie_cantidad[-1] if self.serie_clave else self.inicial
+
+    def registrar(self, clave, cantidad):
+        """Agrega ``(clave, cantidad)`` si la cuenta cambió respecto de la última. Si ya hay un registro con esa clave (dos
+        cambios dentro de la misma acción), lo actualiza: la serie sigue estrictamente creciente. O(1)."""
+        if cantidad == self.ultima():
+            return
+        if self.serie_clave and self.serie_clave[-1] == clave:
+            self.serie_cantidad[-1] = cantidad
+        else:
+            self.serie_clave.append(clave)
+            self.serie_cantidad.append(cantidad)
+
+    def plegar(self, nuevo_n, cantidad_actual):
+        """Tras un retroceso a `nuevo_n`: saca los registros con clave ``> nuevo_n`` y agrega ``(nuevo_n, cantidad_actual)``
+        solo si difiere de la última. Rige la última ocurrencia de esa posición (el presente). O(sacadas)."""
+        while self.serie_clave and self.serie_clave[-1] > nuevo_n:
+            self.serie_clave.pop()
+            self.serie_cantidad.pop()
+        self.registrar(nuevo_n, cantidad_actual)
+
+    def en(self, clave):
+        """Cantidad en la posición `clave`: la de la última clave ``<= clave``, o la inicial. O(log longitud)."""
+        indice = ultimo_menor_o_igual(self.serie_clave, clave)
+        return self.inicial if indice < 0 else self.serie_cantidad[indice]
+
+
 class LineaTiempo:
     """Guion append-only, historia vigente y puntos de control de una partida.
 
@@ -94,6 +156,8 @@ class LineaTiempo:
         self.pc_epoca = []
         self.pc_punto = []
 
+        self.serie = SeriePergaminos(0)
+        self._acciones_motor = 0    # motor.acciones_jugador en el último registro (para calcular V)
         self._epoca = 0
         self._sello_reloj = 0       # sello de la decisión actual: el que tendrá la próxima acción registrada
         self._sello_secuencia = 0
@@ -139,6 +203,8 @@ class LineaTiempo:
         self.pc_epoca = []
         self.pc_punto = []
         self._epoca = 0
+        self.serie = SeriePergaminos(contar_pergaminos(motor))
+        self._acciones_motor = motor.acciones_jugador
         self._agregar_punto(motor, 0)
         self._tomar_sello(motor)
         self._iniciada = True
@@ -153,6 +219,8 @@ class LineaTiempo:
             raise RuntimeError("La línea de tiempo no se ha iniciado: falta iniciar(motor)")
         if not isinstance(nombre, str) or nombre == "":
             raise ValueError("El nombre de la acción debe ser texto no vacío")
+        if nombre == "retroceder":
+            raise ValueError("«retroceder» no es una acción que cuenta: use registrar_retroceso(motor)")
 
         self.vig_guion.append(len(self.guion_tipo))
         self.vig_reloj.append(self._sello_reloj)
@@ -165,9 +233,59 @@ class LineaTiempo:
         self.guion_secuencia.append(self._sello_secuencia)
 
         acciones = len(self.vig_guion)
+        self.serie.registrar(acciones, contar_pergaminos(motor))
         if acciones % self._k == 0:
             self._agregar_punto(motor, acciones)
         self._tomar_sello(motor)
+        self._acciones_motor = motor.acciones_jugador
+
+    def registrar_retroceso(self, motor):
+        """Registra un ``retroceder`` **aceptado**; `motor` ya lo ejecutó (el pergamino revirtió el último intervalo).
+
+        ``V = acciones_antes - acciones_después`` con ``motor.acciones_jugador``; saca ``V`` posiciones de la historia
+        vigente y los puntos con ``accion > nuevo_n``; agrega ``RETROCESO`` al guion con las acciones vigentes que quedan;
+        toma un punto de control del **motor real** en ``nuevo_n`` (si ya había uno, lo reemplaza: el estado real conserva
+        efectos irreversibles, R5); pliega la serie de pergaminos; y guarda el sello de la decisión actual.
+        O(V) más una copia O(S + N + E); no depende de `n` (FR-027)."""
+        if not self._iniciada:
+            raise RuntimeError("La línea de tiempo no se ha iniciado: falta iniciar(motor)")
+        quitadas = self._acciones_motor - motor.acciones_jugador
+        if quitadas < 0 or quitadas > len(self.vig_guion):
+            raise ErrorReconstruccion(
+                f"el retroceso quitó {quitadas} acciones y la línea tiene {len(self.vig_guion)} vigentes")
+        for _ in range(quitadas):
+            self.vig_guion.pop()
+            self.vig_reloj.pop()
+            self.vig_sec.pop()
+        nuevo_n = len(self.vig_guion)
+        while self.pc_accion and self.pc_accion[-1] > nuevo_n:
+            self.pc_accion.pop()
+            self.pc_reloj.pop()
+            self.pc_epoca.pop()
+            self.pc_punto.pop()
+
+        self.guion_tipo.append(TIPO_RETROCESO)
+        self.guion_nombre.append("retroceder")
+        self.guion_argumento.append("")
+        self.guion_reloj.append(nuevo_n)   # para RETROCESO: las acciones vigentes que quedan (data-model.md)
+        self.guion_secuencia.append(0)
+
+        if self.pc_accion and self.pc_accion[-1] == nuevo_n:
+            self.pc_reloj[-1] = motor.reloj
+            self.pc_punto[-1] = copiar(motor, accion=nuevo_n, epoca=self.pc_epoca[-1])
+        else:
+            self._agregar_punto(motor, nuevo_n)
+        self.serie.plegar(nuevo_n, contar_pergaminos(motor))
+        self._tomar_sello(motor)
+        self._acciones_motor = motor.acciones_jugador
+
+    @property
+    def serie_clave(self):
+        return self.serie.serie_clave
+
+    @property
+    def serie_cantidad(self):
+        return self.serie.serie_cantidad
 
     def _tomar_sello(self, motor):
         self._sello_reloj = motor.reloj
@@ -268,7 +386,7 @@ class LineaTiempo:
             return resumir(motor, motor.reloj, (REFERENCIA_ACTUAL, None))
         try:
             clon = self._rehacer_hasta(k)
-            return resumir(clon, self.vig_reloj[k - 1], (REFERENCIA_ACCION, k))
+            return resumir(clon, self.vig_reloj[k - 1], (REFERENCIA_ACCION, k), self.serie.en(k - 1))
         finally:
             self._soltar_clon()
 
@@ -292,7 +410,7 @@ class LineaTiempo:
         try:
             clon = self._rehacer_hasta(k)
             if indice < 0 or self.vig_reloj[indice] == t:
-                return resumir(clon, t, (REFERENCIA_INSTANTE, t))
+                return resumir(clon, t, (REFERENCIA_INSTANTE, t), self.serie.en(k - 1))
             clon.agenda.__class__ = AgendaConCorte
             clon.agenda.corte = t
             posicion = self.vig_guion[k - 1]
@@ -300,6 +418,6 @@ class LineaTiempo:
             self._lanzar_si_falta_un_dato()
             if not aceptada:
                 raise ErrorReconstruccion(f"el clon rechazó la acción {k} ({self.guion_nombre[posicion]})")
-            return resumir(clon, t, (REFERENCIA_INSTANTE, t))
+            return resumir(clon, t, (REFERENCIA_INSTANTE, t), self.serie.en(k))
         finally:
             self._soltar_clon()
