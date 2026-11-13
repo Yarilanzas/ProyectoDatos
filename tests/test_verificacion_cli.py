@@ -425,7 +425,8 @@ class PruebasVerificacionNoCambiaPartida(unittest.TestCase):
     def _partida_con_verificacion(self):
         from Controlador.ControladorPartida import ControladorPartida
         vista = VistaEspia()
-        ruta = os.path.join(self.temporal.name, "con.log")
+        # "con.log" no sirve: CON es un nombre reservado de Windows y en Windows 10 abre la consola
+        ruta = os.path.join(self.temporal.name, "partida_con_verificacion.log")
         controlador = ControladorPartida(self.crear_gestor("datos_con"), vista, ruta)
         controlador.nueva_partida(CRIPTA_RESOLUBLE, SEMILLA_SC007)
         return controlador, vista, ruta
@@ -436,7 +437,7 @@ class PruebasVerificacionNoCambiaPartida(unittest.TestCase):
         from Controlador.ControladorPartida import ControladorPartida
         from Gestor.PreparadorPartida import preparar_partida
         gestor = self.crear_gestor("datos_sin")
-        ruta = os.path.join(self.temporal.name, "sin.log")
+        ruta = os.path.join(self.temporal.name, "partida_sin_verificacion.log")
         controlador = ControladorPartida(gestor, VistaEspia(), ruta)
         controlador.motor = preparar_partida(CRIPTA_RESOLUBLE, SEMILLA_SC007, gestor)
         controlador.bitacora = BitacoraPartida(ruta, CRIPTA_RESOLUBLE, gestor.version_cripta(CRIPTA_RESOLUBLE),
