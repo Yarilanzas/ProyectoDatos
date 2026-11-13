@@ -11,6 +11,7 @@ import unittest
 from unittest import mock
 
 import main
+from Vista.VistaConsola import VistaConsola
 from tests.generador_criptas import (INVENTARIO_MAX, JUGADOR, PRESUPUESTO, VERSION, CriptaSintetica,
                                      escribir_paquete, generar_cripta)
 
@@ -285,6 +286,92 @@ class PruebasReporteNoResolubleCli(unittest.TestCase):
             "Dependencias entre llaves: ninguna.\n"
             "Ciclos de llaves: ninguno.\n"
         ))
+
+
+# --- T034: verificación obligatoria al iniciar una partida nueva (US3) ------------------------------------------
+
+MENSAJE_RECHAZO = ("! Error: La cripta sint-nr no es resoluble. "
+                   "Usa --forzar para jugarla de todos modos.\n")
+
+
+class FuenteOfflineContada(main.FuenteDatosOffline):
+    """Fuente offline que anota cada ruta pedida, para contar solicitudes repetidas (FR-026)."""
+    rutas = []
+
+    def _obtener(self, ruta, params=None):
+        FuenteOfflineContada.rutas.append(ruta)
+        return super()._obtener(ruta, params)
+
+
+class PruebasPartidaNuevaCli(unittest.TestCase):
+
+    setUp = PruebasVerificacionCli.setUp
+    tearDown = PruebasVerificacionCli.tearDown
+    foto_de_trabajo = PruebasVerificacionCli.foto_de_trabajo
+
+    def correr(self, paquete, entradas, *argumentos):
+        """Corre main.main() con una vista cuya entrada devuelve `entradas` en orden y luego fin de entrada."""
+        pendientes = list(entradas)
+
+        def entrada(_mensaje):
+            if not pendientes:
+                raise EOFError
+            return pendientes.pop(0)
+
+        argv = ["main.py", "--offline", paquete, "--datos-locales", self.datos,
+                "--bitacora", os.path.join(self.trabajo, "partida.log"),
+                "--puntajes", os.path.join(self.trabajo, "puntajes.txt"), *argumentos]
+        salida = io.StringIO()
+        with mock.patch.object(main, "VistaConsola", lambda: VistaConsola(entrada=entrada)), \
+                mock.patch.object(main, "configurar_logging", lambda *a, **k: None), \
+                mock.patch.object(sys, "argv", argv), contextlib.redirect_stdout(salida):
+            codigo = main.main()
+        return codigo, salida.getvalue()
+
+    def reporte_de(self, paquete, cripta):
+        # el reporte que acompaña al rechazo es el mismo bloque que da --verificar
+        datos = os.path.join(self.temporal.name, "datos_reporte")
+        _, texto = PruebasVerificacionCli.correr(self, paquete, "--verificar", cripta, "--datos-locales", datos)
+        return texto
+
+    def test_fr020_sc006_cripta_no_resoluble_rechaza_con_reporte_y_codigo_1(self):
+        reporte = self.reporte_de(self.paquete_nr, CRIPTA_NO_RESOLUBLE)
+        antes = self.foto_de_trabajo()
+        codigo, texto = self.correr(self.paquete_nr, ["salir"], "--cripta", CRIPTA_NO_RESOLUBLE)
+        self.assertEqual(codigo, 1)
+        self.assertEqual(texto, MENSAJE_RECHAZO + reporte)
+        # sin bitácora ni cambios en la tabla de puntajes (SC-006)
+        self.assertEqual(self.foto_de_trabajo(), antes)
+
+    def test_fr019_cripta_resoluble_muestra_el_orden_y_la_partida_inicia(self):
+        codigo, texto = self.correr(self.paquete_res, ["salir"], "--cripta", CRIPTA_RESOLUBLE, "--semilla", "7")
+        self.assertEqual(codigo, 0)
+        self.assertTrue(texto.startswith(ESPERADO_RESOLUBLE), texto)
+        self.assertIn(f"Partida nueva en {CRIPTA_RESOLUBLE} (semilla 7)\n", texto)
+        self.assertLess(texto.index(ESPERADO_RESOLUBLE), texto.index("Partida nueva en"))
+        self.assertIn("=== CRIPTA ===", texto)
+        self.assertNotIn("! Error", texto)
+
+    def test_fr018_lista_interactiva_con_no_resoluble_igual_que_cripta(self):
+        reporte = self.reporte_de(self.paquete_nr, CRIPTA_NO_RESOLUBLE)
+        antes = self.foto_de_trabajo()
+        codigo, texto = self.correr(self.paquete_nr, [CRIPTA_NO_RESOLUBLE, "salir"])
+        self.assertEqual(codigo, 1)
+        self.assertTrue(texto.endswith(MENSAJE_RECHAZO + reporte), texto)
+        self.assertEqual(self.foto_de_trabajo(), antes)
+
+    def test_fr026_verificar_y_jugar_no_repite_solicitudes(self):
+        FuenteOfflineContada.rutas = []
+        with mock.patch.object(main, "FuenteDatosOffline", FuenteOfflineContada):
+            codigo, _ = self.correr(self.paquete_res, ["salir"], "--cripta", CRIPTA_RESOLUBLE, "--semilla", "7")
+        self.assertEqual(codigo, 0)
+        rutas = FuenteOfflineContada.rutas
+        base = f"/criptas/{CRIPTA_RESOLUBLE}"
+        # la verificación tuvo que pedir las llaves: si no, la prueba no comprobaría nada
+        self.assertIn(base + "/llaves", rutas)
+        for ruta in (base, base + "/version", base + "/salas", base + "/llaves"):
+            with self.subTest(ruta=ruta):
+                self.assertEqual(rutas.count(ruta), 1, rutas)
 
 
 if __name__ == "__main__":
