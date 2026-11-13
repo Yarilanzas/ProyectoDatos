@@ -99,6 +99,11 @@ def main():
         help="Solo verifica si la cripta es resoluble y muestra el resultado; no inicia partida",
     )
     parser.add_argument(
+        "--forzar",
+        action="store_true",
+        help="Inicia la partida nueva aunque la cripta no sea resoluble, sin mostrar el orden ni el reporte",
+    )
+    parser.add_argument(
         "--replay",
         metavar="ARCHIVO",
         help="Reproduce una partida desde una bitácora",
@@ -220,7 +225,9 @@ def main():
             cripta_id = argumentos.cripta or controlador.elegir_cripta()
             if not cripta_id:
                 return 0
-            controlador.nueva_partida(cripta_id, argumentos.semilla)
+            # --forzar solo se lee aquí (spec 002, FR-021): --cargar y --replay lo ignoran y no verifican (FR-022), y
+            # con --verificar no tiene efecto (FR-017)
+            controlador.nueva_partida(cripta_id, argumentos.semilla, forzar=argumentos.forzar)
     except CriptaNoResoluble as error:
         # spec 002 (FR-018, FR-020): antes que los errores de datos. nueva_partida la lanza antes de crear motor y
         # bitácora, así que no queda bitácora ni se toca la tabla de puntajes

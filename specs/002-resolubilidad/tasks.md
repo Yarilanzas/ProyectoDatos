@@ -160,7 +160,7 @@ description: "Lista de tareas de la verificación de resolubilidad de una cripta
 ### Implementation for User Story 4
 
 - [X] T040 [US4] En `Controlador/ControladorPartida.py`, rama `forzar=True` de `nueva_partida`: verifica igual (los errores de datos se propagan) pero no muestra nada ni lanza `CriptaNoResoluble`. Atiende: FR-018, FR-021
-- [ ] T041 [US4] En `main.py` (**`git pull` antes**): argumento `--forzar` (`store_true`) pasado a `controlador.nueva_partida(..., forzar=argumentos.forzar)` solo en la rama de partida nueva; las ramas `--cargar` y `--replay` no lo leen; con `--verificar` no tiene efecto. Atiende: FR-017, FR-021, FR-022
+- [X] T041 [US4] En `main.py` (**`git pull` antes**): argumento `--forzar` (`store_true`) pasado a `controlador.nueva_partida(..., forzar=argumentos.forzar)` solo en la rama de partida nueva; las ramas `--cargar` y `--replay` no lo leen; con `--verificar` no tiene efecto. Atiende: FR-017, FR-021, FR-022
 
 **Checkpoint**: US1 a US4 completas.
 
