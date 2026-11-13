@@ -8,7 +8,7 @@ from Gestor.GestorDatos import GestorDatos
 from Gestor.PreparadorPartida import cargar_partida, preparar_partida, verificar_cripta
 from Bitacora.BitacoraPartida import leer_bitacora
 from Bitacora.Reproductor import Reproductor
-from Controlador.ControladorPartida import ControladorPartida, guardar_motor
+from Controlador.ControladorPartida import ControladorPartida, CriptaNoResoluble, guardar_motor
 from Persistencia.FormatoBinario import VersionIncompatible
 from Persistencia.TablaPuntajes import ARCHIVO_PUNTAJES, CRITERIOS_PUNTAJES, TablaPuntajes
 from Vista.VistaConsola import VistaConsola
@@ -221,6 +221,12 @@ def main():
             if not cripta_id:
                 return 0
             controlador.nueva_partida(cripta_id, argumentos.semilla)
+    except CriptaNoResoluble as error:
+        # spec 002 (FR-018, FR-020): antes que los errores de datos. nueva_partida la lanza antes de crear motor y
+        # bitácora, así que no queda bitácora ni se toca la tabla de puntajes
+        vista.mostrar_error(str(error))
+        vista.mostrar_verificacion(error.resultado)
+        return 1
     except VersionIncompatible as error:
         vista.mostrar_error(f"Versión incompatible: {error}")
         return 2
