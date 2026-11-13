@@ -8,7 +8,7 @@ from Modelo.Enemigo import Enemigo
 from Modelo.Inventario import NodoInventario
 from Modelo.ordenamiento import elegir_algoritmo
 from Modelo.retroceso import (Historial, recoger_reversible, soltar_reversible, equipar_reversible, usar_pergamino)
-from Modelo.rutas_ir_a import primer_paso
+from Modelo.rutas_ir_a import buscador_de_viaje, primer_paso
 from Modelo.Viaje import RECHAZO_ACTUAL, RECHAZO_DESCONOCIDA, RECHAZO_SIN_RUTA, Viaje
 
 TIPOS_EFECTO = ("VENENO", "REGENERAR", "FIN_VELOCIDAD", "APAGAR_ANTORCHA")
@@ -1160,10 +1160,11 @@ class MotorSimulacion:
         No cambia nada: un rechazo no consume tiempo, no cuenta como acción ni va a la bitácora (SC-005).
         La sala se busca con `explorada_por_texto` (O(k)), así que inexistente, desconocida, avistada y un
         id no válido dan por construcción el mismo rechazo. La sala de partida no se evalúa: la orden se
-        acepta aunque tenga enemigos (FR-028). Si `buscar` es `primer_paso` sin cuerpo, deja pasar su
-        NotImplementedError, todavía sin efectos (T058).
+        acepta aunque tenga enemigos (FR-028). Si `buscar` es `primer_paso`, el viaje usa un solo
+        `EspacioBusqueda` desde este primer cálculo hasta su último paso (`buscador_de_viaje`).
 
-        Complejidad: O(k) más un cálculo de `buscar`, que el Viaje usa como su primer paso.
+        Complejidad: O(k) más un cálculo de `buscar`, que el Viaje usa como su primer paso, y O(n) para
+        crear el espacio de búsqueda del viaje.
         """
         if self.conocimiento is None or self.jugador is None or self.jugador.sala is None:
             return None, RECHAZO_DESCONOCIDA
@@ -1174,7 +1175,9 @@ class MotorSimulacion:
         if destino is self.jugador.sala:
             return None, RECHAZO_ACTUAL
 
-        paso = buscar(self.grafo_conocido(), self.jugador.sala, destino)
+        grafo = self.grafo_conocido()
+        buscar = buscador_de_viaje(buscar, grafo)
+        paso = buscar(grafo, self.jugador.sala, destino)
         if paso is None:
             return None, RECHAZO_SIN_RUTA
 

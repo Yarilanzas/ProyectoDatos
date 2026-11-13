@@ -223,12 +223,7 @@ class ControladorPartida:
             self.vista.mostrar_error("Use: ir a <sala>")
             return
 
-        try:
-            viaje, rechazo = self.motor.preparar_viaje(partes[1], self.buscar_ruta)
-        except NotImplementedError:
-            # temporal hasta T065: la busqueda real es Modelo/BusquedaRuta.py de Persona A (D-PEND-01)
-            self.vista.mostrar_aviso("«ir a» aún no está disponible.")
-            return
+        viaje, rechazo = self.motor.preparar_viaje(partes[1], self.buscar_ruta)
 
         if viaje is None:
             # un rechazo no consume tiempo ni va a la bitacora (FR-022, SC-005)

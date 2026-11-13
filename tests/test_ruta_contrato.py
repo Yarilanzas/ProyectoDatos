@@ -1,9 +1,10 @@
 # Prueba de contrato de la interfaz de ruta de «ir a» (T043). Contrato: contracts/interfaz-ruta.md.
 # FR-022, FR-023, FR-024, PR-10. Ejercita la interfaz sin mirar la implementación, con grafos de prueba
 # pequeños, y está parametrizada por buscador:
-# - corre ya contra `buscador_prueba` (utilidad de prueba, T042);
-# - contra `primer_paso` queda con `skip` hasta T063: su cuerpo delega en Modelo/BusquedaRuta.py, que
-#   implementa Persona A (D-PEND-01, opción A) y todavía no existe.
+# - contra `buscador_prueba` (utilidad de prueba, T042);
+# - contra `primer_paso` de Modelo/rutas_ir_a.py (T063), que delega en Modelo/BusquedaRuta.py de Persona A
+#   (D-PEND-01, opción A). Esa búsqueda es la misma que usa el cazador, y TestContratoBusquedaRuta la llama
+#   directamente con la misma tabla de casos.
 
 import os
 import sys
@@ -154,19 +155,8 @@ class TestContratoBuscadorPrueba(ContratoRuta, unittest.TestCase):
     buscar = staticmethod(buscador_prueba)
 
 
-@unittest.skip("T063: primer_paso delega en Modelo/BusquedaRuta.py de Persona A, que aún no existe (D-PEND-01, opción A)")
 class TestContratoPrimerPaso(ContratoRuta, unittest.TestCase):
     buscar = staticmethod(primer_paso)
-
-
-class TestPrimerPasoPendiente(unittest.TestCase):
-    # T041: mientras Persona A no suba Modelo/BusquedaRuta.py, primer_paso solo lanza NotImplementedError.
-    # Se retira en T062.
-
-    def test_primer_paso_lanza_not_implemented_error(self):
-        grafo = GrafoPrueba([1, 2], [(1, "E", 2, 100)])
-        with self.assertRaises(NotImplementedError):
-            primer_paso(grafo, grafo.sala(1), grafo.sala(2))
 
 
 # ───────────────────────── Capacidad 003, T010 ─────────────────────────
@@ -296,6 +286,64 @@ class TestLimiteBusquedaRuta(unittest.TestCase):
                 grafo = GrafoPrueba(ids, aristas)
                 self.assertEqual(resumen(self.paso(grafo, origen, destino, limite=None)),
                                  resumen(self.paso(grafo, origen, destino)))
+
+
+# ───────────────────────── 001, T062 y T063 ─────────────────────────
+
+
+class TestPrimerPasoDelegaEnBusquedaRuta(unittest.TestCase):
+    """T062/T063. `primer_paso` de «ir a» solo llama a `Modelo.BusquedaRuta.primer_paso` (D-PEND-01, opción A):
+    acepta al final `limite` y `espacio` y da lo mismo que la búsqueda compartida (contracts/interfaz-ruta.md)."""
+
+    @classmethod
+    def setUpClass(cls):
+        from Modelo.BusquedaRuta import EspacioBusqueda, primer_paso as primer_paso_busqueda
+        cls.busqueda = staticmethod(primer_paso_busqueda)
+        cls.EspacioBusqueda = EspacioBusqueda
+
+    def test_fr024_pr10_misma_tabla_de_desempates_que_la_busqueda_compartida(self):
+        for ids, aristas, origen, destino, esperado in DESEMPATES:
+            for orden in (aristas, invertido(aristas)):
+                with self.subTest(ids=ids, aristas=orden):
+                    grafo = GrafoPrueba(ids, orden)
+                    propio = primer_paso(grafo, grafo.sala(origen), grafo.sala(destino))
+                    compartido = self.busqueda(grafo, grafo.sala(origen), grafo.sala(destino))
+                    self.assertEqual(resumen(propio), esperado)
+                    self.assertEqual(resumen(propio), resumen(compartido))
+
+    def test_fr024_pr10_acepta_limite_y_espacio_al_final(self):
+        for ids, aristas, origen, destino, limite in CASOS_ESPACIO:
+            with self.subTest(origen=origen, destino=destino, limite=limite, ids=ids):
+                grafo = GrafoPrueba(ids, aristas)
+                espacio = self.EspacioBusqueda(grafo.cantidad_salas)
+                propio = primer_paso(grafo, grafo.sala(origen), grafo.sala(destino), limite, espacio)
+                compartido = self.busqueda(grafo, grafo.sala(origen), grafo.sala(destino), limite=limite)
+                self.assertEqual(resumen(propio), resumen(compartido))
+
+    def test_fr024_no_modifica_el_grafo(self):
+        grafo = GrafoPrueba(*LINEA)
+        antes = grafo.foto()
+        primer_paso(grafo, grafo.sala(1), grafo.sala(3), espacio=self.EspacioBusqueda(grafo.cantidad_salas))
+        self.assertEqual(grafo.foto(), antes)
+
+    def test_principio_i_rutas_ir_a_no_usa_estructuras_prohibidas(self):
+        """Principio I (obligación 6): Modelo/rutas_ir_a.py no importa heapq, bisect, collections ni networkx, ni
+        llama a sorted() o a .sort()."""
+        import ast
+        ruta = os.path.join(RAIZ, "Modelo", "rutas_ir_a.py")
+        with open(ruta, encoding="utf-8") as archivo:
+            arbol = ast.parse(archivo.read())
+        prohibidos = ("heapq", "bisect", "collections", "networkx")
+        for nodo in ast.walk(arbol):
+            if isinstance(nodo, ast.Import):
+                for alias in nodo.names:
+                    self.assertNotIn(alias.name.split(".")[0], prohibidos)
+            elif isinstance(nodo, ast.ImportFrom):
+                self.assertNotIn((nodo.module or "").split(".")[0], prohibidos)
+            elif isinstance(nodo, ast.Call):
+                funcion = nodo.func
+                self.assertFalse(isinstance(funcion, ast.Name) and funcion.id == "sorted")
+                self.assertFalse(isinstance(funcion, ast.Attribute) and funcion.attr == "sort")
 
 
 if __name__ == "__main__":

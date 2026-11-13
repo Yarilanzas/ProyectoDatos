@@ -2,9 +2,9 @@
 # FR-011, FR-014, FR-021 a FR-029, FR-031, SC-002, SC-005, PR-09, PR-10.
 # Contratos: contracts/comandos.md e interfaz-ruta.md.
 #
-# Todo se prueba con un buscador inyectado (`buscador_prueba` o un guion). El cuerpo real de `primer_paso`
-# delega en Modelo/BusquedaRuta.py de Persona A (D-PEND-01, opción A), que aún no existe: la prueba con la
-# búsqueda real es T064.
+# Casi todo se prueba con un buscador inyectado (`buscador_prueba` o un guion). `primer_paso` delega en
+# Modelo/BusquedaRuta.py de Persona A (D-PEND-01, opción A); las pruebas con la búsqueda real, sin inyección,
+# son las de T064 (TestBusquedaReal).
 #
 # Mapa principal (tests.test_conocimiento.mapa): 1 -E-> 2, 1 -S-> 3, 2 -S-> 4, 3 -E-> 4, 4 -S-> 5 -E-> 6,
 # todas de ida y vuelta. Se empieza en 1 y la salida (6) queda lejos.
@@ -20,6 +20,7 @@ if RAIZ not in sys.path:
 import tempfile
 import unittest
 from types import SimpleNamespace
+from unittest import mock
 
 from DTOS.Salida import Salida
 from Modelo.Conocimiento import ABIERTA, CERRADA, Conocimiento, GrafoConocido
@@ -38,7 +39,6 @@ AVISO_DESCONOCIDA = "No conoces esa sala."
 AVISO_ACTUAL = "Ya estás en esa sala."
 AVISO_SIN_RUTA = "No conoces una ruta hasta esa sala."
 AVISO_USO = "Use: ir a <sala>"
-AVISO_NO_DISPONIBLE = "«ir a» aún no está disponible."
 PARADA_DANO = "Viaje detenido: recibiste daño."
 PARADA_ENEMIGOS = "Viaje detenido: hay enemigos en la sala."
 PARADA_SIN_RUTA = "Viaje detenido: ya no conoces una ruta."
@@ -520,17 +520,79 @@ class TestCasosBorde(BaseViaje):
         self.assertEqual(self.recuerdo(motor, 1, "E"), CERRADA)
         self.assertEqual(self.movimientos()[-4:], ["mover N", "mover S", "mover E", "mover N"])
 
-    def test_pendiente_t062_sin_busqueda_real_avisa_sin_efectos(self):
-        # T058: mientras Persona A no suba Modelo/BusquedaRuta.py, primer_paso lanza NotImplementedError
-        # y el controlador da un aviso sin efectos. Se retira en T065.
+    def test_fr022_rechazos_sin_inyeccion_no_tienen_efectos(self):
+        # T065: sin buscador inyectado ya no hay aviso temporal; los rechazos siguen sin efectos (SC-005).
         motor = self.partida(mapa_cuadro(), buscar=None)
         self.acciones(motor, *CUADRO)
         antes = self.sin_efectos(motor)
-        self.assertEqual(self.avisos(self.ir(4)), [AVISO_NO_DISPONIBLE])
-        self.assertEqual(self.sin_efectos(motor), antes)
-        # Los rechazos que no necesitan la búsqueda siguen funcionando.
         self.assertEqual(self.avisos(self.ir(5)), [AVISO_DESCONOCIDA])
         self.assertEqual(self.avisos(self.ir(1)), [AVISO_ACTUAL])
+        self.assertEqual(self.sin_efectos(motor), antes)
+
+
+# T064: Escenario US4-5 con la búsqueda real (Modelo/BusquedaRuta.py por `primer_paso`), sin inyección.
+
+class TestBusquedaReal(BaseViaje):
+
+    def test_fr024_escenario_us4_5_empate_va_a_la_vecina_de_menor_id_con_busqueda_real(self):
+        # 1 -> 2 -> 4 y 1 -> 3 -> 4 cuestan 200: el primer paso va a 2.
+        motor = self.partida(mapa_cuadro(), buscar=None)
+        self.acciones(motor, *CUADRO)
+        self.assertEqual(self.avisos(self.ir(4)), ["Llegaste a la sala 4."])
+        self.assertEqual(motor.jugador.sala.id, 4)
+        self.assertEqual(self.movimientos()[-2:], ["mover E", "mover S"])
+
+    def test_fr021_fr023_recorrido_completo_de_ida_y_vuelta_sin_inyeccion(self):
+        # Ida 1 -> 4 por 2, y vuelta 4 -> 1: 4 -> 2 -> 1 y 4 -> 3 -> 1 cuestan 200; gana la vecina 2.
+        motor = self.partida(mapa_cuadro(), buscar=None)
+        self.acciones(motor, *CUADRO)
+        reloj = motor.reloj
+        self.assertEqual(self.avisos(self.ir(4)), ["Llegaste a la sala 4."])
+        self.assertEqual(self.avisos(self.ir(1)), ["Llegaste a la sala 1."])
+        self.assertEqual(motor.jugador.sala.id, 1)
+        acciones = [linea for linea in self.movimientos() if not linea.startswith("#")]
+        self.assertEqual(acciones[-4:], ["mover E", "mover S", "mover N", "mover O"])
+        self.assertGreater(motor.reloj, reloj)
+
+    def test_fr024_viaje_con_el_buscador_por_defecto(self):
+        # Viaje sin `buscar` ni primer paso: usa `primer_paso` en cada paso.
+        motor = self.partida(mapa_cuadro(), buscar=None)
+        self.acciones(motor, *CUADRO)
+        destino = motor.conocimiento.explorada_por_texto("4")
+        viaje = Viaje(motor, destino)
+        paso = viaje.siguiente_paso()
+        self.assertEqual((paso.direccion, paso.destino.id, paso.costo_total), ("E", 2, 200))
+
+    def test_fr024_pr15_un_solo_espacio_de_busqueda_por_viaje(self):
+        # Cada viaje crea un EspacioBusqueda al empezar y lo reutiliza en todos sus pasos (contracts/interfaz-ruta.md).
+        import Modelo.rutas_ir_a as rutas
+        creados = []
+        usados = []
+        original_espacio = rutas.EspacioBusqueda
+        original_busqueda = rutas.primer_paso_busqueda
+
+        def crear(cantidad_salas):
+            espacio = original_espacio(cantidad_salas)
+            creados.append(espacio)
+            return espacio
+
+        def buscar(grafo, origen, destino, limite=None, espacio=None):
+            usados.append(espacio)
+            return original_busqueda(grafo, origen, destino, limite, espacio)
+
+        motor = self.partida(mapa_cuadro(), buscar=None)
+        self.acciones(motor, *CUADRO)
+        with mock.patch.object(rutas, "EspacioBusqueda", crear),                 mock.patch.object(rutas, "primer_paso_busqueda", buscar):
+            self.assertEqual(self.avisos(self.ir(4)), ["Llegaste a la sala 4."])
+            self.assertEqual(len(creados), 1)
+            self.assertEqual(len(usados), 2)  # al aceptar la orden y al recalcular en 2
+            for espacio in usados:
+                self.assertIs(espacio, creados[0])
+
+            self.assertEqual(self.avisos(self.ir(1)), ["Llegaste a la sala 1."])
+            self.assertEqual(len(creados), 2)  # otro viaje, otro espacio
+            for espacio in usados[2:]:
+                self.assertIs(espacio, creados[1])
 
 
 # T054: equivalencia con `mover`.
