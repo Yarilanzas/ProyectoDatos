@@ -147,6 +147,8 @@ class ControladorPartida:
 
         - resoluble: muestra el orden de obtención de llaves y la partida inicia (FR-019);
         - no resoluble: lanza CriptaNoResoluble; no se crea motor ni bitácora (FR-020);
+        - `forzar=True`: verifica igual, pero no muestra nada ni lanza CriptaNoResoluble; la partida inicia sea
+          cual sea el veredicto (FR-021);
         - errores de datos (llaves, detalles, salas): se propagan sin capturar, también con `forzar` (FR-024).
 
         La verificación no usa azar ni escribe en la bitácora, y sus datos quedan memorizados en el gestor, así que
