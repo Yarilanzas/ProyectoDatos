@@ -184,6 +184,11 @@ Medidas o leídas en T003 ([research.md](../research.md#t003-revisión-de-deepco
     `No hay historia más allá del reloj actual (<reloj>).`. Un `t` no entero o negativo también lanza `ReferenciaInvalida`.
 19. **Formatos del resumen** (`Vista/TextoResumen.py`): `Inventario (0): ninguno`; `velocidad +10 (hasta 300)`; `antorcha encendida`
     (sin hora); `veneno (2 de daño cada 80, hasta 400)`.
+    **Nombre del pergamino**: el del inventario vivo. El juego lo muestra con `nodo.nombre` (el nombre de la ficha del catálogo,
+    p. ej. «Pergamino»; `VistaConsola._texto_nodo`), y el resumen usa **siempre ese mismo texto**: la serie de pergaminos de la
+    línea recuerda el `nombre` del primer pergamino que vio en el motor real (`SeriePergaminos.nombre`) y se lo pasa a
+    `resumir(..., nombre_pergamino=...)`. Solo si la línea nunca vio un pergamino se usa la constante «Pergamino de retroceso»
+    (ese caso no se muestra: la cantidad es 0). Ya no depende de si el clon de la consulta tiene un pergamino.
 20. **`resultado`** de `ResumenHistorico` solo se llena en las referencias «actual» y «final» (y solo si la partida terminó).
 21. **`pergaminos`** de `resumir(...)` es `None` hasta T048: el inventario usa los pergaminos del clon.
 
