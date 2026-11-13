@@ -11,6 +11,7 @@ import unittest
 from unittest import mock
 
 import main
+from API.Fuentes import FuenteDatosOffline
 from Vista.VistaConsola import VistaConsola
 from tests.generador_criptas import (INVENTARIO_MAX, JUGADOR, PRESUPUESTO, VERSION, CriptaSintetica,
                                      escribir_paquete, generar_cripta)

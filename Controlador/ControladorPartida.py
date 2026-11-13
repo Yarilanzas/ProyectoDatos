@@ -8,7 +8,7 @@ import random
 import shutil
 
 from Bitacora.BitacoraPartida import BitacoraPartida
-from Gestor.PreparadorPartida import preparar_partida, cargar_partida
+from Gestor.PreparadorPartida import preparar_partida, cargar_partida, verificar_cripta
 from Modelo.rutas_ir_a import primer_paso
 from Modelo.Viaje import (DANO, DESTINO, ENEMIGOS, RECHAZO_ACTUAL, RECHAZO_SIN_RUTA, SIN_RUTA)
 from Persistencia.ArchivoPartida import guardar_partida
@@ -26,6 +26,21 @@ PUNTAJES_EN_PANTALLA = 10  # cuantos puntajes se muestran al terminar una partid
 
 # errores esperables al guardar o cargar: se muestran al jugador sin cerrar el juego
 ERRORES_ARCHIVO = (VersionIncompatible, ValueError, RuntimeError, OSError)
+
+
+class CriptaNoResoluble(Exception):
+    """La cripta de una partida nueva no es resoluble (spec 002, FR-020). Contrato compartido
+    (contracts/interfaz-verificador.md).
+
+    `resultado` es el ResultadoVerificacion completo, para que main.py muestre el reporte después del mensaje.
+    No hereda de ValueError, RuntimeError ni OSError a propósito: así no la atrapan los `except` de errores de
+    datos y main.py la distingue (mensaje + reporte + código 1).
+    """
+
+    def __init__(self, resultado):
+        super().__init__(f"La cripta {resultado.cripta_id} no es resoluble. "
+                         "Usa --forzar para jugarla de todos modos.")
+        self.resultado = resultado
 
 
 def ruta_bitacora_de(ruta_guardado):
@@ -126,7 +141,23 @@ class ControladorPartida:
         respuesta = self.vista.pedir_texto("ID de la cripta: ")
         return None if respuesta is None else respuesta.strip()
 
-    def nueva_partida(self, cripta_id, semilla=None):
+    def nueva_partida(self, cripta_id, semilla=None, forzar=False):
+        """Empieza una partida nueva. Antes de crear el motor y la bitácora verifica si la cripta es resoluble
+        (spec 002, FR-018, FR-019, FR-020, contracts/interfaz-verificador.md):
+
+        - resoluble: muestra el orden de obtención de llaves y la partida inicia (FR-019);
+        - no resoluble: lanza CriptaNoResoluble; no se crea motor ni bitácora (FR-020);
+        - errores de datos (llaves, detalles, salas): se propagan sin capturar, también con `forzar` (FR-024).
+
+        La verificación no usa azar ni escribe en la bitácora, y sus datos quedan memorizados en el gestor, así que
+        la partida es la misma que sin verificar (FR-023, FR-026, SC-007).
+        """
+        resultado = verificar_cripta(cripta_id, self.gestor)
+        if not forzar:
+            if not resultado.resoluble:
+                raise CriptaNoResoluble(resultado)
+            self.vista.mostrar_verificacion(resultado)
+
         if semilla is None:
             semilla = random.randrange(2 ** 31)
 
