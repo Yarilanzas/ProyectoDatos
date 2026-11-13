@@ -44,8 +44,8 @@ Proyecto único MVC en la raíz: reglas en `Modelo/`, pruebas y bench en `tests/
 
 ### Grafo de la cripta
 
-- [ ] T008 [P] Pruebas de `GrafoCripta` en `tests/test_grafo_cripta.py`: funciona en un motor armado a mano **sin** `Conocimiento`; asigna ordinales propios 0..n-1 que no pisan `_ordinal` de `Conocimiento`; `aristas(sala)` entrega solo salidas abiertas con `costo_salida` (100 si falta); `entrantes(sala)` entrega cada salida abierta `w→sala` con el costo y la puerta **de esa salida**; con A→B cerrada y B→A abierta, `entrantes(A)` incluye B→A y `entrantes(B)` no incluye A→B; con costos distintos por sentido, cada entrante lleva su propio costo (FR-003, FR-011, FR-015, FR-017)
-- [ ] T009 Implementar `Modelo/GrafoCripta.py` (data-model §2): `cantidad_salas`, `ordinal(sala)` con atributo propio en la sala, `aristas(sala)`, `entrantes(sala)`; construcción O(n + m) una vez recorriendo las salas del motor, sin `dict`/`set` como índice y sin usar `_ordinal`, `_origen` ni `entrantes` de `Conocimiento`; el estado de puerta se lee en vivo; pasa T008 (FR-011, FR-015, FR-017)
+- [x] T008 [P] Pruebas de `GrafoCripta` en `tests/test_grafo_cripta.py`: funciona en un motor armado a mano **sin** `Conocimiento`; asigna ordinales propios 0..n-1 que no pisan `_ordinal` de `Conocimiento`; `aristas(sala)` entrega solo salidas abiertas con `costo_salida` (100 si falta); `entrantes(sala)` entrega cada salida abierta `w→sala` con el costo y la puerta **de esa salida**; con A→B cerrada y B→A abierta, `entrantes(A)` incluye B→A y `entrantes(B)` no incluye A→B; con costos distintos por sentido, cada entrante lleva su propio costo (FR-003, FR-011, FR-015, FR-017)
+- [x] T009 Implementar `Modelo/GrafoCripta.py` (data-model §2): `cantidad_salas`, `ordinal(sala)` con atributo propio en la sala, `aristas(sala)`, `entrantes(sala)`; construcción O(n + m) una vez recorriendo las salas del motor, sin `dict`/`set` como índice y sin usar `_ordinal`, `_origen` ni `entrantes` de `Conocimiento`; el estado de puerta se lee en vivo; pasa T008 (FR-011, FR-015, FR-017)
 
 ### Búsqueda de ruta (Persona A, D-PEND-01)
 
