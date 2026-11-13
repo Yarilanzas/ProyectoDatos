@@ -2,3 +2,7 @@
 cripta.log
 __pycache__/
 *.pyc
+
+partida.cripta
+partida.cripta.log
+partida.log
