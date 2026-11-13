@@ -105,8 +105,28 @@ def correr_bench():
     print(f"Resultados guardados en: {ARCHIVO_RESULTADOS}")
 
 
+def _linea_tiempos(etiqueta, tiempos):
+    return f"{etiqueta}   mediana = {mediana(tiempos):8.3f} ms   p95 = {p95(tiempos):8.3f} ms"
+
+
+# M1 (SC-004): cripta del tamaño de la publicada más grande (parámetros, no datos de una cripta real)
+LIMITE_M1_MS = 200
+M1_SALAS, M1_LLAVES = 300, 4
+
+
+def bench_m1(lineas):
+    lineas.append(f"-M1: cripta sintética de {M1_SALAS} salas y {M1_LLAVES} llaves, p95 < {LIMITE_M1_MS} ms (SC-004)-")
+    casos = [("resoluble", caso(M1_SALAS, M1_LLAVES)),
+             ("no resoluble con ciclo", caso(M1_SALAS, M1_LLAVES, resoluble=False, con_ciclo=True))]
+    for nombre, c in casos:
+        tiempos = medir(c.verificar)
+        cumple = "CUMPLE" if p95(tiempos) < LIMITE_M1_MS else "NO CUMPLE"
+        etiqueta = f"{nombre:<23} S = {c.salas:4d}  E = {c.salidas:4d}  K = {c.llaves:2d}"
+        lineas.append(f"{_linea_tiempos(etiqueta, tiempos)}   {cumple}")
+
+
 # Mediciones M1 a M5 (T047 a T050), en el orden en que se escriben en el archivo.
-SECCIONES = []
+SECCIONES = [bench_m1]
 
 
 if __name__ == "__main__":
