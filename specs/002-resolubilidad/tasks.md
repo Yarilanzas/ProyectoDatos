@@ -175,7 +175,7 @@ description: "Lista de tareas de la verificación de resolubilidad de una cripta
 ### Tests for User Story 5 ⚠️
 
 - [X] T042 [P] [US5] En `tests/test_verificacion_cli.py`: paquete de T002/T009 con `escribir_llaves=False`; `--verificar` y `--cripta … --forzar` → `! Error: Falta el archivo para /criptas/<id>/llaves: <ruta>`, sin veredicto, código 1, sin bitácora (FR-024, FR-028, US5.3); paquete con una entrada de llave sin `sala` → `! Error: Respuesta inválida de /criptas/<id>/llaves: ...` y código 1 (FR-025)
-- [ ] T043 [P] [US5] En `tests/test_fuente_llaves.py`, con una fuente HTTP simulada (sesión falsa, sin red): presupuesto 2 → `Se agotó el presupuesto de solicitudes (2) al consultar <url>`, sin hacer la solicitud de llaves y con solicitudes ≤ presupuesto, también con respuestas 429 que provocan reintentos (FR-024, FR-026, SC-008); respuesta 500 en `/llaves` → `El servicio respondió 500 ...` propagado por `verificar_cripta` sin resultado (FR-024, US5.1); fallo en detalles o en salas → mismo trato (FR-025); cripta sintética de 300 salas en 6 páginas → 9 solicitudes sin caché y 2 con caché válida (FR-026)
+- [X] T043 [P] [US5] En `tests/test_fuente_llaves.py`, con una fuente HTTP simulada (sesión falsa, sin red): presupuesto 2 → `Se agotó el presupuesto de solicitudes (2) al consultar <url>`, sin hacer la solicitud de llaves y con solicitudes ≤ presupuesto, también con respuestas 429 que provocan reintentos (FR-024, FR-026, SC-008); respuesta 500 en `/llaves` → `El servicio respondió 500 ...` propagado por `verificar_cripta` sin resultado (FR-024, US5.1); fallo en detalles o en salas → mismo trato (FR-025); cripta sintética de 300 salas en 6 páginas → 9 solicitudes sin caché y 2 con caché válida (FR-026)
 
 ### Implementation for User Story 5
 

@@ -256,5 +256,155 @@ class PruebasCacheLlaves(unittest.TestCase):
         self.assertEqual(primero, _como_tuplas(self.cripta.ubicaciones()))
 
 
+# --- T043: errores del servicio y presupuesto al verificar (US5) ------------------------------------------------
+
+class ServicioFalso:
+    """Servicio HTTP simulado (sin red) armado con una cripta de tests/generador_criptas.py. Reemplaza a
+    requests.get. Las salas se paginan de a `por_pagina`. `respuestas` permite fijar, por sufijo de ruta, una lista
+    de respuestas que se entregan en orden antes de la normal (por ejemplo 429, 429 y luego la normal), o con
+    `siempre` una respuesta que se repite (por ejemplo 500)."""
+
+    def __init__(self, cripta, presupuesto=None, por_pagina=50):
+        self.cripta = cripta
+        self.detalles = dict(cripta.detalles_json)
+        if presupuesto is not None:
+            self.detalles["presupuesto_solicitudes"] = presupuesto
+        self.por_pagina = por_pagina
+        self.antes = {}
+        self.siempre = {}
+        self.pedidas = []  # rutas pedidas, sin la base
+
+    def ruta(self, url):
+        return url.split("/v1", 1)[1]
+
+    def __call__(self, url, headers=None, params=None, timeout=None):
+        ruta = self.ruta(url)
+        self.pedidas.append(ruta)
+        for sufijo, lista in self.antes.items():
+            if ruta.endswith(sufijo) and lista:
+                return lista.pop(0)
+        for sufijo, respuesta in self.siempre.items():
+            if ruta.endswith(sufijo):
+                return respuesta
+        return RespuestaFalsa(self.cuerpo(ruta, params))
+
+    def cuerpo(self, ruta, params):
+        base = f"/criptas/{self.cripta.id_cripta}"
+        if ruta == base:
+            return self.detalles
+        if ruta == base + "/version":
+            return {"version": self.detalles["version"]}
+        if ruta == base + "/llaves":
+            return {"llaves": self.cripta.llaves_json}
+        if ruta == base + "/salas":
+            salas = self.cripta.salas_json
+            total = (len(salas) + self.por_pagina - 1) // self.por_pagina
+            pagina = params["pagina"]
+            inicio = (pagina - 1) * self.por_pagina
+            return {"salas": salas[inicio:inicio + self.por_pagina], "total_paginas": total}
+        raise AssertionError(f"ruta inesperada en la prueba: {ruta}")
+
+    def cuantas(self, sufijo):
+        return len([ruta for ruta in self.pedidas if ruta.endswith(sufijo)])
+
+
+class PruebasErroresServicioAlVerificar(unittest.TestCase):
+
+    def setUp(self):
+        self.carpeta = tempfile.TemporaryDirectory()
+        self.cripta = generar_cripta(31, 20, 3, id_cripta="c-http")
+        # los reintentos esperan con time.sleep: en la prueba no se espera
+        sin_espera = mock.patch("API.Fuentes.time.sleep", lambda _s: None)
+        sin_espera.start()
+        self.addCleanup(sin_espera.stop)
+        # los avisos de reintento y presupuesto van al log; en la prueba no se imprimen
+        import API.Fuentes
+        silencio = mock.patch.object(API.Fuentes.logger, "disabled", True)
+        silencio.start()
+        self.addCleanup(silencio.stop)
+
+    def tearDown(self):
+        self.carpeta.cleanup()
+
+    def verificar(self, servicio, nombre_cache="cache"):
+        from Gestor.PreparadorPartida import verificar_cripta
+        fuente = FuenteDatosHTTP()
+        gestor = GestorDatos(fuente, ruta_base=os.path.join(self.carpeta.name, nombre_cache))
+        with mock.patch("API.Fuentes.requests.get", side_effect=servicio):
+            return verificar_cripta(self.cripta.id_cripta, gestor), fuente
+
+    def verificar_con_error(self, servicio, tipo):
+        from Gestor.PreparadorPartida import verificar_cripta
+        fuente = FuenteDatosHTTP()
+        gestor = GestorDatos(fuente, ruta_base=os.path.join(self.carpeta.name, "cache"))
+        with mock.patch("API.Fuentes.requests.get", side_effect=servicio):
+            with self.assertRaises(tipo) as contexto:
+                verificar_cripta(self.cripta.id_cripta, gestor)
+        return contexto.exception, fuente
+
+    def test_fr024_fr026_sc008_presupuesto_2_se_agota_sin_pedir_llaves(self):
+        servicio = ServicioFalso(self.cripta, presupuesto=2)
+        error, fuente = self.verificar_con_error(servicio, Excepciones.PresupuestoAgotadoError)
+        self.assertTrue(str(error).startswith("Se agotó el presupuesto de solicitudes (2) al consultar "), error)
+        self.assertTrue(error.url.endswith(f"/criptas/{self.cripta.id_cripta}/salas"), error.url)
+        self.assertEqual(servicio.cuantas("/llaves"), 0)
+        self.assertLessEqual(len(servicio.pedidas), 2)
+        self.assertLessEqual(fuente.solicitudes_realizadas, 2)
+
+    def test_fr024_fr026_sc008_presupuesto_con_429_cuenta_cada_reintento(self):
+        # cada 429 es una solicitud hecha: el presupuesto 3 se agota esperando en /version
+        servicio = ServicioFalso(self.cripta, presupuesto=3)
+        servicio.antes["/version"] = [RespuestaFalsa({"reintentar_en": 0}, 429) for _ in range(4)]
+        error, fuente = self.verificar_con_error(servicio, Excepciones.PresupuestoAgotadoError)
+        self.assertTrue(str(error).startswith("Se agotó el presupuesto de solicitudes (3) al consultar "), error)
+        self.assertEqual(servicio.cuantas("/llaves"), 0)
+        self.assertEqual(servicio.cuantas("/version"), 2)
+        self.assertLessEqual(len(servicio.pedidas), 3)
+        self.assertLessEqual(fuente.solicitudes_realizadas, 3)
+
+    def test_fr026_sc008_429_con_presupuesto_suficiente_termina_dentro_del_presupuesto(self):
+        servicio = ServicioFalso(self.cripta, presupuesto=8)
+        servicio.antes["/llaves"] = [RespuestaFalsa({"reintentar_en": 0}, 429) for _ in range(2)]
+        resultado, fuente = self.verificar(servicio)
+        self.assertTrue(resultado.resoluble)
+        self.assertEqual(servicio.cuantas("/llaves"), 3)
+        self.assertLessEqual(fuente.solicitudes_realizadas, 8)
+
+    def test_fr024_us5_1_respuesta_500_en_llaves_se_propaga_sin_resultado(self):
+        servicio = ServicioFalso(self.cripta)
+        servicio.siempre["/llaves"] = RespuestaFalsa({"error": "falla interna"}, 500)
+        error, _ = self.verificar_con_error(servicio, Excepciones.ErrorServicio)
+        url = f"/criptas/{self.cripta.id_cripta}/llaves"
+        self.assertTrue(str(error).startswith("El servicio respondió 500 al consultar "), error)
+        self.assertIn(url, str(error))
+        self.assertEqual(error.codigo, 500)
+
+    def test_fr025_fallo_en_detalles_o_salas_mismo_trato(self):
+        for sufijo in (f"/criptas/{self.cripta.id_cripta}", "/salas"):
+            with self.subTest(ruta=sufijo):
+                servicio = ServicioFalso(self.cripta)
+                servicio.siempre[sufijo] = RespuestaFalsa({"error": "falla interna"}, 500)
+                error, _ = self.verificar_con_error(servicio, Excepciones.ErrorServicio)
+                self.assertTrue(str(error).startswith("El servicio respondió 500 al consultar "), error)
+                self.assertTrue(error.url.endswith(sufijo), error.url)
+                self.assertEqual(servicio.cuantas("/llaves"), 0)
+
+    def test_fr026_300_salas_en_6_paginas_9_solicitudes_sin_cache_y_2_con_cache(self):
+        self.cripta = generar_cripta(32, 300, 4, id_cripta="c-300")
+        servicio = ServicioFalso(self.cripta, por_pagina=50)
+        primero, _ = self.verificar(servicio)
+        # detalles + versión + 6 páginas de salas + llaves
+        self.assertEqual(len(servicio.pedidas), 9, servicio.pedidas)
+        self.assertEqual(servicio.cuantas("/salas"), 6)
+
+        servicio = ServicioFalso(self.cripta, por_pagina=50)
+        segundo, _ = self.verificar(servicio)  # otro proceso, misma caché en disco
+        # detalles + versión: esqueleto y llaves salen de la caché válida
+        self.assertEqual(len(servicio.pedidas), 2, servicio.pedidas)
+        self.assertEqual(primero.resoluble, segundo.resoluble)
+        self.assertEqual([(l.id_llave, l.oleada) for l in primero.orden],
+                         [(l.id_llave, l.oleada) for l in segundo.orden])
+
+
 if __name__ == "__main__":
     unittest.main()
