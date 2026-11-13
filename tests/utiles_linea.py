@@ -315,8 +315,11 @@ class MotorEspiaConsulta(MotorLinea):
 
     instantaneas = None
     decisiones = None
+    orden = None  # (tiempo, tipo, id del actor o None) de cada evento, en el orden en que el motor lo resolvió
 
     def ejecutar_evento(self, evento):
+        if self.orden is not None:
+            self.orden.append((evento.tiempo, evento.tipo, getattr(evento.actor, "id", None)))
         super().ejecutar_evento(evento)
         if self.instantaneas is not None:
             self.instantaneas.append((self.reloj, huella(self)))
@@ -399,6 +402,7 @@ def partida_con_linea(k=10, semilla=3, efectos=True, pergaminos=0, **opciones):
     motor.__class__ = MotorEspiaConsulta
     motor.instantaneas = []
     motor.decisiones = []
+    motor.orden = []
     agregar_enemigo(motor, "err-001", 4, "errante")
     agregar_cazador(motor, "caz-001", 6)
     if efectos:
@@ -410,3 +414,57 @@ def partida_con_linea(k=10, semilla=3, efectos=True, pergaminos=0, **opciones):
     linea = LineaTiempo(k=k, gestor_historico=partida.nuevo_gestor_historico())
     linea.iniciar(motor)
     return PartidaConLinea(partida, linea, GeneradorAcciones(semilla))
+
+
+# ───────────────────────── Cripta de coincidencia (T049; Historia 3) ─────────────────────────
+
+class Coincidencia:
+    """Resultado de `partida_coincidencia`: la partida con línea, el instante `t` donde coinciden tres eventos, el orden de
+    resolución que observó el motor espía en `t` y el instante `t + 1` del evento posterior."""
+
+    def __init__(self, pl, t, orden):
+        self.pl = pl
+        self.t = t
+        self.orden = orden
+
+
+T_COINCIDENCIA = 150
+EVENTOS_EN_T = ("FIN_VELOCIDAD", "ACCION_ACTOR", "CERRAR_PUERTA")
+
+
+def partida_coincidencia(k=3, semilla=3, acciones=4):
+    """Partida (cripta resoluble, por ControladorPartida.nueva_partida) donde **exactamente en t = 150** coinciden:
+
+    - el fin de un efecto de velocidad del jugador (`FIN_VELOCIDAD`),
+    - la acción de una rata guardián que está en la sala del jugador y lo ataca (`ACCION_ACTOR`),
+    - una puerta de la sala del jugador que se cierra sola (`CERRAR_PUERTA`),
+
+    programados en ese orden (así los resuelve el motor, por su secuencia), y un evento en `t + 1`: se apaga la antorcha
+    (`APAGAR_ANTORCHA`). t = 150 no es una decisión del jugador. Todo se programa antes de `linea.iniciar`, así el punto de
+    control de la acción 0 ya lo trae. Luego el jugador espera `acciones` veces y se devuelve `Coincidencia` con el orden de
+    resolución que anotó el motor espía en `t` (lista de (tiempo, tipo, actor))."""
+    partida = partida_linea(semilla=semilla)
+    motor = preparar_motor_linea(partida.motor, espiar=False)
+    motor.__class__ = MotorEspiaConsulta
+    motor.instantaneas = []
+    motor.decisiones = []
+    motor.orden = []
+    jugador = motor.jugador
+    t = T_COINCIDENCIA
+
+    motor.aplicar_velocidad_temporal(jugador, 10, t)          # FIN_VELOCIDAD en t
+    rata = agregar_enemigo(motor, "rata-t", jugador.sala.id, "guardian")
+    rata.evento_actual.cancelar()                              # su acción llegaba en 100: se mueve a t
+    rata.tiempo_siguiente = t
+    rata.evento_actual = motor.programar_evento(t, "ACCION_ACTOR", rata)
+    puerta = jugador.sala.salidas["E"]
+    motor.programar_evento(t, "CERRAR_PUERTA", puerta)         # CERRAR_PUERTA en t
+    jugador.antorcha_encendida = True
+    motor.programar_evento(t + 1, "APAGAR_ANTORCHA", jugador)  # el evento de t + 1
+
+    linea = LineaTiempo(k=k, gestor_historico=partida.nuevo_gestor_historico())
+    linea.iniciar(motor)
+    pl = PartidaConLinea(partida, linea, GeneradorAcciones(semilla))
+    pl.hacer([("esperar", "")] * acciones)
+    orden = [evento for evento in motor.orden if evento[0] == t]
+    return Coincidencia(pl, t, orden)
