@@ -600,5 +600,76 @@ class PruebasForzarCli(unittest.TestCase):
         self.assertEqual(pedidas, [])
 
 
+# --- T042: fallo al obtener la ubicación de las llaves (US5) ----------------------------------------------------
+
+class PruebasFalloLlavesCli(unittest.TestCase):
+
+    setUp = PruebasVerificacionCli.setUp
+    tearDown = PruebasVerificacionCli.tearDown
+    foto_de_trabajo = PruebasVerificacionCli.foto_de_trabajo
+    correr = PruebasPartidaNuevaCli.correr
+
+    def paquete_sin_llaves(self):
+        paquete = os.path.join(self.temporal.name, "paquete_sin_llaves")
+        escribir_paquete(paquete, generar_cripta(12, 20, 3, resoluble=False, id_cripta=CRIPTA_NO_RESOLUBLE),
+                         escribir_llaves=False)
+        return paquete
+
+    def paquete_llave_sin_sala(self):
+        paquete = os.path.join(self.temporal.name, "paquete_llave_sin_sala")
+        escribir_paquete(paquete, generar_cripta(11, 20, 3, id_cripta=CRIPTA_RESOLUBLE))
+        with open(os.path.join(paquete, "criptas", CRIPTA_RESOLUBLE, "llaves.json"), "w", encoding="utf-8") as archivo:
+            json.dump({"llaves": [{"id": "llave_01", "sala": 7}, {"id": "llave_02"}]}, archivo)
+        return paquete
+
+    def assert_error_sin_veredicto(self, codigo, texto, prefijo):
+        self.assertEqual(codigo, 1, texto)
+        self.assertTrue(texto.startswith(prefijo), texto)
+        self.assertEqual(texto.count("\n"), 1, texto)  # solo la línea de error
+        for prohibido in ("resoluble", "Orden de obtención", "Partida nueva", "=== CRIPTA ==="):
+            self.assertNotIn(prohibido, texto)
+
+    def test_fr024_fr028_us5_3_sin_llaves_json_con_verificar(self):
+        paquete = self.paquete_sin_llaves()
+        antes = self.foto_de_trabajo()
+        codigo, texto = self.correr(paquete, [], "--verificar", CRIPTA_NO_RESOLUBLE)
+        archivo = os.path.join(paquete, "criptas", CRIPTA_NO_RESOLUBLE, "llaves") + ".json"
+        self.assert_error_sin_veredicto(
+            codigo, texto, f"! Error: Falta el archivo para /criptas/{CRIPTA_NO_RESOLUBLE}/llaves: ")
+        # el archivo no existe: se comparan las rutas normalizadas (en Windows mezcla \ y /)
+        mostrada = texto.split("/llaves: ", 1)[1].strip()
+        self.assertEqual(os.path.normcase(os.path.normpath(mostrada)), os.path.normcase(os.path.normpath(archivo)))
+        self.assertEqual(self.foto_de_trabajo(), antes)
+
+    def test_fr024_fr028_us5_3_sin_llaves_json_con_forzar_no_inicia(self):
+        paquete = self.paquete_sin_llaves()
+        antes = self.foto_de_trabajo()
+        codigo, texto = self.correr(paquete, ["salir"], "--cripta", CRIPTA_NO_RESOLUBLE, "--semilla", "7", "--forzar")
+        self.assert_error_sin_veredicto(
+            codigo, texto, f"! Error: Falta el archivo para /criptas/{CRIPTA_NO_RESOLUBLE}/llaves: ")
+        # sin bitácora ni cambios en la tabla de puntajes
+        self.assertEqual(self.foto_de_trabajo(), antes)
+
+    def test_fr024_sin_llaves_json_sin_forzar_tampoco_inicia(self):
+        paquete = self.paquete_sin_llaves()
+        antes = self.foto_de_trabajo()
+        codigo, texto = self.correr(paquete, ["salir"], "--cripta", CRIPTA_NO_RESOLUBLE)
+        self.assert_error_sin_veredicto(
+            codigo, texto, f"! Error: Falta el archivo para /criptas/{CRIPTA_NO_RESOLUBLE}/llaves: ")
+        self.assertEqual(self.foto_de_trabajo(), antes)
+
+    def test_fr025_entrada_de_llave_sin_sala(self):
+        paquete = self.paquete_llave_sin_sala()
+        prefijo = f"! Error: Respuesta inválida de /criptas/{CRIPTA_RESOLUBLE}/llaves: "
+        for argumentos, entradas in ((("--verificar", CRIPTA_RESOLUBLE), []),
+                                     (("--cripta", CRIPTA_RESOLUBLE, "--semilla", "7"), ["salir"]),
+                                     (("--cripta", CRIPTA_RESOLUBLE, "--semilla", "7", "--forzar"), ["salir"])):
+            with self.subTest(argumentos=argumentos):
+                antes = self.foto_de_trabajo()
+                codigo, texto = self.correr(paquete, entradas, *argumentos)
+                self.assert_error_sin_veredicto(codigo, texto, prefijo)
+                self.assertEqual(self.foto_de_trabajo(), antes)
+
+
 if __name__ == "__main__":
     unittest.main()
