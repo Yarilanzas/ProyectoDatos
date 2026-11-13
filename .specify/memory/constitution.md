@@ -1,15 +1,14 @@
 <!--
 Sync Impact Report
-- Version change: 3.0.1 → 3.0.2 (PATCH: aclaración de dónde y cómo se lleva el registro de prompts)
-- Principios modificados: XI. Registro de prompts a LLM (mismo título): documento Word `Prompts.docx` →
-  `PROMPTS_LLM.md` en la raíz del repositorio, armado al final a partir de las notas de cada persona, con
-  fecha, modelo, prompt textual y para qué se usó.
+- Version change: 3.0.2 → 3.0.3 (PATCH: aclaración de alcance del Principio I, acordada por el grupo)
+- Principios modificados: I. Estructuras de datos propias (NO NEGOCIABLE) (mismo título): se añade una
+  excepción acotada y documentada para el argumento `memo` de `copy.deepcopy` en `Modelo/CopiaEstado.py`
+  (capacidad 004). El resto del principio no cambia.
+- Fundamento: autorización del profesor del curso (José Pablo Calvo Suárez), 2026-11-12, por chat;
+  referencia en `specs/004-linea-de-tiempo` (T003, T114 y DECISIONES.md).
 - Secciones añadidas: ninguna
 - Secciones eliminadas: ninguna
-- Plantillas y documentos actualizados: `specs/001-niebla-mapa-ir-a/plan.md` (Constitution Check, fila XI) y
-  `tasks.md` (T004 y tabla de dependencias de personas).
-- Corrección del informe 3.0.1: su pendiente («plan.md y tasks.md aún mencionan `PROMPTS_LLM.md`») ya no era
-  cierto; ambos citaban `Prompts.docx`.
+- Plantillas y documentos actualizados: ninguno (el cambio no altera plantillas ni otros documentos).
 - Pendiente fuera de este archivo: ninguno.
 -->
 
@@ -29,6 +28,14 @@ implementarse a mano dentro del proyecto.
   búsqueda de rutas. Tampoco `sorted()`/`list.sort()` como sustituto de un ordenamiento evaluado.
 - Usos auxiliares de `dict`/`set` que no sustituyen a una estructura evaluada (p. ej. parsear JSON o
   argumentos) están permitidos.
+- Excepción acotada y documentada: el único uso de un `dict` permitido por esta excepción es el argumento
+  `memo` de `copy.deepcopy`, un dict temporal de una sola llamada, en `Modelo/CopiaEstado.py` (capacidad
+  004, línea de tiempo). No autoriza `dict` ni `set` como índice, ni como caché, en ningún otro archivo ni
+  con ningún otro fin; todo lo demás de este principio sigue igual. Fundamento: autorización de José Pablo
+  Calvo Suárez (profesor del curso), el 2026-11-12, por chat, como respuesta a la pregunta de Persona D
+  sobre si `copy.deepcopy` con su argumento `memo` chocaba con este principio. Cita textual: «Para este
+  proyecto sí pueden usar el dict como caché. No hay problema». Referencia: `specs/004-linea-de-tiempo`
+  (T003, T114 de esa capacidad, y DECISIONES.md).
 - Cada estructura propia MUST documentar la complejidad temporal de sus operaciones principales.
 
 **Razón**: el proyecto es una entrega de Estructuras de Datos II (EIF207, UNA); el valor académico está en
@@ -172,4 +179,4 @@ menos la fecha, el modelo, el prompt textual y para qué se usó.
   incumplimientos entre spec, plan y tareas.
 - La guía operativa del día a día (comandos, formatos, opciones) está en `README.md`.
 
-**Version**: 3.0.2 | **Ratified**: 2026-11-03 | **Last Amended**: 2026-11-09
+**Version**: 3.0.3 | **Ratified**: 2026-11-03 | **Last Amended**: 2026-11-13
