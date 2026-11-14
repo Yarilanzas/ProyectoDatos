@@ -20,6 +20,7 @@ if RAIZ not in sys.path:
     sys.path.insert(0, RAIZ)
 
 from Modelo import Resolubilidad
+from Modelo.Estructuras import Queue
 from Modelo.ordenamiento import merge_sort
 from tests.generador_criptas import generar_cripta
 
@@ -190,8 +191,214 @@ def bench_peor_caso(lineas):
                          repeticiones=REPETICIONES_PEOR_CASO)
 
 
+# M4: alternativas A1 a A3 contra la versión elegida (research.md R4, R5 y R7; plan.md, tabla de alternativas).
+#
+# Viven solo aquí, nunca en Modelo/. Igual que el código de producción (Principio I): listas usadas como arreglos y la
+# Queue propia; sin dict, set, deque, heapq, bisect ni collections. Para que el resto de `verificar` sea exactamente el
+# mismo, cada alternativa reemplaza durante la medición una sola pieza del módulo (`recorrer`,
+# `calcular_dependencias` o `IndiceLlaves`) y se restaura al terminar. Antes de medir se comprueba que el resultado
+# sea idéntico al de `verificar` sin reemplazos.
+
+def recorrer_a1(grafo, indice, sala_inicial):
+    """A1: recorrido en anchura completo desde cero cada vez que se obtienen llaves. O(K·(S + E)).
+
+    Cada pasada parte de la sala inicial con las llaves ya obtenidas, sin puertas en espera, y junta las llaves nuevas
+    que encuentra; esas forman la oleada siguiente. En las criptas sintéticas cada oleada trae una sola llave, así
+    que hay una pasada por llave obtenida (más la última, que no encuentra ninguna).
+    """
+    largo = len(grafo.salas)
+    cantidad = indice.cantidad()
+    obtenida = [False] * cantidad
+    orden = []
+    visitada = [False] * largo
+    oleada = 1
+    while True:
+        visitada = [False] * largo
+        en_ronda = [False] * cantidad
+        nuevas = []
+        cola = Queue()
+        if grafo.existe(sala_inicial):
+            visitada[sala_inicial] = True
+            cola.enqueue(sala_inicial)
+        while not cola.is_empty():
+            sala = grafo.salas[cola.dequeue()]
+            for numero in sala.llaves:
+                if not obtenida[numero] and not en_ronda[numero]:
+                    en_ronda[numero] = True
+                    nuevas.append(numero)
+            for salida in sala.salidas:
+                if not salida.destino_valido or visitada[salida.destino]:
+                    continue
+                if not salida.cerrada or (salida.num_llave >= 0 and obtenida[salida.num_llave]):
+                    visitada[salida.destino] = True
+                    cola.enqueue(salida.destino)
+        if len(nuevas) == 0:
+            break
+        nuevas, _ = merge_sort(nuevas, _identidad)
+        for numero in nuevas:
+            obtenida[numero] = True
+            orden.append((numero, oleada))
+        oleada += 1
+    return Resolubilidad.EstadoRecorrido(visitada, obtenida, orden)
+
+
+def calcular_dependencias_a2(grafo, indice, estado):
+    """A2: la zona de cada ubicación de cada llave por separado, limpiando las marcas y revisando todas las puertas
+    cada vez. O(K·(S + E)) en vez de O(S + E + Σ zonas).
+
+    Por cada llave no obtenible k se barren todas las salas buscando sus ubicaciones; por cada una se arma la zona
+    hacia atrás con un arreglo `en_zona` nuevo (O(S)) y luego se recorren todas las salidas de la cripta (O(S + E))
+    para combinar las puertas bloqueadas que entran a la zona desde fuera de ella. Misma regla que R7.
+    """
+    largo = len(grafo.salas)
+    cantidad = indice.cantidad()
+    depende_de = [Resolubilidad.SIN_DEPENDENCIA] * cantidad
+    for numero in range(cantidad):
+        if estado.obtenida[numero] or grafo.ubicacion_inexistente[numero]:
+            continue
+        acumulado = Resolubilidad._SIN_PUERTAS
+        for sala in grafo.salas:
+            if sala is None:
+                continue
+            for numero_sala in sala.llaves:
+                if numero_sala == numero:
+                    acumulado = Resolubilidad._combinar(acumulado, _valor_zona_a2(grafo, estado, sala.id, largo))
+        if acumulado != Resolubilidad._SIN_PUERTAS:
+            depende_de[numero] = acumulado
+    return depende_de
+
+
+def _valor_zona_a2(grafo, estado, x, largo):
+    en_zona = [False] * largo
+    en_zona[x] = True
+    cola = Queue()
+    cola.enqueue(x)
+    while not cola.is_empty():
+        destino = cola.dequeue()
+        for salida in grafo.entrantes[destino]:
+            origen = salida.origen
+            if not Resolubilidad._bloqueada(salida, estado) and not estado.visitada[origen] and not en_zona[origen]:
+                en_zona[origen] = True
+                cola.enqueue(origen)
+
+    valor = Resolubilidad._SIN_PUERTAS
+    for sala in grafo.salas:
+        if sala is None:
+            continue
+        for salida in sala.salidas:
+            if not salida.destino_valido or not en_zona[salida.destino] or en_zona[salida.origen]:
+                continue
+            if Resolubilidad._bloqueada(salida, estado):
+                pedida = Resolubilidad.SIN_DEPENDENCIA if salida.num_llave < 0 else salida.num_llave
+                valor = Resolubilidad._combinar(valor, pedida)
+    return Resolubilidad.SIN_DEPENDENCIA if valor == Resolubilidad._SIN_PUERTAS else valor
+
+
+class IndiceLlavesA3(Resolubilidad.IndiceLlaves):
+    """A3: el mismo índice ordenado, pero `numero` busca el id de forma lineal. O(K) por búsqueda, O(M·K) en total."""
+
+    def numero(self, id_llave):
+        for posicion in range(len(self.ids)):
+            if self.ids[posicion] == id_llave:
+                return posicion
+        return -1
+
+
+# (nombre, pieza del módulo que reemplaza, reemplazo)
+ALTERNATIVAS = [("A1", "recorrer", recorrer_a1),
+                ("A2", "calcular_dependencias", calcular_dependencias_a2),
+                ("A3", "IndiceLlaves", IndiceLlavesA3)]
+
+
+def _con_alternativa(pieza, reemplazo, funcion):
+    """Ejecuta `funcion()` con `Resolubilidad.<pieza>` reemplazada por `reemplazo` y la restaura siempre."""
+    original = getattr(Resolubilidad, pieza)
+    setattr(Resolubilidad, pieza, reemplazo)
+    try:
+        return funcion()
+    finally:
+        setattr(Resolubilidad, pieza, original)
+
+
+def _forma(valor):
+    """Forma comparable de un resultado: los DTO se vuelven listas de (atributo, valor), recursivamente."""
+    if isinstance(valor, (list, tuple)):
+        return [_forma(elemento) for elemento in valor]
+    if hasattr(valor, "__dict__"):
+        return [(nombre, _forma(atributo)) for nombre, atributo in vars(valor).items()]
+    return valor
+
+
+def _comprobar_igual(c, nombre, pieza, reemplazo):
+    if _forma(_con_alternativa(pieza, reemplazo, c.verificar)) != _forma(c.verificar()):
+        raise AssertionError(f"{nombre} no da el mismo resultado que verificar en la cripta de {c.salas} salas y "
+                             f"{c.llaves} llaves")
+
+
+M4_SALAS = 1200
+M4_LLAVES = [4, 16, 64, 256]
+REPETICIONES_M4 = 9
+
+
+def _medir_intercalado(funciones, repeticiones=REPETICIONES_M4, calentamiento=1):
+    """Tiempos ordenados (ms) de cada función, medidas por rondas: en cada ronda una ejecución de cada una.
+
+    Así el ruido del equipo y el efecto de lo que se ejecutó justo antes se reparten por igual entre la elegida y las
+    alternativas, en vez de caer siempre sobre la que se mide primero."""
+    for funcion in funciones:
+        for _ in range(calentamiento):
+            funcion()
+    tiempos = [[] for _ in funciones]
+    for _ in range(repeticiones):
+        for i in range(len(funciones)):
+            inicio = time.perf_counter()
+            funciones[i]()
+            tiempos[i].append((time.perf_counter() - inicio) * 1000)
+    ordenados = []
+    for lista in tiempos:
+        ordenada, _ = merge_sort(lista, _identidad)
+        ordenados.append(ordenada)
+    return ordenados
+
+
+def _alternativa(c, pieza, reemplazo):
+    return lambda: _con_alternativa(pieza, reemplazo, c.verificar)
+
+
+def _tabla_alternativas(lineas, casos, nombres):
+    """Una fila por caso: mediana de la elegida y de cada alternativa, con su cociente frente a la elegida."""
+    for c in casos:
+        funciones = [c.verificar]
+        medidas = []
+        for nombre, pieza, reemplazo in ALTERNATIVAS:
+            if nombre in nombres:
+                _comprobar_igual(c, nombre, pieza, reemplazo)
+                funciones.append(_alternativa(c, pieza, reemplazo))
+                medidas.append(nombre)
+        medianas = [mediana(tiempos) for tiempos in _medir_intercalado(funciones)]
+        base = medianas[0]
+        fila = f"S = {c.salas:5d}  E = {c.salidas:5d}  K = {c.llaves:3d}   elegida = {base:9.3f} ms"
+        for i in range(len(medidas)):
+            fila += f"   {medidas[i]} = {medianas[i + 1]:9.3f} ms (x{medianas[i + 1] / base:5.2f})"
+        lineas.append(fila)
+
+
+def bench_m4(lineas):
+    lineas.append("-M4: versión elegida frente a A1 (recorrido completo por llave), A2 (zona de cada llave por "
+                  "separado) y A3 (búsqueda lineal del id) (FR-029, FR-030)-")
+    lineas.append(f"medianas en ms con {REPETICIONES_M4} repeticiones intercaladas por ronda; (xN) = alternativa / elegida; antes de medir se "
+                  f"comprobó que cada alternativa da el mismo resultado que verificar")
+    lineas.append(f"Salas fijas (S = {M4_SALAS}) y K creciente, caso resoluble: A1 y A3")
+    _tabla_alternativas(lineas, [caso(M4_SALAS, k) for k in M4_LLAVES], ("A1", "A3"))
+    lineas.append(f"Salas fijas (S = {M4_SALAS}) y K creciente, caso no resoluble con ciclo: A1, A2 y A3")
+    _tabla_alternativas(lineas, [caso(M4_SALAS, k, resoluble=False, con_ciclo=True) for k in M4_LLAVES],
+                        ("A1", "A2", "A3"))
+    lineas.append("Duplicaciones de M2 (caso resoluble): A1 y A3")
+    _tabla_alternativas(lineas, [caso(s, k) for s, k in DUPLICACIONES], ("A1", "A3"))
+
+
 # Mediciones M1 a M5 (T047 a T050), en el orden en que se escriben en el archivo.
-SECCIONES = [bench_m1, bench_m2, bench_m3, bench_peor_caso]
+SECCIONES = [bench_m1, bench_m2, bench_m3, bench_peor_caso, bench_m4]
 
 
 if __name__ == "__main__":
