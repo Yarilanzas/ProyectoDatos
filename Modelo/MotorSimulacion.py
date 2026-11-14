@@ -1,6 +1,7 @@
 import random
 from DTOS.MapaConocido import MapaConocido, SalaConocida, SalidaConocida
-from Modelo.BusquedaRuta import EspacioBusqueda, primer_paso
+from Modelo.BusquedaRuta import EspacioBusqueda, ORDEN_DIRECCIONES, campo_hacia
+from Modelo.CampoDistancias import CampoDistancias
 from Modelo.Conocimiento import Conocimiento, EXPLORADA, GrafoConocido
 from Modelo.DecisionCazador import DecisionCazador
 from Modelo.Evento import Evento
@@ -60,6 +61,11 @@ class MotorSimulacion:
         self.version_puertas = 0
         self.grafo_cripta = None
         self.espacio_busqueda = None
+        # Campo compartido de distancias hacia el jugador (T047) y estrategia de decisión de los cazadores (T048). Ninguno
+        # es estado de la partida. La estrategia se elige solo en `decidir_cazador`: "individual" (referencia desde
+        # cero) o "compartida" (un campo por ciclo para todos los cazadores).
+        self.campo_distancias = None
+        self.estrategia_cazador = "individual"
 
         if self.gestor_datos is not None:
             self.gestor_datos.conectar_estado_juego(self)
@@ -353,8 +359,7 @@ class MotorSimulacion:
 
         return resultado
 
-    def iniciar_partida(self, jugador, salas, enemigos, contenidos_salas=None,
-                        sala_salida=None, llave_salida=None, cripta_id=None):
+    def iniciar_partida(self, jugador, salas, enemigos, contenidos_salas=None,sala_salida=None, llave_salida=None, cripta_id=None):
 
         # Reiniciar el estado de la simulación
         self.reloj = 0
@@ -403,6 +408,7 @@ class MotorSimulacion:
         self.conocimiento = Conocimiento(self._indice_salas, self._destino)
         self.grafo_cripta = GrafoCripta(self.salas, self._destino, self.costo_salida)
         self.espacio_busqueda = EspacioBusqueda(self.grafo_cripta.cantidad_salas)
+        self.campo_distancias = None
         self._entrar_conocimiento(jugador.sala)
 
         jugador.tiempo_siguiente = 0
@@ -936,6 +942,13 @@ class MotorSimulacion:
         return "ESPERAR"
 
     def decidir_cazador(self, cazador):
+        """Único lugar donde se elige la estrategia de los cazadores (T048): ``estrategia_cazador`` es "individual"
+        (referencia desde cero) o "compartida" (campo de distancias por ciclo). Las dos devuelven la misma decisión."""
+        if self.estrategia_cazador == "compartida":
+            return self.decidir_cazador_compartida(cazador)
+        return self.decidir_cazador_individual(cazador)
+
+    def decidir_cazador_individual(self, cazador):
         """Decisión de referencia del cazador, desde cero (spec 003, data-model §8, FR-010 a FR-014, FR-017): misma
         sala que el jugador, ataca; sin ruta abierta o con una ruta que cuesta más que su rango, espera con costo 100;
         si no, da el primer paso de una ruta de costo mínimo, con el desempate de la búsqueda (menor id de vecina y
@@ -952,6 +965,53 @@ class MotorSimulacion:
             return DecisionCazador(DecisionCazador.ESPERAR, None, 100)
 
         salida = cazador.sala.salidas[paso.direccion]
+        return DecisionCazador(DecisionCazador.MOVER, salida, self.costo_salida(salida))
+
+    def decidir_cazador_compartida(self, cazador):
+        """Misma decisión que ``decidir_cazador_individual``, con un campo de distancias hacia la sala del jugador que
+        se calcula una vez por ciclo y sirve a todos los cazadores (spec 003, data-model §5, FR-014, FR-016, FR-018).
+
+        El campo (``campo_hacia`` sobre el espacio persistente del motor) se recalcula si cambió el ciclo, la sala del
+        jugador o ``version_puertas``, si su cota es menor que el rango de quien decide, o si otra búsqueda reutilizó
+        el espacio. La cota es el mayor rango entre los cazadores activos y vivos. Luego se mira cada salida abierta de
+        la sala del cazador: cuesta ``costo + distancia(vecina)``, y una vecina que el campo no alcanzó cuenta como
+        infinito. Gana el menor total, luego la vecina de menor id y luego N, S, E, O. Si el mejor total supera el
+        rango, espera. Complejidad: O((|R| + |E_R|) log |E_R|) al recalcular el campo (una vez por ciclo) y
+        O(salidas de la sala) por cazador."""
+        jugador = self.jugador
+        if cazador.sala is jugador.sala:
+            return DecisionCazador(DecisionCazador.ATACAR, None, 100)
+
+        grafo = self.grafo_cripta
+        espacio = self.espacio_busqueda
+        ordinal_jugador = grafo.ordinal(jugador.sala)
+        campo = self.campo_distancias
+        if (campo is None
+                or not campo.sirve(self.ciclo, ordinal_jugador, self.version_puertas, cazador.rango,
+                                   espacio.epoca_actual)):
+            cota = cazador.rango
+            for otro in self.enemigos:
+                if (otro.comportamiento == "cazador" and otro.activo and otro.esta_vivo()
+                        and otro.rango > cota):
+                    cota = otro.rango
+            campo_hacia(grafo, jugador.sala, cota, espacio)
+            self.campo_distancias = CampoDistancias(self.ciclo, ordinal_jugador, self.version_puertas, cota,
+                                                    espacio.epoca_actual)
+
+        mejor = None  # (total, id de la vecina, índice de la dirección, dirección)
+        for direccion, vecina, costo in grafo.aristas(cazador.sala):
+            ordinal = grafo.ordinal(vecina)
+            if espacio.epoca[ordinal] != espacio.epoca_actual:
+                continue  # fuera del campo: distancia infinita
+            total = costo + espacio.dist[ordinal]
+            clave = (total, vecina.id, ORDEN_DIRECCIONES.index(direccion))
+            if mejor is None or clave < mejor[0]:
+                mejor = (clave, direccion)
+
+        if mejor is None or mejor[0][0] > cazador.rango:
+            return DecisionCazador(DecisionCazador.ESPERAR, None, 100)
+
+        salida = cazador.sala.salidas[mejor[1]]
         return DecisionCazador(DecisionCazador.MOVER, salida, self.costo_salida(salida))
 
     def salida_rastro(self, enemigo):

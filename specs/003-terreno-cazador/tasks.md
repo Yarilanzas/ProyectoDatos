@@ -124,9 +124,9 @@ Proyecto único MVC en la raíz: reglas en `Modelo/`, pruebas y bench en `tests/
 
 - [x] T045 [US2] Leer el rango de la ficha del enemigo y guardarlo en el enemigo (`Modelo/Enemigo.py` y la construcción de enemigos en `Modelo/MotorSimulacion.py`); «entero ≥ 0 en unidades de costo»; solo lectura, sin valor por defecto (FR-009). FichaEnemigo ya trae rango validado (Persona B): falta copiarlo al Enemigo en `crear_enemigo`
 - [x] T046 [US2] Implementar en `Modelo/MotorSimulacion.py` la decisión de referencia del cazador (data-model §8): misma sala → `ATACAR`; si no, `primer_paso(grafo_cripta, sala, sala_jugador, limite=rango, espacio=espacio_motor)`; `None` → `ESPERAR` con costo 100; si no → `MOVER` por esa salida con su costo; devuelve `accion`, `salida`, `costo_base` (FR-010, FR-011, FR-012, FR-013, FR-014, FR-017)
-- [ ] T047 [US2] Implementar en `Modelo/MotorSimulacion.py` el campo compartido (data-model §5): llave `(ciclo, sala del jugador, version_puertas, cota)`; si no es válido o la cota es menor que el rango del que decide, recalcular con `campo_hacia` y cota = mayor rango entre los cazadores activos y vivos; decidir aplicando FR-014 sobre las salidas abiertas de la sala del cazador (vecinas no fijadas = ∞); misma salida de datos que T046 (FR-014, FR-016, FR-018)
+- [x] T047 [US2] Implementar en `Modelo/MotorSimulacion.py` el campo compartido (data-model §5): llave `(ciclo, sala del jugador, version_puertas, cota)`; si no es válido o la cota es menor que el rango del que decide, recalcular con `campo_hacia` y cota = mayor rango entre los cazadores activos y vivos; decidir aplicando FR-014 sobre las salidas abiertas de la sala del cazador (vecinas no fijadas = ∞); misma salida de datos que T046 (FR-014, FR-016, FR-018)
 - [x] T048 [US2] Integrar en `Modelo/MotorSimulacion.py`: `accion_enemigo` devuelve la acción del cazador para `comportamiento == "cazador"`; `ejecutar_evento` mueve con `mover_enemigo`, ataca con `atacar` o espera, y reprograma con el `costo_base` de la decisión; la estrategia activa se elige en un solo lugar; la estrategia inicial es la referencia desde cero (búsqueda individual acotada, T046), y el campo compartido (T047) solo se activa si T070 lo decide con M3 y M4; pasa T033 a T044 (FR-010, FR-013, FR-019, FR-020, FR-022, FR-034)
-- [ ] T049 [US2] En `tests/test_ruta_contrato.py` o `tests/test_cazador.py`, correr la tabla de casos de desempate del contrato contra la decisión del cazador con las dos estrategias, permutando el orden de las salidas (FR-014, FR-021)
+- [x] T049 [US2] En `tests/test_ruta_contrato.py` o `tests/test_cazador.py`, correr la tabla de casos de desempate del contrato contra la decisión del cazador con las dos estrategias, permutando el orden de las salidas (FR-014, FR-021)
 
 **Checkpoint**: el cazador persigue y ataca; US1 sigue pasando.
 
@@ -140,11 +140,11 @@ Proyecto único MVC en la raíz: reglas en `Modelo/`, pruebas y bench en `tests/
 
 ### Tests for User Story 3
 
-- [ ] T050 [P] [US3] En `tests/test_cazador.py`: **Apéndice B, «sin ruta abierta»**: todas las rutas pasan por puertas cerradas; espera con costo 100 y ninguna puerta cambia (FR-012, FR-017)
-- [ ] T051 [P] [US3] En `tests/test_cazador.py`: **Apéndice B, «ruta más barata cuesta más que el rango»**: ruta de 600 con rango 500; espera con costo 100 (FR-012)
-- [ ] T052 [P] [US3] En `tests/test_cazador.py`: cazador que esperaba por una puerta cerrada persigue en su siguiente turno cuando la puerta se abre y la nueva ruta no supera el rango (escenario 3; FR-016)
-- [ ] T053 [P] [US3] En `tests/test_cazador.py`: rango 0 en otra sala, espera con costo 100 (escenario 4; FR-012)
-- [ ] T054 [P] [US3] En `tests/test_cazador.py`: cazador que porta la llave de una puerta cerrada de su única ruta no la abre ni la usa, y espera (FR-017)
+- [x] T050 [P] [US3] En `tests/test_cazador.py`: **Apéndice B, «sin ruta abierta»**: todas las rutas pasan por puertas cerradas; espera con costo 100 y ninguna puerta cambia (FR-012, FR-017)
+- [x] T051 [P] [US3] En `tests/test_cazador.py`: **Apéndice B, «ruta más barata cuesta más que el rango»**: ruta de 600 con rango 500; espera con costo 100 (FR-012)
+- [x] T052 [P] [US3] En `tests/test_cazador.py`: cazador que esperaba por una puerta cerrada persigue en su siguiente turno cuando la puerta se abre y la nueva ruta no supera el rango (escenario 3; FR-016)
+- [x] T053 [P] [US3] En `tests/test_cazador.py`: rango 0 en otra sala, espera con costo 100 (escenario 4; FR-012)
+- [x] T054 [P] [US3] En `tests/test_cazador.py`: cazador que porta la llave de una puerta cerrada de su única ruta no la abre ni la usa, y espera (FR-017)
 
 **Checkpoint**: US3 pasa con la implementación de US2, sin código nuevo; si alguna prueba falla, se corrige en T046 a T048.
 
