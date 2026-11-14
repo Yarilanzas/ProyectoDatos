@@ -10,6 +10,7 @@ mediana y p95). Toda cifra del Documento de Decisiones sobre resolubilidad sale 
 Principio I: los tiempos se ordenan con `merge_sort` de `Modelo/ordenamiento.py` (sin `sorted` ni `.sort`).
 """
 
+import math
 import os
 import platform
 import sys
@@ -397,8 +398,66 @@ def bench_m4(lineas):
     _tabla_alternativas(lineas, [caso(s, k) for s, k in DUPLICACIONES], ("A1", "A3"))
 
 
+# M5: conteos, no tiempos. Respaldan O(M log M) del índice (merge_sort) y O(log K) de su búsqueda binaria.
+
+class _IdsContados(list):
+    """Arreglo de ids que cuenta sus lecturas por índice. `IndiceLlaves.numero` lee exactamente un elemento por
+    paso de la búsqueda binaria, así que el conteo son los pasos del código de producción, sin copiarlo."""
+
+    def __init__(self, ids):
+        super().__init__(ids)
+        self.lecturas = 0
+
+    def __getitem__(self, posicion):
+        self.lecturas += 1
+        return super().__getitem__(posicion)
+
+
+M5_LLAVES = [4, 8, 16, 32, 64, 128, 256]
+
+
+def _menciones_validas(c):
+    _, _, _, llave_salida, esqueleto, ubicaciones = c.args
+    validas = []
+    for id_llave in Resolubilidad._menciones(esqueleto, ubicaciones, llave_salida):
+        if id_llave is not None:
+            validas.append(id_llave)
+    return validas
+
+
+def bench_m5(lineas):
+    lineas.append("-M5: comparaciones de merge_sort al construir el índice y pasos de la búsqueda binaria de "
+                  "IndiceLlaves (FR-029, FR-030)-")
+    lineas.append("merge_sort de las M menciones de llaves (duplicaciones de M2); cociente = comparaciones / (M·log2 M)")
+    for s, k in DUPLICACIONES:
+        menciones = _menciones_validas(caso(s, k))
+        m = len(menciones)
+        _, comparaciones = merge_sort(menciones, _identidad)
+        lineas.append(f"S = {s:5d}  K = {k:3d}  M = {m:6d}   comparaciones = {comparaciones:8d}   "
+                      f"M·log2 M = {m * math.log2(m):10.1f}   cociente = {comparaciones / (m * math.log2(m)):5.3f}")
+
+    lineas.append(f"Búsqueda binaria (S = {M4_SALAS}, K creciente): se busca cada una de las M menciones, como hace "
+                  f"verificar, más un id ausente; cota = floor(log2 K) + 1")
+    for k in M5_LLAVES:
+        menciones = _menciones_validas(caso(M4_SALAS, k))
+        indice = Resolubilidad.IndiceLlaves.construir(menciones)
+        ids = _IdsContados(indice.ids)
+        indice.ids = ids
+        maximo = 0
+        for id_llave in menciones + ["~ausente"]:
+            antes = ids.lecturas
+            indice.numero(id_llave)
+            if ids.lecturas - antes > maximo:
+                maximo = ids.lecturas - antes
+        busquedas = len(menciones) + 1
+        cantidad = indice.cantidad()
+        lineas.append(f"K = {cantidad:3d}  búsquedas = {busquedas:5d}   pasos = {ids.lecturas:6d}   "
+                      f"promedio = {ids.lecturas / busquedas:5.2f}   máximo = {maximo:2d}   "
+                      f"cota = {int(math.log2(cantidad)) + 1:2d}")
+
+
 # Mediciones M1 a M5 (T047 a T050), en el orden en que se escriben en el archivo.
-SECCIONES = [bench_m1, bench_m2, bench_m3, bench_peor_caso, bench_m4]
+SECCIONES = [bench_m1, bench_m2, bench_m3, bench_peor_caso, bench_m4, bench_m5]
 
 
 if __name__ == "__main__":
