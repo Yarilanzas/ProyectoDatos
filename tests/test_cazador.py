@@ -31,13 +31,15 @@ RAIZ = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if RAIZ not in sys.path:
     sys.path.insert(0, RAIZ)
 
+import random
 import unittest
 
 from DTOS.ContenidoSala import ContenidoSala
 from DTOS.FichaCatalogo import FichaCatalogo, FichaEnemigo
 from DTOS.TrampaInstancia import TrampaInstancia
 from Modelo.Conocimiento import EXPLORADA
-from tests.utiles_terreno import CAZADOR, ID_JUGADOR, mapa_a_mano
+from tests.test_ruta_contrato import DESEMPATES, invertido
+from tests.utiles_terreno import CAZADOR, ID_JUGADOR, armar_motor, cripta_terreno, mapa_a_mano
 
 
 # ───────────────────────── Utilidades ─────────────────────────
@@ -685,6 +687,483 @@ class TestRangoDeLaFicha(unittest.TestCase):
         id_ficha = motor.gestor_datos.ficha_cazador(77)
         enemigo = motor.crear_enemigo("caz-suelto", id_ficha, None, sala_de(motor, 2))
         self.assertEqual(enemigo.rango, 77)
+
+
+# ═════════════════════════ Estrategias de decisión (T047, T049) ═════════════════════════
+#
+# Interfaz que usan estas pruebas (se llaman directamente, sin pasar por la agenda):
+#   motor.decidir_cazador_individual(cazador)  -> DecisionCazador (búsqueda desde cero, T046)
+#   motor.decidir_cazador_compartida(cazador)  -> DecisionCazador (campo compartido, T047)
+#   motor.decidir_cazador(cazador)             -> según motor.estrategia_cazador ("individual" por defecto, o
+#                                                 "compartida")
+#   DecisionCazador: accion ("ATACAR", "ESPERAR", "MOVER"), salida (la Salida del motor que se cruza, o None) y
+#   costo_base.
+#
+# Los cazadores se activan con motor.activar_enemigo antes de decidir: la cota del campo es el mayor rango entre los
+# cazadores activos y vivos (data-model §5), y un cazador dormido no decide (FR-034).
+
+def contar_entrantes(motor):
+    """Reemplaza motor.grafo_cripta.entrantes por una envoltura contadora (en la instancia). Solo el campo compartido
+    (búsqueda al revés) la usa; la búsqueda individual usa aristas."""
+    cuenta = [0]
+    grafo = motor.grafo_cripta
+    original = grafo.entrantes
+
+    def envoltura(*args, **kwargs):
+        cuenta[0] += 1
+        return original(*args, **kwargs)
+
+    grafo.entrantes = envoltura
+    return cuenta
+
+
+def direccion_de(sala, salida):
+    for direccion in sala.salidas:
+        if sala.salidas[direccion] is salida:
+            return direccion
+    return None
+
+
+def firma(motor, cazador, decision):
+    """(accion, dirección de la salida en la sala del cazador o None, id de la sala destino o None, costo_base)."""
+    if decision.salida is None:
+        return (decision.accion, None, None, decision.costo_base)
+    return (decision.accion, direccion_de(cazador.sala, decision.salida), motor._destino(decision.salida).id,
+            decision.costo_base)
+
+
+class ConDecision(unittest.TestCase):
+    def assertMismaDecision(self, motor, cazador, una, otra, contexto=""):
+        """Misma acción, la MISMA Salida (identidad) y el mismo costo_base."""
+        self.assertEqual(una.accion, otra.accion, contexto)
+        self.assertIs(una.salida, otra.salida, contexto)
+        self.assertEqual(una.costo_base, otra.costo_base, contexto)
+        self.assertEqual(firma(motor, cazador, una), firma(motor, cazador, otra), contexto)
+
+
+# ───────────────────────── T049 ─────────────────────────
+
+def mapa_de_caso(ids, aristas):
+    """Salas de mapa_a_mano para un caso de DESEMPATES: cada sala lleva sus salidas en el orden de `aristas`, y las
+    que no tienen ninguna van con lista vacía."""
+    salas = []
+    for id_sala in ids:
+        salidas = [(direccion, destino, costo, False)
+                   for origen, direccion, destino, costo in aristas if origen == id_sala]
+        salas.append((id_sala, salidas))
+    return salas
+
+
+class TestTablaDeDesempates(ConDecision):
+    def test_fr014_fr021_tabla_de_desempates_con_las_dos_estrategias(self):
+        """T049 (FR-014, FR-021): cada caso de la tabla de desempates del contrato de 001 (DESEMPATES de
+        tests/test_ruta_contrato.py), con las salidas en el orden dado y en el invertido, corre contra la decisión del
+        cazador (en `origen`, rango 10**9; jugador en `destino`) con las dos estrategias. Cada una elige la dirección y
+        la vecina de `esperado`, con costo_base igual al costo de esa salida, y las dos coinciden en accion, salida
+        (misma Salida) y costo_base."""
+        for numero, (ids, aristas, origen, destino, esperado) in enumerate(DESEMPATES):
+            for orden, lista in (("dado", list(aristas)), ("invertido", invertido(aristas))):
+                with self.subTest(caso=numero, orden=orden):
+                    motor = mapa_a_mano(mapa_de_caso(ids, lista), sala_jugador=destino, cazadores=[(origen, 10 ** 9)])
+                    cazador = cazadores_de(motor)[0]
+                    motor.activar_enemigo(cazador)
+                    direccion, vecina, _ = esperado
+
+                    individual = motor.decidir_cazador_individual(cazador)
+                    compartida = motor.decidir_cazador_compartida(cazador)
+
+                    salida = cazador.sala.salidas[direccion]
+                    for nombre, decision in (("individual", individual), ("compartida", compartida)):
+                        self.assertEqual(decision.accion, "MOVER", nombre)
+                        self.assertIs(decision.salida, salida, nombre)
+                        self.assertEqual(motor._destino(decision.salida).id, vecina, nombre)
+                        self.assertEqual(decision.costo_base, motor.costo_salida(salida), nombre)
+                    self.assertMismaDecision(motor, cazador, individual, compartida)
+
+
+# ───────────────────────── T047 ─────────────────────────
+
+class TestCampoCompartido(ConDecision):
+    # Cazadores en MAPA_DOS_RUTAS con el jugador en 3. Distancias hasta 3: d(1) = 400, d(2) = 250, d(4) = 300,
+    # d(5) = 200, d(6) = 100. Hay rangos 0, iguales y menores que la distancia, y uno en la sala del jugador.
+    CAZADORES_DOS_RUTAS = [(1, 400), (1, 399), (2, 0), (2, 250), (5, 100), (4, 300), (6, 99), (3, 0)]
+
+    def _dos_rutas(self, cazadores=None):
+        motor = mapa_a_mano(MAPA_DOS_RUTAS, sala_jugador=3,
+                            cazadores=self.CAZADORES_DOS_RUTAS if cazadores is None else cazadores)
+        lista = cazadores_de(motor)
+        motor.activar_enemigos(lista)
+        return motor, lista
+
+    def _comparar_todos(self, motor, cazadores):
+        acciones = []
+        for cazador in cazadores:
+            with self.subTest(cazador=cazador.id, sala=cazador.sala.id, rango=cazador.rango):
+                individual = motor.decidir_cazador_individual(cazador)
+                compartida = motor.decidir_cazador_compartida(cazador)
+                self.assertMismaDecision(motor, cazador, individual, compartida)
+                acciones.append(individual.accion)
+        return acciones
+
+    def test_fr016_fr018_misma_decision_en_el_mapa_de_dos_rutas(self):
+        """T047 (FR-016, FR-018): en el mapa de T034, con ocho cazadores de rangos distintos (0, iguales y menores que
+        la distancia, y uno en la sala del jugador), la estrategia compartida da la misma decisión que la individual
+        para cada uno. Se comprueba que hay al menos un ATACAR, un ESPERAR y un MOVER."""
+        motor, cazadores = self._dos_rutas()
+        acciones = self._comparar_todos(motor, cazadores)
+        self.assertIn("ATACAR", acciones)
+        self.assertIn("ESPERAR", acciones)
+        self.assertIn("MOVER", acciones)
+
+    def test_fr016_fr018_misma_decision_en_cripta_con_puertas_cerradas_al_azar(self):
+        """T047 (FR-016, FR-018): en criptas de cripta_terreno con costos variados y puertas cerradas al azar
+        (random.Random local con semilla fija, cerrando con motor._escribir_cerrada después de armar el motor), con
+        cazadores de rangos 0, 60, 150, 300, 700 y 10**6 en salas distintas, las dos estrategias coinciden."""
+        movimientos = 0
+        esperas = 0
+        for semilla in (3, 17, 29):
+            cripta = cripta_terreno(semilla, 40, variacion=60)
+            azar = random.Random(semilla * 7 + 1)
+            salas_cazadores = [azar.randrange(2, 41) for _ in range(6)]
+            rangos = [0, 60, 150, 300, 700, 10 ** 6]
+            motor = armar_motor(cripta, 1, list(zip(salas_cazadores, rangos)))
+            for sala in motor.salas:
+                for direccion in sala.salidas:
+                    salida = sala.salidas[direccion]
+                    if not salida.cerrada and azar.random() < 0.25:
+                        motor._escribir_cerrada(salida, True)
+            cazadores = cazadores_de(motor)
+            motor.activar_enemigos(cazadores)
+            with self.subTest(semilla=semilla):
+                acciones = self._comparar_todos(motor, cazadores)
+                movimientos += acciones.count("MOVER")
+                esperas += acciones.count("ESPERAR")
+        self.assertGreater(movimientos, 0, "ningún cazador se movió: la prueba no compara pasos")
+        self.assertGreater(esperas, 0, "ningún cazador esperó: la prueba no compara esperas")
+
+    def test_fr033_un_campo_por_ciclo(self):
+        """T047 (FR-033): con cuatro cazadores y el motor en un mismo ciclo, la primera decisión compartida consulta
+        motor.grafo_cripta.entrantes y las tres siguientes no la vuelven a consultar."""
+        motor, cazadores = self._dos_rutas([(1, 400), (5, 100), (4, 300), (2, 250)])
+        cuenta = contar_entrantes(motor)
+
+        motor.decidir_cazador_compartida(cazadores[0])
+        primera = cuenta[0]
+        self.assertGreater(primera, 0, "la primera decisión compartida no calculó el campo")
+
+        for cazador in cazadores[1:]:
+            motor.decidir_cazador_compartida(cazador)
+        self.assertEqual(cuenta[0], primera, "se recalculó el campo dentro del mismo ciclo")
+
+    def test_fr016_nuevo_ciclo_recalcula(self):
+        """T047 (FR-016): tras motor.ejecutar_accion("esperar", None) empieza otro ciclo y la siguiente decisión
+        compartida vuelve a consultar entrantes; la decisión coincide con la individual."""
+        motor, cazadores = self._dos_rutas([(1, 400), (5, 100)])
+        cazador = cazadores[0]
+        cuenta = contar_entrantes(motor)
+        motor.decidir_cazador_compartida(cazador)
+        antes = cuenta[0]
+        ciclo = motor.ciclo
+
+        esperar(self, motor)                        # el cazador de 1 pasa a 4; sigue lejos del jugador
+
+        self.assertGreater(motor.ciclo, ciclo)
+        cuenta_tras_turnos = cuenta[0]
+        compartida = motor.decidir_cazador_compartida(cazador)
+        self.assertGreater(cuenta[0], max(antes, cuenta_tras_turnos), "no se recalculó en el ciclo nuevo")
+        self.assertMismaDecision(motor, cazador, motor.decidir_cazador_individual(cazador), compartida)
+
+    def test_fr016_cambio_de_puerta_en_el_mismo_ciclo_recalcula(self):
+        """T047 (FR-016): dentro de un mismo ciclo, cerrar la puerta 6 -N-> 3 (fuera de la sala del cazador) con
+        motor._escribir_cerrada invalida el campo: la cuenta de entrantes crece y el cazador de 1 (rango 400) pasa de
+        MOVER hacia 4 a ESPERAR (la única ruta que queda cuesta 500). Al reabrirla vuelve a MOVER hacia 4."""
+        motor, cazadores = self._dos_rutas([(1, 400), (5, 100)])
+        cazador = cazadores[0]
+        puerta = sala_de(motor, 6).salidas["N"]
+        cuenta = contar_entrantes(motor)
+
+        antes = motor.decidir_cazador_compartida(cazador)
+        self.assertEqual(firma(motor, cazador, antes), ("MOVER", "S", 4, 100))
+        calculos = cuenta[0]
+
+        motor._escribir_cerrada(puerta, True)
+        cerrada = motor.decidir_cazador_compartida(cazador)
+        self.assertGreater(cuenta[0], calculos, "no se recalculó tras cerrar una puerta")
+        self.assertEqual(firma(motor, cazador, cerrada), ("ESPERAR", None, None, 100))
+        self.assertMismaDecision(motor, cazador, motor.decidir_cazador_individual(cazador), cerrada)
+        calculos = cuenta[0]
+
+        motor._escribir_cerrada(puerta, False)
+        abierta = motor.decidir_cazador_compartida(cazador)
+        self.assertGreater(cuenta[0], calculos, "no se recalculó tras abrir la puerta")
+        self.assertEqual(firma(motor, cazador, abierta), ("MOVER", "S", 4, 100))
+
+    def test_fr016_rango_mayor_que_la_cota_fuerza_recalculo(self):
+        """T047 (FR-016): el campo se calcula decidiendo con el único cazador activo, en 5 con rango 100 (cota 100).
+        Luego se activa otro, en 1 con rango 400, que necesita ver hasta 400: la decisión compartida recalcula y da
+        la misma decisión que la individual (MOVER hacia 4)."""
+        motor = mapa_a_mano(MAPA_DOS_RUTAS, sala_jugador=3, cazadores=[(5, 100), (1, 400)])
+        pequeno, grande = cazadores_de(motor)
+        motor.activar_enemigo(pequeno)
+        cuenta = contar_entrantes(motor)
+
+        motor.decidir_cazador_compartida(pequeno)
+        calculos = cuenta[0]
+        motor.activar_enemigo(grande)
+        compartida = motor.decidir_cazador_compartida(grande)
+
+        self.assertGreater(cuenta[0], calculos, "un rango mayor que la cota no forzó el recálculo")
+        individual = motor.decidir_cazador_individual(grande)
+        self.assertEqual(firma(motor, grande, individual), ("MOVER", "S", 4, 100))
+        self.assertMismaDecision(motor, grande, individual, compartida)
+
+    def test_fr033_busqueda_individual_intercalada_no_deja_campo_viejo(self):
+        """T047 (FR-033): una búsqueda individual reutiliza el espacio del motor; la siguiente decisión compartida no
+        lee un campo pisado. Con el mismo cazador: compartida, individual y compartida coinciden. Con otro cazador en
+        medio (en 5, cuya búsqueda adelante deja vigentes otras salas): la segunda compartida del primero sigue igual."""
+        motor, cazadores = self._dos_rutas([(1, 400), (5, 1000)])
+        primero, otro = cazadores
+
+        with self.subTest(caso="mismo cazador"):
+            una = motor.decidir_cazador_compartida(primero)
+            individual = motor.decidir_cazador_individual(primero)
+            otra = motor.decidir_cazador_compartida(primero)
+            self.assertMismaDecision(motor, primero, una, individual)
+            self.assertMismaDecision(motor, primero, individual, otra)
+
+        with self.subTest(caso="otro cazador en medio"):
+            una = motor.decidir_cazador_compartida(primero)
+            motor.decidir_cazador_individual(otro)
+            otra = motor.decidir_cazador_compartida(primero)
+            self.assertMismaDecision(motor, primero, una, otra)
+            self.assertEqual(firma(motor, primero, otra), ("MOVER", "S", 4, 100))
+    def test_fr016_puerta_escrita_sin_el_metodo_unico_se_ve_al_empezar_otro_ciclo(self):
+        """T047 (FR-016): la carga de partida escribe `Salida.cerrada` sin pasar por _escribir_cerrada, así que
+        version_puertas no cambia. Lo que protege al campo en ese caso es `ciclo`: con la puerta de 6 -N-> 3 cerrada
+        directamente y otro ciclo empezado (ciclo + 1, sin mover a nadie), la decisión compartida refleja la puerta y
+        coincide con la individual, que siempre lee el estado en vivo."""
+        motor, cazadores = self._dos_rutas([(1, 400), (5, 100)])
+        cazador = cazadores[0]
+        puerta = sala_de(motor, 6).salidas["N"]
+
+        antes = motor.decidir_cazador_compartida(cazador)
+        self.assertEqual(firma(motor, cazador, antes), ("MOVER", "S", 4, 100))
+        version = motor.version_puertas
+
+        puerta.cerrada = True
+        self.assertEqual(motor.version_puertas, version, "escribir cerrada a mano no debería tocar version_puertas")
+        motor.ciclo += 1
+
+        despues = motor.decidir_cazador_compartida(cazador)
+        self.assertEqual(firma(motor, cazador, despues), ("ESPERAR", None, None, 100))
+        self.assertMismaDecision(motor, cazador, motor.decidir_cazador_individual(cazador), despues)
+
+    def test_fr016_otra_sala_del_jugador_recalcula_el_campo(self):
+        """T047 (FR-016): el campo es hacia la sala del jugador con que se calculó. Si el jugador aparece en otra sala
+        (aquí se le cambia la sala directamente, sin empezar otro ciclo ni cambiar una puerta), la decisión compartida
+        recalcula: desde 1, con el jugador en 2 la salida E cuesta 250 y es la mejor; con el jugador en 3 era S."""
+        motor, cazadores = self._dos_rutas([(1, 1000)])
+        cazador = cazadores[0]
+
+        antes = motor.decidir_cazador_compartida(cazador)
+        self.assertEqual(firma(motor, cazador, antes), ("MOVER", "S", 4, 100))
+
+        motor.jugador.sala = sala_de(motor, 2)
+
+        despues = motor.decidir_cazador_compartida(cazador)
+        self.assertEqual(firma(motor, cazador, despues), ("MOVER", "E", 2, 250))
+        self.assertMismaDecision(motor, cazador, motor.decidir_cazador_individual(cazador), despues)
+    def test_fr016_despacho_segun_estrategia(self):
+        """T047, T048 (FR-016): por defecto motor.estrategia_cazador es "individual" y decidir_cazador no consulta
+        entrantes; con "compartida", decidir_cazador sí la consulta y da la misma decisión."""
+        motor, cazadores = self._dos_rutas([(1, 400), (5, 100)])
+        cazador = cazadores[0]
+        cuenta = contar_entrantes(motor)
+
+        self.assertEqual(motor.estrategia_cazador, "individual")
+        por_defecto = motor.decidir_cazador(cazador)
+        self.assertEqual(cuenta[0], 0, "la estrategia individual consultó entrantes")
+
+        motor.estrategia_cazador = "compartida"
+        compartida = motor.decidir_cazador(cazador)
+        self.assertGreater(cuenta[0], 0, "con estrategia compartida no se consultó entrantes")
+        self.assertMismaDecision(motor, cazador, por_defecto, compartida)
+
+
+# ═════════════════════════ US3: el cazador espera cuando no hay ruta (T050 a T054) ═════════════════════════
+
+# ───────────────────────── T050 ─────────────────────────
+
+class TestSinRutaAbierta(unittest.TestCase):
+    def test_fr012_fr017_apendice_b_sin_ruta_abierta(self):
+        """T050. Apéndice B, «sin ruta abierta»; escenario 1 de la US3 (FR-012, FR-017): las dos rutas del cazador (en
+        1, rango 10**6) al jugador (en 3) pasan por puertas cerradas (2 -E-> 3 y 4 -E-> 3). El cazador espera con
+        costo 100 turno tras turno, y ninguna puerta cambia: el estado `cerrada` de cada salida y
+        motor.version_puertas son los mismos antes y después."""
+        motor = mapa_a_mano([
+            (1, [("E", 2, 100, False), ("S", 4, 100, False)]),
+            (2, [("E", 3, 100, True), ("O", 1, 100, False)]),
+            (3, []),
+            (4, [("E", 3, 100, True), ("N", 1, 100, False)]),
+        ], sala_jugador=3, cazadores=[(1, 10 ** 6)])
+        cazador = cazadores_de(motor)[0]
+        puertas = [(sala.id, d, sala.salidas[d].cerrada) for sala in motor.salas for d in sala.salidas]
+        version = motor.version_puertas
+        motor.activar_enemigo(cazador)
+
+        for turno in range(1, 4):
+            esperar(self, motor)
+            self.assertEqual(cazador.sala.id, 1)
+            self.assertEqual(cazador.tiempo_siguiente, 100 * (turno + 1))
+
+        self.assertEqual([(sala.id, d, sala.salidas[d].cerrada) for sala in motor.salas for d in sala.salidas],
+                         puertas)
+        self.assertEqual(motor.version_puertas, version)
+
+
+# ───────────────────────── T051 ─────────────────────────
+
+class TestRutaMasCaraQueElRango(unittest.TestCase):
+    MAPA = [
+        (1, [("E", 2, 300, False)]),
+        (2, [("E", 3, 300, False)]),
+        (3, []),
+    ]
+
+    def test_fr012_apendice_b_ruta_mas_barata_cuesta_mas_que_el_rango(self):
+        """T051. Apéndice B, «ruta más barata cuesta más que el rango»; escenario 2 de la US3 (FR-012): la única ruta
+        cuesta 600 y el rango es 500; el cazador espera con costo 100 turno tras turno."""
+        motor = mapa_a_mano(self.MAPA, sala_jugador=3, cazadores=[(1, 500)])
+        cazador = cazadores_de(motor)[0]
+        motor.activar_enemigo(cazador)
+
+        esperar(self, motor)
+        self.assertEqual(cazador.sala.id, 1)
+        self.assertEqual(cazador.tiempo_siguiente, 200)
+        esperar(self, motor)
+        self.assertEqual(cazador.sala.id, 1)
+        self.assertEqual(cazador.tiempo_siguiente, 300)
+
+    def test_fr012_contraste_con_rango_600_se_mueve(self):
+        """T051, contraste (FR-012): con la misma ruta de 600 y rango 600, el cazador se mueve a 2 (salida de costo
+        300; siguiente turno en 400)."""
+        motor = mapa_a_mano(self.MAPA, sala_jugador=3, cazadores=[(1, 600)])
+        cazador = cazadores_de(motor)[0]
+        motor.activar_enemigo(cazador)
+
+        esperar(self, motor)
+
+        self.assertEqual(cazador.sala.id, 2)
+        self.assertEqual(cazador.tiempo_siguiente, 400)
+
+
+# ───────────────────────── T052 ─────────────────────────
+
+class TestPuertaQueSeAbre(unittest.TestCase):
+    # 1 -E(100)-> 2 -E(400)-> 3 cuesta 500; 1 -S(100)-> 4 -E(100, cerrada)-> 3 cuesta 200 cuando se abre.
+    MAPA = [
+        (1, [("E", 2, 100, False), ("S", 4, 100, False)]),
+        (2, [("E", 3, 400, False)]),
+        (3, []),
+        (4, [("E", 3, 100, True)]),
+    ]
+
+    def _esperando(self, rango):
+        motor = mapa_a_mano(self.MAPA, sala_jugador=3, cazadores=[(1, rango)])
+        cazador = cazadores_de(motor)[0]
+        motor.activar_enemigo(cazador)
+        esperar(self, motor)                                      # t = 100: espera (500 > rango)
+        self.assertEqual(cazador.sala.id, 1)
+        self.assertEqual(cazador.tiempo_siguiente, 200)
+        motor._escribir_cerrada(sala_de(motor, 4).salidas["E"], False)   # entre sus turnos de 100 y 200
+        esperar(self, motor)                                      # t = 200: vuelve a decidir
+        return cazador
+
+    def test_fr016_persigue_cuando_la_puerta_se_abre_y_la_ruta_cabe_en_el_rango(self):
+        """T052. Escenario 3 de la US3 (FR-016): con rango 300, el cazador espera en t = 100 (la ruta abierta cuesta
+        500); la puerta 4 -E-> 3 se abre antes de su turno de t = 200, la ruta nueva cuesta 200 ≤ 300 y en t = 200 va
+        a 4 (costo 100, siguiente turno en 300)."""
+        cazador = self._esperando(300)
+        self.assertEqual(cazador.sala.id, 4)
+        self.assertEqual(cazador.tiempo_siguiente, 300)
+
+    def test_fr016_la_puerta_se_abre_pero_la_ruta_supera_el_rango(self):
+        """T052, variante (FR-016): con rango 150, la ruta nueva de 200 también supera el rango; tras abrirse la
+        puerta, el cazador sigue esperando con costo 100."""
+        cazador = self._esperando(150)
+        self.assertEqual(cazador.sala.id, 1)
+        self.assertEqual(cazador.tiempo_siguiente, 300)
+
+
+# ───────────────────────── T053 ─────────────────────────
+
+class TestRangoCero(unittest.TestCase):
+    def test_fr012_rango_cero_en_otra_sala_espera(self):
+        """T053. Escenario 4 de la US3 (FR-012): un cazador con rango 0 en una sala vecina a la del jugador (salida de
+        costo 1) espera con costo 100 turno tras turno."""
+        motor = mapa_a_mano([(1, [("E", 2, 1, False)]), (2, [("O", 1, 1, False)])], sala_jugador=2,
+                            cazadores=[(1, 0)])
+        cazador = cazadores_de(motor)[0]
+        motor.activar_enemigo(cazador)
+
+        for turno in range(1, 4):
+            esperar(self, motor)
+            self.assertEqual(cazador.sala.id, 1)
+            self.assertEqual(cazador.tiempo_siguiente, 100 * (turno + 1))
+
+
+# ───────────────────────── T054 ─────────────────────────
+
+class TestNoUsaLlaves(unittest.TestCase):
+    # mapa_a_mano no deja poner llave en una salida (solo dirección, destino, costo y cerrada). Se usa cripta_terreno
+    # con una llave: en generar_cripta, la sala de salida (la última) es la única de su región y TODAS las puertas que
+    # entran a ella están cerradas y piden detalles.llave_salida (Salida.llave). El jugador empieza en la sala de
+    # salida; el cazador porta esa llave en su botín (FichaEnemigo con "suelta", como los enemigos que sueltan llaves
+    # en la Parte I) y su única forma de llegar es por una de esas puertas.
+
+    def test_fr017_porta_la_llave_y_no_abre(self):
+        """T054 (FR-017): un cazador (rango 10**6) que porta en su botín la llave de las puertas cerradas que entran a
+        la sala del jugador no las abre ni las usa: espera con costo 100 turno tras turno, las puertas siguen
+        cerradas, motor.version_puertas no cambia y la llave sigue en su botín."""
+        cripta = cripta_terreno(5, 12)
+        salida_id = cripta.detalles.sala_salida
+        llave = cripta.detalles.llave_salida
+        motor = armar_motor(cripta, salida_id, [])
+
+        puertas = [sala.salidas[d] for sala in motor.salas for d in sala.salidas
+                   if motor._destino(sala.salidas[d]).id == salida_id]
+        self.assertTrue(puertas, "la sala de salida no tiene puertas de entrada")
+        for puerta in puertas:
+            self.assertTrue(puerta.cerrada)
+            self.assertEqual(puerta.llave, llave)
+        origen = None
+        for sala in motor.salas:
+            for d in sala.salidas:
+                if sala.salidas[d] in puertas:
+                    origen = sala
+        self.assertIsNotNone(origen)
+
+        gestor = motor.gestor_datos
+        gestor.fichas.append(FichaCatalogo.desde_json({
+            "id": llave, "clase": "llave", "nombre": "Llave de salida", "peso": 1, "valor": 1, "abre": llave,
+        }))
+        datos = dict(CAZADOR)
+        datos.update({"id": "ent_cazador_llave", "rango": 10 ** 6, "suelta": [llave]})
+        gestor.fichas.append(FichaEnemigo.desde_json(datos))
+        cazador = motor.crear_enemigo("caz-llave", "ent_cazador_llave", None, origen)
+        motor.registrar_enemigo(cazador)
+        self.assertEqual([(n.tipo_id, n.clase) for n in cazador.botin], [(llave, "llave")])
+
+        version = motor.version_puertas
+        motor.activar_enemigo(cazador)
+        for turno in range(1, 4):
+            esperar(self, motor)
+            self.assertIs(cazador.sala, origen)
+            self.assertEqual(cazador.tiempo_siguiente, 100 * (turno + 1))
+
+        self.assertTrue(all(puerta.cerrada for puerta in puertas))
+        self.assertEqual(motor.version_puertas, version)
+        self.assertEqual([n.tipo_id for n in cazador.botin], [llave])
 
 
 if __name__ == "__main__":
