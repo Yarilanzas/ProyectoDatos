@@ -195,7 +195,7 @@ description: "Lista de tareas de la verificación de resolubilidad de una cripta
 - [X] T049 M4 en `tests/bench_resolubilidad.py`: **recorrido incremental por oleadas (elegido) frente a A1, recorrido completo repetido por cada llave obtenida**, con salas fijas y K creciente (4, 16, 64, 256) y en las duplicaciones de M2; además A2 (zona de cada llave por separado limpiando marcas) y A3 (búsqueda lineal del id en vez de binaria). A1 a A3 viven solo en el archivo de bench, con listas como arreglos y sin `dict`/`set`/`deque`/`heapq`/`bisect`/`collections`; antes de medir, comprobar que dan el mismo resultado que `verificar`. Atiende: FR-029, FR-030
 - [X] T050 M5 en `tests/bench_resolubilidad.py`: contar las comparaciones de `merge_sort` con el contador que ya devuelve y los pasos de la búsqueda binaria de `IndiceLlaves` al crecer M y K, para respaldar O(M log M) y O(log K). Atiende: FR-029, FR-030
 - [X] T051 En `main.py` (**`git pull` antes**): la rama `--bench` llama a `tests.bench_resolubilidad.correr_bench()` después de los bench existentes, separado con una línea en blanco. Atiende: FR-030
-- [ ] T052 Ejecutar `python main.py --bench` y conservar `resultados_bench_resolubilidad.txt`. Si M1 o M2 fallan, corregir el código; si M3 supera 2,5 con zonas disjuntas, es un defecto: corregir el código. El peor caso de P-11 solo se informa. Atiende: FR-029, FR-030
+- [X] T052 Ejecutar `python main.py --bench` y conservar `resultados_bench_resolubilidad.txt`. Si M1 o M2 fallan, corregir el código; si M3 supera 2,5 con zonas disjuntas, es un defecto: corregir el código. El peor caso de P-11 solo se informa. Atiende: FR-029, FR-030
 
 ---
 
