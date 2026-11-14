@@ -136,3 +136,63 @@ def primer_paso(grafo, origen, destino, limite=None, espacio=None):
                 primero[otro] = candidato
 
     return None
+
+
+def campo_hacia(grafo, destino, cota, espacio=None):
+    """Distancia de costo mínimo de cada sala hasta ``destino``, solo para las salas a distancia <= ``cota``.
+
+    Es la búsqueda al revés: parte de ``destino`` con distancia 0 y recorre ``grafo.entrantes``, es decir, las salidas
+    abiertas ``w -> x`` con el costo de esa misma salida, no el de la vuelta ``x -> w``. Al terminar, para toda sala
+    ``u`` con ``espacio.epoca[u] == espacio.epoca_actual``, ``espacio.dist[u]`` es la distancia de ``u`` a
+    ``destino``; cualquier otra sala se trata como infinito (no llegó a ``cota`` o no tiene ruta). No llena
+    ``primero``: sus entradas de esta época no valen. Devuelve el espacio usado.
+
+    ``cota`` es un entero >= 0; ninguna sala con distancia tentativa mayor que ``cota`` entra a la cola. ``espacio``
+    es un ``EspacioBusqueda`` creado para ``grafo.cantidad_salas``; si es ``None`` se crea uno. Como todo costo es
+    >= 1, al extraer una sala su distancia ya es la definitiva. Empezar este campo incrementa la época del espacio y
+    deja inválido cualquier resultado anterior que viviera en él. ``grafo`` debe ofrecer ``entrantes`` (solo
+    ``GrafoCripta``).
+
+    | Operación        | Complejidad                                                              |
+    |------------------|--------------------------------------------------------------------------|
+    | sin ``espacio``  | O(n) para crearlo, más lo de abajo                                       |
+    | con ``espacio``  | O((|R| + |E_R|) log |E_R|)                                               |
+
+    R son las salas a distancia <= ``cota`` hacia ``destino`` y E_R las salidas que llegan a ellas.
+    """
+    if espacio is None:
+        espacio = EspacioBusqueda(grafo.cantidad_salas)
+    else:
+        espacio.validar(grafo)
+    espacio.reiniciar()
+
+    dist = espacio.dist
+    epoca = espacio.epoca
+    sala = espacio.sala
+    cola = espacio.cola
+    vigente = espacio.epoca_actual
+
+    ordinal_destino = grafo.ordinal(destino)
+    dist[ordinal_destino] = 0
+    epoca[ordinal_destino] = vigente
+    sala[ordinal_destino] = destino
+    cola.insertar(0, ordinal_destino)
+
+    while not cola.vacia():
+        distancia, ordinal = cola.extraer_minimo()
+        if distancia > dist[ordinal]:
+            continue  # entrada vieja de la inserción perezosa: ya salió otra mejor
+
+        for _direccion, origen, costo in grafo.entrantes(sala[ordinal]):
+            nueva = distancia + costo
+            if nueva > cota:
+                continue
+
+            otro = grafo.ordinal(origen)
+            if epoca[otro] != vigente or nueva < dist[otro]:
+                epoca[otro] = vigente
+                dist[otro] = nueva
+                sala[otro] = origen
+                cola.insertar(nueva, otro)
+
+    return espacio
