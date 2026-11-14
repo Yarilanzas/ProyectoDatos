@@ -1,7 +1,8 @@
 import random
 from DTOS.MapaConocido import MapaConocido, SalaConocida, SalidaConocida
-from Modelo.BusquedaRuta import EspacioBusqueda
+from Modelo.BusquedaRuta import EspacioBusqueda, primer_paso
 from Modelo.Conocimiento import Conocimiento, EXPLORADA, GrafoConocido
+from Modelo.DecisionCazador import DecisionCazador
 from Modelo.Evento import Evento
 from Modelo.GrafoCripta import GrafoCripta
 from Modelo.RegistroMensajes import RegistroMensajes
@@ -312,6 +313,7 @@ class MotorSimulacion:
         )
 
         enemigo.regeneracion = getattr(ficha, "regeneracion", 0) or 0
+        enemigo.rango = getattr(ficha, "rango", None)  # solo lectura; solo los cazadores lo traen (FR-009)
         enemigo.botin = []
 
         for k, tipo_botin in enumerate(getattr(ficha, "suelta", None) or []):
@@ -592,6 +594,15 @@ class MotorSimulacion:
 
                 if salida is not None and self.mover_enemigo(actor, self.salas, salida):
                     costo_base = self.costo_salida(salida)
+
+            elif accion == "CAZAR":
+                decision = self.decidir_cazador(actor)
+
+                if decision.accion == DecisionCazador.ATACAR:
+                    self.atacar(actor, self.jugador)
+                elif (decision.accion == DecisionCazador.MOVER
+                        and self.mover_enemigo(actor, self.salas, decision.salida)):
+                    costo_base = decision.costo_base
 
             elif accion == "ATACAR":
                 self.atacar(actor, self.jugador)
@@ -920,7 +931,28 @@ class MotorSimulacion:
         if enemigo.comportamiento == "rastreador":
             return "MOVER_RASTRO"
 
+        if enemigo.comportamiento == "cazador":
+            return "CAZAR"
         return "ESPERAR"
+
+    def decidir_cazador(self, cazador):
+        """Decisión de referencia del cazador, desde cero (spec 003, data-model §8, FR-010 a FR-014, FR-017): misma
+        sala que el jugador, ataca; sin ruta abierta o con una ruta que cuesta más que su rango, espera con costo 100;
+        si no, da el primer paso de una ruta de costo mínimo, con el desempate de la búsqueda (menor id de vecina y
+        luego N, S, E, O). Ignora la niebla, no abre puertas, no consume azar y no guarda nada del turno anterior.
+        Complejidad: la de ``primer_paso`` acotado por el rango, O((|R| + |E_R|) log |E_R|), con el espacio persistente
+        del motor."""
+        jugador = self.jugador
+        if cazador.sala is jugador.sala:
+            return DecisionCazador(DecisionCazador.ATACAR, None, 100)
+
+        paso = primer_paso(self.grafo_cripta, cazador.sala, jugador.sala,
+                           limite=cazador.rango, espacio=self.espacio_busqueda)
+        if paso is None:
+            return DecisionCazador(DecisionCazador.ESPERAR, None, 100)
+
+        salida = cazador.sala.salidas[paso.direccion]
+        return DecisionCazador(DecisionCazador.MOVER, salida, self.costo_salida(salida))
 
     def salida_rastro(self, enemigo):
 

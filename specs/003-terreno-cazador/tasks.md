@@ -107,25 +107,25 @@ Proyecto único MVC en la raíz: reglas en `Modelo/`, pruebas y bench en `tests/
 
 ### Tests for User Story 2
 
-- [ ] T033 [P] [US2] En `tests/test_cazador.py`: cazador en la sala del jugador ataca con el costo de ataque de la Parte I, también con rango 0 (escenario 1; FR-010)
-- [ ] T034 [P] [US2] En `tests/test_cazador.py`: **Apéndice B, «ruta de menos salas pero mayor costo vs. más salas y menor costo»**: rutas de 2 salidas con costo 500 y de 4 salidas con costo 400, rango ≥ 400; da el primer paso de la de 400 (FR-011, FR-013)
-- [ ] T035 [P] [US2] En `tests/test_cazador.py`: **Apéndice B, «dos vecinas con rutas de costo mínimo»**: va a la vecina de menor id; y con dos salidas hacia esa vecina de igual costo usa la primera en N, S, E, O (FR-014)
-- [ ] T036 [P] [US2] En `tests/test_cazador.py`: paso por una salida de costo 150 con velocidad 100; siguiente turno 150 después (escenario 4; FR-013)
-- [ ] T037 [P] [US2] En `tests/test_cazador.py`: distancia exactamente igual al rango, se mueve (escenario 5; FR-012)
-- [ ] T038 [P] [US2] En `tests/test_cazador.py`: el jugador cambia de sala entre dos turnos del cazador y este decide con la sala nueva (escenario 6; FR-016)
-- [ ] T039 [P] [US2] En `tests/test_cazador.py`: activación según P1 §2.4: dormido dentro del rango no actúa ni busca (escenario 7); tras entrar el jugador a su sala queda activo, su primera acción se programa con costo base 100, y persigue cuando el jugador sale dentro del rango (escenario 8); un cazador activo que cambia de sala sigue activo (FR-034)
-- [ ] T040 [P] [US2] En `tests/test_cazador.py`: la decisión no cambia al agregar enemigos, objetos, trampas o rastro en las salas de la ruta, ni con la niebla del jugador (sala nunca vista) (FR-015)
-- [ ] T041 [P] [US2] En `tests/test_cazador.py`: varios cazadores con el mismo objetivo deciden cada uno con su sala y su rango, y pueden terminar en la misma sala (FR-018)
-- [ ] T042 [P] [US2] En `tests/test_cazador.py`: un cazador muerto no vuelve a actuar y su turno pendiente se descarta sin efecto (FR-019)
-- [ ] T043 [P] [US2] En `tests/test_cazador.py`: al entrar o salir de la sala del jugador y al atacar se muestran los mismos mensajes que con los demás enemigos (FR-020)
-- [ ] T044 [P] [US2] En `tests/test_cazador.py`: el estado del generador de azar es el mismo antes y después de cualquier decisión del cazador (FR-021)
+- [x] T033 [P] [US2] En `tests/test_cazador.py`: cazador en la sala del jugador ataca con el costo de ataque de la Parte I, también con rango 0 (escenario 1; FR-010)
+- [x] T034 [P] [US2] En `tests/test_cazador.py`: **Apéndice B, «ruta de menos salas pero mayor costo vs. más salas y menor costo»**: rutas de 2 salidas con costo 500 y de 4 salidas con costo 400, rango ≥ 400; da el primer paso de la de 400 (FR-011, FR-013)
+- [x] T035 [P] [US2] En `tests/test_cazador.py`: **Apéndice B, «dos vecinas con rutas de costo mínimo»**: va a la vecina de menor id; y con dos salidas hacia esa vecina de igual costo usa la primera en N, S, E, O (FR-014)
+- [x] T036 [P] [US2] En `tests/test_cazador.py`: paso por una salida de costo 150 con velocidad 100; siguiente turno 150 después (escenario 4; FR-013)
+- [x] T037 [P] [US2] En `tests/test_cazador.py`: distancia exactamente igual al rango, se mueve (escenario 5; FR-012)
+- [x] T038 [P] [US2] En `tests/test_cazador.py`: el jugador cambia de sala entre dos turnos del cazador y este decide con la sala nueva (escenario 6; FR-016)
+- [x] T039 [P] [US2] En `tests/test_cazador.py`: activación según P1 §2.4: dormido dentro del rango no actúa ni busca (escenario 7); tras entrar el jugador a su sala queda activo, su primera acción se programa con costo base 100, y persigue cuando el jugador sale dentro del rango (escenario 8); un cazador activo que cambia de sala sigue activo (FR-034)
+- [x] T040 [P] [US2] En `tests/test_cazador.py`: la decisión no cambia al agregar enemigos, objetos, trampas o rastro en las salas de la ruta, ni con la niebla del jugador (sala nunca vista) (FR-015)
+- [x] T041 [P] [US2] En `tests/test_cazador.py`: varios cazadores con el mismo objetivo deciden cada uno con su sala y su rango, y pueden terminar en la misma sala (FR-018)
+- [x] T042 [P] [US2] En `tests/test_cazador.py`: un cazador muerto no vuelve a actuar y su turno pendiente se descarta sin efecto (FR-019)
+- [x] T043 [P] [US2] En `tests/test_cazador.py`: al entrar o salir de la sala del jugador y al atacar se muestran los mismos mensajes que con los demás enemigos (FR-020)
+- [x] T044 [P] [US2] En `tests/test_cazador.py`: el estado del generador de azar es el mismo antes y después de cualquier decisión del cazador (FR-021)
 
 ### Implementation for User Story 2
 
-- [ ] T045 [US2] Leer el rango de la ficha del enemigo y guardarlo en el enemigo (`Modelo/Enemigo.py` y la construcción de enemigos en `Modelo/MotorSimulacion.py`); «entero ≥ 0 en unidades de costo»; solo lectura, sin valor por defecto (FR-009). FichaEnemigo ya trae rango validado (Persona B): falta copiarlo al Enemigo en `crear_enemigo`
-- [ ] T046 [US2] Implementar en `Modelo/MotorSimulacion.py` la decisión de referencia del cazador (data-model §8): misma sala → `ATACAR`; si no, `primer_paso(grafo_cripta, sala, sala_jugador, limite=rango, espacio=espacio_motor)`; `None` → `ESPERAR` con costo 100; si no → `MOVER` por esa salida con su costo; devuelve `accion`, `salida`, `costo_base` (FR-010, FR-011, FR-012, FR-013, FR-014, FR-017)
+- [x] T045 [US2] Leer el rango de la ficha del enemigo y guardarlo en el enemigo (`Modelo/Enemigo.py` y la construcción de enemigos en `Modelo/MotorSimulacion.py`); «entero ≥ 0 en unidades de costo»; solo lectura, sin valor por defecto (FR-009). FichaEnemigo ya trae rango validado (Persona B): falta copiarlo al Enemigo en `crear_enemigo`
+- [x] T046 [US2] Implementar en `Modelo/MotorSimulacion.py` la decisión de referencia del cazador (data-model §8): misma sala → `ATACAR`; si no, `primer_paso(grafo_cripta, sala, sala_jugador, limite=rango, espacio=espacio_motor)`; `None` → `ESPERAR` con costo 100; si no → `MOVER` por esa salida con su costo; devuelve `accion`, `salida`, `costo_base` (FR-010, FR-011, FR-012, FR-013, FR-014, FR-017)
 - [ ] T047 [US2] Implementar en `Modelo/MotorSimulacion.py` el campo compartido (data-model §5): llave `(ciclo, sala del jugador, version_puertas, cota)`; si no es válido o la cota es menor que el rango del que decide, recalcular con `campo_hacia` y cota = mayor rango entre los cazadores activos y vivos; decidir aplicando FR-014 sobre las salidas abiertas de la sala del cazador (vecinas no fijadas = ∞); misma salida de datos que T046 (FR-014, FR-016, FR-018)
-- [ ] T048 [US2] Integrar en `Modelo/MotorSimulacion.py`: `accion_enemigo` devuelve la acción del cazador para `comportamiento == "cazador"`; `ejecutar_evento` mueve con `mover_enemigo`, ataca con `atacar` o espera, y reprograma con el `costo_base` de la decisión; la estrategia activa se elige en un solo lugar; la estrategia inicial es la referencia desde cero (búsqueda individual acotada, T046), y el campo compartido (T047) solo se activa si T070 lo decide con M3 y M4; pasa T033 a T044 (FR-010, FR-013, FR-019, FR-020, FR-022, FR-034)
+- [x] T048 [US2] Integrar en `Modelo/MotorSimulacion.py`: `accion_enemigo` devuelve la acción del cazador para `comportamiento == "cazador"`; `ejecutar_evento` mueve con `mover_enemigo`, ataca con `atacar` o espera, y reprograma con el `costo_base` de la decisión; la estrategia activa se elige en un solo lugar; la estrategia inicial es la referencia desde cero (búsqueda individual acotada, T046), y el campo compartido (T047) solo se activa si T070 lo decide con M3 y M4; pasa T033 a T044 (FR-010, FR-013, FR-019, FR-020, FR-022, FR-034)
 - [ ] T049 [US2] En `tests/test_ruta_contrato.py` o `tests/test_cazador.py`, correr la tabla de casos de desempate del contrato contra la decisión del cazador con las dos estrategias, permutando el orden de las salidas (FR-014, FR-021)
 
 **Checkpoint**: el cazador persigue y ataca; US1 sigue pasando.
