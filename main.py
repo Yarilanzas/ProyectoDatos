@@ -165,12 +165,15 @@ def main():
         from tests.bench_personaD import correr_bench as bench_persistencia
         from tests.bench_ciclo import correr_bench as bench_ciclo
         from tests.bench_resolubilidad import correr_bench as bench_resolubilidad
+        from tests.bench_niebla import correr_bench as bench_niebla
 
         bench_persistencia()
         print()
         bench_ciclo()
         print()
         bench_resolubilidad()
+        print()
+        bench_niebla()
         return 0
 
     # la prioridad de opciones es contrato publico: --bench, --mostrar-puntajes, --verificar (spec 002,

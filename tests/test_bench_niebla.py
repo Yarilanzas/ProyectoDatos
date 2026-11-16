@@ -472,5 +472,80 @@ class TestM4AM6SinRedNiVista(unittest.TestCase):
             self.assertIsNotNone(fila.ms, fila.texto())
 
 
+# T107 y T108: `--bench` corre M1 a M6 y la prueba rápida con tamaños mínimos. Sin afirmar tiempos.
+
+def _sin_red_ni_vista():
+    prohibido = AssertionError("las mediciones no usan red ni vista")
+    pila = contextlib.ExitStack()
+    pila.enter_context(mock.patch.object(socket.socket, "connect", side_effect=prohibido))
+    pila.enter_context(mock.patch.object(VistaConsola, "__init__", side_effect=prohibido))
+    return pila
+
+
+class TestCorrerBench(unittest.TestCase):
+    def test_pr15_por_omision_usa_los_tamanos_de_research_r9(self):
+        tamanos = bench_niebla.TamanosBench()
+        self.assertEqual(tamanos.m1, bench_niebla.TAMANOS_M1)
+        self.assertEqual(tamanos.m2, bench_niebla.TAMANOS_M2)
+        self.assertEqual(tamanos.m3_n, bench_niebla.TAMANOS_M3_N)
+        self.assertEqual(tamanos.m3_vecinas, bench_niebla.VECINAS_M3)
+        self.assertEqual(tamanos.m4, bench_niebla.TAMANOS_M4)
+        self.assertEqual(tamanos.m5, bench_niebla.TAMANOS_M5)
+        self.assertEqual(tamanos.m6_enemigos, bench_niebla.ENEMIGOS_M6)
+        self.assertEqual(tamanos.m6_ciclos, bench_niebla.CICLOS_M6)
+        self.assertEqual(tamanos.repeticiones, bench_niebla.REPETICIONES)
+
+    def _correr_minimo(self):
+        with tempfile.TemporaryDirectory() as carpeta:
+            ruta = os.path.join(carpeta, bench_niebla.ARCHIVO_RESULTADOS)
+            with _sin_red_ni_vista(), contextlib.redirect_stdout(io.StringIO()):
+                filas = bench_niebla.correr_bench(ruta, bench_niebla.TAMANOS_MINIMOS)
+            with open(ruta, encoding="utf-8") as archivo:
+                texto = archivo.read()
+        return filas, texto
+
+    def test_sc006_pr15_t108_m1_a_m6_con_tamanos_minimos_sin_red_ni_vista(self):
+        filas, texto = self._correr_minimo()
+        for medicion in ("M1", "M2", "M3", "M4", "M5", "M6"):
+            with self.subTest(medicion=medicion):
+                propias = [fila for fila in filas if fila.medicion == medicion]
+                self.assertTrue(propias)
+                for fila in propias:
+                    self.assertIsNotNone(fila.ms, fila.texto())
+                    self.assertIn(fila.texto(), texto)
+        self.assertEqual(len(filas), 6 + 2 + 3 + 8 + 4 + 2)
+        self.assertIn(platform.python_version(), texto)
+        self.assertIn("PROVISIONAL", texto)
+        self.assertNotIn("pendiente", texto)
+
+    def test_sc007_pr15_t108_m4_con_y_sin_espacio_compara_contra_la_constante(self):
+        filas, _ = self._correr_minimo()
+        m4 = [fila for fila in filas if fila.medicion == "M4"]
+        self.assertEqual(len(m4), 8)
+        for modo in ("por llamada", "reutilizado"):
+            self.assertEqual(len([fila for fila in m4 if fila.valor("espacio") == modo]), 4)
+        for fila in m4:
+            with self.subTest(fila=fila.texto()):
+                self.assertTrue(fila.provisional)
+                por_paso = fila.ms / fila.valor("pasos")
+                esperado = "cumple" if por_paso <= bench_niebla.LIMITE_PASO_IR_A_MS else "no cumple"
+                self.assertEqual(fila.veredicto, esperado)
+
+    def test_pr15_t107_main_bench_llama_a_la_medicion_de_niebla_sin_red_ni_vista(self):
+        import main
+        from tests import bench_ciclo, bench_personaD, bench_resolubilidad
+        with mock.patch.object(bench_personaD, "correr_bench") as persistencia, \
+                mock.patch.object(bench_ciclo, "correr_bench") as ciclo, \
+                mock.patch.object(bench_resolubilidad, "correr_bench") as resolubilidad, \
+                mock.patch.object(bench_niebla, "correr_bench") as niebla, \
+                mock.patch("sys.argv", ["main.py", "--bench"]), \
+                _sin_red_ni_vista(), contextlib.redirect_stdout(io.StringIO()):
+            codigo = main.main()
+        self.assertEqual(codigo, 0)
+        for medicion in (persistencia, ciclo, resolubilidad):
+            medicion.assert_called_once_with()
+        niebla.assert_called_once_with()
+
+
 if __name__ == "__main__":
     unittest.main()

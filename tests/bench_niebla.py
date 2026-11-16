@@ -29,6 +29,7 @@ from Modelo.Conocimiento import _CAMBIO_SALA, Conocimiento, DESCONOCIDA, EXPLORA
 from Modelo.Enemigo import Enemigo
 from Modelo.Jugador import Jugador
 from Modelo.MotorSimulacion import MotorSimulacion
+from Modelo.BusquedaRuta import EspacioBusqueda
 from Modelo.ordenamiento import merge_sort
 from Modelo.retroceso import Historial
 from Modelo.rutas_ir_a import primer_paso
@@ -77,20 +78,21 @@ def medir_ms(funcion, repeticiones=REPETICIONES, reloj=time.perf_counter_ns):
     return mediana(tiempos)
 
 
-def encabezado():
+def encabezado(repeticiones=REPETICIONES):
     return [
         "-Niebla de guerra, mapa conocido e «ir a» (Fase 6, M1 a M6)-",
         f"equipo: {platform.platform()} | {platform.processor() or platform.machine()}"
         f" | Python {platform.python_version()}",
-        f"cada dato es la mediana de {REPETICIONES} repeticiones, sin red ni vista, con mapas sintéticos",
-        f"resultado provisional: el límite de {LIMITE_PASO_IR_A_MS} ms de §6.1 se define para la cripta de "
-        "referencia, que aún no está publicada",
+        f"cada dato es la mediana de {repeticiones} repeticiones (M6: mediana y p95 de los ciclos), sin red ni "
+        "vista, con mapas sintéticos",
+        f"resultado provisional (PROVISIONAL): el límite de {LIMITE_PASO_IR_A_MS} ms de §6.1 se define para la "
+        "cripta de referencia, que aún no está publicada; §6.1 no se da por cumplido hasta T110",
     ]
 
 
-def escribir_resultados(lineas, ruta=ARCHIVO_RESULTADOS):
+def escribir_resultados(lineas, ruta=ARCHIVO_RESULTADOS, repeticiones=REPETICIONES):
     """Escribe el encabezado y ``lineas`` en ``ruta`` y los muestra en consola."""
-    todas = encabezado() + list(lineas)
+    todas = encabezado(repeticiones) + list(lineas)
     for linea in todas:
         print(linea)
     with open(ruta, "w", encoding="utf-8") as archivo:
@@ -851,19 +853,54 @@ def _seccion(titulo, filas):
     return [titulo] + [fila.texto() for fila in filas]
 
 
-def correr_bench(ruta=ARCHIVO_RESULTADOS):
-    lineas = []
-    lineas += _seccion(f"M1: consultar estado de sala y recuerdo de puerta, {CONSULTAS_M1} consultas por fila "
-                       "(R1; FR-001, FR-005)", medir_m1())
-    lineas += _seccion("M2: revelar r salas con k ya conocidas (R1; FR-003, FR-009)", medir_m2())
-    lineas += _seccion("M3: registrar y deshacer una entrada con antorcha (R2; FR-014)", medir_m3())
-    lineas += _seccion(f"M4: un paso y un viaje de «ir a» por primer_paso, límite {LIMITE_PASO_IR_A_MS} ms por paso "
-                       f"(R6; FR-024, FR-026, SC-007). PROVISIONAL: {NOTA_PROVISIONAL_M4}", medir_m4())
-    lineas += _seccion("M5: bloque de conocimiento, binario frente a JSON; bytes = bloque, leidos = al cargar "
-                       "(R3; FR-015)", medir_m5())
-    lineas += _seccion(f"M6: ciclo completo con y sin conocimiento, {CICLOS_M6} ciclos por fila, límite "
-                       f"{LIMITE_CICLO_MS} ms al p95 (R1, R2; FR-014, SC-006)", medir_m6())
-    escribir_resultados(lineas, ruta)
+class TamanosBench:
+    """Tamaños de cada medición. Por omisión, los de research R9 (los de `--bench`); la prueba rápida (T108) usa
+    `TAMANOS_MINIMOS`. Solo datos."""
+
+    def __init__(self, m1=TAMANOS_M1, consultas_m1=CONSULTAS_M1, m2=TAMANOS_M2, m3_n=TAMANOS_M3_N,
+                 m3_vecinas=VECINAS_M3, m4=TAMANOS_M4, m5=TAMANOS_M5, m6_enemigos=ENEMIGOS_M6,
+                 m6_ciclos=CICLOS_M6, repeticiones=REPETICIONES):
+        self.m1 = m1
+        self.consultas_m1 = consultas_m1
+        self.m2 = m2
+        self.m3_n = m3_n
+        self.m3_vecinas = m3_vecinas
+        self.m4 = m4
+        self.m5 = m5
+        self.m6_enemigos = m6_enemigos
+        self.m6_ciclos = m6_ciclos
+        self.repeticiones = repeticiones
+
+
+TAMANOS_MINIMOS = TamanosBench(m1=(20,), consultas_m1=3, m2=(10,), m3_n=(50,), m3_vecinas=(2,), m4=(25,), m5=(20,),
+                               m6_enemigos=(10,), m6_ciclos=2, repeticiones=1)
+
+
+def correr_bench(ruta=ARCHIVO_RESULTADOS, tamanos=None):
+    """Corre M1 a M6 y escribe ``ruta`` con el encabezado (equipo y versión de Python). Devuelve las filas.
+    M4 se mide dos veces (T109): con un `EspacioBusqueda` nuevo en cada llamada a `primer_paso` y con uno
+    reutilizado en todo el viaje. ``tamanos`` es un `TamanosBench`; None usa los de research R9."""
+    t = TamanosBench() if tamanos is None else tamanos
+    secciones = (
+        (f"M1: consultar estado de sala y recuerdo de puerta, {t.consultas_m1} consultas por fila "
+         "(R1; FR-001, FR-005)", medir_m1(t.m1, t.repeticiones, t.consultas_m1)),
+        ("M2: revelar r salas con k ya conocidas (R1; FR-003, FR-009)", medir_m2(t.m2, t.repeticiones)),
+        ("M3: registrar y deshacer una entrada con antorcha (R2; FR-014)",
+         medir_m3(t.m3_n, t.m3_vecinas, t.repeticiones)),
+        (f"M4: un paso y un viaje de «ir a» por primer_paso, límite {LIMITE_PASO_IR_A_MS} ms por paso, con y sin "
+         f"EspacioBusqueda reutilizado (R6; FR-024, FR-026, SC-007). PROVISIONAL: {NOTA_PROVISIONAL_M4}",
+         medir_m4(t.m4, t.repeticiones) + medir_m4(t.m4, t.repeticiones, espacio=EspacioBusqueda)),
+        ("M5: bloque de conocimiento, binario frente a JSON; bytes = bloque, leidos = al cargar (R3; FR-015)",
+         medir_m5(t.m5, t.repeticiones)),
+        (f"M6: ciclo completo con y sin conocimiento, {t.m6_ciclos} ciclos por fila, límite {LIMITE_CICLO_MS} ms "
+         "al p95 (R1, R2; FR-014, SC-006)", medir_m6(t.m6_enemigos, t.m6_ciclos)),
+    )
+    lineas, filas = [], []
+    for titulo, propias in secciones:
+        lineas += _seccion(titulo, propias)
+        filas += propias
+    escribir_resultados(lineas, ruta, t.repeticiones)
+    return filas
 
 if __name__ == "__main__":
     correr_bench()
