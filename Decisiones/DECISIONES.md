@@ -747,6 +747,258 @@ Cada sección sigue la estructura de P1 §8 y además enlaza a su spec y su plan
 
 ## §5.3 — El mapa conocido
 
+*Sección de la capacidad 001: niebla de guerra, mapa conocido y viaje automático «ir a».*
+
+Spec: [specs/001-niebla-mapa-ir-a/spec.md](../specs/001-niebla-mapa-ir-a/spec.md) · Plan: [plan.md](../specs/001-niebla-mapa-ir-a/plan.md) (sección «Decisiones», 1 a 6) · Alternativas: [research.md](../specs/001-niebla-mapa-ir-a/research.md) (R1 a R9) · Tareas: [tasks.md](../specs/001-niebla-mapa-ir-a/tasks.md) (T114).
+
+**Fuente de los datos.** Toda cifra de esta sección sale de [`resultados_bench_niebla.txt`](../resultados_bench_niebla.txt), generado con `python main.py --bench` (medición `tests/bench_niebla.py`, M1 a M6) el 2026-11-16 en el equipo de Lucía: `Windows-11-10.0.26200-SP0 | Intel64 Family 6 Model 154 Stepping 4, GenuineIntel | Python 3.12.10`. Cada dato es la mediana de 7 repeticiones (M6: mediana y p95 de 100 ciclos), sin red ni vista, con **mapas sintéticos** (`tests/mapas_sinteticos.py`), no con una cripta real. Las filas se citan tal cual, en ms. La única excepción es el diagnóstico de M4 (perfil con `cProfile`), que se hizo fuera de `--bench` y se cita como medición puntual.
+
+**Convención (Principio VIII).** Lo que no se midió con `--bench` se marca **HIPÓTESIS**. Las complejidades son análisis, no mediciones.
+
+### Decisión 1 — Representación del conocimiento (R1)
+
+**Problema.** Lo que se muestra y lo que usa «ir a» debe salir de lo que sabe el jugador, no del mapa real (FR-012). Consultar el estado de una sala o el recuerdo de una puerta tiene que ser barato, y explorar no debe costar más a medida que el mapa conocido crece.
+
+**Alternativas.**
+
+- `dict`/`set` por id: prohibido como índice (Principio I).
+- Lista ordenada con búsqueda binaria: consultar O(log k), pero insertar desplaza elementos, así que explorar crece con lo ya conocido.
+- Tabla hash propia: O(1) promedio, pero agrega redimensionado y colisiones sin necesidad.
+- Atributos en `Sala`/`Salida`: igual de rápido, pero mezcla mapa real y conocimiento y facilita violar FR-012; además, listar lo conocido recorre toda la cripta.
+- Puerta como par no dirigido: los datos no lo permiten, porque `A→B` y `B→A` pueden tener estados distintos (hallazgo H3).
+
+**Decisión.** Clase `Conocimiento` (`Modelo/Conocimiento.py`) con arreglos densos indexados por ordinales propios, asignados una vez al iniciar: `estado_sala` (desconocida, avistada, explorada) y `recuerdo_puerta` por salida dirigida (sin observar, abierta, cerrada), más las listas `reveladas` y `observadas` para recorrer solo lo conocido. «Avistada» se guarda en vez de recalcularse. Se eligió porque la consulta no depende del tamaño del mapa, explorar solo escribe lo que revela y los ids pueden no ser densos ni numéricos (H7).
+
+**Complejidad.** Consultar O(1); revelar `r` salas O(r + Σd); revertir un cambio O(1); listar lo conocido O(k); memoria O(n + e).
+
+**Evidencia (M1 y M2).** M1: 100 consultas por fila, el tiempo es el de las 100 juntas.
+
+| Fila (`resultados_bench_niebla.txt`) | n = 20 | n = 20000 |
+|---|---|---|
+| `M1 sala/arreglos` | 0.0037 ms | 0.0035 ms |
+| `M1 sala/binaria` | 0.0332 ms | 0.1121 ms |
+| `M1 sala/lineal` | 0.0383 ms | 26.1036 ms |
+| `M1 puerta/arreglos` | 0.0037 ms | 0.0058 ms |
+| `M1 puerta/binaria` | 0.0428 ms | 0.1505 ms |
+| `M1 puerta/lineal` | 0.0736 ms | 118.7446 ms |
+
+M2: revelar y deshacer r = 8 salas con k ya conocidas.
+
+| Fila | k = 10 | k = 100 | k = 1000 | k = 10000 |
+|---|---|---|---|---|
+| `M2 arreglos` | 0.0025 ms | 0.0019 ms | 0.0028 ms | 0.0026 ms |
+| `M2 lista ordenada` | 0.0077 ms | 0.0088 ms | 0.0183 ms | 0.1817 ms |
+
+Con n multiplicado por 1000, la consulta de sala con arreglos queda en 0.0037 y 0.0035 ms. La de puerta pasa de 0.0037 a 0.0058 ms; esa subida no se interpreta. Con k de 10 a 10000, revelar con arreglos queda entre 0.0019 y 0.0028 ms, y con lista ordenada sube de 0.0077 a 0.1817 ms.
+
+**Límites.** La memoria es O(n + e) aunque se conozca poco (no medida). Los ordinales se fijan al iniciar: una cripta que agregara salas en plena partida obligaría a rehacerlos.
+
+**¿Coincide con el plan?** Sí: es la decisión 1 del plan.
+
+### Decisión 2 — Registro de cambios en el Historial (R2)
+
+**Problema.** Un pergamino de retroceso debe devolver el conocimiento exactamente al estado anterior a la acción, incluidas las salas exploradas con la antorcha (FR-014), y cada paso de «ir a» es una acción propia (FR-031). El contrato de `Modelo/retroceso.py` no debe cambiar.
+
+**Alternativas.**
+
+- Copiar el estado completo en cada acción: O(n + e) por acción; el Documento de Decisiones ya la descarta para el Historial (§4.6).
+- Un cierre (`lambda`) por escritura: es el estilo del motor, pero crea un `Cambio` y una función por sala o puerta.
+- Recalcular el conocimiento desde las acciones: no es exacto sin repetir la partida.
+
+**Decisión.** Cada operación pública (`entrar`, `observar_puerta`) acumula en un **lote** solo las escrituras que cambian algo y, si hay alguna, registra un solo `Cambio` con `historial.registrar(deshacer=...)`. Deshacer recorre el lote al revés. Una entrada con antorcha cae en un solo lote, así que FR-014 sale por construcción. Desde T119 cada lote guarda valor anterior y nuevo, y se puede invertir y volver a aplicar (lo usa la línea de tiempo de Persona D).
+
+**Complejidad.** Registrar O(1) por escritura; deshacer O(tamaño del lote). La copia completa es O(n + e).
+
+**Evidencia (M3).** Registrar y deshacer una entrada con antorcha; r es la cantidad de escrituras de esa entrada.
+
+| n | vecinas | r | `M3 lote` | `M3 cierres` | `M3 copia` |
+|---|---|---|---|---|---|
+| 200 | 4 | 18 | 0.0102 ms | 0.0170 ms | 0.0100 ms |
+| 200 | 64 | 258 | 0.1046 ms | 0.2111 ms | 0.0610 ms |
+| 2000 | 4 | 18 | 0.0123 ms | 0.0200 ms | 0.0173 ms |
+| 2000 | 64 | 258 | 0.1265 ms | 0.2378 ms | 0.0763 ms |
+| 20000 | 4 | 18 | 0.0112 ms | 0.0132 ms | 0.0644 ms |
+| 20000 | 64 | 258 | 0.0982 ms | 0.1887 ms | 0.1120 ms |
+
+Lo medido, con su salvedad:
+
+- El lote y los cierres crecen con r y no con n: el lote con r = 258 da 0.1046, 0.1265 y 0.0982 ms para n = 200, 2000 y 20000.
+- El lote fue más rápido que los cierres en todas las filas de M3 (también en las de 16 vecinas, que no se copian aquí).
+- La copia crece con n: con r = 18 pasa de 0.0100 ms (n = 200) a 0.0644 ms (n = 20000).
+- Con n = 200 la copia **no pierde** frente al lote (0.0100 frente a 0.0102 ms con r = 18; 0.0610 frente a 0.1046 ms con r = 258). Con n = 20000 **sí pierde** (0.0644 frente a 0.0112 ms con r = 18; 0.1120 frente a 0.0982 ms con r = 258).
+- **Salvedad**: las filas de r = 18 están en el orden de 0.01 ms y tienen ruido. Por ejemplo, los cierres dan 0.0170, 0.0200 y 0.0132 ms para n = 200, 2000 y 20000, sin tendencia. Estas comparaciones se presentan como dato medido, no como hipótesis confirmada.
+
+Se mantiene el lote porque su costo depende de lo que cambia y no del tamaño del mapa. La copia solo empata o gana en mapas chicos, y copiar el estado completo ya estaba descartado para el Historial (§4.6). **HIPÓTESIS**: que el lote use menos memoria que los cierres y que la copia (los últimos 5 intervalos) no se midió.
+
+**Límites.** Un lote se invierte solo en orden LIFO; una secuencia inválida lanza `ValueError` y deja todo como estaba.
+
+**¿Coincide con el plan?** Sí: es la decisión 2 del plan; `retroceso.py` no cambió.
+
+### Decisión 3 — Persistencia del conocimiento y replay (R3, R4)
+
+**Problema.** El mapa conocido debe sobrevivir a guardar y cargar (FR-015), una versión anterior del formato debe rechazarse (FR-016) y `--replay` debe reproducir también partidas cargadas y continuadas (FR-017; hallazgo H1: divergía en 20 de 20 semillas).
+
+**Alternativas.**
+
+- Conocimiento dentro de `RegistroSala`: las salas exploradas con antorcha no tienen registro y los bloques de sala se leen de forma perezosa.
+- Dentro de `RegistroJugador`: mezcla responsabilidades.
+- Mapa de bits por ordinal: tamaño O(n + e) fijo y dependiente del orden interno.
+- Para H2, restaurar todas las salas al cargar: rompe la carga perezosa de §4.10.
+- Para el replay, guardar azar, agenda y efectos: contradice que «los efectos no se guardan». Guardar solo el azar no resuelve `secuencia` ni efectos.
+
+**Decisión.** Un bloque propio de conocimiento en el `CRPT` 3, con exploradas, puertas recordadas y puertas reales que pueden cambiar (corrige H2), en orden canónico. Va seguido del bloque de línea de tiempo de Persona D, en un solo salto de versión (P-10). Las avistadas no se guardan: se recalculan. `ExportadorJSON` guarda los mismos campos. En la bitácora, la directiva `@cargar` (versión 2) hace que `--replay` repita el mismo guardar y cargar de la partida real (P-07, aceptada por Persona D con cuatro condiciones).
+
+**Complejidad.** Guardar O(n + e) más el orden canónico; cargar lee el bloque una vez, O(tamaño del bloque), sin leer los bloques de sala.
+
+**Evidencia (M5).** Mapa de 4k salas con k exploradas. `bytes` es el tamaño del bloque; `leidos`, lo que lee el cargado.
+
+| k | n | binario `bytes` | binario `leidos` | JSON `bytes` | JSON `leidos` | `binario/cargar` | `json/cargar` |
+|---|---|---|---|---|---|---|---|
+| 20 | 80 | 1156 | 1298 | 1704 | 8223 | 0.4354 ms | 0.5889 ms |
+| 200 | 800 | 12060 | 12202 | 19003 | 83823 | 1.4170 ms | 3.6712 ms |
+| 2000 | 8000 | 122292 | 122434 | 208578 | 863599 | 15.6354 ms | 48.2162 ms |
+
+El dato es el de bytes:
+
+- Cargar en binario lee el bloque más 142 bytes (encabezado y campos de largo) en los tres tamaños, sin leer las salas.
+- En JSON se lee el archivo entero, porque `json.load` no puede leer una parte.
+- El bloque crece con lo conocido, y también con n, porque las puertas reales salen de todas las salas.
+
+Las filas `guardar` (binario 0.8708, 5.0914 y 72.9557 ms; JSON 0.8722, 5.4020 y 80.9970 ms) difieren poco y esas diferencias no se interpretan.
+
+**HIPÓTESIS**: el costo de cada `@cargar` en un replay (un guardado y una carga) y su efecto en el presupuesto de solicitudes con red (Principio VII) no se midieron con `--bench`.
+
+**Límites.** Las partidas `CRPT` 2 y las bitácoras v1 se rechazan (código 2), así que las partidas guardadas de evidencia se regeneran.
+
+**¿Coincide con el plan?** Sí: es la decisión 3 del plan, con el orden de bloques acordado con Persona D (P-10).
+
+### Decisión 4 — Comandos `mapa` e `ir a` (R5)
+
+**Problema.** Ofrecer el mapa conocido (FR-018 a FR-020) y el viaje automático (FR-021 a FR-031) sin cambiar `ejecutar_accion` ni la regla «cada acción aceptada, una línea» de la bitácora.
+
+**Alternativas.**
+
+- Acción `ir_a` en la bitácora: el replay tendría que recalcular rutas, y FR-030 pide movimientos individuales.
+- Viaje dentro del controlador: las reglas de parada son reglas del juego.
+- Viaje dentro de `ejecutar_accion`: una acción produciría varias líneas.
+
+**Decisión.** `mapa` es una consulta: el controlador pide el DTO `MapaConocido` y la vista lo muestra, sin tocar el reloj ni la bitácora. `ir a <sala>` lo orquesta el controlador con un objeto `Viaje` del modelo, que decide recalcular, detenerse y el motivo; cada paso es un `mover` ordinario. El comentario `# ir a <sala>` se anota solo cuando el motor acepta el primer paso, así que una orden rechazada no deja rastro (FR-022, SC-005).
+
+**Complejidad.** Resolver el destino recorre solo las exploradas, O(k). `mapa` recorre lo revelado y lo observado.
+
+**Evidencia.** No hay medición propia en `--bench`. **HIPÓTESIS**: los tiempos de `mapa` y de resolver el destino de `ir a` no se midieron; solo está el análisis O(k). El paso de ruta se mide en M4 (decisión 5).
+
+**¿Coincide con el plan?** Sí: es la decisión 4 del plan.
+
+### Decisión 5 — Ruta de «ir a» y D-PEND-01 (R6)
+
+**Problema.** Calcular el primer paso de una ruta de costo total mínimo usando solo lo conocido (FR-023), con el mismo desempate que el cazador (FR-024), y recalcularlo antes de cada paso (FR-026).
+
+**Alternativas (D-PEND-01).**
+
+- **Opción A, búsqueda compartida con el cazador** (elegida): una sola definición del desempate, una sola estructura que probar y medir. A cambio, es un contrato compartido entre dos capacidades.
+- **Opción B, implementaciones separadas** (descartada): cada una se ajusta a su uso, pero duplica algoritmo, desempate, pruebas y mediciones, con riesgo de que diverjan.
+- En la frontera también se descartó devolver la ruta completa (FR-026 la invalida en cada paso), pasar `Conocimiento` directamente y una clase con estado.
+
+**Decisión.** **D-PEND-01 se resolvió con la opción A**: Persona A implementa la búsqueda compartida en `Modelo/BusquedaRuta.py`, con la cola de prioridad en `Modelo/ColaPrioridad.py` (montículo binario propio con inserción perezosa, sin `heapq`). `Modelo/rutas_ir_a.py` solo delega y ofrece la interfaz de una función `primer_paso(grafo, origen, destino, limite=None, espacio=None)` ([contracts/interfaz-ruta.md](../specs/001-niebla-mapa-ir-a/contracts/interfaz-ruta.md)). El grafo es `GrafoConocido`: solo salas exploradas y salidas recordadas abiertas. Desempate: vecina de menor id en el primer paso y, entre salidas a la misma vecina, N, S, E, O. Un `EspacioBusqueda` con época evita limpiar O(n) en cada búsqueda.
+
+**Complejidad** (documentada por Persona A). Con espacio, O((|R| + |E_R|) log |E_R|), donde R son las salas alcanzadas hasta extraer el destino. Sin espacio se suma O(n) para crearlo.
+
+**Evidencia.** M4, en la sección siguiente.
+
+**¿Coincide con el plan?** Sí, con la opción A, que el plan dejó resuelta en D-PEND-01 antes del código.
+
+### Decisión 6 — Costo de cada salida (R7)
+
+**Problema.** La ruta minimiza costos, pero el campo `costo` de `Salida` y su cobro en `mover` son de la capacidad de terreno y costos.
+
+**Alternativas.**
+
+- Fijar 100 en el esqueleto o en `desde_json`: no distingue «sin costo propio» de «cuesta 100».
+- Constante de costo en `rutas_ir_a`.
+- Agregar el campo y cambiar `mover` en esta capacidad: invade otra capacidad y un contrato compartido.
+
+**Decisión.** Lectura por un único acceso, `MotorSimulacion.costo_salida(salida)`, que devuelve el costo de la salida o `COSTO_MOVER = 100` si no lo trae (P-02). `MapaConocido` y `GrafoConocido` solo usan ese acceso. El movimiento de ningún actor cambia (T118).
+
+**Complejidad.** O(1) por salida.
+
+**Evidencia.** No hay afirmación de rendimiento que medir. La corrección la cubre `tests/test_costo_salida.py`. Mientras ninguna salida traiga costo, todas valen 100 y la ruta coincide con el reloj (FR-025).
+
+**¿Coincide con el plan?** Sí: es la decisión 6 del plan.
+
+### Ciclo completo con conocimiento (M6)
+
+M6 corre el ciclo entre dos decisiones del jugador con el montaje de `tests/bench_ciclo.py` (motor real, cadena de 200 salas, todos los enemigos activos, 100 ciclos), con y sin conocimiento.
+
+| enemigos | con conocimiento: mediana / p95 | sin conocimiento: mediana / p95 |
+|---|---|---|
+| 10 | 0.0624 / 0.0807 ms | 0.0679 / 0.1051 ms |
+| 50 | 0.4116 / 0.6184 ms | 0.3867 / 0.5797 ms |
+| 100 | 0.8131 / 1.4077 ms | 0.8311 / 1.4883 ms |
+| 300 | 2.8437 / 9.3111 ms | 2.9665 / 9.7693 ms |
+| 500 | 5.4285 / 15.7772 ms | 5.5897 / 15.3741 ms |
+
+Todas las filas quedan con el p95 por debajo de 20 ms (§5.2), con y sin conocimiento. Las diferencias entre las dos variantes van en ambos sentidos y no se interpretan. **Salvedad**: M6 usa enemigos genéricos (errante, rastreador, guardián), no los cazadores de la spec 003, así que **no sustituye** al criterio de 20 ms de §6.1, que es con decenas de cazadores activos.
+
+### «ir a» y el límite de §6.1
+
+**Qué dice el enunciado.** El límite de «ir a» es de 5 ms para el cálculo de un paso «con el mapa conocido completo de la cripta de referencia». Cita textual de §6.1: «Los valores pueden ajustarse cuando se publique la cripta de referencia; el ajuste se comunicará como enmienda (§2.7)». Por eso el valor está en una sola constante, `LIMITE_PASO_IR_A_MS = 5` (`tests/bench_niebla.py`).
+
+| Límite de §6.1 | Valor | Condición | ¿De esta capacidad? |
+|---|---|---|---|
+| Ciclo de eventos | 20 ms | con decenas de cazadores activos | No (M6 mide el ciclo con enemigos genéricos y no lo sustituye) |
+| Verificación de resolubilidad | 200 ms | con la cripta publicada más grande | No |
+| Consulta `historia` | 50 ms | con una partida de al menos 5000 acciones y K por defecto | No |
+| Paso de «ir a» | 5 ms | con el mapa conocido completo de la cripta de referencia | **Sí: es el único del que se ocupa esta capacidad** |
+
+**M4 sobre mapas sintéticos (PROVISIONAL).** Se mide la `primer_paso` real (la de Persona A), nunca un buscador de prueba, sobre el mapa conocido completo de cada mapa sintético.
+
+- «Paso»: el primer paso de la primera sala a la última, la ruta más larga del mapa.
+- «Viaje»: el recorrido completo; su veredicto usa el promedio por paso.
+- «Por llamada»: `primer_paso` crea su `EspacioBusqueda` en cada llamada. «Reutilizado»: se crea uno por viaje.
+
+| Topología | V | Paso, por llamada | Paso, reutilizado | Viaje, por llamada (pasos) | Viaje, reutilizado | Veredicto |
+|---|---|---|---|---|---|---|
+| grilla | 25 | 0.0486 ms | 0.0451 ms | 0.3491 ms (8) | 0.3327 ms | cumple |
+| grilla | 100 | 0.2617 ms | 0.2410 ms | 3.1349 ms (18) | 3.5098 ms | cumple |
+| grilla | 400 | 1.4221 ms | 1.1798 ms | 32.3244 ms (38) | 32.0053 ms | cumple |
+| grilla | 2500 | 12.3162 ms | 8.8986 ms | 756.0104 ms (98) | 750.1137 ms | **no cumple** (las cuatro filas) |
+| cadena | 25 | 0.0290 ms | 0.0278 ms | 0.6147 ms (24) | 0.5830 ms | cumple |
+| cadena | 100 | 0.1138 ms | 0.1131 ms | 9.8841 ms (99) | 9.4690 ms | cumple |
+| cadena | 400 | 0.8277 ms | 0.4631 ms | 188.1495 ms (399) | 153.2984 ms | cumple |
+| cadena | 2500 | 2.5780 ms | 2.9456 ms | 7050.2817 ms (2499) | 7164.3982 ms | cumple |
+
+Con grilla y cadena hasta V = 400 se cumple el límite de 5 ms, y la cadena de 2500 también. En la grilla de 2500 **no se cumple**: el paso largo tarda 12.3162 ms (8.8986 ms con espacio reutilizado), y el promedio por paso del viaje es 756.0104 / 98 = 7.7 ms.
+
+**Diagnóstico (medición puntual del 2026-11-16, fuera de `--bench`).** Se perfiló con `cProfile` una búsqueda de la sala 1 a la 2500 de esa grilla, en el mismo equipo. Son mediciones puntuales y ruidosas: el mismo paso dio una mediana de 8.6 ms en una corrida y de 20 a 24 ms en otra.
+
+- Se expanden 2498 de las 2500 salas. El destino es la sala más lejana, y la búsqueda se detiene al sacar el destino de la cola (`Modelo/BusquedaRuta.py`, al extraerlo devuelve el paso), así que antes expande casi todo el resto.
+- `GrafoConocido.aristas` ocupa cerca del 49 % del tiempo, y la cola de prioridad cerca del 28 %.
+
+**Mejoras pequeñas probadas, no aplicadas.**
+
+- Guardar en `Conocimiento` el destino de cada salida, para no resolverlo en cada arista.
+- Leer las funciones del grafo y de la cola una vez antes del bucle de `BusquedaRuta`.
+
+Dieron el mismo primer paso que la versión actual en 2800 casos (grilla y cadena de V = 400, con costos variados y con todos los costos en 1 para forzar empates). Ganaron entre 0 % y 9 %, dentro del ruido. **HIPÓTESIS**: que alguna de ellas mejore de forma consistente. Bajar de verdad exigiría cambiar el algoritmo, con búsqueda bidireccional o A* con una estimación de distancia. Queda como trabajo futuro y corresponde a Persona A, responsable de `Modelo/BusquedaRuta.py`.
+
+**Espacio reutilizado.** Reutilizar el `EspacioBusqueda` por viaje no dio una mejora consistente: en la grilla de 2500 bajó el paso (12.3162 a 8.8986 ms), pero en la cadena de 2500 salió algo peor (paso 2.5780 a 2.9456 ms; viaje 7050.2817 a 7164.3982 ms). **HIPÓTESIS no concluyente**.
+
+**Alcance del veredicto.**
+
+- La grilla de 2500 salas es una **prueba de estrés**, no el criterio de §6.1, que es con el mapa conocido completo de la cripta de referencia.
+- El plan registra criptas locales de ejemplo de 5 a 20 salas (plan.md, Technical Context). El tamaño de la cripta de referencia no se conoce todavía.
+- **§6.1 NO se da por cumplido.** El veredicto definitivo queda pendiente de T110, que agregará a M4 el mapa conocido completo de la cripta de referencia cuando se publique.
+- **HIPÓTESIS** (research R9, M4): «con la cripta de referencia, el cálculo de un paso cumple el límite de 5 ms».
+
+### Hipótesis abiertas de esta sección
+
+- Memoria del lote frente a cierres y copia (decisión 2).
+- Costo de `@cargar` en el replay y su efecto en el presupuesto con red (decisión 3).
+- Tiempos de `mapa` y de resolver el destino de `ir a` (decisión 4).
+- Que las mejoras pequeñas de la búsqueda ganen de forma consistente, y que reutilizar el `EspacioBusqueda` mejore (M4).
+- Que un paso de «ir a» cumpla 5 ms con la cripta de referencia (§6.1, pendiente de T110).
+
 ## §5.4 — Resolubilidad
 
 ## §5.5 — Línea de tiempo y puntos de control
