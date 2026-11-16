@@ -14,8 +14,17 @@ RAIZ = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if RAIZ not in sys.path:
     sys.path.insert(0, RAIZ)
 
+from unittest import mock
+import socket
+
+from Modelo.retroceso import Historial
 from tests import bench_niebla
-from tests.bench_niebla import encabezado, escribir_resultados, mediana, medir_ms
+from tests.bench_niebla import (VARIANTES_M3, ListaLineal, ListaOrdenada, clave_puerta, encabezado, escribir_resultados,
+                                estado_de, lineas_base_m1, mediana, medir_m1, medir_m2, medir_m3, medir_ms,
+                                preparar_m1, preparar_m2, preparar_m3, revelar_en_lista,
+                                deshacer_en_lista)
+from Modelo.Conocimiento import DESCONOCIDA, SIN_OBSERVAR
+from Vista.VistaConsola import VistaConsola
 
 
 def _archivos_py():
@@ -120,6 +129,169 @@ class TestPrincipioI(unittest.TestCase):
             with self.subTest(modulo=modulo):
                 for marca in ("sorted(", ".sort(", "statistics", "heapq", "bisect", "collections"):
                     self.assertNotIn(marca, codigo)
+
+
+# M1 a M3 (T101 a T103). Solo forma y corrección: ninguna prueba afirma tiempos (Principio VIII).
+
+def _buscar_fila(prueba, filas, medicion, variante, **parametros):
+    halladas = []
+    for fila in filas:
+        if fila.medicion != medicion or fila.variante != variante:
+            continue
+        if all(fila.valor(nombre) == valor for nombre, valor in parametros.items()):
+            halladas.append(fila)
+    prueba.assertEqual(len(halladas), 1, f"{medicion} {variante} {parametros}: {len(halladas)} filas")
+    fila = halladas[0]
+    prueba.assertIsInstance(fila.ms, float)
+    prueba.assertGreaterEqual(fila.ms, 0.0)
+    prueba.assertTrue(fila.hipotesis)
+    return fila
+
+
+def _distintos(valores):
+    vistos = []
+    for valor in valores:
+        if valor not in vistos:
+            vistos.append(valor)
+    return len(vistos)
+
+
+class TestFormaDeLasMediciones(unittest.TestCase):
+    def test_pr15_tamanos_por_defecto_de_research_r9(self):
+        self.assertEqual(bench_niebla.TAMANOS_M1, (20, 200, 2000, 20000))
+        self.assertEqual(bench_niebla.TAMANOS_M2, (10, 100, 1000, 10000))
+        self.assertGreaterEqual(len(bench_niebla.TAMANOS_M3_N), 3)
+        self.assertGreaterEqual(len(bench_niebla.VECINAS_M3), 3)
+
+    def test_fr001_fr005_pr15_m1_una_fila_por_tamano_objeto_y_variante(self):
+        filas = medir_m1((20, 40), repeticiones=1, consultas=5)
+        self.assertEqual(len(filas), 12)
+        for n in (20, 40):
+            for objeto in ("sala", "puerta"):
+                for variante in ("arreglos", "binaria", "lineal"):
+                    _buscar_fila(self, filas, "M1", f"{objeto}/{variante}", n=n)
+
+    def test_fr003_fr009_pr15_m2_una_fila_por_k_y_variante(self):
+        filas = medir_m2((10, 20), repeticiones=1)
+        self.assertEqual(len(filas), 4)
+        for k in (10, 20):
+            for variante in ("arreglos", "lista ordenada"):
+                fila = _buscar_fila(self, filas, "M2", variante, k=k)
+                self.assertGreater(fila.valor("r"), 0)
+
+    def test_fr014_pr15_m3_una_fila_por_variante_n_y_vecinas_y_r_crece_con_las_vecinas(self):
+        filas = medir_m3((50, 80), (2, 4), repeticiones=1)
+        self.assertEqual(len(filas), 12)
+        for variante in ("lote", "cierres", "copia"):
+            for n in (50, 80):
+                r_por_vecinas = []
+                for vecinas in (2, 4):
+                    fila = _buscar_fila(self, filas, "M3", variante, n=n, vecinas=vecinas)
+                    r_por_vecinas.append(fila.valor("r"))
+                self.assertLess(r_por_vecinas[0], r_por_vecinas[1])
+
+    def test_pr15_texto_de_cada_fila_dice_parametros_tiempo_e_hipotesis(self):
+        filas = medir_m1((20,), 1, 3) + medir_m2((10,), 1) + medir_m3((50,), (2,), 1)
+        self.assertEqual(len(filas), 6 + 2 + 3)
+        for fila in filas:
+            texto = fila.texto()
+            self.assertIn(fila.medicion, texto)
+            self.assertIn(fila.variante, texto)
+            self.assertIn("ms", texto)
+            self.assertIn("hipótesis", texto)
+        self.assertIn("n=20", filas[0].texto())
+
+    def test_pr15_m1_a_m3_corren_sin_red_ni_vista(self):
+        prohibido = AssertionError("las mediciones no usan red ni vista")
+        with mock.patch.object(socket.socket, "connect", side_effect=prohibido), \
+                mock.patch.object(VistaConsola, "__init__", side_effect=prohibido):
+            filas = medir_m1((20,), 1, 3) + medir_m2((10,), 1) + medir_m3((50,), (2,), 1)
+        self.assertEqual(len(filas), 11)
+
+
+class TestCorreccionDeLineasBase(unittest.TestCase):
+    def test_pr15_lista_ordenada_inserta_en_orden_busca_y_quita(self):
+        lista = ListaOrdenada()
+        for clave in (5, 1, 9, 3, 7):
+            lista.insertar(clave, clave * 10)
+        self.assertEqual(lista.pares(), [(1, 10), (3, 30), (5, 50), (7, 70), (9, 90)])
+        self.assertEqual(lista.buscar(7, -1), 70)
+        self.assertEqual(lista.buscar(4, -1), -1)
+        lista.insertar(7, 71)  # clave existente: actualiza
+        self.assertEqual(lista.buscar(7, -1), 71)
+        lista.quitar(1)
+        lista.quitar(9)
+        self.assertEqual(lista.pares(), [(3, 30), (5, 50), (7, 71)])
+
+    def test_pr15_lista_lineal_busca_y_quita(self):
+        lista = ListaLineal()
+        for clave in (5, 1, 9):
+            lista.insertar(clave, clave * 10)
+        self.assertEqual(lista.buscar(1, -1), 10)
+        self.assertEqual(lista.buscar(2, -1), -1)
+        lista.quitar(1)
+        self.assertEqual(lista.buscar(1, -1), -1)
+        self.assertEqual(len(lista.pares()), 2)
+
+    def test_fr001_fr005_pr15_m1_binaria_y_lineal_dan_lo_mismo_que_los_arreglos(self):
+        conocimiento, salas = preparar_m1(40)
+        self.assertIsNotNone(conocimiento)
+        self.assertEqual(len(salas), 40)
+        ordenada_salas, lineal_salas, ordenada_puertas, lineal_puertas = lineas_base_m1(conocimiento)
+        self.assertIsNotNone(ordenada_salas)
+
+        estados, recuerdos = [], []
+        for sala in salas:
+            esperado = conocimiento.estado(sala)
+            estados.append(esperado)
+            self.assertEqual(ordenada_salas.buscar(sala.id, DESCONOCIDA), esperado)
+            self.assertEqual(lineal_salas.buscar(sala.id, DESCONOCIDA), esperado)
+            for salida in sala.salidas.values():
+                esperado = conocimiento.recuerdo(salida)
+                recuerdos.append(esperado)
+                self.assertEqual(ordenada_puertas.buscar(clave_puerta(salida), SIN_OBSERVAR), esperado)
+                self.assertEqual(lineal_puertas.buscar(clave_puerta(salida), SIN_OBSERVAR), esperado)
+        # el mapa preparado mezcla los tres estados y los tres recuerdos, para que la comparación diga algo
+        self.assertEqual(_distintos(estados), 3)
+        self.assertEqual(_distintos(recuerdos), 3)
+
+    def test_fr003_fr009_pr15_m2_lista_ordenada_da_lo_mismo_que_los_arreglos(self):
+        conocimiento, lote, lista = preparar_m2(10)
+        self.assertIsNotNone(conocimiento)
+        self.assertTrue(lote)
+        self.assertGreaterEqual(len(conocimiento.reveladas), 10)
+        self.assertEqual(len(lista.pares()), len(conocimiento.reveladas))
+
+        def comparar():
+            for sala in conocimiento._salas:
+                self.assertEqual(lista.buscar(sala.id, DESCONOCIDA), conocimiento.estado(sala))
+
+        comparar()
+        conocimiento.aplicar(lote)
+        revelar_en_lista(lista, lote, conocimiento)
+        comparar()
+        conocimiento.invertir(lote)
+        deshacer_en_lista(lista, lote, conocimiento)
+        comparar()
+
+    def test_fr014_pr15_m3_las_tres_variantes_dejan_el_mismo_estado(self):
+        self.assertEqual(tuple(nombre for nombre, _, _ in VARIANTES_M3), ("lote", "cierres", "copia"))
+        despues = []
+        for nombre, crear, registrar in VARIANTES_M3:
+            with self.subTest(variante=nombre):
+                salas, centro = preparar_m3(60, 4)
+                conocimiento = crear(salas)
+                inicial = estado_de(conocimiento)
+                historial = Historial()
+                historial.abrir_intervalo()
+                registrar(conocimiento, centro, historial)
+                tras_registrar = estado_de(conocimiento)
+                self.assertNotEqual(tras_registrar, inicial)
+                despues.append(tras_registrar)
+                self.assertTrue(historial.deshacer_ultimo())
+                self.assertEqual(estado_de(conocimiento), inicial)
+        self.assertEqual(despues[0], despues[1])
+        self.assertEqual(despues[0], despues[2])
 
 
 if __name__ == "__main__":
