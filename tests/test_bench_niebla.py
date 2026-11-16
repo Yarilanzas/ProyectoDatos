@@ -1,4 +1,4 @@
-# Pruebas de la base de la medición de la Fase 6 (T100). T108 agrega aquí la prueba rápida de M1 a M6.
+# Pruebas de la medición de la Fase 6: base (T100) y M1 a M6 (T101 a T106). T108 agrega la prueba rápida de M1 a M6.
 # Atiende: SC-006, PR-15, Principio VIII. Sin red y sin vista.
 
 import contextlib
@@ -24,6 +24,7 @@ from tests.bench_niebla import (VARIANTES_M3, ListaLineal, ListaOrdenada, clave_
                                 preparar_m1, preparar_m2, preparar_m3, revelar_en_lista,
                                 deshacer_en_lista)
 from Modelo.Conocimiento import DESCONOCIDA, SIN_OBSERVAR
+from tests.mapas_sinteticos import grilla
 from Vista.VistaConsola import VistaConsola
 
 
@@ -292,6 +293,183 @@ class TestCorreccionDeLineasBase(unittest.TestCase):
                 self.assertEqual(estado_de(conocimiento), inicial)
         self.assertEqual(despues[0], despues[1])
         self.assertEqual(despues[0], despues[2])
+
+
+# M4 a M6 (T104 a T106). Solo forma y corrección: ninguna prueba afirma tiempos (Principio VIII).
+
+def _filas_m4(**opciones):
+    return bench_niebla.medir_m4((25, 100), repeticiones=1, **opciones)
+
+
+class TestM4(unittest.TestCase):
+    def test_fr024_pr15_m4_tamanos_y_topologias_de_research_r9(self):
+        self.assertEqual(bench_niebla.TAMANOS_M4, (25, 100, 400, 2500))
+        self.assertEqual(tuple(nombre for nombre, _ in bench_niebla.TOPOLOGIAS_M4), ("grilla", "cadena"))
+
+    def test_fr024_fr026_pr15_m4_una_fila_por_tamano_topologia_y_variante(self):
+        filas = _filas_m4()
+        self.assertEqual(len(filas), 8)
+        for topologia in ("grilla", "cadena"):
+            for v in (25, 100):
+                paso = _buscar_fila(self, filas, "M4", f"{topologia}/paso", V=v)
+                viaje = _buscar_fila(self, filas, "M4", f"{topologia}/viaje", V=v)
+                self.assertGreater(viaje.valor("pasos"), 0)
+                self.assertEqual(paso.valor("pasos"), 1)
+        for v in (25, 100):
+            fila = _buscar_fila(self, filas, "M4", "cadena/viaje", V=v)
+            self.assertEqual(fila.valor("pasos"), v - 1)
+
+    def test_sc007_pr15_m4_provisional_y_veredicto_contra_la_constante(self):
+        for fila in _filas_m4():
+            with self.subTest(fila=fila.texto()):
+                self.assertTrue(fila.provisional)
+                self.assertIn("PROVISIONAL", fila.texto())
+                self.assertIn("T110", fila.texto())
+                self.assertIn(fila.veredicto, ("cumple", "no cumple"))
+                self.assertIn(fila.veredicto, fila.texto())
+                por_paso = fila.ms / fila.valor("pasos")
+                esperado = "cumple" if por_paso <= bench_niebla.LIMITE_PASO_IR_A_MS else "no cumple"
+                self.assertEqual(fila.veredicto, esperado)
+
+    def test_sc007_pr15_m4_veredicto_usa_la_constante(self):
+        limite = bench_niebla.LIMITE_PASO_IR_A_MS
+        self.assertEqual(bench_niebla.veredicto_paso(limite), "cumple")
+        self.assertEqual(bench_niebla.veredicto_paso(limite + 0.001), "no cumple")
+        with mock.patch.object(bench_niebla, "LIMITE_PASO_IR_A_MS", 1000):
+            self.assertEqual(bench_niebla.veredicto_paso(limite + 0.001), "cumple")
+
+    def test_fr024_pr15_m4_mide_primer_paso_real_y_no_un_buscador_de_prueba(self):
+        from Modelo import rutas_ir_a
+        self.assertIs(bench_niebla.primer_paso, rutas_ir_a.primer_paso)
+        with mock.patch.object(rutas_ir_a, "primer_paso_busqueda",
+                               wraps=rutas_ir_a.primer_paso_busqueda) as real:
+            bench_niebla.medir_m4((25,), repeticiones=1)
+        self.assertGreater(real.call_count, 0)
+
+    def test_fr024_fr026_pr15_m4_el_viaje_llega_al_destino_por_rutas_minimas(self):
+        for nombre, generar in bench_niebla.TOPOLOGIAS_M4:
+            with self.subTest(topologia=nombre):
+                grafo, origen, destino = bench_niebla.preparar_m4(generar, 25)
+                self.assertIsNot(origen, destino)
+                pasos = bench_niebla.viaje_m4(grafo, origen, destino)
+                self.assertIs(pasos[-1].destino, destino)
+                # el costo total que anuncia cada paso baja en cada paso del viaje
+                for indice in range(len(pasos) - 1):
+                    self.assertGreater(pasos[indice].costo_total, pasos[indice + 1].costo_total)
+                self.assertEqual(bench_niebla.primer_paso(grafo, origen, destino), pasos[0])
+
+    def test_fr024_pr15_m4_acepta_un_espacio_reutilizado_con_el_mismo_resultado(self):
+        from Modelo.BusquedaRuta import EspacioBusqueda
+        filas = bench_niebla.medir_m4((25,), repeticiones=1, espacio=EspacioBusqueda)
+        self.assertEqual(len(filas), 4)
+        for fila in filas:
+            self.assertEqual(fila.valor("espacio"), "reutilizado")
+        grafo, origen, destino = bench_niebla.preparar_m4(grilla, 25)
+        sin = bench_niebla.viaje_m4(grafo, origen, destino)
+        con = bench_niebla.viaje_m4(grafo, origen, destino, EspacioBusqueda(grafo.cantidad_salas))
+        self.assertTrue(sin)
+        self.assertEqual(sin, con)
+
+
+class TestM5(unittest.TestCase):
+    def test_fr015_pr15_m5_tamanos_de_research_r9(self):
+        self.assertEqual(bench_niebla.TAMANOS_M5, (20, 200, 2000))
+
+    def test_fr015_pr15_m5_una_fila_por_k_formato_y_operacion(self):
+        filas = bench_niebla.medir_m5((20, 40), repeticiones=1)
+        self.assertEqual(len(filas), 8)
+        for k in (20, 40):
+            for formato in ("binario", "json"):
+                guardar = _buscar_fila(self, filas, "M5", f"{formato}/guardar", k=k)
+                cargar = _buscar_fila(self, filas, "M5", f"{formato}/cargar", k=k)
+                self.assertGreater(guardar.valor("bytes"), 0)
+                self.assertEqual(guardar.valor("bytes"), cargar.valor("bytes"))
+                self.assertGreaterEqual(cargar.valor("leidos"), cargar.valor("bytes"))
+
+    def test_fr015_pr15_m5_binario_y_json_dan_la_misma_informacion(self):
+        motor = bench_niebla.preparar_m5(20)
+        self.assertIsNotNone(motor.conocimiento)
+        with tempfile.TemporaryDirectory() as carpeta:
+            resultado = bench_niebla.ida_y_vuelta_m5(motor, carpeta)
+        original, desde_binario, desde_json, leidos_binario, leidos_json = resultado
+        self.assertEqual(len(original.exploradas), 20)
+        self.assertTrue(original.recuerdos)
+        self.assertTrue(original.puertas_reales)
+        self.assertEqual(desde_binario.to_dict(), original.to_dict())
+        self.assertEqual(desde_json.to_dict(), original.to_dict())
+        self.assertGreaterEqual(leidos_binario, len(original.to_bytes()))
+        self.assertGreater(leidos_json, 0)
+
+    def test_fr015_pr15_m5_usa_las_funciones_reales_de_persistencia(self):
+        from Persistencia import ArchivoPartida, ConversorPartida, ExportadorJSON
+        self.assertIs(bench_niebla.registro_conocimiento_desde_motor,
+                      ConversorPartida.registro_conocimiento_desde_motor)
+        self.assertIs(bench_niebla.guardar_partida, ArchivoPartida.guardar_partida)
+        self.assertIs(bench_niebla.LectorPartida, ArchivoPartida.LectorPartida)
+        self.assertIs(bench_niebla.guardar_partida_json, ExportadorJSON.guardar_partida_json)
+        self.assertIs(bench_niebla.cargar_conocimiento_json, ExportadorJSON.cargar_conocimiento_json)
+
+
+class TestM6(unittest.TestCase):
+    def test_sc006_pr15_percentil_95_con_merge_sort(self):
+        self.assertEqual(bench_niebla.percentil([5, 1, 3], 95), 5)
+        self.assertEqual(bench_niebla.percentil(list(range(20, 0, -1)), 95), 20)
+        self.assertEqual(bench_niebla.percentil([4.0], 95), 4.0)
+        valores = [3, 1, 2]
+        bench_niebla.percentil(valores, 95)
+        self.assertEqual(valores, [3, 1, 2])
+        with self.assertRaises(ValueError):
+            bench_niebla.percentil([], 95)
+
+    def test_sc006_pr15_m6_reusa_bench_ciclo(self):
+        from tests import bench_ciclo
+        self.assertEqual(bench_niebla.ENEMIGOS_M6, tuple(bench_ciclo.ENEMIGOS))
+        self.assertEqual(bench_niebla.CICLOS_M6, bench_ciclo.CICLOS)
+        self.assertEqual(bench_niebla.LIMITE_CICLO_MS, bench_ciclo.LIMITE_MS)
+        self.assertEqual(bench_niebla.ENEMIGOS_M6[0], 10)
+        self.assertEqual(bench_niebla.ENEMIGOS_M6[-1], 500)
+
+    def test_fr014_sc006_pr15_m6_una_fila_con_y_sin_conocimiento_por_tamano(self):
+        filas = bench_niebla.medir_m6((10, 20), ciclos=3)
+        self.assertEqual(len(filas), 4)
+        for k in (10, 20):
+            for variante in ("con conocimiento", "sin conocimiento"):
+                fila = _buscar_fila(self, filas, "M6", variante, enemigos=k, ciclos=3)
+                self.assertIsInstance(fila.p95, float)
+                self.assertGreaterEqual(fila.p95, fila.ms)
+                self.assertIn("p95", fila.texto())
+                esperado = "cumple" if fila.p95 < bench_niebla.LIMITE_CICLO_MS else "no cumple"
+                self.assertEqual(fila.veredicto, esperado)
+
+    def test_fr014_sc006_pr15_m6_con_y_sin_conocimiento_es_el_mismo_ciclo(self):
+        con = bench_niebla.preparar_m6(10, True)
+        sin = bench_niebla.preparar_m6(10, False)
+        self.assertIsNotNone(con.conocimiento)
+        self.assertIsNone(sin.conocimiento)
+
+        def foto(motor):
+            return (motor.reloj, [(e.id, e.sala.id, e.vida) for e in motor.enemigos],
+                    motor.jugador.sala.id, motor.jugador.vida)
+
+        self.assertEqual(foto(con), foto(sin))
+        with contextlib.redirect_stdout(io.StringIO()):
+            for _ in range(5):
+                bench_niebla.ciclo_m6(con)
+                bench_niebla.ciclo_m6(sin)
+        self.assertEqual(foto(con), foto(sin))
+        self.assertGreater(con.reloj, 0)
+
+
+class TestM4AM6SinRedNiVista(unittest.TestCase):
+    def test_sc006_pr15_m4_a_m6_corren_sin_red_ni_vista(self):
+        prohibido = AssertionError("las mediciones no usan red ni vista")
+        with mock.patch.object(socket.socket, "connect", side_effect=prohibido), \
+                mock.patch.object(VistaConsola, "__init__", side_effect=prohibido):
+            filas = (bench_niebla.medir_m4((25,), repeticiones=1) + bench_niebla.medir_m5((20,), repeticiones=1)
+                     + bench_niebla.medir_m6((10,), ciclos=2))
+        self.assertEqual(len(filas), 4 + 4 + 2)
+        for fila in filas:
+            self.assertIsNotNone(fila.ms, fila.texto())
 
 
 if __name__ == "__main__":

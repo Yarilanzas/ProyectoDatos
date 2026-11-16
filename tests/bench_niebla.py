@@ -1,26 +1,43 @@
 # Mediciones de la capacidad de niebla de guerra, mapa conocido e «ir a» (Fase 6, M1 a M6; research R9).
 # Base de la medición (T100): mediana de varias repeticiones y escritura de resultados_bench_niebla.txt con equipo y
 # versión de Python, igual que tests/bench_ciclo.py. M1 a M6 (T101 a T106) se agregan aquí; `--bench` la llama (T107).
-# Sin red y sin vista: no inicia partidas, así que no pasa por nueva_partida ni necesita forzar=True.
+# Sin red y sin vista: no pasa por nueva_partida ni crear_paquete_niebla, así que no necesita forzar=True. M6 arma
+# el motor a mano con `iniciar_partida`, como tests/bench_ciclo.py.
 # Los mapas son sintéticos (tests/mapas_sinteticos.py), sin datos de ninguna cripta real.
 # Atiende: PR-15, SC-006, Principio VIII.
 #
 # Principio I: la mediana usa el ordenamiento propio del repositorio (Modelo/ordenamiento.py), ni el ordenamiento
 # ni las estadísticas de la biblioteca estándar.
 
+import contextlib
+import io
+import json
 import os
 import platform
+import random
 import sys
+import tempfile
 import time
 
 RAIZ = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if RAIZ not in sys.path:
     sys.path.insert(0, RAIZ)
 
-from Modelo.Conocimiento import _CAMBIO_SALA, Conocimiento, DESCONOCIDA, EXPLORADA, SIN_OBSERVAR
+from DTOS.SalaEsqueleto import SalaEsqueleto
+from DTOS.Salida import Salida
+from Modelo.Conocimiento import _CAMBIO_SALA, Conocimiento, DESCONOCIDA, EXPLORADA, GrafoConocido, SIN_OBSERVAR
+from Modelo.Enemigo import Enemigo
+from Modelo.Jugador import Jugador
+from Modelo.MotorSimulacion import MotorSimulacion
 from Modelo.ordenamiento import merge_sort
 from Modelo.retroceso import Historial
-from tests.mapas_sinteticos import salas_sinteticas
+from Modelo.rutas_ir_a import primer_paso
+from Persistencia.ArchivoPartida import LectorPartida, guardar_partida
+from Persistencia.ConversorPartida import registro_conocimiento_desde_motor
+from Persistencia.ExportadorJSON import cargar_conocimiento_json, guardar_partida_json
+from Persistencia.RegistroSala import RegistroSala
+from tests.bench_ciclo import CICLOS as CICLOS_CICLO, ENEMIGOS as ENEMIGOS_CICLO, LIMITE_MS as LIMITE_MS_CICLO
+from tests.mapas_sinteticos import cadena, grilla, salas_sinteticas
 
 # Límite del cálculo de un paso de «ir a», en ms, con el mapa conocido completo de la cripta de referencia
 # (enunciado §6.1; plan.md, P-08). El valor puede cambiar por enmienda: este es el único lugar que lo escribe,
@@ -86,13 +103,17 @@ class Fila:
     """Una fila de resultado: qué medición, qué variante, con qué parámetros, cuánto tardó y qué hipótesis contrasta.
     ``ms`` es None si no se pudo medir; entonces ``nota`` dice por qué y la hipótesis queda como no medida."""
 
-    def __init__(self, medicion, variante, parametros, ms, hipotesis, nota=""):
+    def __init__(self, medicion, variante, parametros, ms, hipotesis, nota="", veredicto="", provisional=False,
+                 p95=None):
         self.medicion = medicion
         self.variante = variante
         self.parametros = tuple(parametros)  # pares (nombre, valor), en el orden en que se muestran
         self.ms = ms
         self.hipotesis = hipotesis
         self.nota = nota
+        self.veredicto = veredicto        # «cumple» o «no cumple» frente a un límite (M4, M6); vacío si no aplica
+        self.provisional = provisional    # M4: mapa sintético, sin veredicto definitivo de §6.1 (T110)
+        self.p95 = p95                    # M6: percentil 95 de los ciclos, en ms
 
     def valor(self, nombre):
         # O(p), p parámetros (dos o tres): recorrido lineal, sin dict como índice.
@@ -106,8 +127,12 @@ class Fila:
         if self.ms is None:
             return (f"{self.medicion} {self.variante:<16} {parametros:<28} no medido (ms)   "
                     f"hipótesis no medida: {self.hipotesis}. Motivo: {self.nota}")
+        p95 = f" p95 {self.p95:10.4f} ms" if self.p95 is not None else ""
+        veredicto = ""
+        if self.veredicto:
+            veredicto = f"   {'PROVISIONAL ' if self.provisional else ''}{self.veredicto}"
         nota = f" ({self.nota})" if self.nota else ""
-        return (f"{self.medicion} {self.variante:<16} {parametros:<28} {self.ms:10.4f} ms   "
+        return (f"{self.medicion} {self.variante:<16} {parametros:<28} {self.ms:10.4f} ms{p95}{veredicto}   "
                 f"hipótesis: {self.hipotesis}{nota}")
 
 
@@ -572,6 +597,254 @@ def medir_m3(tamanos=TAMANOS_M3_N, vecinas=VECINAS_M3, repeticiones=REPETICIONES
     return filas
 
 
+# --- M4: un paso y un viaje completo de «ir a» por `primer_paso` (T104; research R9; FR-024, FR-026, SC-007) -------
+# Se mide la interfaz real, `Modelo.rutas_ir_a.primer_paso`, que delega en `Modelo/BusquedaRuta.py` de Persona A.
+# Nunca un buscador de prueba: ese número no diría nada del juego. El grafo es un `GrafoConocido` real sobre un
+# `Conocimiento` con todo el mapa explorado y todas las puertas abiertas (el «mapa conocido completo»), y el costo de
+# cada salida lo da `motor.costo_salida`, como en el juego.
+# PROVISIONAL: los mapas son sintéticos. El límite de §6.1 se define para la cripta de referencia, que aún no está
+# publicada, así que el veredicto de estas filas no da §6.1 por cumplido (eso es T110).
+
+TAMANOS_M4 = (25, 100, 400, 2500)
+TOPOLOGIAS_M4 = (("grilla", grilla), ("cadena", cadena))
+NOTA_PROVISIONAL_M4 = ("mapa sintético, no la cripta de referencia; §6.1 no se da por cumplido hasta T110")
+
+
+def veredicto_paso(ms):
+    """«cumple» si ``ms`` no pasa de `LIMITE_PASO_IR_A_MS` (§6.1: 5 ms o menos), «no cumple» si lo pasa.
+    Lee la constante en cada llamada, así que una enmienda solo cambia la constante."""
+    return "cumple" if ms <= LIMITE_PASO_IR_A_MS else "no cumple"
+
+
+def preparar_m4(generar, cantidad):
+    """Mapa conocido completo de ``generar(cantidad)`` (cadena o grilla de tests/mapas_sinteticos.py): se entra sin
+    antorcha a cada sala, así que todas quedan exploradas y todas sus puertas recordadas como abiertas.
+    Devuelve (grafo, origen, destino): la primera sala y la última, el extremo opuesto del mapa. O(V + e)."""
+    salas = objetos_sinteticos(generar(cantidad))
+    conocimiento = Conocimiento(salas, _destino)
+    for sala in salas:
+        conocimiento.entrar(sala, False, _SIN_HISTORIAL)
+    grafo = GrafoConocido(conocimiento, MotorSimulacion(semilla=0).costo_salida)
+    return grafo, salas[0], salas[-1]
+
+
+def viaje_m4(grafo, origen, destino, espacio=None):
+    """Recorre el viaje paso a paso como «ir a»: en cada sala pide `primer_paso` hasta el destino y avanza a la
+    vecina del paso. Devuelve la lista de pasos. ``espacio`` es un `EspacioBusqueda` reutilizado en todo el viaje,
+    o None para que `primer_paso` cree uno por llamada (T109 mide ambos)."""
+    pasos = []
+    actual = origen
+    while actual is not destino:
+        paso = primer_paso(grafo, actual, destino, None, espacio)
+        if paso is None:
+            raise ValueError(f"sin ruta de {actual.id} a {destino.id}")
+        pasos.append(paso)
+        if len(pasos) > grafo.cantidad_salas:
+            raise ValueError("el viaje no termina: más pasos que salas")
+        actual = paso.destino
+    return pasos
+
+
+def _fila_m4(variante, parametros, funcion, repeticiones, pasos, hipotesis):
+    fila = _medir_fila("M4", variante, parametros, funcion, repeticiones, hipotesis, NOTA_PROVISIONAL_M4)
+    fila.provisional = True
+    if fila.ms is not None:
+        fila.veredicto = veredicto_paso(fila.ms / pasos)
+    return fila
+
+
+def medir_m4(tamanos=TAMANOS_M4, repeticiones=REPETICIONES, espacio=None):
+    """M4: por topología y V, una fila con un paso desde la primera sala hasta la última (la ruta más larga del mapa)
+    y otra con el viaje completo. El veredicto compara contra `LIMITE_PASO_IR_A_MS`: el del paso, su tiempo; el del
+    viaje, el promedio por paso. Todas las filas son provisionales.
+
+    ``espacio``: None, o una función que recibe la cantidad de salas y devuelve un `EspacioBusqueda` (por ejemplo la
+    clase misma), que se crea una vez por mapa, fuera de la medición, y se reutiliza en cada paso. Es para T109."""
+    filas = []
+    for nombre, generar in TOPOLOGIAS_M4:
+        for cantidad in tamanos:
+            grafo, origen, destino = preparar_m4(generar, cantidad)
+            reutilizado = None if espacio is None else espacio(grafo.cantidad_salas)
+            pasos = len(viaje_m4(grafo, origen, destino, reutilizado))
+            modo = ("espacio", "por llamada" if reutilizado is None else "reutilizado")
+
+            def un_paso(grafo=grafo, origen=origen, destino=destino, reutilizado=reutilizado):
+                primer_paso(grafo, origen, destino, None, reutilizado)
+
+            def viaje(grafo=grafo, origen=origen, destino=destino, reutilizado=reutilizado):
+                viaje_m4(grafo, origen, destino, reutilizado)
+
+            filas.append(_fila_m4(f"{nombre}/paso", (("V", cantidad), ("pasos", 1), modo), un_paso, repeticiones,
+                                  1, f"un paso con el mapa conocido completo tarda {LIMITE_PASO_IR_A_MS} ms o menos "
+                                     "(§6.1)"))
+            filas.append(_fila_m4(f"{nombre}/viaje", (("V", cantidad), ("pasos", pasos), modo), viaje,
+                                  repeticiones, pasos, "dato de apoyo: el viaje crece con los pasos; veredicto con "
+                                                       "el promedio por paso"))
+    return filas
+
+
+# --- M5: tamaño y tiempo del bloque de conocimiento; bytes leídos al cargar (T105; research R3, R9; FR-015) ----------
+# Con las funciones reales de Persistencia: `registro_conocimiento_desde_motor` arma el bloque, `guardar_partida` y
+# `guardar_partida_json` escriben el archivo, y `LectorPartida.leer_conocimiento` y `cargar_conocimiento_json` lo
+# leen. El archivo tiene un registro de sala por cada una de las n salas, para que «cargar no lee las salas» se vea.
+# «guardar» mide armar y serializar el bloque (binario: to_bytes; JSON: to_dict y json.dumps compacto, como
+# ExportadorJSON); escribir el archivo no se mide porque incluye fsync. «cargar» mide abrir el archivo y leer el
+# bloque. `bytes` es el tamaño del bloque y `leidos` lo que lee el cargado: en binario, `LectorPartida.bytes_leidos`;
+# en JSON, el archivo entero, porque json.load no puede leer una parte.
+
+TAMANOS_M5 = (20, 200, 2000)
+SALAS_POR_EXPLORADA_M5 = 4
+
+
+class MotorM5:
+    """Lo que `registro_conocimiento_desde_motor` lee del motor: `conocimiento` y `salas`. Solo para medir."""
+
+    def __init__(self, conocimiento, salas):
+        self.conocimiento = conocimiento
+        self.salas = salas
+
+
+def preparar_m5(k):
+    """``k`` salas exploradas (entrando sin antorcha) en un mapa de 4k salas con una de cada cinco salidas cerrada,
+    así el bloque tiene exploradas, recuerdos abiertos y cerrados, y puertas reales. O(n + e)."""
+    salas = objetos_sinteticos(salas_sinteticas(SALAS_POR_EXPLORADA_M5 * k), cerrar_cada=5)
+    conocimiento = Conocimiento(salas, _destino)
+    for sala in salas[:k]:
+        conocimiento.entrar(sala, False, _SIN_HISTORIAL)
+    return MotorM5(conocimiento, salas)
+
+
+def _rutas_m5(carpeta):
+    return os.path.join(carpeta, "partida_m5.dat"), os.path.join(carpeta, "partida_m5.json")
+
+
+def _bloque_json(registro):
+    # Mismo JSON compacto que ExportadorJSON para el campo "conocimiento".
+    return json.dumps(registro.to_dict(), separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+
+
+def _cargar_binario(ruta):
+    with LectorPartida(ruta) as lector:
+        registro = lector.leer_conocimiento()
+        return registro, lector.bytes_leidos
+
+
+def ida_y_vuelta_m5(motor, carpeta):
+    """Guarda la partida de ``motor`` en binario y en JSON dentro de ``carpeta`` y carga el conocimiento de cada uno.
+    Devuelve (original, desde_binario, desde_json, bytes_leidos_binario, bytes_leidos_json)."""
+    original = registro_conocimiento_desde_motor(motor)
+    registros = [RegistroSala(sala.id, -1, [], [], [], []) for sala in motor.salas]
+    ruta_binaria, ruta_json = _rutas_m5(carpeta)
+    guardar_partida(ruta_binaria, "bench", "1", "1", 0, 0, registros, conocimiento=original)
+    guardar_partida_json(ruta_json, "bench", "1", "1", 0, 0, registros, conocimiento=original)
+    desde_binario, leidos_binario = _cargar_binario(ruta_binaria)
+    desde_json = cargar_conocimiento_json(ruta_json)
+    return original, desde_binario, desde_json, leidos_binario, os.path.getsize(ruta_json)
+
+
+def medir_m5(tamanos=TAMANOS_M5, repeticiones=REPETICIONES):
+    filas = []
+    for k in tamanos:
+        motor = preparar_m5(k)
+        with tempfile.TemporaryDirectory() as carpeta:
+            original, _, _, leidos_binario, leidos_json = ida_y_vuelta_m5(motor, carpeta)
+            ruta_binaria, ruta_json = _rutas_m5(carpeta)
+            n = len(motor.salas)
+            binario = (("k", k), ("n", n), ("bytes", len(original.to_bytes())), ("leidos", leidos_binario))
+            texto = (("k", k), ("n", n), ("bytes", len(_bloque_json(original))), ("leidos", leidos_json))
+
+            def guardar_binario():
+                registro_conocimiento_desde_motor(motor).to_bytes()
+
+            def guardar_json():
+                _bloque_json(registro_conocimiento_desde_motor(motor))
+
+            filas.append(_medir_fila("M5", "binario/guardar", binario, guardar_binario, repeticiones,
+                                     "el bloque crece con lo conocido"))
+            filas.append(_medir_fila("M5", "binario/cargar", binario, lambda: _cargar_binario(ruta_binaria),
+                                     repeticiones, "cargar lee el bloque y no las salas"))
+            filas.append(_medir_fila("M5", "json/guardar", texto, guardar_json, repeticiones,
+                                     "línea base: el bloque JSON crece con lo conocido"))
+            filas.append(_medir_fila("M5", "json/cargar", texto, lambda: cargar_conocimiento_json(ruta_json),
+                                     repeticiones, "línea base: JSON lee el archivo completo"))
+    return filas
+
+
+# --- M6: ciclo completo entre decisiones, con y sin conocimiento (T106; research R9; FR-014, SC-006) ----------------
+# Reusa tests/bench_ciclo.py: sus tamaños (ENEMIGOS), sus ciclos (CICLOS) y su límite de 20 ms (§5.2). El montaje es
+# el de `bench_ciclo_real` de tests/bench_motor.py (que bench_ciclo llama), copiado aquí porque esa función no deja
+# quitar el conocimiento y calcula la mediana y el p95 con la biblioteca estándar; aquí van con merge_sort.
+# Las dos variantes corren el mismo ciclo, con las mismas semillas: «sin conocimiento» solo pone
+# `motor.conocimiento = None` tras `iniciar_partida`, como los motores de la Parte I (H7). No usa nueva_partida.
+
+ENEMIGOS_M6 = tuple(ENEMIGOS_CICLO)
+CICLOS_M6 = CICLOS_CICLO
+LIMITE_CICLO_MS = LIMITE_MS_CICLO
+SALAS_M6 = 200
+
+
+def percentil(valores, porcentaje):
+    """Valor en la posición min(r - 1, ⌊r · porcentaje / 100⌋) de ``valores`` ordenados, igual que el p95 de
+    bench_ciclo. Ordena con merge_sort (Principio I) y no cambia la entrada. O(r log r)."""
+    if len(valores) == 0:
+        raise ValueError("percentil de una lista vacía")
+    ordenados, _ = merge_sort(valores, _identidad)
+    return ordenados[min(len(ordenados) - 1, int(len(ordenados) * porcentaje / 100))]
+
+
+def preparar_m6(enemigos, con_conocimiento):
+    """Motor real con una cadena de 200 salas, el jugador en el medio y ``enemigos`` enemigos activos, igual que
+    `bench_ciclo_real`. Con ``con_conocimiento`` False se quita el conocimiento después de iniciar."""
+    salas = [SalaEsqueleto(i, f"s{i}", {}) for i in range(1, SALAS_M6 + 1)]
+    for i in range(SALAS_M6 - 1):
+        salas[i].salidas["E"] = Salida(salas[i + 1].id, False, None, None)
+        salas[i + 1].salidas["O"] = Salida(salas[i].id, False, None, None)
+    azar = random.Random(2)
+    jugador = Jugador("J", 10**9, 10**9, 1, 0, 100, salas[SALAS_M6 // 2])
+    lista = [Enemigo(f"e{i:05d}", 10, 10, 1, 0, azar.choice((80, 100, 150)),
+                     azar.choice(("errante", "rastreador", "guardian")),
+                     sala=salas[azar.randrange(SALAS_M6)]) for i in range(enemigos)]
+    motor = MotorSimulacion(semilla=1)
+    with contextlib.redirect_stdout(io.StringIO()):
+        motor.iniciar_partida(jugador, salas, lista)
+        for enemigo in lista:
+            motor.activar_enemigo(enemigo)
+    if not con_conocimiento:
+        motor.conocimiento = None  # el motor lo tolera (H7): así jugaba la Parte I
+    return motor
+
+
+def ciclo_m6(motor):
+    """Un ciclo completo entre dos decisiones del jugador: esperar y que actúen todos los enemigos."""
+    motor.ejecutar_accion("esperar")
+
+
+def medir_m6(enemigos=ENEMIGOS_M6, ciclos=CICLOS_M6):
+    """M6: por tamaño y variante, ``ciclos`` ciclos medidos uno a uno; la fila da la mediana (ms) y el p95, y el
+    veredicto compara el p95 con `LIMITE_CICLO_MS` (por debajo de 20 ms, como bench_ciclo)."""
+    filas = []
+    for cantidad in enemigos:
+        for variante, con_conocimiento in (("con conocimiento", True), ("sin conocimiento", False)):
+            parametros = (("enemigos", cantidad), ("ciclos", ciclos))
+            hipotesis = f"sin regresión frente a {LIMITE_CICLO_MS} ms (§5.2)"
+            try:
+                motor = preparar_m6(cantidad, con_conocimiento)
+                tiempos = []
+                with contextlib.redirect_stdout(io.StringIO()):
+                    for _ in range(ciclos):
+                        inicio = time.perf_counter_ns()
+                        ciclo_m6(motor)
+                        tiempos.append((time.perf_counter_ns() - inicio) / 1_000_000)
+                ms, p95 = float(mediana(tiempos)), float(percentil(tiempos, 95))
+            except Exception as error:  # noqa: BLE001 - se informa en la fila
+                filas.append(Fila("M6", variante, parametros, None, hipotesis, f"{type(error).__name__}: {error}"))
+                continue
+            fila = Fila("M6", variante, parametros, ms, hipotesis, "ms = mediana", p95=p95,
+                        veredicto="cumple" if p95 < LIMITE_CICLO_MS else "no cumple")
+            filas.append(fila)
+    return filas
+
+
 # --- Resultados -----------------------------------------------------------------------------------------------------
 
 def _seccion(titulo, filas):
@@ -584,7 +857,12 @@ def correr_bench(ruta=ARCHIVO_RESULTADOS):
                        "(R1; FR-001, FR-005)", medir_m1())
     lineas += _seccion("M2: revelar r salas con k ya conocidas (R1; FR-003, FR-009)", medir_m2())
     lineas += _seccion("M3: registrar y deshacer una entrada con antorcha (R2; FR-014)", medir_m3())
-    lineas.append("M4 a M6: pendientes (T104 a T106)")
+    lineas += _seccion(f"M4: un paso y un viaje de «ir a» por primer_paso, límite {LIMITE_PASO_IR_A_MS} ms por paso "
+                       f"(R6; FR-024, FR-026, SC-007). PROVISIONAL: {NOTA_PROVISIONAL_M4}", medir_m4())
+    lineas += _seccion("M5: bloque de conocimiento, binario frente a JSON; bytes = bloque, leidos = al cargar "
+                       "(R3; FR-015)", medir_m5())
+    lineas += _seccion(f"M6: ciclo completo con y sin conocimiento, {CICLOS_M6} ciclos por fila, límite "
+                       f"{LIMITE_CICLO_MS} ms al p95 (R1, R2; FR-014, SC-006)", medir_m6())
     escribir_resultados(lineas, ruta)
 
 if __name__ == "__main__":
