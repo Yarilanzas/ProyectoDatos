@@ -439,6 +439,25 @@ class TestEnemigosEnLaSalaDePartida(BaseViaje):
         self.assertEqual(self.avisos(self.ir(4)), ["Llegaste a la sala 4."])
         self.assertEqual(self.movimientos()[-2:], ["mover E", "mover E"])
 
+    def test_fr028_se_acepta_con_un_enemigo_dormido_en_la_sala_actual(self):
+        # FR-028: la orden se acepta aunque la sala actual tenga enemigos «activos o dormidos»; la parada (b)
+        # solo se evalúa al entrar. El motor activa a los enemigos de una sala al entrar, al iniciar y al cargar,
+        # así que para tener uno dormido en la sala de partida se omite la activación solo mientras se prepara:
+        # se empieza en 1 con la babosa, se explora 2 y se vuelve a 1. salida inalcanzable: forzar=True (spec 002, FR-021)
+        contenido = [contenido_sala(1, enemigos=["e-babosa"], tipo_enemigo=ENEMIGO_LENTO)]
+        with mock.patch.object(MotorSimulacion, "activar_enemigos_de_sala"):
+            motor = self.partida(mapa_pasillo(), contenido, forzar=True)
+            self.acciones(motor, ("mover", "E"), ("mover", "O"))
+        babosa = motor.enemigos[0]
+        self.assertEqual(motor.jugador.sala.id, 1)
+        self.assertIs(babosa.sala, motor.jugador.sala)
+        self.assertTrue(babosa.esta_vivo())
+        self.assertFalse(babosa.activo)
+
+        self.assertEqual(self.avisos(self.ir(2)), ["Llegaste a la sala 2."])
+        self.assertEqual(motor.jugador.sala.id, 2)
+        self.assertEqual(self.movimientos()[-1:], ["mover E"])
+
 
 # T053: casos borde.
 

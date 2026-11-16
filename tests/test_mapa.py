@@ -148,6 +148,11 @@ class TestMapaEsConsulta(BaseMapa):
     def test_fr020_la_ayuda_incluye_mapa(self):
         self.assertIn("mapa", AYUDA)
 
+    def test_fr020_la_ayuda_incluye_ir_a_con_su_destino(self):
+        # FR-020: la ayuda incluye `ir a <sala>`. Se exige el comando seguido de su argumento en una línea
+        # propia de la lista de comandos, no la notación exacta del argumento.
+        self.assertRegex(AYUDA, r"(?m)^\s*ir a \S+")
+
 
 class TestMapaConAntorcha(BaseMapa):
 

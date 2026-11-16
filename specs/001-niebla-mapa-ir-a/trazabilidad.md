@@ -18,6 +18,7 @@ en `spec.md`.
   (con la causa).
 
 **Suite al escribir esta matriz**: `python -m unittest discover -s tests -t .` → `Ran 810 tests`, `OK`, sin red.
+**Actualización del 2026-11-16** (huecos de FR-020 y FR-028 cerrados con dos pruebas nuevas): `Ran 812 tests`, `OK`.
 
 ## Requisitos funcionales (FR)
 
@@ -42,7 +43,7 @@ en `spec.md`.
 | FR-017 | PR-12, PR-14 | T067, T084, T086 a T096, T120, T121, T123, T124, T113\* | `tests/test_persistencia_conocimiento.py::test_fr017_sc004_escenario_us5_2_guardar_cargar_continuar_y_reproducir`<br>`tests/test_persistencia_conocimiento.py::test_fr017_cargar_con_la_bitacora_del_guardado_se_rechaza`<br>`tests/test_persistencia_conocimiento.py::test_fr017_guardar_con_la_bitacora_del_destino_se_rechaza`<br>`tests/test_bitacora.py::test_fr017_cargar_llama_a_recargar_y_sigue_con_el_motor_que_devuelve`<br>`tests/test_integracion.py::test_fr017_pr14_replay_termina_con_codigo_0_sin_vista` | hecho. Aparte: la condición (d) de P-07 (documentar `@cargar` en el README) sigue en T113 |
 | FR-018 | PR-08 | T033, T035 a T040, T111 | `tests/test_mapa.py::test_fr005_fr012_fr018_exploradas_con_salidas_y_avistadas_aparte`<br>`tests/test_mapa.py::test_fr018_el_dto_trae_direccion_destino_costo_y_estado`<br>`tests/test_mapa.py::test_fr018_ninguna_sala_desconocida_aparece_como_entrada_propia` | hecho |
 | FR-019 | PR-08 | T034, T040, T111 | `tests/test_mapa.py::test_fr019_en_el_instante_0`<br>`tests/test_mapa.py::test_fr019_despues_de_moverse_y_con_pergamino`<br>`tests/test_mapa.py::test_fr019_mapa_no_se_anota_en_la_bitacora` | hecho |
-| FR-020 | PR-08, PR-09, PR-16 | T039, T059, T111, T112\* | `tests/test_mapa.py::test_fr020_la_ayuda_incluye_mapa` | pendiente: la ayuda incluye `ir a <sala>` (T059), pero **sin prueba**: la única prueba comprueba `mapa`. El README documenta `mapa` (T111), pero no `ir a <sala>`: eso es T112, abierta |
+| FR-020 | PR-08, PR-09, PR-16 | T039, T059, T111, T112\* | `tests/test_mapa.py::test_fr020_la_ayuda_incluye_mapa`<br>`tests/test_mapa.py::test_fr020_la_ayuda_incluye_ir_a_con_su_destino` | hecho. Nota: la ayuda escribe el comando como `ir a SALA`; la prueba exige el comando con su argumento, no la notación. El README documenta `mapa` (T111), pero todavía no `ir a <sala>`: eso se cierra en T112, abierta |
 | FR-021 | PR-09 | T053, T054, T058, T064, T065, T112\* | `tests/test_viaje.py::test_fr021_fr023_recorrido_completo_de_ida_y_vuelta_sin_inyeccion`<br>`tests/test_viaje.py::test_fr021_ir_mal_formado_da_error_de_uso`<br>`tests/test_viaje.py::test_fr021_el_comando_admite_mayusculas_y_espacios` | hecho |
 | FR-022 | PR-09 | T045, T053, T057, T058, T083, T085 | `tests/test_viaje.py::test_fr022_sc005_escenario_us4_1_sala_avistada_desconocida_inexistente_o_no_valida`<br>`tests/test_viaje.py::test_fr022_sala_actual`<br>`tests/test_viaje.py::test_fr022_explorada_sin_ruta`<br>`tests/test_viaje.py::test_fr022_rechazos_sin_inyeccion_no_tienen_efectos` | hecho |
 | FR-023 | PR-10 | T041, T043, T044, T051, T055, T057, T062, T064 | `tests/test_viaje.py::test_fr023_fr029_solo_salas_exploradas_y_puertas_recordadas_abiertas`<br>`tests/test_viaje.py::test_fr005_fr023_el_motor_arma_el_grafo_con_su_conocimiento_y_costo_salida`<br>`tests/test_ruta_contrato.py::test_fr023_las_aristas_son_dirigidas` | hecho |
@@ -50,7 +51,7 @@ en `spec.md`.
 | FR-025 | PR-09 | T002\*, T007\*, T009\*, T011\*, T054, T056, T058 | `tests/test_viaje.py::test_fr021_fr025_mismo_estado_y_bitacora_que_los_mover_a_mano` | hecho |
 | FR-026 | PR-09 | T046, T053, T054, T056, T104 | `tests/test_viaje.py::test_fr026_con_otra_ruta_el_viaje_sigue_por_ella`<br>`tests/test_viaje.py::test_fr026_recalcula_antes_de_cada_paso`<br>`tests/test_viaje.py::test_fr026_puerta_que_se_cierra_sola_con_el_jugador_en_ella` | hecho |
 | FR-027 | PR-09 | T046, T047, T050, T052 a T054, T056 a T058, T060, T112\* | (a) y prioridad: `tests/test_viaje.py::test_fr027_prioridad_fin_dano_enemigos_destino`<br>(b) `tests/test_viaje.py::test_fr027b_escenario_us4_3_enemigo_dormido_se_activa_y_detiene`<br>(c) `tests/test_viaje.py::test_fr027c_escenario_us4_6_veneno_activo_desde_antes_de_la_orden`<br>(d) `tests/test_viaje.py::test_fr027d_sin_ruta_al_recalcular`<br>(e) `tests/test_viaje.py::test_fr027e_victoria_en_un_paso`<br>(f) `tests/test_viaje.py::test_fr027f_paso_rechazado_detiene_con_el_mensaje_de_mover_sin_tiempo` | hecho |
-| FR-028 | PR-09 | T052, T057 | `tests/test_viaje.py::test_fr028_escenario_us4_9_se_acepta_con_enemigos_en_la_sala_actual` | pendiente: **hueco conocido**. La única prueba usa un enemigo **activo** en la sala de partida; no hay prueba con un enemigo **dormido** ahí, y FR-028 cubre los dos. No se implementa en esta tarea |
+| FR-028 | PR-09 | T052, T057 | `tests/test_viaje.py::test_fr028_escenario_us4_9_se_acepta_con_enemigos_en_la_sala_actual` (enemigo activo)<br>`tests/test_viaje.py::test_fr028_se_acepta_con_un_enemigo_dormido_en_la_sala_actual` (enemigo dormido) | hecho. Nota: el motor activa a los enemigos de una sala al entrar, al iniciar y al cargar, así que la prueba del enemigo dormido omite esa activación solo mientras prepara la partida |
 | FR-029 | PR-10 | T044, T051, T055, T062 | `tests/test_viaje.py::test_fr023_fr029_escenario_us4_8_puerta_cerrada_con_llave_no_cuenta`<br>`tests/test_viaje.py::test_fr023_fr029_solo_salas_exploradas_y_puertas_recordadas_abiertas` | hecho |
 | FR-030 | PR-11 | T066, T081 a T085, T088, T098, T113\* | `tests/test_bitacora.py::test_fr030_comentar_escribe_numeral_y_texto`<br>`tests/test_bitacora.py::test_fr030_leer_bitacora_omite_los_comentarios`<br>`tests/test_bitacora.py::test_fr030_cripta_log_1_se_rechaza`<br>`tests/test_viaje.py::test_fr030_sc004_viaje_completo_deja_comentario_antes_del_primer_mover_y_se_reproduce` | pendiente: el comportamiento tiene prueba, pero el README todavía muestra `CRIPTA-LOG 1` y no documenta los comentarios. Documentar la versión 2 es T113, abierta |
 | FR-031 | PR-05, PR-09 | T028, T048, T056, T088 | `tests/test_viaje.py::test_fr014_fr031_escenario_us4_4_tras_viaje_completo_deshace_solo_el_ultimo_paso`<br>`tests/test_viaje.py::test_fr014_fr031_tras_viaje_detenido_deshace_el_paso_con_su_conocimiento`<br>`tests/test_persistencia_conocimiento.py::test_fr017_fr030_fr031_ir_a_y_pergaminos_sin_y_con_carga` | hecho |
@@ -79,7 +80,7 @@ en `spec.md`.
 | SC-003 | PR-06 | T068, T116\* | `tests/test_persistencia_conocimiento.py::test_fr015_sc003_escenario_us5_1_el_mapa_conocido_es_identico` | hecho |
 | SC-004 | PR-11, PR-12 | T083, T087, T088, T090, T091, T094, T116\* | `tests/test_persistencia_conocimiento.py::test_fr017_sc004_escenario_us5_2_guardar_cargar_continuar_y_reproducir`<br>`tests/test_persistencia_conocimiento.py::test_fr017_fr030_fr031_ir_a_y_pergaminos_sin_y_con_carga`<br>`tests/test_viaje.py::test_fr030_sc004_viaje_completo_deja_comentario_antes_del_primer_mover_y_se_reproduce` | hecho. Nota: la prueba con «ir a» y pergaminos usa un buscador de prueba inyectado, no la búsqueda real |
 | SC-005 | PR-09, PR-11 | T045, T053, T058, T083, T085, T116\* | `tests/test_viaje.py::test_fr022_sc005_escenario_us4_1_sala_avistada_desconocida_inexistente_o_no_valida`<br>`tests/test_viaje.py::test_fr022_sc005_orden_rechazada_no_deja_linea`<br>`tests/test_viaje.py::test_fr030_sc005_rechazo_del_primer_mover_no_deja_linea` | hecho |
-| SC-006 | PR-16 | T001, T009\*, T019, T081, T097, T099, T106, T108, T116\* | Suite completa: `Ran 810 tests`, `OK`, sin red<br>`tests/test_conocimiento.py::test_sc006_motor_sin_iniciar_partida_funciona_sin_conocimiento`<br>`tests/test_bench_niebla.py::test_sc006_pr15_t108_m1_a_m6_con_tamanos_minimos_sin_red_ni_vista` | hecho |
+| SC-006 | PR-16 | T001, T009\*, T019, T081, T097, T099, T106, T108, T116\* | Suite completa: `Ran 812 tests`, `OK`, sin red<br>`tests/test_conocimiento.py::test_sc006_motor_sin_iniciar_partida_funciona_sin_conocimiento`<br>`tests/test_bench_niebla.py::test_sc006_pr15_t108_m1_a_m6_con_tamanos_minimos_sin_red_ni_vista` | hecho |
 | SC-007 | PR-15 | T003, T104, T109, T110\* | `tests/test_bench_niebla.py::test_sc007_pr15_t108_m4_con_y_sin_espacio_compara_contra_la_constante` (forma y veredicto, sin afirmar tiempos)<br>Medición M4 en [`resultados_bench_niebla.txt`](../../resultados_bench_niebla.txt), PROVISIONAL, con mapas sintéticos (ver abajo) | **pendiente de T110**: §6.1 no se da por cumplido |
 
 **SC-007 y §6.1.** El límite es de 5 ms por paso «con el mapa conocido completo de la cripta de referencia», que aún no
@@ -118,7 +119,7 @@ jugadas que agregue T116 irá en un archivo con otro nombre, que se define en es
 
 | | Total | hecho | bloqueado | pendiente |
 |---|---|---|---|---|
-| FR | 31 | 25 | 0 | 6 (FR-005, FR-016, FR-020, FR-024, FR-028, FR-030) |
+| FR | 31 | 27 | 0 | 4 (FR-005, FR-016, FR-024, FR-030) |
 | SC | 7 | 6 | 0 | 1 (SC-007) |
 | Casos de SC-001 | 9 | 9 | 0 | 0 |
 
@@ -126,9 +127,13 @@ jugadas que agregue T116 irá en un archivo con otro nombre, que se define en es
 
 - **FR-005 y FR-024**: T010 abierta en la 001, aunque el código ya existe por la spec 003.
 - **FR-016 y FR-030**: falta el README de los formatos (T113).
-- **FR-020**: falta la prueba de `ir a` en la ayuda, y el README de `ir a` (T112).
-- **FR-028**: falta la prueba con un enemigo dormido en la sala de partida.
 - **SC-007**: §6.1 queda pendiente de T110.
 
-Ningún FR quedó **sin prueba**. FR-020 tiene una prueba solo para `mapa`; la parte de `ir a <sala>` en la ayuda está
-sin prueba.
+Ningún FR quedó **sin prueba**.
+
+**Huecos cerrados el 2026-11-16**
+
+- **FR-020**: `tests/test_mapa.py::test_fr020_la_ayuda_incluye_ir_a_con_su_destino` comprueba que la ayuda incluye
+  `ir a` con su argumento. El README de `ir a` sigue en T112.
+- **FR-028**: `tests/test_viaje.py::test_fr028_se_acepta_con_un_enemigo_dormido_en_la_sala_actual` cubre el enemigo
+  dormido en la sala de partida, que faltaba junto al activo del escenario US4-9.
