@@ -29,7 +29,7 @@ en `spec.md`.
 | FR-002 | PR-01, PR-05 | T013, T019, T026, T029 | `tests/test_conocimiento.py::test_fr001_fr002_fr004_sala_inicial_en_el_instante_0`<br>`tests/test_conocimiento.py::test_fr002_la_sala_inicial_no_se_puede_revertir` | hecho |
 | FR-003 | PR-01 | T014, T026, T030, T102 | `tests/test_conocimiento.py::test_fr003_fr004_fr005_de_avistada_a_explorada`<br>`tests/test_conocimiento.py::test_fr003_una_trampa_mortal_no_impide_explorar_la_sala` | hecho |
 | FR-004 | PR-01 | T013, T014, T024, T025, T069, T074 | `tests/test_conocimiento.py::test_fr004_una_sala_explorada_no_vuelve_a_avistada`<br>`tests/test_antorcha.py::test_fr004_los_vecinos_de_una_explorada_con_antorcha_quedan_avistados`<br>`tests/test_persistencia_conocimiento.py::test_fr004_fr015_avistadas_recalculadas_y_no_guardadas` | hecho |
-| FR-005 | PR-01, PR-13 | T002\*, T003, T118, T006\*, T007\*, T008\*, T009\*, T010\*, T011\*, T012\*, T014, T025, T033, T036, T038, T101 | `tests/test_conocimiento.py::test_fr003_fr004_fr005_de_avistada_a_explorada`<br>`tests/test_mapa.py::test_fr005_avistada_solo_por_su_id`<br>`tests/test_mapa.py::test_fr005_costo_distinto_de_100`<br>`tests/test_costo_salida.py::test_fr005_mover_usa_el_costo_de_la_salida`<br>`tests/test_viaje.py::test_fr005_fr024_el_costo_viene_de_costo_salida` | pendiente: **depende de T010** (capacidad de terreno y costos) para probarse con costos reales; ver [Estado de T010](#estado-de-t010) |
+| FR-005 | PR-01, PR-13 | T002, T003, T118, T006\*, T007\*, T008 (sustituida), T009\*, T010, T011, T012 (sustituida), T014, T025, T033, T036, T038, T101 | `tests/test_conocimiento.py::test_fr003_fr004_fr005_de_avistada_a_explorada`<br>`tests/test_mapa.py::test_fr005_avistada_solo_por_su_id`<br>`tests/test_mapa.py::test_fr005_costo_distinto_de_100`<br>`tests/test_costo_salida.py::test_fr005_mover_usa_el_costo_de_la_salida`<br>`tests/test_viaje.py::test_fr005_fr024_el_costo_viene_de_costo_salida` | pendiente: T010 ya está cubierta por la spec 003 (ver [Estado de T010](#estado-de-t010)), pero **ninguna prueba de la 001 usa un costo que venga de los datos**: todas lo ponen a mano en la salida o usan grafos de prueba |
 | FR-006 | PR-02, PR-07 | T061, T016, T017, T023, T026, T031, T071, T077 | `tests/test_conocimiento.py::test_fr006_al_entrar_al_origen_el_recuerdo_queda_cerrado`<br>`tests/test_conocimiento.py::test_fr006_al_entrar_al_destino_el_recuerdo_queda_cerrado`<br>`tests/test_conocimiento.py::test_fr006_esperando_en_la_sala_se_observa_el_cierre`<br>`tests/test_persistencia_conocimiento.py::test_fr006_fr015_h2_puerta_abierta_de_una_sala_no_restaurada` | hecho |
 | FR-007 | PR-02 | T015, T016, T026, T031 | `tests/test_conocimiento.py::test_fr007_fr012_cierre_no_observado_conserva_el_recuerdo` | hecho |
 | FR-008 | PR-02 | T017, T026, T031 | `tests/test_conocimiento.py::test_fr008_abrir_se_refleja_de_inmediato` | hecho |
@@ -48,7 +48,7 @@ en `spec.md`.
 | FR-021 | PR-09 | T053, T054, T058, T064, T065, T112\* | `tests/test_viaje.py::test_fr021_fr023_recorrido_completo_de_ida_y_vuelta_sin_inyeccion`<br>`tests/test_viaje.py::test_fr021_ir_mal_formado_da_error_de_uso`<br>`tests/test_viaje.py::test_fr021_el_comando_admite_mayusculas_y_espacios` | hecho |
 | FR-022 | PR-09 | T045, T053, T057, T058, T083, T085 | `tests/test_viaje.py::test_fr022_sc005_escenario_us4_1_sala_avistada_desconocida_inexistente_o_no_valida`<br>`tests/test_viaje.py::test_fr022_sala_actual`<br>`tests/test_viaje.py::test_fr022_explorada_sin_ruta`<br>`tests/test_viaje.py::test_fr022_rechazos_sin_inyeccion_no_tienen_efectos` | hecho |
 | FR-023 | PR-10 | T041, T043, T044, T051, T055, T057, T062, T064 | `tests/test_viaje.py::test_fr023_fr029_solo_salas_exploradas_y_puertas_recordadas_abiertas`<br>`tests/test_viaje.py::test_fr005_fr023_el_motor_arma_el_grafo_con_su_conocimiento_y_costo_salida`<br>`tests/test_ruta_contrato.py::test_fr023_las_aristas_son_dirigidas` | hecho |
-| FR-024 | PR-10, PR-13 | T003, T118, T008\*, T012\*, T041, T042, T043, T049, T062, T063, T064, T104, T109, T110\* | `tests/test_ruta_contrato.py::test_fr024_ruta_mas_barata_con_mas_saltos`<br>`tests/test_ruta_contrato.py::test_fr024_empate_va_a_la_vecina_de_menor_id_en_cualquier_orden`<br>`tests/test_ruta_contrato.py::test_fr024_dos_salidas_a_la_misma_vecina_gana_n_s_e_o`<br>`tests/test_ruta_contrato.py::test_fr024_pr10_misma_tabla_de_desempates_que_la_busqueda_compartida`<br>`tests/test_viaje.py::test_fr024_escenario_us4_5_empate_va_a_la_vecina_de_menor_id_con_busqueda_real` | pendiente: **depende de T010** (capacidad de terreno y costos) para probarse con costos reales; hoy se prueba con grafos de prueba y costos puestos a mano. Ver [Estado de T010](#estado-de-t010) |
+| FR-024 | PR-10, PR-13 | T003, T118, T008 (sustituida), T012 (sustituida), T041, T042, T043, T049, T062, T063, T064, T104, T109, T110\* | `tests/test_ruta_contrato.py::test_fr024_ruta_mas_barata_con_mas_saltos`<br>`tests/test_ruta_contrato.py::test_fr024_empate_va_a_la_vecina_de_menor_id_en_cualquier_orden`<br>`tests/test_ruta_contrato.py::test_fr024_dos_salidas_a_la_misma_vecina_gana_n_s_e_o`<br>`tests/test_ruta_contrato.py::test_fr024_pr10_misma_tabla_de_desempates_que_la_busqueda_compartida`<br>`tests/test_viaje.py::test_fr024_escenario_us4_5_empate_va_a_la_vecina_de_menor_id_con_busqueda_real` | pendiente: T010 ya está cubierta por la spec 003 (ver [Estado de T010](#estado-de-t010)), pero **ninguna prueba de la 001 elige una ruta con costos que vengan de los datos**: hoy se prueba con grafos de prueba y costos puestos a mano. La ruta suma el costo de cada salida en su sentido, que puede ser distinto del de la vuelta (spec 003, FR-001 y FR-003) |
 | FR-025 | PR-09 | T002\*, T007\*, T009\*, T011\*, T054, T056, T058 | `tests/test_viaje.py::test_fr021_fr025_mismo_estado_y_bitacora_que_los_mover_a_mano` | hecho |
 | FR-026 | PR-09 | T046, T053, T054, T056, T104 | `tests/test_viaje.py::test_fr026_con_otra_ruta_el_viaje_sigue_por_ella`<br>`tests/test_viaje.py::test_fr026_recalcula_antes_de_cada_paso`<br>`tests/test_viaje.py::test_fr026_puerta_que_se_cierra_sola_con_el_jugador_en_ella` | hecho |
 | FR-027 | PR-09 | T046, T047, T050, T052 a T054, T056 a T058, T060, T112\* | (a) y prioridad: `tests/test_viaje.py::test_fr027_prioridad_fin_dano_enemigos_destino`<br>(b) `tests/test_viaje.py::test_fr027b_escenario_us4_3_enemigo_dormido_se_activa_y_detiene`<br>(c) `tests/test_viaje.py::test_fr027c_escenario_us4_6_veneno_activo_desde_antes_de_la_orden`<br>(d) `tests/test_viaje.py::test_fr027d_sin_ruta_al_recalcular`<br>(e) `tests/test_viaje.py::test_fr027e_victoria_en_un_paso`<br>(f) `tests/test_viaje.py::test_fr027f_paso_rechazado_detiene_con_el_mensaje_de_mover_sin_tiempo` | hecho |
@@ -59,18 +59,30 @@ en `spec.md`.
 
 ### Estado de T010
 
-- **En tasks.md de la 001**, T010 sigue abierta (`[ ]`), igual que T002 y T006 a T012, todas a cargo de quien implemente §3.1.
-- **En el código**, la spec 003 (terreno y cazador) ya hizo ese trabajo con sus tareas T027 a T031, marcadas como hechas
-  en `specs/003-terreno-cazador/tasks.md`:
-  - `DTOS/Salida.py` tiene el campo `costo` y `desde_json` valida que sea un entero mayor o igual que 1.
-  - `mover_jugador` cobra `self.costo_salida(salida)`, y los enemigos también.
-- **Diferencia con el texto de T010**: el valor por defecto del DTO es `COSTO_POR_DEFECTO = 100`, no `None`. Así
-  `costo_salida` sigue dando 100, pero se pierde la distinción entre «sin costo propio» y «cuesta 100» que pedía R7.
-- **Pruebas**: las de la 001 usan costos puestos a mano en la salida o grafos de prueba. La única prueba de «ir a» con
-  costos de un paquete es de la spec 003 (`tests/test_terreno.py::test_fr004_fr026_cada_paso_de_ir_a_avanza_el_costo_de_su_salida`,
-  numeración de la 003), y no se cita como evidencia de la 001.
-- **Lo que falta para pasar FR-005 y FR-024 a «hecho»**: que el grupo decida si T027 a T031 de la 003 cierran T010 de
-  la 001, o que se cierre T010.
+Conciliación del 2026-11-16 entre las tareas de terreno y costos de esta capacidad y lo que hizo la spec 003 (detalle en
+[tasks.md](tasks.md), notas de T002 y T006 a T012).
+
+- **Cubiertas por la spec 003**, marcadas `[X]`:
+  - **T002**: el cambio de `Salida` lo hizo Persona B dentro de la 003.
+  - **T010**, con otro diseño: `COSTO_POR_DEFECTO = 100` en el DTO, no `None`, y `a_json` escribe `costo` siempre.
+  - **T011**, por T027 y T028 de la 003 y T118 de esta capacidad.
+- **Sustituidas por T031 de la 003**: T008 y T012. Los sentidos de una conexión pueden declarar costos distintos y no
+  existe `validar_costos_salidas`.
+- **Abiertas**: T006, T007 y T009, porque la 003 las cubre solo en parte:
+  - **T006**: no hay prueba de `null` ni de la ida y vuelta por `a_json`/`desde_json`.
+  - **T007**: no hay prueba de `retroceder` tras un `mover` con costo.
+  - **T009**: no hay prueba de punta a punta desde un paquete offline y la caché en disco.
+- **En el código**:
+  - `DTOS/Salida.py` valida el costo en `desde_json` (entero, mayor o igual que 1, no `bool`; 100 sin la clave).
+  - `mover_jugador` y los enemigos cobran `max(1, costo * 100 // velocidad)` con `costo_salida`
+    (`Modelo/MotorSimulacion.py`).
+- **Pruebas**: las de la 001 ponen el costo a mano en la salida o usan grafos de prueba. La spec 003 sí usa costos
+  declarados en el esqueleto (`SalaEsqueleto.desde_json`, a través de `mapa_a_mano`). Ejemplos:
+  `tests/test_validacion_datos.py` y `tests/test_terreno.py::test_fr004_fr026_cada_paso_de_ir_a_avanza_el_costo_de_su_salida`,
+  que mide el reloj de cada paso con un buscador inyectado. Siguen la numeración de FR de la 003 y no se citan como
+  evidencia de FR-005 ni de FR-024 de la 001.
+- **Lo que falta para pasar FR-005 y FR-024 a «hecho»**: una prueba de la 001 con costos que lleguen desde los datos.
+  Para FR-005, el mapa los muestra. Para FR-024, `ir a` elige la ruta de menor suma.
 
 ## Criterios de éxito (SC)
 
@@ -127,7 +139,7 @@ en una carpeta temporal fuera del repositorio.
 
 **Causas de lo pendiente**
 
-- **FR-005 y FR-024**: T010 abierta en la 001, aunque el código ya existe por la spec 003.
+- **FR-005 y FR-024**: T010 ya está cubierta por la spec 003, pero falta una prueba de la 001 con costos que vengan de los datos.
 - **FR-016 y FR-030**: falta el README de los formatos (T113).
 - **SC-007**: §6.1 queda pendiente de T110.
 

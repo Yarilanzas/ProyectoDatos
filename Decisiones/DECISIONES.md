@@ -914,17 +914,35 @@ Las filas `guardar` (binario 0.8708, 5.0914 y 72.9557 ms; JSON 0.8722, 5.4020 y 
 
 **Alternativas.**
 
-- Fijar 100 en el esqueleto o en `desde_json`: no distingue «sin costo propio» de «cuesta 100».
+- **`costo=None` en el DTO y omitir la clave en `a_json`** (lo que pedían R7 y T010 del plan de esta capacidad): así se distinguía «sin costo propio» de «cuesta 100». No es lo que quedó: el campo lo agregó la capacidad 003 con valor por defecto 100 (ver Decisión). Ni el plan de esta capacidad ni la spec 003 dejan escrito por qué se eligió 100 en lugar de `None`.
+- **Validar que los dos sentidos de una conexión tengan el mismo costo** (T008 y T012 del plan, y la frase «es el mismo en ambos sentidos» de P-02): la spec 003 lo descartó. Su FR-003 trata la igualdad de §3.1 como «supuesto de datos» que el programa no valida, y su FR-001 pide usar el costo de la salida que se atraviesa.
 - Constante de costo en `rutas_ir_a`.
 - Agregar el campo y cambiar `mover` en esta capacidad: invade otra capacidad y un contrato compartido.
 
-**Decisión.** Lectura por un único acceso, `MotorSimulacion.costo_salida(salida)`, que devuelve el costo de la salida o `COSTO_MOVER = 100` si no lo trae (P-02). `MapaConocido` y `GrafoConocido` solo usan ese acceso. El movimiento de ningún actor cambia (T118).
+**Decisión.** Lo que hay hoy en el código. La parte de esta capacidad es la lectura; lo demás lo decidió la spec 003 (terreno y cazador).
+
+- **Lectura (esta capacidad, T118).** Un único acceso, `MotorSimulacion.costo_salida(salida)`, que devuelve `getattr(salida, "costo", None)` o `COSTO_MOVER = 100` si eso es `None`. `MapaConocido` y `GrafoConocido` solo usan ese acceso.
+- **DTO (spec 003, T030).** `DTOS/Salida.py` tiene `costo` con valor por defecto `COSTO_POR_DEFECTO = 100`, y `a_json` escribe `costo` siempre. `desde_json` rechaza con `ValueError` un costo que no sea entero, que sea menor que 1 o que sea `bool`; sin la clave, usa 100 (FR-001 y FR-002 de la 003). Por eso, en una salida del juego, el respaldo de 100 de `costo_salida` ya no hace falta: solo actúa con objetos sin el atributo o con `costo = None`, como los dobles de prueba.
+- **Costos dirigidos (spec 003, T031).** Cada salida tiene su propio costo, y los dos sentidos de una conexión pueden declarar valores distintos sin que nada lo rechace. No existe `validar_costos_salidas`. La ruta de «ir a» suma el costo de cada salida que recorre, en su sentido.
+- **Cobro (spec 003, T027 y T028).** `mover_jugador` y los enemigos que se mueven reprograman su acción con `max(1, costo * 100 // velocidad)` (`calcu_inter`), usando `costo_salida` de la salida atravesada. Atacar, esperar y usar objetos conservan su costo de la Parte I.
 
 **Complejidad.** O(1) por salida.
 
-**Evidencia.** No hay afirmación de rendimiento que medir. La corrección la cubre `tests/test_costo_salida.py`. Mientras ninguna salida traiga costo, todas valen 100 y la ruta coincide con el reloj (FR-025).
+**Evidencia.** No hay afirmación de rendimiento que medir. La corrección la cubren estas pruebas:
 
-**¿Coincide con el plan?** Sí: es la decisión 6 del plan.
+- `tests/test_costo_salida.py`: el acceso único (T118 de esta capacidad) y `TestMoverUsaElCosto`, que la spec 003 actualizó en su T027 a la regla `costo * 100 // velocidad`.
+- `tests/test_validacion_datos.py` (T030 y T031 de la 003): dominio del costo, 100 sin la clave y sentidos con costos distintos.
+- `tests/test_terreno.py` (T019 a T026 de la 003, con la numeración de FR de esa spec): incluye el cobro de cada paso de «ir a».
+
+**Límites.**
+
+- El DTO ya no distingue «sin costo propio» de «cuesta 100».
+- No hay prueba de que un costo declarado en un paquete offline atraviese la caché en disco y llegue al cobro de `mover`. Era T009 de esta capacidad, que sigue abierta.
+
+**¿Coincide con el plan?** En parte.
+
+- La lectura por un único acceso coincide con la decisión 6 del plan.
+- El DTO con 100 por defecto y los costos sin validación de simetría difieren de lo que suponían P-02, R7, T010 y T012. Lo decidió la spec 003.
 
 ### Ciclo completo con conocimiento (M6)
 
