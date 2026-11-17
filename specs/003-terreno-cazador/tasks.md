@@ -158,12 +158,12 @@ Proyecto único MVC en la raíz: reglas en `Modelo/`, pruebas y bench en `tests/
 
 ### Tests for User Story 4
 
-- [ ] T055 [P] [US4] En `tests/test_cazador.py`: **Apéndice B, «una puerta de su ruta se cierra entre dos turnos»**: decide como desde cero: otra ruta mínima dentro del rango o espera con costo 100 (FR-016)
-- [ ] T056 [P] [US4] En `tests/test_cazador.py`: una puerta que se abre entre dos turnos crea una ruta más barata y el cazador la sigue (escenario 2; FR-016)
-- [ ] T057 [US4] Crear `tests/test_cazador_equivalencia.py`: partidas sintéticas de `tests/utiles_terreno.py` con al menos **1 000 turnos de cazadores** en total, con puertas que se cierran y abren durante el ciclo, el jugador cambiando de sala, varios cazadores con rangos distintos, puertas dirigidas y costos distintos por sentido; en cada turno compara la decisión del campo compartido con la referencia desde cero (acción, sala de destino, salida y costo) y exige 100 % de coincidencia (FR-016, FR-028, SC-003)
-- [ ] T058 [US4] En `tests/test_cazador_equivalencia.py`: partida con cazadores jugada, guardada, cargada y continuada, y la misma partida retrocedida con un pergamino y reproducida con `--replay`: las decisiones de todos los cazadores coinciden en el 100 % de los turnos con la partida original (FR-024, FR-025, SC-005). **⏳ bloqueada parcialmente por la capacidad 004 (formato de guardado)**
-- [ ] T059 [US4] En `tests/test_cazador_equivalencia.py`: la reconstrucción de un estado pasado de la línea de tiempo da las mismas decisiones de los cazadores que la partida jugada (FR-025). **⏳ bloqueada por la capacidad 004**
-- [ ] T060 [P] [US4] En `tests/test_cazador.py`: un comando rechazado del jugador no cambia `version_puertas`, la sala del jugador ni la siguiente decisión de ningún cazador (FR-023)
+- [x] T055 [P] [US4] En `tests/test_cazador.py`: **Apéndice B, «una puerta de su ruta se cierra entre dos turnos»**: decide como desde cero: otra ruta mínima dentro del rango o espera con costo 100 (FR-016)
+- [x] T056 [P] [US4] En `tests/test_cazador.py`: una puerta que se abre entre dos turnos crea una ruta más barata y el cazador la sigue (escenario 2; FR-016)
+- [x] T057 [US4] Crear `tests/test_cazador_equivalencia.py`: partidas sintéticas de `tests/utiles_terreno.py` con al menos **1 000 turnos de cazadores** en total, con puertas que se cierran y abren durante el ciclo, el jugador cambiando de sala, varios cazadores con rangos distintos, puertas dirigidas y costos distintos por sentido; en cada turno compara la decisión del campo compartido con la referencia desde cero (acción, sala de destino, salida y costo) y exige 100 % de coincidencia (FR-016, FR-028, SC-003)
+- [] T058 [US4] En `tests/test_cazador_equivalencia.py`: partida con cazadores jugada, guardada, cargada y continuada, y la misma partida retrocedida con un pergamino y reproducida con `--replay`: las decisiones de todos los cazadores coinciden en el 100 % de los turnos con la partida original (FR-024, FR-025, SC-005). **⏳ bloqueada parcialmente por la capacidad 004 (formato de guardado)**
+- [] T059 [US4] En `tests/test_cazador_equivalencia.py`: la reconstrucción de un estado pasado de la línea de tiempo da las mismas decisiones de los cazadores que la partida jugada (FR-025). **⏳ bloqueada por la capacidad 004**
+- [x] T060 [P] [US4] En `tests/test_cazador.py`: un comando rechazado del jugador no cambia `version_puertas`, la sala del jugador ni la siguiente decisión de ningún cazador (FR-023)
 
 **Checkpoint**: equivalencia demostrada; la estrategia compartida puede usarse en el juego.
 
