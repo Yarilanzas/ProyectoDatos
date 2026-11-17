@@ -113,16 +113,16 @@ class PruebasValidacionDeHasta(BaseCli):
         self.assertEqual(os.listdir(self.partida.carpeta.name), antes)
 
     def test_fr013_bench_ignora_las_opciones_sin_validarlas(self):
-        from tests import bench_cazador, bench_ciclo, bench_niebla, bench_personaD, bench_resolubilidad
+        from tests import bench_cazador, bench_ciclo, bench_linea, bench_niebla, bench_personaD, bench_resolubilidad
         # se reemplazan TODAS las mediciones que main llama: una sin reemplazar correría de verdad y reescribiría su archivo
         with mock.patch.object(bench_personaD, "correr_bench") as uno, mock.patch.object(bench_ciclo, "correr_bench") as dos, \
                 mock.patch.object(bench_resolubilidad, "correr_bench") as tres, \
                 mock.patch.object(bench_niebla, "correr_bench") as cuatro, \
-                mock.patch.object(bench_cazador, "correr_bench") as cinco:
+                mock.patch.object(bench_cazador, "correr_bench") as cinco,                 mock.patch.object(bench_linea, "correr_bench") as seis:
             codigo, texto = self.correr("--bench", "--hasta", "abc", "--checkpoint-cada", "0", "--cargar", "x",
                                         "--replay", self.bitacora, vista=VistaQueFalla, parches=self.sin_abrir_nada())
         self.assertEqual(codigo, 0, texto)
-        for medicion in (uno, dos, tres, cuatro, cinco):
+        for medicion in (uno, dos, tres, cuatro, cinco, seis):
             medicion.assert_called_once_with()
 
     # ───────────── la tabla de combinaciones, fila por fila ─────────────

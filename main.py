@@ -147,7 +147,7 @@ def main():
     parser.add_argument(
         "--bench",
         action="store_true",
-        help="Ejecuta las mediciones de persistencia, ciclo de eventos, cazador, resolubilidad y niebla de guerra / «ir a»",
+        help="Ejecuta las mediciones de persistencia, ciclo de eventos, cazador, resolubilidad, niebla de guerra / «ir a» y línea de tiempo",
     )
     parser.add_argument(
         "--verificar",
@@ -233,6 +233,7 @@ def main():
         from tests.bench_cazador import correr_bench as bench_cazador
         from tests.bench_resolubilidad import correr_bench as bench_resolubilidad
         from tests.bench_niebla import correr_bench as bench_niebla
+        from tests.bench_linea import correr_bench as bench_linea
 
         bench_persistencia()
         print()
@@ -243,6 +244,8 @@ def main():
         bench_resolubilidad()
         print()
         bench_niebla()
+        print()
+        bench_linea()
         return 0
 
     # --hasta y --checkpoint-cada son modificadores, no modos: se validan (código 1) después de --bench, que los ignora, y
