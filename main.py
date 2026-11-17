@@ -8,7 +8,10 @@ from Gestor.GestorDatos import GestorDatos
 from Gestor.PreparadorPartida import cargar_partida, preparar_partida, verificar_cripta
 from Bitacora.BitacoraPartida import leer_bitacora
 from Bitacora.Reproductor import Reproductor
+from Controlador.ConsultaHistoria import ConsultaHistoria
 from Controlador.ControladorPartida import ControladorPartida, CriptaNoResoluble, guardar_motor
+from Gestor.GestorHistorico import SinDatosParaHistoria
+from Modelo.LineaTiempo import ErrorReconstruccion, K_POR_OMISION, ReferenciaInvalida
 from Persistencia.FormatoBinario import VersionIncompatible
 from Persistencia.TablaPuntajes import ARCHIVO_PUNTAJES, CRITERIOS_PUNTAJES, TablaPuntajes
 from Vista.VistaConsola import VistaConsola
@@ -41,9 +44,14 @@ def _cerrar_restaurador(motor):
         motor.restaurador = None
 
 
-def ejecutar_replay(ruta, gestor):
+def ejecutar_replay(ruta, gestor, consulta=None):
     """S4.11: reconstruye la partida con la misma cripta y semilla y repite las acciones. Sin vista
     (Principio II, PR-14): quien llama muestra el resultado. Devuelve el motor final.
+
+    `consulta` (una `ConsultaHistoria`, para `--hasta`, spec 004 T063b) es opcional: da el observador del `Reproductor` y
+    recibe el motor final con `al_terminar`, **dentro** del `try`, antes del `finally` que cierra los restauradores y borra
+    la carpeta temporal (el estado final y los clones de la línea todavía leen archivos abiertos). La recarga de cada
+    `@cargar` es la de siempre: el propio `Reproductor` avisa al observador tras cada una.
 
     Cada `@cargar` repite la carga real (FR-017, PR-12): guarda el motor en un archivo temporal y lo carga
     con `cargar_partida`. La recarga NO ejecuta la verificación de resolubilidad (`--verificar`, FR-022 de
@@ -71,9 +79,16 @@ def ejecutar_replay(ruta, gestor):
         return nuevo
 
     try:
-        reproductor = Reproductor(fabrica_motor, version_cripta, version_catalogo, recargar=recargar)
-        return reproductor.reproducir(ruta)
+        observador = None if consulta is None else consulta.preparar(encabezado.cripta_id)
+        reproductor = Reproductor(fabrica_motor, version_cripta, version_catalogo, recargar=recargar,
+                                  observador=observador)
+        motor_final = reproductor.reproducir(ruta)
+        if consulta is not None:
+            consulta.al_terminar(motor_final)
+        return motor_final
     finally:
+        if consulta is not None:
+            consulta.cerrar()  # suelta el clon de la línea y borra sus copias antes de cerrar lo demás
         for motor in abiertos:
             _cerrar_restaurador(motor)
         shutil.rmtree(carpeta, ignore_errors=True)
@@ -82,6 +97,47 @@ def ejecutar_replay(ruta, gestor):
 def _mostrar_error(texto):
     # mismo formato que VistaConsola.mostrar_error, sin instanciar la vista (--replay, Principio II)
     print(f"! Error: {texto}")
+
+
+# errores de datos y de la línea de tiempo que terminan con `! Error: ...` y código 1. `SinDatosParaHistoria` (falta un dato
+# local y no se puede pedir a la red) es un RuntimeError; se nombra aparte para que no dependa de eso. Un guion que no
+# coincide con la partida es `VersionIncompatible` (código 2), no está aquí.
+ERRORES_DE_DATOS = (ValueError, RuntimeError, OSError, SinDatosParaHistoria, ErrorReconstruccion, ReferenciaInvalida)
+
+
+def _entero(texto, minimo):
+    """El entero que dice `texto` (solo dígitos ASCII, sin signo ni punto ni espacios) si es >= `minimo`; si no, None."""
+    if texto is None or not (texto.isascii() and texto.isdigit()):
+        return None
+    valor = int(texto)
+    return valor if valor >= minimo else None
+
+
+def validar_opciones_de_historia(argumentos):
+    """Valida `--hasta` y `--checkpoint-cada` (spec 004, T063a; contracts/comandos-historia.md, «Validación»). Se leen como
+    texto y se validan a mano: `argparse` con `type=int` terminaría con código 2, reservado a «versión incompatible» (HL11).
+    Es un error de uso (código 1) y se detecta antes de abrir la fuente de datos, de crear el gestor o de leer un archivo.
+
+    Devuelve `(mensaje de error o None, hasta, k)` con `hasta` y `k` ya como enteros (None si no se pasaron). No es un modo
+    ni cambia la tabla de prioridad: `--bench` ya terminó antes de llamarla."""
+    hasta = k = None
+    if argumentos.hasta is not None:
+        hasta = _entero(argumentos.hasta, 0)
+        if hasta is None:
+            return (f"--hasta requiere un entero mayor o igual que 0 (recibido: {argumentos.hasta}).", None, None)
+    if argumentos.checkpoint_cada is not None:
+        k = _entero(argumentos.checkpoint_cada, 1)
+        if k is None:
+            return (f"--checkpoint-cada requiere un entero mayor o igual que 1 (recibido: {argumentos.checkpoint_cada}).",
+                    None, None)
+    if hasta is not None and not argumentos.replay:
+        return ("--hasta solo se puede usar junto con --replay.", None, None)
+    # con --replay, --mostrar-puntajes o --verificar mandando, --cargar no se ejecuta: K no le toca
+    manda_cargar = argumentos.cargar and not (argumentos.replay or argumentos.mostrar_puntajes or argumentos.verificar)
+    if k is not None and manda_cargar:
+        return ("--checkpoint-cada no se puede usar al cargar una partida: rige el valor guardado en el archivo.",
+                None, None)
+    return (None, hasta, k)
 
 
 def main():
@@ -138,6 +194,16 @@ def main():
         help="Muestra la tabla de puntajes (mejores, acciones, tiempo, derrotados o nombre) y termina",
     )
     parser.add_argument(
+        "--hasta",
+        metavar="T",
+        help="Con --replay: muestra el estado en el instante T (entero >= 0) en vez de reproducir la bitácora entera",
+    )
+    parser.add_argument(
+        "--checkpoint-cada",
+        metavar="K",
+        help="Máximo de acciones entre puntos de control de la línea de tiempo (entero >= 1; por defecto 50). Solo cambia el costo",
+    )
+    parser.add_argument(
         "--bitacora",
         default="partida.log",
         help="Archivo donde se anotan las acciones de la partida",
@@ -179,20 +245,33 @@ def main():
         bench_niebla()
         return 0
 
+    # --hasta y --checkpoint-cada son modificadores, no modos: se validan (código 1) después de --bench, que los ignora, y
+    # antes de abrir la fuente o leer cualquier archivo (spec 004, contracts/comandos-historia.md)
+    error, hasta, k_linea = validar_opciones_de_historia(argumentos)
+    if error is not None:
+        _mostrar_error(error)
+        return 1
+
     # la prioridad de opciones es contrato publico: --bench, --mostrar-puntajes, --verificar (spec 002,
     # FR-017), --replay y luego la partida. --replay se atiende antes de crear la vista porque no debe
     # instanciarla (Principio II, PR-14); por eso cede explicitamente ante --mostrar-puntajes y --verificar
     if argumentos.replay and not argumentos.mostrar_puntajes and not argumentos.verificar:
         configurar_logging()
         gestor = crear_gestor(argumentos)
+        consulta = None if hasta is None else ConsultaHistoria(gestor, hasta, k_linea or K_POR_OMISION)
         try:
-            motor = ejecutar_replay(argumentos.replay, gestor)
+            motor = ejecutar_replay(argumentos.replay, gestor, consulta)
         except VersionIncompatible as error:
             _mostrar_error(f"Versión incompatible: {error}")
             return 2
-        except (ValueError, RuntimeError, OSError) as error:
+        except ERRORES_DE_DATOS as error:
             _mostrar_error(str(error))
             return 1
+        if consulta is not None:
+            # --replay --hasta: solo el resumen (el mismo texto que `historia`), sin «Reproducción finalizada.» ni puntaje
+            for linea in consulta.lineas:
+                print(linea)
+            return 0
         print("Reproducción finalizada.")
         print(f"Reloj: {motor.reloj}  Sala: {motor.jugador.sala.id}  Vida: {motor.jugador.vida}")
         print(f"Resumen: {motor.resumen_puntaje()}")
@@ -228,6 +307,8 @@ def main():
     gestor = crear_gestor(argumentos)
 
     controlador = ControladorPartida(gestor, vista, argumentos.bitacora, argumentos.puntajes)
+    if k_linea is not None:
+        controlador.k_linea = k_linea  # la partida nueva arma su línea con este K; --cargar ya lo rechazó arriba
 
     try:
         if argumentos.cargar:
@@ -250,7 +331,7 @@ def main():
         return 2
     # errores de datos de la verificación o de la partida (ErrorCliente hereda de RuntimeError): sin veredicto y
     # código 1, también con --forzar, que no los silencia (FR-024, FR-025)
-    except (ValueError, RuntimeError, OSError) as error:
+    except ERRORES_DE_DATOS as error:
         vista.mostrar_error(str(error))
         return 1
 

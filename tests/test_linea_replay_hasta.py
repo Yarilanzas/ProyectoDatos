@@ -2,9 +2,12 @@
 # FR-030; contracts/comandos-historia.md y formato-bitacora.md). Estas pruebas ejercitan `Controlador/ConsultaHistoria.py`, que es
 # lo que `main.py` llamará con `--hasta` (T063a y T063b): reproduce la bitácora **completa** con el `Reproductor`, un
 # `ObservadorLinea` y un gestor sin red, y da las líneas de texto que `main` imprimirá. Sin red, sin vista: todo el texto sale de
-# `Vista/TextoResumen.py`. Lo que necesita la opción `--hasta` del programa (código de salida, vista que falla al crearse, opción
-# sin `--replay`) queda para las pruebas de `main.py`.
+# `Vista/TextoResumen.py`. Cada escenario se prueba dos veces: contra `ConsultaHistoria` y por `main.py --replay --hasta` (las
+# clases `...PorMain`, que repiten las mismas pruebas con `main` y comprueban código de salida 0, la vista que falla al crearse y
+# que no hay «Reproducción finalizada.»). Las opciones inválidas y las combinaciones están en tests/test_cli_historia.py.
 
+import contextlib
+import io
 import os
 import sys
 import unittest
@@ -14,6 +17,7 @@ RAIZ = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if RAIZ not in sys.path:
     sys.path.insert(0, RAIZ)
 
+import main
 from Bitacora.BitacoraPartida import BitacoraPartida
 from Controlador.ConsultaHistoria import ConsultaHistoria
 from Controlador.ReconstructorLinea import acciones_del_guion
@@ -36,9 +40,38 @@ def historia(partida, t):
     return lineas_resumen(argumentos[0])
 
 
+class VistaQueFalla:
+    """Reemplaza a `VistaConsola`: `--replay --hasta` no debe instanciar la vista (Principio II)."""
+
+    def __init__(self, *argumentos, **opciones):
+        raise AssertionError("--replay --hasta instanció la vista")
+
+
+VIA = ["consulta"]   # «consulta»: ConsultaHistoria directo; «main»: `main.py --replay --hasta` (lo cambian las clases PorMain)
+
+
+def por_main(partida, t, k=50, bitacora=None):
+    """Lo que imprime `main.py --replay <bitácora> --hasta t --checkpoint-cada k`, como lista de líneas; exige código 0 y
+    que no se instancie la vista."""
+    argv = ["main.py", "--offline", partida.paquete, "--datos-locales", partida.ruta_datos,
+            "--replay", bitacora or partida.ruta_bitacora, "--hasta", str(t), "--checkpoint-cada", str(k)]
+    salida = io.StringIO()
+    with mock.patch.object(main, "VistaConsola", VistaQueFalla), \
+            mock.patch.object(main, "configurar_logging", lambda *a, **k: None), \
+            mock.patch.object(sys, "argv", argv), contextlib.redirect_stdout(salida):
+        codigo = main.main()
+    if codigo != 0:
+        raise AssertionError(f"main --replay --hasta {t} terminó con código {codigo}: {salida.getvalue()}")
+    if "Reproducción finalizada" in salida.getvalue():
+        raise AssertionError("main --hasta imprimió «Reproducción finalizada.»")
+    return salida.getvalue().splitlines()
+
+
 def consultar(partida, t, k=50):
     """Lo que `--replay <bitácora> --hasta t` imprimiría, como lista de líneas."""
     partida.controlador.bitacora.cerrar()
+    if VIA[0] == "main":
+        return por_main(partida, t, k)
     gestor = partida.nuevo_gestor(iniciado=False)
     consulta = ConsultaHistoria(gestor, t, k)
     return consulta.reproducir(partida.ruta_bitacora)
@@ -301,6 +334,49 @@ class PruebasCarga(unittest.TestCase):
         for t in (0, 150, 200, 250, self.final, 99999):
             with self.subTest(t=t):
                 self.assertEqual(self.consultar(t, k=1), self.consultar(t, k=500))
+
+
+# ───────────────────────── Lo mismo, por main.py --replay --hasta (T055 a T058) ─────────────────────────
+
+class PorMain:
+    """Hace que `consultar` pase por `main.py`: las pruebas de la clase base se repiten con el programa entero."""
+
+    def setUp(self):
+        super().setUp()
+        VIA[0] = "main"
+        self.addCleanup(self.volver_a_consulta)
+
+    @staticmethod
+    def volver_a_consulta():
+        VIA[0] = "consulta"
+
+
+class PruebasIgualQueHistoriaPorMain(PorMain, PruebasIgualQueHistoria):
+    """T055 (Escenario US4-1, Quickstart 8) por `main`: el mismo texto que `historia 250`, código 0, sin vista."""
+
+    def test_fr011_main_no_crea_la_vista_ni_imprime_nada_que_no_sea_el_resumen(self):
+        partida = self.jugada()
+        lineas = consultar(partida, 250)         # por_main ya exige código 0, sin vista y sin «Reproducción finalizada.»
+        self.assertEqual(lineas[0], "Historia — instante 250")
+        self.assertEqual(lineas, historia(partida, 250))
+        for linea in lineas:
+            self.assertFalse(linea.startswith(("Reloj:", "Resumen:", "!")), linea)
+
+
+class PruebasPartidaTerminadaPorMain(PorMain, PruebasPartidaTerminada):
+    """T056 por `main`: el aviso, el estado final y `Resultado:` con código 0."""
+
+
+class PruebasRetrocesoPorMain(PorMain, PruebasRetroceso):
+    """T057 por `main`."""
+
+
+class PruebasCargaPorMain(PruebasCarga):
+    """T058 por `main`: la bitácora con `@cargar` y la tabla del ejemplo, con el reloj global y continuo."""
+
+    def consultar(self, t, k=50):
+        partida = self.sesion.partida
+        return por_main(partida, t, k, bitacora=self.ruta)
 
 
 if __name__ == "__main__":

@@ -20,6 +20,7 @@
 # archivo_con_linea(origen, destino, registro, modo=None)                 lo mismo con un RegistroLinea, sano o alterado
 # leer_bloque_linea(ruta) -> bytes                                        el bloque de la línea de un CRPT 3 (sin usar LectorPartida)
 # copia_sin_datos(partida, borrar) -> CopiaSinDatos                       la carpeta de la partida sin el paquete o sin los datos locales
+# escribir_bitacora(sesion, ruta) -> ruta                                 la bitácora (con @cargar) del guion de una SesionLinea
 
 import os
 import random
@@ -33,7 +34,9 @@ if RAIZ not in sys.path:
     sys.path.insert(0, RAIZ)
 
 from API.Fuentes import FuenteDatosOffline
+from Bitacora.BitacoraPartida import BitacoraPartida
 from Controlador.ControladorPartida import ControladorPartida, guardar_motor
+from Controlador.ReconstructorLinea import acciones_del_guion
 from Gestor.GestorDatos import GestorDatos
 from Gestor.GestorHistorico import GestorHistorico
 from Gestor.PreparadorPartida import cargar_partida
@@ -720,3 +723,20 @@ def copia_sin_datos(partida, borrar):
     ruta_datos = os.path.join(destino, NOMBRE_DATOS)
     shutil.rmtree(paquete if borrar == "paquete" else ruta_datos)
     return CopiaSinDatos(carpeta, paquete, ruta_datos)
+
+
+def escribir_bitacora(sesion, ruta):
+    """Escribe en `ruta` la bitácora `CRIPTA-LOG` del guion de `sesion` (una `SesionLinea`): cada acción, cada
+    `retroceder` y, por cada carga, `@cargar`. Es lo que el controlador habría anotado jugando esa partida."""
+    gestor = sesion.partida.gestor
+    bitacora = BitacoraPartida(ruta, CRIPTA_NIEBLA, gestor.version_cripta(CRIPTA_NIEBLA), gestor.version_catalogo(),
+                               sesion.motores[0].semilla)
+    try:
+        for nombre, argumento in acciones_del_guion(sesion.linea.a_registro()):
+            if nombre == "@cargar":
+                bitacora.marcar_carga()
+            else:
+                bitacora.registrar(nombre, argumento)
+    finally:
+        bitacora.cerrar()
+    return ruta

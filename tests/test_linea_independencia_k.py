@@ -3,8 +3,9 @@
 # los dos caminos de consulta: el comando `historia <t>` de la partida y la reproducción de la bitácora con el observador
 # (lo que hace `--replay --hasta`: `Reproductor` + `ObservadorLinea` + `consultar_instante`). Tres semillas. Sin red.
 #
-# La opción `--replay --hasta` del programa llega con T062 y T063b; aquí se prueba su mecanismo con las piezas que ya están
-# (el `Reproductor` con observador y la línea), que es lo que `ConsultaHistoria` llamará.
+# Tres caminos: el comando `historia` de la partida, el mecanismo de `--replay --hasta` (el `Reproductor` con observador y la
+# línea, para los 100 instantes) y el programa de verdad, `main.py --replay --hasta T --checkpoint-cada K`, para una muestra
+# de instantes (cada llamada reproduce la bitácora entera).
 
 import os
 import sys
@@ -27,6 +28,7 @@ SEMILLAS = (1, 2, 3)
 KS = (1, 50, 500)
 ACCIONES = 60
 INSTANTES = 100
+MUESTRA_POR_MAIN = (0, 17, 50, 83, 99)   # posiciones de la lista de instantes que también se piden por main
 
 
 def instantes(reloj):
@@ -81,6 +83,7 @@ def por_replay(partida, k, tiempos):
 class PruebasIndependenciaDeK(unittest.TestCase):
 
     def test_fr028_sc003_los_mismos_100_instantes_con_k_1_50_y_500_por_historia_y_por_replay(self):
+        from tests.test_linea_replay_hasta import por_main   # aquí: ese módulo importa de este
         for semilla in SEMILLAS:
             referencia = None
             tiempos = None
@@ -95,6 +98,11 @@ class PruebasIndependenciaDeK(unittest.TestCase):
                     historia = por_historia(partida, tiempos)
                     replay = por_replay(partida, k, tiempos)
                     self.assertEqual(historia, replay, "historia y --replay --hasta dan lo mismo")
+                    for posicion in MUESTRA_POR_MAIN:
+                        por_el_programa = por_main(partida, tiempos[posicion], k)
+                        self.assertEqual(por_el_programa[0], f"Historia — instante {tiempos[posicion]}")
+                        self.assertEqual(por_el_programa[1:], historia[posicion],
+                                         f"main --replay --hasta {tiempos[posicion]} --checkpoint-cada {k}")
                     if referencia is None:
                         referencia = historia
                     self.assertEqual(historia, referencia, f"K={k} cambió lo que se ve")

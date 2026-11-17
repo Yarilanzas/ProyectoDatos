@@ -159,6 +159,10 @@ class PruebasRestriccionesDeProduccion(unittest.TestCase):
         self.assertNotEqual(hallazgos(permitido, "Modelo/LineaTiempo.py"), [])
 
 
+def vista_que_falla():
+    raise AssertionError("--replay --hasta instanció la vista")
+
+
 def estado_de(ruta):
     """(existe, tamaño, instante de modificación) de un archivo; (False, 0, 0) si no existe."""
     if not os.path.exists(ruta):
@@ -184,6 +188,8 @@ class PruebasSinArchivosDeLaParteI(unittest.TestCase):
         self.assertGreater(len(rutas), 10)
         self.assertIn(os.path.join(RAIZ, "tests", "utiles_linea.py"), rutas)
         self.assertIn(os.path.join(RAIZ, "tests", "test_linea_restricciones.py"), rutas)
+        self.assertIn(os.path.join(RAIZ, "tests", "test_cli_historia.py"), rutas)      # ya existe: T059, T060 y T095
+        self.assertIn(os.path.join(RAIZ, "tests", "test_linea_cargar_cli.py"), rutas)
         for ruta in rutas:
             with open(ruta, encoding="utf-8") as archivo:
                 texto = archivo.read()
@@ -223,13 +229,20 @@ class PruebasSinArchivosDeLaParteI(unittest.TestCase):
         base = ["main.py", "--offline", partida.paquete, "--datos-locales", partida.ruta_datos]
         corridas = (
             base + ["--replay", partida.ruta_bitacora],
+            base + ["--replay", partida.ruta_bitacora, "--hasta", "150"],
+            base + ["--replay", partida.ruta_bitacora, "--hasta", "99999", "--checkpoint-cada", "3"],
+            base + ["--replay", partida.ruta_bitacora, "--checkpoint-cada", "1"],
             base + ["--puntajes", os.path.join(partida.carpeta.name, "puntajes.txt"),
                     "--cargar", guardado, "--bitacora", os.path.join(partida.carpeta.name, "continuacion.log")],
         )
         for argumentos in corridas:
             with self.subTest(argumentos=argumentos[5:]):
+                if "--hasta" in argumentos:        # `--hasta` no usa la vista: si la crea, la prueba falla
+                    vista = vista_que_falla
+                else:
+                    vista = lambda: VistaConsola(entrada=sin_entrada)
                 salida = io.StringIO()
-                with mock.patch.object(main, "VistaConsola", lambda: VistaConsola(entrada=sin_entrada)), \
+                with mock.patch.object(main, "VistaConsola", vista), \
                         mock.patch.object(main, "configurar_logging", lambda *a, **k: None), \
                         mock.patch.object(sys, "argv", argumentos), contextlib.redirect_stdout(salida):
                     codigo = main.main()
