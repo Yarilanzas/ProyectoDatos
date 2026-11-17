@@ -527,7 +527,7 @@ Respaldo automático: `tests/test_viaje.py::test_fr027c_trampa_rearmada_en_la_ru
 
 No se corrió. Ningún dato de cripta ni ninguna acción del juego aplica veneno: `MotorSimulacion.aplicar_veneno` solo
 se llama desde las pruebas, y ninguna cripta offline del repositorio envenena. Por eso este caso no se puede producir
-hoy jugando y no se simuló. Queda como límite conocido ([DECISIONES.md, «Veneno no jugable»](../../Decisiones/DECISIONES.md#veneno-no-jugable-límite-conocido)); se reabre solo si Persona B confirma que el API manda ese dato.
+hoy jugando y no se simuló. Queda como límite conocido ([DECISIONES.md, «Veneno no jugable»](../../Decisiones/DECISIONES.md#veneno-no-jugable-límite-conocido)); Persona B confirmó el 2026-11-17 que el API no manda ningún dato de veneno (ni en enemigos, ni en objetos, ni en trampas).
 
 Respaldo automático: `tests/test_viaje.py::test_fr027c_escenario_us4_6_veneno_activo_desde_antes_de_la_orden`
 (aplica el veneno directamente al motor).
