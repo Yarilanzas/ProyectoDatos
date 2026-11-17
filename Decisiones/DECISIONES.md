@@ -743,7 +743,131 @@ Cada sección sigue la estructura de P1 §8 y además enlaza a su spec y su plan
 
 ## §5.1 — La ruta más barata del cazador
 
+Spec: [specs/003-terreno-cazador/spec.md](../specs/003-terreno-cazador/spec.md) · Plan: [plan.md](../specs/003-terreno-cazador/plan.md) · Alternativas: [research.md](../specs/003-terreno-cazador/research.md) (R1 a R4 y R6) · Tareas: [tasks.md](../specs/003-terreno-cazador/tasks.md)
+
+**¿Coincide con el plan original?** Sí en lo esencial: Dijkstra con cola propia, listas por ordinal con marca de época, corte por rango y dos estrategias detrás de un único punto de decisión. Cambió una cosa: el plan arrancaba con la referencia desde cero y dejaba el campo compartido condicionado a M3 y M4; con las mediciones se eligió el compartido como estrategia por defecto (T070). Además, la hipótesis k* ≈ 2 no se confirmó: se midió k* = 5.
+
+### 1. Problema
+
+El cazador tiene que decidir en cada turno hacia qué sala moverse para llegar al jugador por la ruta de menor costo, usando solo las salidas abiertas y sin pasar de su rango. Cada salida tiene su propio costo (100 si no lo trae), las salidas son dirigidas y las puertas cierran y abren durante la partida. Con decenas de cazadores activos la decisión de todos debe caber en menos de 20 ms por ciclo (FR-030, SC-004), y el costo no debe crecer con el tamaño de la cripta cuando el rango es fijo (FR-033, SC-007). Además, el resultado debe ser determinista: ante rutas de igual costo gana la vecina de menor id y, si hay varias salidas a esa vecina, la de menor costo y luego N, S, E, O (FR-014).
+
+### 2. Alternativas consideradas
+
+> • **Reutilizar `AgendaEventos` como cola de la búsqueda:** funciona (O(log N)), pero acopla dos contratos: el índice intrusivo y `cancelado` son semántica de la agenda, y un cambio en ella (la línea de tiempo la usa) rompería la búsqueda. Además cada entrada crea un `Evento`. Se descartó.
+>
+> • **Búsqueda lineal del mínimo, sin montículo:** O(R²). Con 10 000 entradas fue 104.1 veces más lenta que la cola propia (M2); solo gana con 10 entradas.
+>
+> • **`dict` sala → distancia, o una lista nueva `[∞] * n` por búsqueda:** el dict está prohibido (§7 del enunciado) y la lista nueva cuesta O(n) por decisión, lo que rompe FR-033.
+>
+> • **Cada cazador busca por su cuenta (individual) o una sola búsqueda al revés desde el jugador (compartida):** ver la decisión.
+>
+> • **Búsqueda incremental (LPA*, D* Lite):** la complejidad de implementar y probar es alta para el alcance del curso, y el campo por ciclo ya da el ahorro principal.
+
+### 3. Decisión
+
+La búsqueda es un Dijkstra propio con un montículo binario aparte (`Modelo/ColaPrioridad.py`), con claves enteras (distancia, ordinal) e inserción perezosa: si una sala mejora se inserta de nuevo y la entrada vieja se descarta al extraerla. Las distancias viven en listas de tamaño n creadas una sola vez, con una marca de época: `epoca[i] == epoca_actual` indica que `dist[i]` es válido en esta búsqueda, y empezar una búsqueda nueva solo incrementa la época, sin recorrer nada. Esas listas están en un `EspacioBusqueda` que guarda el motor, así que el costo O(n) de crearlo no se paga en cada decisión. «Ir a» usa el mismo `primer_paso` y crea un espacio por llamada.
+
+La búsqueda es acotada: una sala cuya distancia tentativa supera la cota nunca entra a la cola. Como todo costo es ≥ 1, Dijkstra fija exactamente las salas con distancia ≤ cota, así que el corte no cambia la distancia cuando esta es ≤ rango. Si la cola se vacía sin llegar al jugador, el cazador espera con costo 100.
+
+Hay dos estrategias detrás de un único punto de decisión (`MotorSimulacion.decidir_cazador`):
+
+> • **Individual:** cada cazador hace su propia búsqueda desde su sala hasta la del jugador. Guarda, para cada sala, la vecina del origen por la que empieza la mejor ruta (la de menor id entre las de costo mínimo). Es la referencia desde cero de las pruebas.
+>
+> • **Compartida (la del juego):** una sola búsqueda acotada desde la sala del jugador sobre el grafo transpuesto, recorriendo las salidas entrantes `w→x` con el costo y el estado de puerta de esa misma salida. Al terminar, `dist[u]` es la distancia de `u` al jugador. Cada cazador decide en O(deg(u)) aplicando FR-014 literalmente, así que el orden en que la búsqueda fijó las salas no influye en el desempate. La cota es el mayor rango entre los cazadores activos.
+
+Se eligió la compartida como estrategia por defecto (T070) tras medir. La prueba de equivalencia (`tests/test_cazador_equivalencia.py`) compara, turno a turno, cada decisión en partidas reales contra la referencia desde cero, incluidos escenarios con puertas dirigidas, costos distintos por sentido y empates.
+
+### 4. Análisis de complejidad
+
+Con R las salas a distancia ≤ rango y E_R las salidas que salen de ellas, una búsqueda acotada cuesta O((|R| + |E_R|) log |E_R|), independiente de n gracias a la marca de época. Como cada sala tiene grado ≤ 4, |E_R| ≤ 4|R|. Con k cazadores, la individual suma k búsquedas (cada una se detiene al extraer al jugador), y la compartida hace una búsqueda alrededor del jugador con la cota máxima más Σ deg(uᵢ) para las lecturas. Memoria: O(n) una sola vez para el espacio; la construcción inicial (ordinales, entrantes) es O(n + m) y ocurre al iniciar o cargar la partida.
+
+### 5. Evidencia empírica
+
+Medido con `python main.py --bench` (`tests/bench_cazador.py`) en una cripta sintética provisional de 300 salas, en un Intel Core i5-7300U a 2.60 GHz con Python 3.13.13:
+
+> • **Cola propia (M2):** con 1000 entradas, 6.23 ms frente a 15.27 ms de la agenda y 92.14 ms de la búsqueda lineal; con 10 000, 96.50 ms, 260.88 ms y 10 045.28 ms.
+>
+> • **Individual contra compartida (M3):** con rango 2000 y un cazador, la individual tarda 758.9 µs y la compartida 1.94 ms; con 50 cazadores, 31.63 ms y 2.40 ms (13.16 veces menos). Desde k = 5 la compartida es más rápida con rango 500 y con rango 2000 (k* = 5; la hipótesis inicial era k* ≈ 2 y no se confirmó).
+>
+> • **Ciclo con 50 cazadores (M4):** con la compartida el p95 es 6.87 ms; recalcular siempre desde cero da 29.48 ms y no cumple los 20 ms. Con la compartida se hacen 100 búsquedas en 100 ciclos, frente a 603 al recalcular.
+>
+> • **Ciclo completo con 50 cazadores y rangos 500, 1000 y 2000 (M7):** individual, mediana 8.83 ms y p95 19.43 ms (cumple, a 0.57 ms del límite); compartida, mediana 2.01 ms y p95 3.39 ms.
+>
+> • **Tamaño de la cripta (M5):** con rango 600, la mediana de 5 repeticiones pasa de 82.2 µs (10² salas) a 78.7 µs (10⁵); el cociente es 0.96 ≤ 1.5. Una corrida anterior en frío dio 1.59, y por eso M5 calienta antes de medir. Con un espacio nuevo por llamada, la misma búsqueda con 10⁵ salas tarda 53.5 veces más que reutilizando el espacio.
+
+### 6. Límites conocidos
+
+> • Con uno o dos cazadores activos la individual es más rápida (hasta 1.2 ms por ciclo con rango 2000), porque se detiene al extraer al jugador mientras el campo recorre toda la cota. Si una cripta casi siempre tuviera uno o dos cazadores, la ganancia se invierte.
+>
+> • Un cazador con rango muy grande eleva la cota de todos, y la compartida explora toda esa región.
+>
+> • La cripta de las mediciones es sintética y provisional (300 salas); hay que repetir M4 y M7 cuando se publique la de referencia. Las mediciones son medianas en un solo equipo, y entre 10⁴ y 10⁵ salas la mediana sube 1.87 veces, probablemente por efectos de caché (no se verificó por separado).
+>
+> • Si el rango abarca toda la cripta no hay ahorro por el corte. Con costo 0 el desempate por menor id dejaría de ser correcto; FR-001 rechaza ese caso.
+
 ## §5.2 — Rutas que dejan de ser válidas
+
+Spec: [specs/003-terreno-cazador/spec.md](../specs/003-terreno-cazador/spec.md) · Plan: [plan.md](../specs/003-terreno-cazador/plan.md) · Alternativas: [research.md](../specs/003-terreno-cazador/research.md) (R5) · Tareas: [tasks.md](../specs/003-terreno-cazador/tasks.md)
+
+**¿Coincide con el plan original?** Sí en el mecanismo (una llave que invalida el campo y un contador de versión de puertas). Cambió que la llave pasó de cuatro campos (ciclo, sala del jugador, versión de puertas y cota) a cinco, al añadir la época del espacio de búsqueda, porque una búsqueda individual que reutiliza el mismo espacio invalidaba el campo sin que la llave lo detectara.
+
+### 1. Problema
+
+Una ruta calculada puede quedar mal por dos motivos: una puerta de la ruta se cierra, o una puerta que estaba cerrada se abre y aparece una ruta más barata. Reutilizar un cálculo viejo cambiaría la decisión del cazador; recalcular desde cero en cada turno es correcto pero caro (FR-016, FR-031, FR-032). Hay que decidir qué eventos invalidan el cálculo compartido y cómo detectarlo sin recorrer las puertas.
+
+### 2. Alternativas consideradas
+
+> • **Recalcular siempre desde cero:** es la referencia y es correcta, pero con 50 cazadores el p95 del ciclo es 29.48 ms, por encima del límite de 20 ms.
+>
+> • **Ruta recordada por cada cazador, seguida mientras sus puertas sigan abiertas:** no basta revisar la ruta, porque una puerta que se abre en otro lado puede crear una ruta más barata y el cazador seguiría la vieja (escenario 2 de la US4). Se descartó.
+>
+> • **Búsqueda incremental (LPA*, D* Lite):** complejidad de implementación y de prueba alta para el alcance del curso.
+>
+> • **Firma o hash del estado de las puertas:** calcularla recorre las puertas, O(m) por decisión; un contador es O(1).
+
+### 3. Decisión
+
+El campo de distancias compartido (`Modelo/CampoDistancias.py`) guarda una llave de cinco campos: el ciclo, el ordinal de la sala del jugador, la versión de puertas, la cota y la época del espacio de búsqueda. Solo se reutiliza si la llave coincide y la cota guardada es ≥ el rango del cazador que decide.
+
+> • **Ciclo:** contador del motor que sube al empezar cada ciclo de eventos (entre dos decisiones del jugador). El campo vive como máximo un ciclo, así que retroceder, cargar, reproducir con `--replay` o reconstruir un estado pasado de la línea de tiempo siempre ocurren entre ciclos y descartan el campo sin que esos caminos tengan que acordarse de invalidarlo. Por eso no se toca la restauración de puertas de `Persistencia/ConversorPartida.py`.
+>
+> • **Versión de puertas:** contador del motor que solo crece y sube en cada escritura de `salida.cerrada` (cierre automático, `abrir` y el deshacer de ambos), porque todas pasan por un único método. Cubre los cambios de puertas dentro del ciclo.
+>
+> • **Sala del jugador y cota:** si el jugador cambia de sala cambia el origen del campo; si se activa un cazador con rango mayor que la cota vigente hay que recalcular con la cota nueva.
+>
+> • **Época del espacio:** el motor reutiliza un mismo `EspacioBusqueda`; si una búsqueda individual lo usó después de calcular el campo, la época cambió y el campo ya no es válido.
+
+No invalidan el campo: que un cazador se mueva o muera, que otro actor se mueva o muera (FR-015: el contenido de las salas no cuenta) ni un cambio de velocidad (solo cambia cuándo decide, no qué decide).
+
+Reutilizar no cambia la decisión: si la llave coincide, el campo se calculó en este mismo ciclo, con la misma sala del jugador y el mismo estado de todas las puertas (toda escritura pasa por el método único y el contador nunca vuelve a un valor anterior), sobre el mismo esqueleto y costos. Dijkstra es una función de esos datos, así que el campo es idéntico al que daría un cálculo desde cero, y la regla de decisión solo lee celdas con distancia ≤ rango ≤ cota. Esto lo verifica la prueba de equivalencia (T057), con escenarios de puertas que se cierran en la ruta y que se abren entre turnos.
+
+### 4. Análisis de complejidad
+
+Verificar la llave es O(1): cinco comparaciones de enteros. Con puertas estables hay una búsqueda por ciclo en lugar de k. En el peor caso, una escritura de puertas entre cada par de decisiones dentro del ciclo, se recalcula en cada una, igual que sin reutilizar. Memoria: un entero por contador.
+
+### 5. Evidencia empírica
+
+M4 (`resultados_bench_cazador.txt`): 50 cazadores de rango 2000 en una cripta sintética de 300 salas, 100 ciclos, mismo equipo que en §5.1.
+
+> • **Puertas estables, compartida:** mediana 3.95 ms, p95 6.87 ms, 100 búsquedas (1.0 por ciclo). Cumple.
+>
+> • **Puertas que cambian (2 por ciclo, 398 escrituras), compartida:** mediana 3.82 ms, p95 5.72 ms, 100 búsquedas. Cumple.
+>
+> • **Recalcular siempre desde cero:** mediana 2.56 ms, p95 29.48 ms, 603 búsquedas (6.0 por ciclo). No cumple. La mediana es baja porque el jugador solo espera y los cazadores terminan atacando sin buscar; los ciclos caros son los de la persecución, que recoge el p95.
+>
+> La reutilización hace 100 búsquedas frente a 603 y baja el p95 de 29.48 ms a 6.87 ms.
+
+### 6. Límites conocidos
+
+> • **M4 (b) cambia las puertas entre ciclos, no durante uno.** Como el campo vive un solo ciclo, esos cambios no obligan a recalcular más, y (b) hace las mismas 100 búsquedas que (a). El peor caso (una escritura de puertas entre cada par de turnos dentro del ciclo, por ejemplo por el cierre automático) no se midió, así que FR-031 queda respaldado solo para cambios entre ciclos.
+>
+> • La corrección depende de que toda escritura de `salida.cerrada` en `Modelo/` pase por el método único. Una prueba recorre los caminos del motor y otra lee el código de `Modelo/` y falla si aparece una asignación de `cerrada` fuera de ese método (`.cerrada =`, `setattr(..., "cerrada", ...)` o `_asignar_reversible(..., "cerrada", ...)`). Excluye por nombre `Modelo/prueba_actores.py`, de pruebas manuales de la Parte I.
+>
+> • Las escrituras fuera de `Modelo/` (restaurar puertas al cargar) quedan cubiertas por el ciclo, no por la versión de puertas; si alguna ocurriera dentro de un ciclo, la prueba de equivalencia lo detectaría como discrepancia.
+>
+> • Las mediciones usan una cripta sintética provisional y un solo equipo.
+>
+> • Un cazador activo que está en una sala que el jugador ya visitó, pero donde ya no está, no sobrevive a guardar y cargar: el guardado restaura solo la sala del jugador y las demás se leen perezosas, así que ese cazador no existe ni actúa hasta que el jugador vuelve a esa sala. Se detectó con la prueba de equivalencia de guardado y carga (T058).
 
 ## §5.3 — El mapa conocido
 
