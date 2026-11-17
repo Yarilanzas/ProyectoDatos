@@ -5,7 +5,7 @@ fija el contenido del bloque de la línea y la fórmula de `_inicio_salas`. Cont
 actualiza en el mismo cambio y se avisa al grupo.
 
 **Estado real en `main` (verificado en `Persistencia/ArchivoPartida.py` y `FormatoBinario.py`)**: el `CRPT` 3 **ya escribe y lee los
-tres campos de largo** `[largo jugador][largo conocimiento][largo línea de tiempo]` (T076). El de la línea se escribe con valor `0` y el
+tres campos de largo** `[largo jugador][largo conocimiento][largo línea de tiempo]` (001-T076). El de la línea se escribe con valor `0` y el
 lector lo salta con su largo; `_inicio_salas` ya es la suma de los tres y `_validar_encabezado` ya exige
 `offset_indice ≥ TAMANO_ENCABEZADO + 12` (`INICIO_MINIMO_SALAS`). El contrato de 001 dice «dos campos» en una línea y muestra tres en
 otra: **son tres** (esta es la fuente; 001 debe corregir esa línea [PERSONAS: C]).
@@ -133,7 +133,7 @@ LectorPartida.leer_linea() -> RegistroLinea | None
 ```
 
 `linea=None` escribe `largo línea = 0` (es lo que hace hoy `guardar_partida`, que aún no tiene el parámetro). `guardar_motor(motor, ruta,
-gestor)` (T094) también recibe `linea=None`. El temporal que usa `--replay` en `@cargar` puede pasar `None`.
+gestor)` (001-T094) también recibe `linea=None`. El temporal que usa `--replay` en `@cargar` puede pasar `None`.
 
 ## `ExportadorJSON`
 
@@ -149,7 +149,7 @@ historial de retroceso sigue sin guardarse.
 
 | Archivo | Cambio |
 |---------|--------|
-| `Persistencia/FormatoBinario.py` | **Sin cambios**: `VERSION_FORMATO = 3` ya está (T076) |
+| `Persistencia/FormatoBinario.py` | **Sin cambios**: `VERSION_FORMATO = 3` ya está (001-T076) |
 | `Persistencia/ArchivoPartida.py` [PERSONAS: C] | el campo, `_leer_largos`, `_inicio_salas` y `INICIO_MINIMO_SALAS` **ya existen**; falta el parámetro `linea`, guardar `_inicio_linea`/`_largo_linea` y `leer_linea` |
 | `Persistencia/RegistroLinea.py` | nuevo |
 | `Persistencia/ExportadorJSON.py` | clave `linea` |
