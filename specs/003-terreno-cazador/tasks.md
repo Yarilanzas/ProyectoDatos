@@ -93,7 +93,7 @@ Proyecto único MVC en la raíz: reglas en `Modelo/`, pruebas y bench en `tests/
 
 - [x] T030 [P] [US1] En `tests/test_validacion_datos.py`: `Salida.desde_json` (`DTOS/Salida.py`) rechaza con mensaje claro un costo 0, negativo o no entero (por ejemplo `0`, `-5`, `2.5`, `"100"` y `True`), sin asumir ningún valor (FR-001). Persona B ya implementó la validación en Salida.desde_json: esta tarea solo escribe la prueba.
 - [x] T031 [P] [US1] En `tests/test_validacion_datos.py`: una conexión cuyos sentidos declaran costos distintos (o uno declarado y el otro ausente) **no** se rechaza, y cada actor tarda lo de la salida que atraviesa (FR-001, FR-003). **El campo costo ya existe en Salida.**
-- [ ] T032 [P] [US1] En `tests/test_costo_cache.py`: el costo de cada salida sobrevive a `AlmacenamientoLocalApi.guardar_esqueleto` y a la lectura posterior por `GestorDatos.obtener_esqueleto`, y al paquete `--offline`; una salida sin costo sigue sin costo (100 en el juego); sin red, con paquete temporal (FR-008, FR-002). **⏳ bloqueada por la capacidad de datos (campo `costo` y versión de formato)**
+- [x] T032 [P] [US1] En `tests/test_costo_cache.py`: el costo de cada salida sobrevive a `AlmacenamientoLocalApi.guardar_esqueleto` y a la lectura posterior por `GestorDatos.obtener_esqueleto`, y al paquete `--offline`; una salida sin costo vale 100 en el juego tras pasar por la caché y por el paquete; sin red, con paquete temporal (FR-008, FR-002).
 
 **Checkpoint**: el terreno funciona solo; guardianes, errantes y rastreadores sin regresiones.
 
@@ -161,8 +161,8 @@ Proyecto único MVC en la raíz: reglas en `Modelo/`, pruebas y bench en `tests/
 - [x] T055 [P] [US4] En `tests/test_cazador.py`: **Apéndice B, «una puerta de su ruta se cierra entre dos turnos»**: decide como desde cero: otra ruta mínima dentro del rango o espera con costo 100 (FR-016)
 - [x] T056 [P] [US4] En `tests/test_cazador.py`: una puerta que se abre entre dos turnos crea una ruta más barata y el cazador la sigue (escenario 2; FR-016)
 - [x] T057 [US4] Crear `tests/test_cazador_equivalencia.py`: partidas sintéticas de `tests/utiles_terreno.py` con al menos **1 000 turnos de cazadores** en total, con puertas que se cierran y abren durante el ciclo, el jugador cambiando de sala, varios cazadores con rangos distintos, puertas dirigidas y costos distintos por sentido; en cada turno compara la decisión del campo compartido con la referencia desde cero (acción, sala de destino, salida y costo) y exige 100 % de coincidencia (FR-016, FR-028, SC-003)
-- [] T058 [US4] En `tests/test_cazador_equivalencia.py`: partida con cazadores jugada, guardada, cargada y continuada, y la misma partida retrocedida con un pergamino y reproducida con `--replay`: las decisiones de todos los cazadores coinciden en el 100 % de los turnos con la partida original (FR-024, FR-025, SC-005). **⏳ bloqueada parcialmente por la capacidad 004 (formato de guardado)**
-- [] T059 [US4] En `tests/test_cazador_equivalencia.py`: la reconstrucción de un estado pasado de la línea de tiempo da las mismas decisiones de los cazadores que la partida jugada (FR-025). **⏳ bloqueada por la capacidad 004**
+- [ ] T058 [US4] En `tests/test_cazador_equivalencia.py`: partida con cazadores jugada, guardada, cargada y continuada, y la misma partida retrocedida con un pergamino y reproducida con `--replay`: las decisiones de todos los cazadores coinciden en el 100 % de los turnos con la partida original (FR-024, FR-025, SC-005). **⏳ bloqueada parcialmente por la capacidad 004 (formato de guardado)**
+- [ ] T059 [US4] En `tests/test_cazador_equivalencia.py`: la reconstrucción de un estado pasado de la línea de tiempo da las mismas decisiones de los cazadores que la partida jugada (FR-025). **⏳ bloqueada por la capacidad 004**
 - [x] T060 [P] [US4] En `tests/test_cazador.py`: un comando rechazado del jugador no cambia `version_puertas`, la sala del jugador ni la siguiente decisión de ningún cazador (FR-023)
 
 **Checkpoint**: equivalencia demostrada; la estrategia compartida puede usarse en el juego.
@@ -192,10 +192,10 @@ Proyecto único MVC en la raíz: reglas en `Modelo/`, pruebas y bench en `tests/
 
 ## Phase 8: Polish & Cross-Cutting Concerns
 
-- [ ] T071 [P] Ayuda del juego en `Vista/VistaConsola.py` (`AYUDA`): explicar que cada salida tiene un costo que define cuánto se tarda en cruzarla y que el cazador persigue por la ruta más barata dentro de su rango (FR-029)
+- [x] T071 [P] Ayuda del juego en `Vista/VistaConsola.py` (`AYUDA`): explicar que cada salida tiene un costo que define cuánto se tarda en cruzarla y que el cazador persigue por la ruta más barata dentro de su rango (FR-029)
 - [ ] T072 [P] `README.md`: costo de las salidas (100 si falta), tiempo de movimiento y comportamiento del cazador; el README está en UTF-16 y se edita avisando al grupo (FR-029)
-- [ ] T073 [P] Docstrings de complejidad en `Modelo/ColaPrioridad.py`, `Modelo/BusquedaRuta.py` y `Modelo/GrafoCripta.py`, copiando las tablas de `data-model.md` (FR-033; Principio I)
-- [ ] T074 Revisar en `tests/test_terreno.py` y `tests/test_cazador.py` que cada uno de los 7 casos de «Terreno y cazador» del Apéndice B tiene su prueba y cita su FR: T022, T023, T034, T035, T050, T051, T055 (FR-027, SC-001)
+- [x] T073 [P] Docstrings de complejidad en `Modelo/ColaPrioridad.py`, `Modelo/BusquedaRuta.py` y `Modelo/GrafoCripta.py`, copiando las tablas de `data-model.md` (FR-033; Principio I)
+- [x] T074 Revisar en `tests/test_terreno.py` y `tests/test_cazador.py` que cada uno de los 7 casos de «Terreno y cazador» del Apéndice B tiene su prueba y cita su FR: T022, T023, T034, T035, T050, T051, T055 (FR-027, SC-001)
 - [ ] T075 Correr `python -m unittest discover -s tests -v` sobre `tests/` y dejarla al 100 % (FR-027; Constitución V)
 - [x] T076 Registro opcional de decisiones de los cazadores colgado del motor (apagado por defecto, reversible con la historia, sin consumir azar, fuera del guardado salvo decisión de 004): ver `contracts/interfaz-cazador-linea.md` §4; lo piden T058 y T059 (FR-024, FR-025). **⏳ el formato de consulta depende del plan de la capacidad 004**
 - [ ] T077 Validar `specs/003-terreno-cazador/quickstart.md`: recorrer sus escenarios cuando la capacidad esté implementada (FR-027)
@@ -226,7 +226,7 @@ Proyecto único MVC en la raíz: reglas en `Modelo/`, pruebas y bench en `tests/
 | T014             | ⛔ cambia un contrato compartido               | Persona C, dueña de `specs/001-niebla-mapa-ir-a/contracts/interfaz-ruta.md`: lo cambia ella o con su aprobación; se avisa al grupo (P-01 aceptada) |
 | T016             | Toca `Modelo/MotorSimulacion.py`, que otros usan | Revisión de otra persona (Constitución: cambios en `Modelo/`) |
 | T030, T031       | Ya no bloqueadas                              | Persona B implementó `costo` y su validación en `Salida`; solo falta escribir las pruebas |
-| T032             | ⏳ bloqueada                                   | Capacidad de datos (campo `costo`, rango en `FichaEnemigo`, versión de formato) y P-02 |
+| T032             | Ya no bloqueada                               | El campo costo ya existe y se conserva en caché y paquete (Persona B). Límite conocido: la caché del esqueleto guarda la versión de la cripta pero no una versión de formato propia; FR-008 solo se verifica para el costo, no para la versión de formato. |
 | T045             | Ya no bloqueada                               | FichaEnemigo.rango ya existe (Persona B); solo falta copiarlo al enemigo |
 | T003, T066       | Ya no bloqueadas                              |`tests/generador_criptas.py` (Persona B) ya existe; se usa mediante `tests/utiles_terreno.py` |
 | T058             | ⏳ bloqueada parcialmente                      | Capacidad 004 (formato de guardado) |
@@ -288,5 +288,6 @@ Luego en orden: T045 → T046 → T047 → T048 → T049
 - Los 7 casos del Apéndice B: T022, T023 (US1); T034, T035 (US2); T050, T051 (US3); T055 (US4).
 - No se modifican `spec.md` ni `plan.md`. Los resultados de M3 y M4 se registran en `research.md` (T070).
 - FR-008 (versión de caché y paquete) depende de la capacidad de datos; aquí solo se verifica en T032 que el costo se conserve.
+- T032: la caché guarda costo 100 explícito cuando la salida no lo declara (Salida.desde_json y a_json); el juego ve 100 en ambos casos.
 - Línea base de T001: 295 pruebas corridas, 285 pasan, 0 fallan, 0 errores, 10 omitidas (skip: `test_ruta_contrato`, T063 pendiente de `Modelo/BusquedaRuta.py`) — `python -m unittest discover -s tests -v`, Python 3.13.13, 2026-11-10.
 - Cierre de US1: 428 pruebas corridas, 418 pasan, 0 fallan, 0 errores, 10 omitidas — `python -m unittest discover -s tests`, 2026-11-11.
