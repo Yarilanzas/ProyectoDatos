@@ -124,14 +124,18 @@ class PruebasCodigoUno(BaseCargarCli):
         self.assertFalse(os.path.exists(continuacion))
         self.assertEqual(leer(guardado), antes)
 
-    def test_fr025_sin_el_paquete_pero_con_los_datos_locales_si_se_puede_cargar(self):
+    def test_fr025_sin_el_paquete_pero_con_los_datos_locales_da_codigo_1_porque_la_fuente_no_tiene_la_version(self):
+        # `cargar_partida` pide SIEMPRE la versión de la cripta a la fuente (para comprobar que el archivo es de esta versión);
+        # sin paquete la fuente offline no la tiene y lanza `Falta el archivo para ...`: un RuntimeError, código 1, antes de
+        # reconstruir nada. Detalle y variantes (comando `cargar`, `--replay`) en tests/test_linea_carga_sin_datos.py (T078).
         copia = copia_sin_datos(self.partida, "paquete")
         self.addCleanup(copia.cerrar)
-        codigo, texto = self.correr("--cargar", copia.ruta("guardado.cripta"), "--bitacora", copia.ruta("continuacion.log"),
-                                    paquete=copia.paquete, datos=copia.ruta_datos)
-        self.assertIn(codigo, (0, 1), texto)           # con o sin lo que el disco guardó, nunca 2 ni una traza
-        if codigo == 1:
-            self.assertTrue(texto.startswith("! Error: "), texto)
+        guardado = copia.ruta("guardado.cripta")
+        with mock.patch.object(ReconstructorLinea, "reconstruir", side_effect=AssertionError("llegó a reconstruir")):
+            codigo, texto = self.correr("--cargar", guardado, "--bitacora", copia.ruta("continuacion.log"),
+                                        paquete=copia.paquete, datos=copia.ruta_datos)
+        self.assertError(codigo, texto, "Falta el archivo para /criptas/cripta-niebla/version: ")
+        self.assertFalse(os.path.exists(copia.ruta("continuacion.log")))
 
     def test_fr024_sin_datos_para_historia_error_de_reconstruccion_y_referencia_invalida_dan_codigo_1(self):
         casos = (SinDatosParaHistoria("esqueleto de la cripta x"), ErrorReconstruccion("el sello no coincide"),
