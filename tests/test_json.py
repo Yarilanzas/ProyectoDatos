@@ -6,6 +6,7 @@ import unittest
 from Persistencia.ArchivoPartida import (guardar_partida, LectorPartida)
 from Persistencia.ExportadorJSON import (guardar_partida_json, cargar_partida_json, leer_sala_json)
 from Persistencia.RegistroConocimiento import RegistroConocimiento
+from Persistencia.RegistroLinea import ACCION, CARGA, RETROCESO, RegistroLinea
 from Persistencia.RegistroSala import RegistroSala
 from tests.test_archivo_partida import (crear_sala_prueba, crear_sala_vacia, iguales)
 
@@ -66,6 +67,69 @@ class PruebasExportadorJSON(unittest.TestCase):
         self.assertIsNotNone(binario)
         self.assertEqual(datos["conocimiento"], binario.to_dict())
         self.assertEqual(datos["conocimiento"]["exploradas"], [1, 3])
+
+    # ───────────── la línea de tiempo (spec 004, T066 y T088; FR-022, PR-10) ─────────────
+
+    def linea(self):
+        return RegistroLinea(10, [(ACCION, "mover", "E", 0, 0), (ACCION, "esperar", "", 100, 3),
+                                  (RETROCESO, 1), (CARGA, 100), (ACCION, "atacar", "e-rata-1", 100, 0)])
+
+    def test_fr022_t066_incluye_la_clave_linea_con_k_y_la_lista_de_registros(self):
+        linea = self.linea()
+        guardar_partida_json(self.ruta, "cripta-01", "a3f91c", "cat-2026-08-01", 12345, 250,
+                             [crear_sala_prueba(1)], linea=linea)
+        with open(self.ruta, encoding="utf-8") as archivo:
+            datos = json.load(archivo)
+        self.assertIn("linea", datos)
+        self.assertEqual(datos["linea"]["k"], 10)
+        self.assertEqual(len(datos["linea"]["registros"]), 5)
+        self.assertEqual(datos["linea"]["registros"][0], ["ACCION", "mover", "E", 0, 0])
+        self.assertEqual(datos["linea"]["registros"][2], ["RETROCESO", 1])
+        self.assertEqual(datos["linea"]["registros"][3], ["CARGA", 100])
+
+    def test_fr022_t066_los_mismos_datos_que_el_binario(self):
+        linea = self.linea()
+        registros = [crear_sala_prueba(1), crear_sala_prueba(2)]
+        ruta_binaria = os.path.join(self.carpeta.name, "partida.bin")
+        guardar_partida_json(self.ruta, "cripta-01", "a3f91c", "cat-2026-08-01", 12345, 250, registros, linea=linea)
+        guardar_partida(ruta_binaria, "cripta-01", "a3f91c", "cat-2026-08-01", 12345, 250, registros, linea=linea)
+        with open(self.ruta, encoding="utf-8") as archivo:
+            datos = json.load(archivo)
+        with LectorPartida(ruta_binaria) as lector:
+            binario = lector.leer_linea()
+        self.assertEqual(datos["linea"], binario.to_dict())
+        self.assertEqual(RegistroLinea.from_dict(datos["linea"]), binario)
+        self.assertEqual(RegistroLinea.from_dict(datos["linea"]).to_bytes(), linea.to_bytes())
+
+    def test_fr022_t066_sin_linea_la_clave_existe_y_es_nula(self):
+        self.guardar([crear_sala_prueba(1)])
+        with open(self.ruta, encoding="utf-8") as archivo:
+            datos = json.load(archivo)
+        self.assertIn("linea", datos)
+        self.assertIsNone(datos["linea"])
+
+    def test_fr022_t066_la_linea_no_cambia_las_salas_ni_lo_demas(self):
+        registros = [crear_sala_prueba(i) for i in range(1, 6)]
+        self.guardar(registros)
+        sin = cargar_partida_json(self.ruta)
+        guardar_partida_json(self.ruta, "cripta-01", "a3f91c", "cat-2026-08-01", 12345, 250, registros, linea=self.linea())
+        con = cargar_partida_json(self.ruta)
+        self.assertEqual(len(con), len(sin))
+        for uno, otro in zip(sin, con):
+            self.assertTrue(iguales(uno, otro))
+        self.assertTrue(iguales(leer_sala_json(self.ruta, 3), crear_sala_prueba(3)))
+
+    def test_fr022_t066_el_json_es_texto_con_tildes_y_orden_canonico(self):
+        linea = RegistroLinea(5, [(ACCION, "usar", "pergamino-ñandú", 0, 0)])
+        guardar_partida_json(self.ruta, "cripta-01", "a3f91c", "cat-2026-08-01", 12345, 250, [crear_sala_prueba(1)], linea=linea)
+        with open(self.ruta, encoding="utf-8") as archivo:
+            texto = archivo.read()
+        self.assertIn("pergamino-ñandú", texto)             # sin escapar, como el resto del archivo
+        primero = texto
+        guardar_partida_json(self.ruta, "cripta-01", "a3f91c", "cat-2026-08-01", 12345, 250, [crear_sala_prueba(1)], linea=linea)
+        with open(self.ruta, encoding="utf-8") as archivo:
+            self.assertEqual(archivo.read(), primero)       # el mismo estado, el mismo texto
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,5 +1,5 @@
 # guardado de la partida en JSON - existe solo para compararlo contra el formato binario (S4.10)
-# guarda los mismos datos que ArchivoPartida: el encabezado, el jugador y los registros de sala
+# guarda los mismos datos que ArchivoPartida: el encabezado, el jugador, el conocimiento, la linea de tiempo y los registros de sala
 
 import json
 from Persistencia.RegistroConocimiento import RegistroConocimiento
@@ -27,9 +27,11 @@ def _json_a_sala(datos):
         puertas=[tuple(puerta) for puerta in datos["puertas"]],
     )
 
-def guardar_partida_json(ruta, cripta_id, version_cripta, version_catalogo, semilla, reloj, registros, jugador=None, conocimiento=None):
+def guardar_partida_json(ruta, cripta_id, version_cripta, version_catalogo, semilla, reloj, registros, jugador=None, conocimiento=None,
+                         linea=None):
     # `conocimiento` (RegistroConocimiento) va con los mismos tres campos que el bloque binario,
-    # asi la comparacion binario frente a JSON es de los mismos datos (FR-015)
+    # asi la comparacion binario frente a JSON es de los mismos datos (FR-015). `linea` (RegistroLinea, spec 004) va con
+    # `k` y la lista de registros del bloque binario (FR-022); sin linea la clave existe y vale null
     datos = {
         "cripta_id": cripta_id,
         "version_cripta": version_cripta,
@@ -38,6 +40,7 @@ def guardar_partida_json(ruta, cripta_id, version_cripta, version_catalogo, semi
         "reloj": reloj,
         "jugador": jugador.to_dict() if jugador is not None else None,
         "conocimiento": conocimiento.to_dict() if conocimiento is not None else None,
+        "linea": linea.to_dict() if linea is not None else None,
         "salas": [_sala_a_json(registro) for registro in registros],
     }
     with open(ruta, "w", encoding="utf-8") as archivo:
