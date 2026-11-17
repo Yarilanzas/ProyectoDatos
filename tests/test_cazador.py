@@ -37,6 +37,7 @@ import unittest
 from DTOS.ContenidoSala import ContenidoSala
 from DTOS.FichaCatalogo import FichaCatalogo, FichaEnemigo
 from DTOS.TrampaInstancia import TrampaInstancia
+from Modelo.BusquedaRuta import primer_paso
 from Modelo.Conocimiento import EXPLORADA
 from tests.test_ruta_contrato import DESEMPATES, invertido
 from tests.utiles_terreno import CAZADOR, ID_JUGADOR, armar_motor, cripta_terreno, mapa_a_mano
@@ -732,6 +733,21 @@ def firma(motor, cazador, decision):
             decision.costo_base)
 
 
+def firma_desde_cero(motor, cazador):
+    """Referencia desde cero escrita por la prueba (FR-028), en el mismo formato que `firma`: primer_paso sobre
+    motor.grafo_cripta SIN espacio (no comparte nada con el motor), acotado por el rango del cazador. Misma sala que
+    el jugador -> ATACAR (100); sin paso -> ESPERAR (100); si no, MOVER por la dirección del paso, con el costo de esa
+    salida."""
+    jugador = motor.jugador
+    if cazador.sala is jugador.sala:
+        return ("ATACAR", None, None, 100)
+    paso = primer_paso(motor.grafo_cripta, cazador.sala, jugador.sala, limite=cazador.rango)
+    if paso is None:
+        return ("ESPERAR", None, None, 100)
+    salida = cazador.sala.salidas[paso.direccion]
+    return ("MOVER", paso.direccion, paso.destino.id, motor.costo_salida(salida))
+
+
 class ConDecision(unittest.TestCase):
     def assertMismaDecision(self, motor, cazador, una, otra, contexto=""):
         """Misma acción, la MISMA Salida (identidad) y el mismo costo_base."""
@@ -1164,6 +1180,265 @@ class TestNoUsaLlaves(unittest.TestCase):
         self.assertTrue(all(puerta.cerrada for puerta in puertas))
         self.assertEqual(motor.version_puertas, version)
         self.assertEqual([n.tipo_id for n in cazador.botin], [llave])
+
+
+# ═════════════════════════ US4: la decisión siempre es la de calcular desde cero (T055, T056, T060) ═════════════════════════
+
+class ConDesdeCero(ConDecision):
+    def assertDesdeCero(self, motor, cazador, esperada, contexto=""):
+        """En el estado actual: la estrategia individual, la compartida y la referencia desde cero de la prueba
+        (firma_desde_cero) dan la firma `esperada`, y las dos estrategias dan la misma Salida."""
+        individual = motor.decidir_cazador_individual(cazador)
+        compartida = motor.decidir_cazador_compartida(cazador)
+        self.assertEqual(firma_desde_cero(motor, cazador), esperada, contexto)
+        self.assertEqual(firma(motor, cazador, individual), esperada, contexto)
+        self.assertMismaDecision(motor, cazador, individual, compartida, contexto)
+
+    def assertComoMotorNuevo(self, motor, cazador, mapa, sala_jugador):
+        """La decisión del cazador es la misma que la de un motor recién armado con `mapa` (las puertas como están
+        ahora), el cazador en su sala actual con el mismo rango y el jugador en `sala_jugador`."""
+        nuevo = mapa_a_mano(mapa, sala_jugador=sala_jugador, cazadores=[(cazador.sala.id, cazador.rango)])
+        otro = cazadores_de(nuevo)[0]
+        nuevo.activar_enemigo(otro)
+        self.assertEqual(firma(motor, cazador, motor.decidir_cazador_individual(cazador)),
+                         firma(nuevo, otro, nuevo.decidir_cazador_individual(otro)), "distinta de un motor nuevo")
+
+
+# ───────────────────────── T055 ─────────────────────────
+
+def mapa_puerta_de_la_ruta(costo_otra, otra_cerrada, ruta_cerrada=False):
+    """Jugador en 6. 1 -E(150)-> 2; desde 2, la ruta 2 -E(100)-> 3 -E(100)-> 6 cuesta 200 y la otra,
+    2 -S(100)-> 4 -E(costo_otra)-> 6, cuesta 100 + costo_otra."""
+    return [
+        (1, [("E", 2, 150, False)]),
+        (2, [("E", 3, 100, False), ("S", 4, 100, False)]),
+        (3, [("E", 6, 100, ruta_cerrada)]),
+        (4, [("E", 6, costo_otra, otra_cerrada)]),
+        (6, []),
+    ]
+
+
+class TestPuertaDeSuRutaSeCierra(ConDesdeCero):
+    """T055. Apéndice B, «una puerta de su ruta se cierra entre dos turnos»; escenario 1 de la US4 (FR-016)."""
+
+    def _cerrar_entre_turnos(self, costo_otra, otra_cerrada, rango, esperada):
+        """Cazador en 1 y jugador en 6. En t = 100 da su primer paso (1 -E-> 2, costo 150; siguiente turno en 250) por
+        la ruta mínima 1-2-3-6. Un CERRAR_PUERTA sobre 3 -E-> 6 (de su ruta, fuera de su sala) ocurre en t = 180.
+        En t = 200 (punto de decisión del jugador) se compara la decisión con la esperada y con la desde cero; luego
+        se comprueba lo que hace de verdad en t = 250. Devuelve (motor, cazador, movimientos)."""
+        motor = mapa_a_mano(mapa_puerta_de_la_ruta(costo_otra, otra_cerrada), sala_jugador=6,
+                            cazadores=[(1, rango)])
+        cazador = cazadores_de(motor)[0]
+        movimientos = registrar_movimientos(motor)
+        motor.activar_enemigo(cazador)
+
+        esperar(self, motor)                                     # t = 100
+        self.assertEqual(movimientos, [(cazador.id, "E", 2, 100)])
+        self.assertEqual(cazador.tiempo_siguiente, 250)
+        self.assertDesdeCero(motor, cazador, ("MOVER", "E", 3, 100), "antes del cierre va por su ruta (por 3)")
+
+        puerta = sala_de(motor, 3).salidas["E"]
+        version = motor.version_puertas
+        motor.programar_evento(180, "CERRAR_PUERTA", puerta)
+        esperar(self, motor)                                     # t = 200: el cierre ocurrió en 180
+        self.assertEqual(motor.reloj, 200)
+        self.assertTrue(puerta.cerrada, "el cierre automático no ocurrió")
+        self.assertGreater(motor.version_puertas, version)
+        self.assertEqual(cazador.sala.id, 2, "el cazador no debería haber actuado todavía")
+
+        self.assertDesdeCero(motor, cazador, esperada, "después del cierre")
+        self.assertComoMotorNuevo(motor, cazador, mapa_puerta_de_la_ruta(costo_otra, otra_cerrada, True), 6)
+
+        esperar(self, motor)                                     # t = 300: actuó en 250
+        return motor, cazador, movimientos
+
+    def test_fr016_apendice_b_toma_otra_ruta_minima_dentro_del_rango(self):
+        """T055 (a) (FR-016): la otra ruta desde 2 (por 4) cuesta 250 ≤ rango 1000; en t = 250 va a 4 (S, costo 100,
+        siguiente turno en 350) y en t = 350 llega al jugador por 4 -E-> 6 (costo 150, siguiente turno en 500)."""
+        motor, cazador, movimientos = self._cerrar_entre_turnos(150, False, 1000, ("MOVER", "S", 4, 100))
+        self.assertEqual(movimientos[1:], [(cazador.id, "S", 4, 250)])
+        self.assertEqual(cazador.tiempo_siguiente, 350)
+
+        esperar(self, motor)                                     # t = 400: actuó en 350
+        self.assertEqual(movimientos[2:], [(cazador.id, "E", 6, 350)])
+        self.assertEqual(cazador.tiempo_siguiente, 500)
+
+    def test_fr016_fr012_apendice_b_la_otra_ruta_cuesta_mas_que_el_rango_espera(self):
+        """T055 (b) (FR-016, FR-012): rango 400 (alcanza para el primer paso: d(1, 6) = 350), pero la otra ruta desde 2
+        cuesta 100 + 400 = 500 > 400; en t = 250 espera con costo 100 (sigue en 2, siguiente turno en 350)."""
+        _, cazador, movimientos = self._cerrar_entre_turnos(400, False, 400, ("ESPERAR", None, None, 100))
+        self.assertEqual(movimientos[1:], [])
+        self.assertEqual(cazador.sala.id, 2)
+        self.assertEqual(cazador.tiempo_siguiente, 350)
+
+    def test_fr016_fr017_apendice_b_no_queda_otra_ruta_espera(self):
+        """T055 (b) (FR-016, FR-017): la otra ruta pasa por 4 -E-> 6, cerrada desde el inicio; tras el cierre no queda
+        ninguna ruta abierta y en t = 250 espera con costo 100 (sigue en 2, siguiente turno en 350)."""
+        _, cazador, movimientos = self._cerrar_entre_turnos(150, True, 1000, ("ESPERAR", None, None, 100))
+        self.assertEqual(movimientos[1:], [])
+        self.assertEqual(cazador.sala.id, 2)
+        self.assertEqual(cazador.tiempo_siguiente, 350)
+
+
+# ───────────────────────── T056 ─────────────────────────
+
+class TestPuertaQueSeAbreEntreTurnos(ConDesdeCero):
+    """T056. Escenario 2 de la US4 (FR-016): una puerta que se abre entre dos turnos crea una ruta más barata, o una
+    que antes no existía, y el cazador la sigue en su siguiente turno."""
+
+    @staticmethod
+    def _mapa_mas_barata(abierta):
+        # Jugador en 6. 1 -E(150)-> 2; desde 2: 2 -E(300)-> 3 -E(300)-> 6 cuesta 600 y 2 -S(100)-> 4 -E(100)-> 6
+        # cuesta 200 cuando 4 -E-> 6 está abierta.
+        return [
+            (1, [("E", 2, 150, False)]),
+            (2, [("E", 3, 300, False), ("S", 4, 100, False)]),
+            (3, [("E", 6, 300, False)]),
+            (4, [("E", 6, 100, not abierta)]),
+            (6, []),
+        ]
+
+    @staticmethod
+    def _mapa_nueva(abierta):
+        # Jugador en 6. Desde 2 solo se llega por 2 -S(100)-> 4 -E(100)-> 6.
+        return [
+            (2, [("S", 4, 100, False)]),
+            (4, [("E", 6, 100, not abierta)]),
+            (6, []),
+        ]
+
+    def test_fr016_sigue_la_ruta_mas_barata_que_se_abrio(self):
+        """T056 (FR-016): el cazador (rango 1000) va de 1 a 2 en t = 100 (siguiente turno en 250) y su ruta desde 2
+        es 2-3-6 (600). En t = 200 se abre 4 -E-> 6 con motor._escribir_cerrada: la ruta 2-4-6 cuesta 200. En
+        t = 250 va a 4 (S, costo 100; siguiente turno en 350) y en t = 350 llega a 6 (costo 100)."""
+        motor = mapa_a_mano(self._mapa_mas_barata(False), sala_jugador=6, cazadores=[(1, 1000)])
+        cazador = cazadores_de(motor)[0]
+        movimientos = registrar_movimientos(motor)
+        motor.activar_enemigo(cazador)
+
+        esperar(self, motor)                                     # t = 100
+        self.assertEqual(movimientos, [(cazador.id, "E", 2, 100)])
+        self.assertEqual(cazador.tiempo_siguiente, 250)
+        esperar(self, motor)                                     # t = 200
+        self.assertDesdeCero(motor, cazador, ("MOVER", "E", 3, 300), "antes de abrir va por 3")
+
+        version = motor.version_puertas
+        motor._escribir_cerrada(sala_de(motor, 4).salidas["E"], False)
+        self.assertGreater(motor.version_puertas, version)
+        self.assertDesdeCero(motor, cazador, ("MOVER", "S", 4, 100), "después de abrir")
+        self.assertComoMotorNuevo(motor, cazador, self._mapa_mas_barata(True), 6)
+
+        esperar(self, motor)                                     # t = 300: actuó en 250
+        self.assertEqual(movimientos[1:], [(cazador.id, "S", 4, 250)])
+        self.assertEqual(cazador.tiempo_siguiente, 350)
+        esperar(self, motor)                                     # t = 400: actuó en 350
+        self.assertEqual(movimientos[2:], [(cazador.id, "E", 6, 350)])
+        self.assertEqual(cazador.tiempo_siguiente, 450)
+
+    def test_fr016_sigue_la_ruta_que_antes_no_existia(self):
+        """T056 (FR-016): el cazador en 2 (rango 1000) espera en t = 100 porque 4 -E-> 6 está cerrada y no hay otra
+        ruta. En t = 100, antes de su turno de 200, la puerta se abre; en t = 200 va a 4 (S, costo 100; siguiente turno
+        en 300)."""
+        motor = mapa_a_mano(self._mapa_nueva(False), sala_jugador=6, cazadores=[(2, 1000)])
+        cazador = cazadores_de(motor)[0]
+        movimientos = registrar_movimientos(motor)
+        motor.activar_enemigo(cazador)
+
+        esperar(self, motor)                                     # t = 100: esperó
+        self.assertEqual(movimientos, [])
+        self.assertEqual(cazador.tiempo_siguiente, 200)
+        self.assertDesdeCero(motor, cazador, ("ESPERAR", None, None, 100), "sin ruta antes de abrir")
+
+        motor._escribir_cerrada(sala_de(motor, 4).salidas["E"], False)
+        self.assertDesdeCero(motor, cazador, ("MOVER", "S", 4, 100), "después de abrir")
+        self.assertComoMotorNuevo(motor, cazador, self._mapa_nueva(True), 6)
+
+        esperar(self, motor)                                     # t = 200
+        self.assertEqual(movimientos, [(cazador.id, "S", 4, 200)])
+        self.assertEqual(cazador.tiempo_siguiente, 300)
+
+
+# ───────────────────────── T060 ─────────────────────────
+
+class TestComandoRechazado(unittest.TestCase):
+    """T060 (FR-023): un comando rechazado del jugador no cambia version_puertas, ciclo, reloj, la sala del jugador,
+    el tamaño de la agenda ni la decisión de ningún cazador.
+
+    Leído en Modelo/MotorSimulacion.py (ejecutar_accion y lo que llama): los seis comandos devuelven False antes de
+    accion_jugador(), sin programar eventos ni avanzar el reloj. mover: salida inexistente o cerrada (solo deja un
+    mensaje); abrir: salida inexistente, o existente sin la llave (mensaje); atacar: id inexistente, enemigo muerto o
+    en otra sala; recoger: ningún objeto con ese id en el suelo de la sala."""
+
+    @staticmethod
+    def _estado(motor):
+        decisiones = []
+        for cazador in cazadores_de(motor):
+            decisiones.append((cazador.id, cazador.sala.id, cazador.activo,
+                               firma(motor, cazador, motor.decidir_cazador_individual(cazador)),
+                               firma(motor, cazador, motor.decidir_cazador_compartida(cazador))))
+        return {"version_puertas": motor.version_puertas, "ciclo": motor.ciclo, "reloj": motor.reloj,
+                "sala_jugador": motor.jugador.sala.id, "agenda": len(motor.agenda.heap), "decisiones": decisiones}
+
+    def _motor(self):
+        """cripta_terreno(5, 12): las puertas que entran a la sala de salida están cerradas y piden la llave de salida
+        (como en T054). El jugador está en una sala con una de esas puertas y sin llave. Cazadores con rangos 0, 150,
+        400 y 10**6 en otras salas (todos activos menos el último) y uno de rango 50 en la sala del jugador."""
+        cripta = cripta_terreno(5, 12)
+        salida_id = cripta.detalles.sala_salida
+        explorador = armar_motor(cripta, salida_id, [])
+        origen = direccion = None
+        for sala in explorador.salas:
+            for d in sala.salidas:
+                if sala.id != salida_id and explorador._destino(sala.salidas[d]).id == salida_id:
+                    origen, direccion = sala.id, d
+        self.assertIsNotNone(origen, "ninguna puerta entra a la sala de salida")
+
+        otras = [s.id for s in explorador.salas if s.id not in (origen, salida_id)]
+        cazadores = [(otras[0], 0), (otras[2], 150), (otras[4], 400), (otras[6], 10 ** 6), (origen, 50)]
+        motor = armar_motor(cripta, origen, cazadores)
+        lista = cazadores_de(motor)
+        motor.activar_enemigos(lista[:3])
+        esperar(self, motor)                                     # un ciclo normal, con decisiones ya tomadas
+        return motor, cripta, origen, direccion, lista
+
+    def test_fr023_comandos_rechazados_no_cambian_nada_que_use_el_cazador(self):
+        """T060 (FR-023): mover contra una pared, mover por una puerta cerrada, abrir esa puerta sin la llave, abrir
+        una salida que no existe, atacar a un enemigo de otra sala, atacar a uno que no existe y recoger un objeto que
+        no existe devuelven False; antes y después, version_puertas, ciclo, reloj, la sala del jugador, el tamaño de la
+        agenda y la decisión de cada cazador (individual y compartida) son iguales."""
+        motor, cripta, origen, direccion, cazadores = self._motor()
+        sala = motor.jugador.sala
+        self.assertEqual(sala.id, origen)
+        puerta = sala.salidas[direccion]
+        self.assertTrue(puerta.cerrada)
+        self.assertEqual(puerta.llave, cripta.detalles.llave_salida)
+        self.assertEqual([n.tipo_id for n in motor.jugador.inventario], [], "el jugador no debería tener llaves")
+        paredes = [d for d in ("N", "S", "E", "O") if d not in sala.salidas]
+        self.assertTrue(paredes, f"la sala {origen} no tiene ninguna pared")
+        lejano = cazadores[0]
+        self.assertIsNot(lejano.sala, sala)
+        self.assertTrue(any(c.activo for c in cazadores), "ningún cazador activo")
+
+        comandos = [
+            ("mover contra una pared", "mover", paredes[0]),
+            ("mover por una puerta cerrada", "mover", direccion),
+            ("abrir sin la llave", "abrir", direccion),
+            ("abrir una salida que no existe", "abrir", paredes[0]),
+            ("atacar a un enemigo de otra sala", "atacar", lejano.id),
+            ("atacar a un enemigo que no existe", "atacar", "caz-no-existe"),
+            ("recoger un objeto que no existe", "recoger", "obj-no-existe"),
+        ]
+        for nombre, accion, argumento in comandos:
+            with self.subTest(comando=nombre):
+                antes = self._estado(motor)
+                self.assertFalse(motor.ejecutar_accion(accion, argumento), f"«{nombre}» fue aceptado")
+                self.assertEqual(self._estado(motor), antes)
+                self.assertTrue(puerta.cerrada)
+
+        # Contraste: un comando aceptado sí cambia el estado comparado (la comparación no es trivial).
+        antes = self._estado(motor)
+        esperar(self, motor)
+        self.assertNotEqual(self._estado(motor), antes)
 
 
 if __name__ == "__main__":
