@@ -298,8 +298,9 @@ T084, T085, T091 a T094, T096, T097, T121, T124 y T126 hechas; suite completa en
 
 **Propósito**: respaldar cada afirmación de rendimiento (Principio VIII). Hasta tener estos datos, son hipótesis.
 
-**Datos**: mapas sintéticos en `tests/`, porque la cripta de referencia aún no está publicada. **El límite de 5 ms de
-§6.1 se define para esa cripta**, así que el resultado con mapas sintéticos es provisional y debe decirlo en el archivo.
+**Datos**: mapas sintéticos en `tests/`. **El límite de 5 ms de §6.1 se define para la cripta de referencia**, así que
+el resultado con mapas sintéticos es provisional y debe decirlo en el archivo. La fila de la cripta de referencia
+(`cripta-02`, leída de las copias locales) la agregó T110.
 
 - [X] T099 [P] Crear generadores de mapas sintéticos sin datos de ninguna cripta real: cadena y grilla con V = 25, 100, 400, 2500, y salas hasta n = 20000, con costos variados y simétricos. Atiende: SC-006, PR-15. Archivo: tests/mapas_sinteticos.py.
 - [X] T100 Crear la medición con mediana de varias repeticiones, escritura de `resultados_bench_niebla.txt` con equipo y versión de Python, y **una sola constante** `LIMITE_PASO_IR_A_MS = 5`, con comentario que cita §6.1 y que el valor puede cambiar por enmienda. Ningún otro lugar escribe ese número. Depende de T099. Atiende: PR-15, Principio VIII, sin FR. Archivo: tests/bench_niebla.py.
@@ -312,10 +313,11 @@ T084, T085, T091 a T094, T096, T097, T121, T124 y T126 hechas; suite completa en
 - [X] T107 Agregar la medición a la rama `--bench`, sin red y sin vista. Depende de T101 a T106. Atiende: PR-15, Principio VIII, sin FR. Archivo: main.py.
 - [X] T108 [P] Agregar una prueba rápida con tamaños mínimos: M1 a M6 corren sin red, sin `VistaConsola`, y M4 compara contra la constante, sin afirmar tiempos. Depende de T107. Atiende: SC-006, PR-15. Archivo: tests/test_bench_niebla.py.
 - [X] T109 Correr M4 con `primer_paso` real y guardar el resultado, marcado como provisional. Medir con y sin un `EspacioBusqueda` reutilizado por viaje (parámetro `espacio` de `primer_paso`). Ya no está bloqueada: Persona A subió `Modelo/BusquedaRuta.py`. Si no cumple, corregir el diseño o el documento (R9). Depende de T062 y T107. Atiende: FR-024, PR-15. Archivo: resultados_bench_niebla.txt.
-- [ ] T110 [PERSONAS: curso, publicación de la cripta de referencia] Agregar a M4 el mapa conocido completo de la cripta de referencia y dar el veredicto definitivo de §6.1. Sus datos se obtienen de la fuente o quedan en `tests/` (Principio IV). Depende de T109. Atiende: FR-024, PR-15. Archivo: tests/bench_niebla.py.
+- [X] T110 [PERSONAS: curso, publicación de la cripta de referencia] Agregar a M4 el mapa conocido completo de la cripta de referencia y dar el veredicto definitivo de §6.1. Sus datos se obtienen de la fuente o quedan en `tests/` (Principio IV). Depende de T109. Hecho. Medición: commit 70ecfdc; veredicto en DECISIONES.md §5.3, apartado «"ir a" y el límite de §6.1». Atiende: FR-024, PR-15. Archivo: tests/bench_niebla.py.
 
-**Punto de control 6**: `python main.py --bench` genera `resultados_bench_niebla.txt`, con M1 a M6 medidas y M4
-PROVISIONAL (mapas sintéticos; §6.1 sin veredicto definitivo hasta T110). **El límite de §6.1 no se da por cumplido hasta T110.**
+**Punto de control 6**: `python main.py --bench` genera `resultados_bench_niebla.txt` con M1 a M6 medidas. M4 trae
+filas sintéticas (pruebas de estrés, PROVISIONAL) y la fila «referencia/paso» de `cripta-02`, que da el veredicto de
+§6.1: cumple (ver DECISIONES.md §5.3).
 
 ---
 
@@ -385,7 +387,7 @@ T074 (exportar/restaurar) ─ T119 (copia, serialización y lotes reversibles, p
 | T062 a T065, T109 | Persona A | ✅ **Resuelta**: Persona A subió `Modelo/ColaPrioridad.py` y `Modelo/BusquedaRuta.py` (D-PEND-01 resuelta con la opción A) | Nada: T062 a T065 y T109 están hechas |
 | T076 | Persona D | Fórmula final de `_inicio_salas` y contenido de la línea de tiempo, en su plan (spec 004). El orden ya está acordado (P-10) | La línea de tiempo se trata como bloque opaco con su largo |
 | T098 | Personas A y D | Destino de los archivos versionados (Persona B está de acuerdo en retirarlos) | Quedan archivos obsoletos en el repositorio |
-| T110 | Curso | Publicación de la cripta de referencia | §6.1 queda sin veredicto definitivo |
+| T110 | Curso | ✅ **Resuelta**: se tomó como cripta de referencia la publicada más grande, `cripta-02` (suposición; DECISIONES.md §5.3) | Nada: T110 está hecha y §6.1 cumple |
 | T111 a T113 | Grupo | Aviso antes de editar el README | No se sube la fase correspondiente |
 | T114, T117 | Grupo; Persona D revisa `Bitacora/`, `Persistencia/` y `main.py` | Revisión | Sin cierre de la capacidad |
 

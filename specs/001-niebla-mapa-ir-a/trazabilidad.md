@@ -9,7 +9,7 @@ en `spec.md`.
 **Cómo leer las columnas**
 
 - **PR**: requisito del plan ([plan.md](plan.md#requisitos-del-plan)).
-- **Tareas**: las de [tasks.md](tasks.md) cuyo «Atiende» cita el FR o el SC. Una tarea con `*` sigue abierta (`[ ]`); hoy solo T110.
+- **Tareas**: las de [tasks.md](tasks.md) cuyo «Atiende» cita el FR o el SC.
 - **Prueba**: `archivo::nombre` de la prueba. Cada una se buscó por su ID y se verificó abriendo el archivo. Los IDs de
   esta tabla son los de la spec 001. Otras specs (002, 003, 004) usan los mismos números para requisitos distintos
   (por ejemplo, `tests/test_terreno.py` y algunas clases de `tests/test_ruta_contrato.py` siguen la numeración de
@@ -48,7 +48,7 @@ en `spec.md`.
 | FR-021 | PR-09 | T053, T054, T058, T064, T065, T112 | `tests/test_viaje.py::test_fr021_fr023_recorrido_completo_de_ida_y_vuelta_sin_inyeccion`<br>`tests/test_viaje.py::test_fr021_ir_mal_formado_da_error_de_uso`<br>`tests/test_viaje.py::test_fr021_el_comando_admite_mayusculas_y_espacios` | hecho |
 | FR-022 | PR-09 | T045, T053, T057, T058, T083, T085 | `tests/test_viaje.py::test_fr022_sc005_escenario_us4_1_sala_avistada_desconocida_inexistente_o_no_valida`<br>`tests/test_viaje.py::test_fr022_sala_actual`<br>`tests/test_viaje.py::test_fr022_explorada_sin_ruta`<br>`tests/test_viaje.py::test_fr022_rechazos_sin_inyeccion_no_tienen_efectos` | hecho |
 | FR-023 | PR-10 | T041, T043, T044, T051, T055, T057, T062, T064 | `tests/test_viaje.py::test_fr023_fr029_solo_salas_exploradas_y_puertas_recordadas_abiertas`<br>`tests/test_viaje.py::test_fr005_fr023_el_motor_arma_el_grafo_con_su_conocimiento_y_costo_salida`<br>`tests/test_ruta_contrato.py::test_fr023_las_aristas_son_dirigidas` | hecho |
-| FR-024 | PR-10, PR-13 | T003, T118, T008 (sustituida), T012 (sustituida), T041, T042, T043, T049, T062, T063, T064, T104, T109, T110\* | `tests/test_ruta_contrato.py::test_fr024_ruta_mas_barata_con_mas_saltos`<br>`tests/test_ruta_contrato.py::test_fr024_empate_va_a_la_vecina_de_menor_id_en_cualquier_orden`<br>`tests/test_ruta_contrato.py::test_fr024_dos_salidas_a_la_misma_vecina_gana_n_s_e_o`<br>`tests/test_ruta_contrato.py::test_fr024_pr10_misma_tabla_de_desempates_que_la_busqueda_compartida`<br>`tests/test_viaje.py::test_fr024_escenario_us4_5_empate_va_a_la_vecina_de_menor_id_con_busqueda_real`<br>`tests/test_costo_salida.py::test_fr024_ir_a_elige_la_ruta_de_menor_suma_aunque_tenga_mas_saltos` | hecho. Con costos del paquete y la búsqueda real, `ir a` toma la ruta de 3 saltos que suma 300 y no el salto directo de 500. La ruta suma el costo de cada salida en su sentido, que puede ser distinto del de la vuelta (spec 003, FR-001 y FR-003) |
+| FR-024 | PR-10, PR-13 | T003, T118, T008 (sustituida), T012 (sustituida), T041, T042, T043, T049, T062, T063, T064, T104, T109, T110 | `tests/test_ruta_contrato.py::test_fr024_ruta_mas_barata_con_mas_saltos`<br>`tests/test_ruta_contrato.py::test_fr024_empate_va_a_la_vecina_de_menor_id_en_cualquier_orden`<br>`tests/test_ruta_contrato.py::test_fr024_dos_salidas_a_la_misma_vecina_gana_n_s_e_o`<br>`tests/test_ruta_contrato.py::test_fr024_pr10_misma_tabla_de_desempates_que_la_busqueda_compartida`<br>`tests/test_viaje.py::test_fr024_escenario_us4_5_empate_va_a_la_vecina_de_menor_id_con_busqueda_real`<br>`tests/test_costo_salida.py::test_fr024_ir_a_elige_la_ruta_de_menor_suma_aunque_tenga_mas_saltos` | hecho. Con costos del paquete y la búsqueda real, `ir a` toma la ruta de 3 saltos que suma 300 y no el salto directo de 500. La ruta suma el costo de cada salida en su sentido, que puede ser distinto del de la vuelta (spec 003, FR-001 y FR-003) |
 | FR-025 | PR-09 | T002, T007, T009, T011, T054, T056, T058 | `tests/test_viaje.py::test_fr021_fr025_mismo_estado_y_bitacora_que_los_mover_a_mano` | hecho |
 | FR-026 | PR-09 | T046, T053, T054, T056, T104 | `tests/test_viaje.py::test_fr026_con_otra_ruta_el_viaje_sigue_por_ella`<br>`tests/test_viaje.py::test_fr026_recalcula_antes_de_cada_paso`<br>`tests/test_viaje.py::test_fr026_puerta_que_se_cierra_sola_con_el_jugador_en_ella` | hecho |
 | FR-027 | PR-09 | T046, T047, T050, T052 a T054, T056 a T058, T060, T112 | (a) y prioridad: `tests/test_viaje.py::test_fr027_prioridad_fin_dano_enemigos_destino`<br>(b) `tests/test_viaje.py::test_fr027b_escenario_us4_3_enemigo_dormido_se_activa_y_detiene`<br>(c) `tests/test_viaje.py::test_fr027c_escenario_us4_6_veneno_activo_desde_antes_de_la_orden`<br>(d) `tests/test_viaje.py::test_fr027d_sin_ruta_al_recalcular`<br>(e) `tests/test_viaje.py::test_fr027e_victoria_en_un_paso`<br>(f) `tests/test_viaje.py::test_fr027f_paso_rechazado_detiene_con_el_mensaje_de_mover_sin_tiempo` | hecho |
@@ -95,22 +95,21 @@ Conciliación del 2026-11-16 entre las tareas de terreno y costos de esta capaci
 | SC-004 | PR-11, PR-12 | T083, T087, T088, T090, T091, T094, T116 | `tests/test_persistencia_conocimiento.py::test_fr017_sc004_escenario_us5_2_guardar_cargar_continuar_y_reproducir`<br>`tests/test_persistencia_conocimiento.py::test_fr017_fr030_fr031_ir_a_y_pergaminos_sin_y_con_carga`<br>`tests/test_viaje.py::test_fr030_sc004_viaje_completo_deja_comentario_antes_del_primer_mover_y_se_reproduce`<br>Partida jugada: [escenarios 5](evidencia_quickstart.md#esc-5) y [6](evidencia_quickstart.md#esc-6) (reloj, sala, vida y acciones; el conocimiento no se ve en la salida de `--replay`) | hecho. Nota: la prueba con «ir a» y pergaminos usa un buscador de prueba inyectado, no la búsqueda real |
 | SC-005 | PR-09, PR-11 | T045, T053, T058, T083, T085, T116 | `tests/test_viaje.py::test_fr022_sc005_escenario_us4_1_sala_avistada_desconocida_inexistente_o_no_valida`<br>`tests/test_viaje.py::test_fr022_sc005_orden_rechazada_no_deja_linea`<br>`tests/test_viaje.py::test_fr030_sc005_rechazo_del_primer_mover_no_deja_linea`<br>Partida jugada: [escenario 4.1](evidencia_quickstart.md#esc-4-rechazos) | hecho |
 | SC-006 | PR-16 | T001, T009, T019, T081, T097, T099, T106, T108, T116 | Suite completa: `Ran 812 tests`, `OK`, sin red<br>`tests/test_conocimiento.py::test_sc006_motor_sin_iniciar_partida_funciona_sin_conocimiento`<br>`tests/test_bench_niebla.py::test_sc006_pr15_t108_m1_a_m6_con_tamanos_minimos_sin_red_ni_vista`<br>T116: la misma suite, `Ran 812 tests`, `OK` ([evidencia_quickstart.md](evidencia_quickstart.md#resumen)) | hecho |
-| SC-007 | PR-15 | T003, T104, T109, T110\* | `tests/test_bench_niebla.py::test_sc007_pr15_t108_m4_con_y_sin_espacio_compara_contra_la_constante` (forma y veredicto, sin afirmar tiempos)<br>Medición M4 en [`resultados_bench_niebla.txt`](../../resultados_bench_niebla.txt), PROVISIONAL, con mapas sintéticos (ver abajo) | **pendiente de T110**: §6.1 no se da por cumplido |
+| SC-007 | PR-15 | T003, T104, T109, T110 | `tests/test_bench_niebla.py::test_sc007_pr15_t108_m4_con_y_sin_espacio_compara_contra_la_constante` (forma y veredicto, sin afirmar tiempos)<br>`tests/test_bench_niebla.py::test_sc007_pr15_t110_fila_de_la_cripta_real_con_veredicto_contra_la_constante`<br>`tests/test_bench_niebla.py::test_sc007_pr15_t110_elige_la_mas_grande_y_mide_solo_pares_alcanzables`<br>`tests/test_bench_niebla.py::test_sc007_pr15_t110_grafo_dirigido_excluye_la_puerta_cerrada`<br>`tests/test_bench_niebla.py::test_sc007_pr15_t110_sin_esqueleto_la_fila_dice_no_medido_y_no_falla`<br>`tests/test_bench_niebla.py::test_sc007_pr15_t110_el_bench_no_contiene_datos_de_la_cripta`<br>`tests/test_bench_niebla.py::test_sc007_pr15_t110_solo_lee_datos_locales`<br>`tests/test_bench_niebla.py::test_sc007_pr15_t110_corre_sin_red_ni_vista`<br>`tests/test_bench_niebla.py::test_sc007_pr15_t110_las_filas_de_referencia_van_despues_de_todas_las_sinteticas`<br>Medición M4: fila «referencia/paso» de [`resultados_bench_niebla.txt`](../../resultados_bench_niebla.txt) (ver abajo) | hecho: §6.1 cumple sobre la cripta de referencia ([DECISIONES.md, §6.1 en §5.3](../../Decisiones/DECISIONES.md)). Supone que la cripta de referencia es la publicada más grande, `cripta-02` |
 
-**SC-007 y §6.1.** El límite es de 5 ms por paso «con el mapa conocido completo de la cripta de referencia», que aún no
-está publicada. M4 mide la `primer_paso` real sobre mapas sintéticos. Todas sus filas son PROVISIONAL. Filas de un
-paso, por llamada, de `resultados_bench_niebla.txt`:
+**SC-007 y §6.1.** El límite es de 5 ms por paso «con el mapa conocido completo de la cripta de referencia». M4 mide
+la `primer_paso` real en el peor caso entre todos los pares alcanzables del mapa conocido completo de `cripta-02`
+(20 salas), leída de `datos_locales/esqueleto_cripta-02.json`. Filas «referencia/paso» de `resultados_bench_niebla.txt`:
 
 ```text
-M4 grilla/paso      V=400 pasos=1 espacio=por llamada     1.4221 ms   PROVISIONAL cumple
-M4 grilla/paso      V=2500 pasos=1 espacio=por llamada    12.3162 ms   PROVISIONAL no cumple
-M4 cadena/paso      V=2500 pasos=1 espacio=por llamada     2.5780 ms   PROVISIONAL cumple
-M4 grilla/paso      V=2500 pasos=1 espacio=reutilizado     8.8986 ms   PROVISIONAL no cumple
+M4 referencia/paso  cripta=cripta-02 V=20 pasos=1 pares=325 peor=9->1 espacio=por llamada     0.0385 ms   cumple
+M4 referencia/paso  cripta=cripta-02 V=20 pasos=1 pares=325 peor=19->17 espacio=reutilizado     0.0243 ms   cumple
 ```
 
-Con V = 400 o menos todo cumple. La grilla de 2500 es una prueba de estrés y no cumple. El veredicto definitivo es
-T110, que agrega a M4 el mapa conocido completo de la cripta de referencia. El detalle está en
-[DECISIONES.md, §5.3](../../Decisiones/DECISIONES.md).
+En cuatro corridas el peor paso dio entre 0.02 y 0.09 ms: **cumple**, con un margen de al menos 50 veces. Es una
+suposición que `cripta-02` sea la cripta de referencia, porque el enunciado no la identifica con certeza. Las filas
+sintéticas siguen como pruebas de estrés (PROVISIONAL): hasta 400 salas cumplen, y la grilla de 2500 no. El detalle
+está en [DECISIONES.md, §5.3, «ir a» y el límite de §6.1](../../Decisiones/DECISIONES.md).
 
 ## Los 9 casos de SC-001
 
@@ -135,12 +134,12 @@ en una carpeta temporal fuera del repositorio.
 | | Total | hecho | bloqueado | pendiente |
 |---|---|---|---|---|
 | FR | 31 | 31 | 0 | 0 |
-| SC | 7 | 6 | 0 | 1 (SC-007) |
+| SC | 7 | 7 | 0 | 0 |
 | Casos de SC-001 | 9 | 9 | 0 | 0 |
 
 **Causas de lo pendiente**
 
-- **SC-007**: §6.1 queda pendiente de T110.
+No queda nada pendiente.
 
 Ningún FR quedó **sin prueba**.
 

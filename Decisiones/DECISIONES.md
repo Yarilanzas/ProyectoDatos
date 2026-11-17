@@ -973,26 +973,38 @@ Todas las filas quedan con el p95 por debajo de 20 ms (§5.2), con y sin conocim
 | Consulta `historia` | 50 ms | con una partida de al menos 5000 acciones y K por defecto | No |
 | Paso de «ir a» | 5 ms | con el mapa conocido completo de la cripta de referencia | **Sí: es el único del que se ocupa esta capacidad** |
 
-**M4 sobre mapas sintéticos (PROVISIONAL).** Se mide la `primer_paso` real (la de Persona A), nunca un buscador de prueba, sobre el mapa conocido completo de cada mapa sintético.
+**Veredicto de §6.1 (T110): CUMPLE sobre la cripta de referencia.** M4 mide con la `primer_paso` real (la de Persona A), nunca un buscador de prueba, el peor paso de «ir a» entre todos los pares (origen, destino) alcanzables del mapa conocido completo de la cripta de referencia. Es la fila `M4 referencia/paso` de `resultados_bench_niebla.txt` (`tests/bench_niebla.py::medir_m4_referencia`, commit `70ecfdc`).
+
+| Dato | Valor |
+|---|---|
+| Cripta | `cripta-02`, 20 salas, leída al correr de `datos_locales/esqueleto_cripta-02.json` |
+| Pares medidos | 325 de 380 posibles |
+| Peor paso, en cuatro corridas | entre 0.02 y 0.09 ms, por llamada y reutilizado |
+| Límite | 5 ms (`LIMITE_PASO_IR_A_MS`) |
+| Veredicto | **cumple**, con un margen de al menos 50 veces |
+
+- **Qué es la cripta de referencia (SUPOSICIÓN).** Se interpreta como la cripta publicada más grande: `cripta-02`, con 20 salas (las otras son `cripta-01`, con 6, y `cripta-test`, con 5). Es una suposición, porque el enunciado no la identifica con certeza. Esa definición viene del FR-029 de la spec 002, según Persona B.
+- **Método.** Cada par se mide como un paso de las filas sintéticas: `medir_ms` de `primer_paso`, mediana de 7 repeticiones. La fila da el máximo, el par que lo produce y cuántos pares se midieron, en dos variantes: un `EspacioBusqueda` nuevo en cada llamada y uno reutilizado en todos los pares. Equipo: Windows 11, Intel, Python 3.12.10, con la carga normal de PyCharm y otros programas abiertos, así que las cifras varían entre corridas (también cambia el par que da el peor caso).
+- **Mapa conocido completo.** Se entra sin antorcha a cada sala, como en las filas sintéticas: todas quedan exploradas y cada puerta queda recordada con su estado real. Hay 2 salidas cerradas con llave (5→19 y 17→18) que el jugador recuerda cerradas, así que no entran al grafo. El grafo es dirigido: desde la sala 1 solo se alcanzan 17 de las 20 salas, y los 55 pares restantes no tienen ruta.
+- **Enemigos (SIN CONFIRMAR por Persona B).** El contenido local de `cripta-02` está incompleto: solo trae las salas 1 a 8, 19 y 20. El catálogo local lista 1 enemigo, `ent_rata_gigante` (rastreador), y 0 cazadores. No cambia la medición, porque el costo de una salida no depende de los enemigos: `MotorSimulacion.costo_salida` (`Modelo/MotorSimulacion.py`) solo lee `salida.costo`, o `COSTO_MOVER` si no lo trae, y `GrafoConocido.aristas` (`Modelo/Conocimiento.py`) solo mira el estado de las salas, el recuerdo de la puerta y ese costo.
+
+**Filas sintéticas: pruebas de estrés (PROVISIONAL).** Miden la misma `primer_paso` sobre el mapa conocido completo de cada mapa sintético. No son el criterio de §6.1: muestran cómo crece el paso con el tamaño del mapa.
 
 - «Paso»: el primer paso de la primera sala a la última, la ruta más larga del mapa.
 - «Viaje»: el recorrido completo; su veredicto usa el promedio por paso.
 - «Por llamada»: `primer_paso` crea su `EspacioBusqueda` en cada llamada. «Reutilizado»: se crea uno por viaje.
 
-| Topología | V | Paso, por llamada | Paso, reutilizado | Viaje, por llamada (pasos) | Viaje, reutilizado | Veredicto |
-|---|---|---|---|---|---|---|
-| grilla | 25 | 0.0486 ms | 0.0451 ms | 0.3491 ms (8) | 0.3327 ms | cumple |
-| grilla | 100 | 0.2617 ms | 0.2410 ms | 3.1349 ms (18) | 3.5098 ms | cumple |
-| grilla | 400 | 1.4221 ms | 1.1798 ms | 32.3244 ms (38) | 32.0053 ms | cumple |
-| grilla | 2500 | 12.3162 ms | 8.8986 ms | 756.0104 ms (98) | 750.1137 ms | **no cumple** (las cuatro filas) |
-| cadena | 25 | 0.0290 ms | 0.0278 ms | 0.6147 ms (24) | 0.5830 ms | cumple |
-| cadena | 100 | 0.1138 ms | 0.1131 ms | 9.8841 ms (99) | 9.4690 ms | cumple |
-| cadena | 400 | 0.8277 ms | 0.4631 ms | 188.1495 ms (399) | 153.2984 ms | cumple |
-| cadena | 2500 | 2.5780 ms | 2.9456 ms | 7050.2817 ms (2499) | 7164.3982 ms | cumple |
+Resultados por paso:
 
-Con grilla y cadena hasta V = 400 se cumple el límite de 5 ms, y la cadena de 2500 también. En la grilla de 2500 **no se cumple**: el paso largo tarda 12.3162 ms (8.8986 ms con espacio reutilizado), y el promedio por paso del viaje es 756.0104 / 98 = 7.7 ms.
+- Hasta 400 salas, cumple. La grilla de 400 da de 1.0 a 1.2 ms por paso en condiciones normales, y hasta 3.8 ms con el equipo cargado.
+- La cadena de 2500 cumple: de 2.5 a 3.4 ms por paso.
+- La grilla de 2500 **no cumple**: de 8 a 26 ms por paso. Es un Dijkstra sin heurística con el destino lejano; A* queda fuera de alcance (confirmación de Persona A, abajo).
 
-**Diagnóstico (medición puntual del 2026-11-16, fuera de `--bench`).** Se perfiló con `cProfile` una búsqueda de la sala 1 a la 2500 de esa grilla, en el mismo equipo. Son mediciones puntuales y ruidosas: el mismo paso dio una mediana de 8.6 ms en una corrida y de 20 a 24 ms en otra.
+Las cifras de la última corrida están en `resultados_bench_niebla.txt`.
+
+**Nota metodológica: orden de las filas.** Medir la cripta de referencia entre los dos bloques sintéticos («por llamada» y «reutilizado») empeoraba las filas que venían después: la cadena de 2500 reutilizada subió de ≈2.9 a 4.4–7.9 ms por paso. Por eso las filas de la cripta de referencia van al final de M4 (`tests/test_bench_niebla.py::test_sc007_pr15_t110_las_filas_de_referencia_van_despues_de_todas_las_sinteticas`). La causa no se investigó.
+
+**Diagnóstico (medición puntual del 2026-11-16, fuera de `--bench`).** Se perfiló con `cProfile` una búsqueda de la sala 1 a la 2500 de la grilla de 2500, en el mismo equipo. Son mediciones puntuales y ruidosas: el mismo paso dio una mediana de 8.6 ms en una corrida y de 20 a 24 ms en otra.
 
 - Se expanden 2498 de las 2500 salas. El destino es la sala más lejana, y la búsqueda se detiene al sacar el destino de la cola (`Modelo/BusquedaRuta.py`, al extraerlo devuelve el paso), así que antes expande casi todo el resto.
 - `GrafoConocido.aristas` ocupa cerca del 49 % del tiempo, y la cola de prioridad cerca del 28 %.
@@ -1004,16 +1016,9 @@ Con grilla y cadena hasta V = 400 se cumple el límite de 5 ms, y la cadena de 2
 
 Dieron el mismo primer paso que la versión actual en 2800 casos (grilla y cadena de V = 400, con costos variados y con todos los costos en 1 para forzar empates). Ganaron entre 0 % y 9 %, dentro del ruido. **HIPÓTESIS**: que alguna de ellas mejore de forma consistente. Bajar de verdad exigiría cambiar el algoritmo, con búsqueda bidireccional o A* con una estimación de distancia. Queda como trabajo futuro y corresponde a Persona A, responsable de `Modelo/BusquedaRuta.py`.
 
-**Espacio reutilizado.** Reutilizar el `EspacioBusqueda` por viaje no dio una mejora consistente: en la grilla de 2500 bajó el paso (12.3162 a 8.8986 ms), pero en la cadena de 2500 salió algo peor (paso 2.5780 a 2.9456 ms; viaje 7050.2817 a 7164.3982 ms). **HIPÓTESIS no concluyente**.
+**Espacio reutilizado.** Reutilizar el `EspacioBusqueda` no dio una mejora consistente. En la corrida de `resultados_bench_niebla.txt`, el paso de la grilla de 2500 tarda 15.0791 ms por llamada y 15.9985 ms reutilizado, y el de la cadena de 2500, 2.8774 y 2.9908 ms. **HIPÓTESIS no concluyente**.
 
-**Alcance del veredicto.**
-
-- La grilla de 2500 salas es una **prueba de estrés**, no el criterio de §6.1, que es con el mapa conocido completo de la cripta de referencia.
-- El plan registra criptas locales de ejemplo de 5 a 20 salas (plan.md, Technical Context). El tamaño de la cripta de referencia no se conoce todavía.
-- **§6.1 NO se da por cumplido.** El veredicto definitivo queda pendiente de T110, que agregará a M4 el mapa conocido completo de la cripta de referencia cuando se publique.
-- **HIPÓTESIS** (research R9, M4): «con la cripta de referencia, el cálculo de un paso cumple el límite de 5 ms».
-
-**Confirmación de Persona A (2026-11-16), responsable de `Modelo/BusquedaRuta.py`.** La búsqueda ya corta al sacar el destino de la cola (`if ordinal == ordinal_destino:` devuelve el paso), así que no hay ahorro por ahí. El costo de la grilla de 2500 es el de un Dijkstra sin heurística con el destino lejano. Un A* lo reduciría, pero cambia el algoritmo y obliga a repetir las pruebas de desempate; por eso no entra antes de la entrega y la grilla de 2500 queda como prueba de estrés documentada, con su veredicto «no cumple». El criterio de §6.1 se mide en la cripta de referencia; según A, si la cripta real tiene 400 salas o menos, está dentro de los 5 ms. Esa es la lectura de A: nuestras mediciones son con mapas sintéticos y provisionales, y §6.1 sigue sin darse por cumplido hasta T110.
+**Confirmación de Persona A (2026-11-16), responsable de `Modelo/BusquedaRuta.py`.** La búsqueda ya corta al sacar el destino de la cola (`if ordinal == ordinal_destino:` devuelve el paso), así que no hay ahorro por ahí. El costo de la grilla de 2500 es el de un Dijkstra sin heurística con el destino lejano. Un A* lo reduciría, pero cambia el algoritmo y obliga a repetir las pruebas de desempate; por eso no entra antes de la entrega y la grilla de 2500 queda como prueba de estrés documentada, con su veredicto «no cumple». El criterio de §6.1 se mide en la cripta de referencia; según A, si la cripta real tiene 400 salas o menos, está dentro de los 5 ms. Esa fue la lectura de A antes de T110; la medición de T110 con la cripta de referencia, de 20 salas, cumple (arriba).
 
 ### Veneno no jugable (límite conocido)
 
@@ -1033,7 +1038,7 @@ Dieron el mismo primer paso que la versión actual en 2800 casos (grilla y caden
 - Costo de `@cargar` en el replay y su efecto en el presupuesto con red (decisión 3).
 - Tiempos de `mapa` y de resolver el destino de `ir a` (decisión 4).
 - Que las mejoras pequeñas de la búsqueda ganen de forma consistente, y que reutilizar el `EspacioBusqueda` mejore (M4).
-- Que un paso de «ir a» cumpla 5 ms con la cripta de referencia (§6.1, pendiente de T110).
+- Que la cripta publicada más grande (`cripta-02`) sea la cripta de referencia del enunciado (§6.1, suposición de T110).
 
 ## §5.4 — Resolubilidad
 

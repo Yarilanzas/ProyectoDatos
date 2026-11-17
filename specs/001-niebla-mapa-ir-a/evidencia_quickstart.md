@@ -44,7 +44,7 @@ red.
 | [5. Reproducción](#esc-5) | sí | cumple en reloj, posición, vida y acciones; el conocimiento final no se ve en la salida de `--replay` |
 | [6. Guardar, cargar y reproducir](#esc-6) | sí | cumple; azar y `secuencia` no se ven por consola |
 | [7. Versiones viejas](#esc-7) | sí | cumple |
-| [8. Mediciones](#esc-8) | sí | cumple (M4 sigue PROVISIONAL; §6.1 no se da por cumplido, T110) |
+| [8. Mediciones](#esc-8) | sí | cumple (en esta corrida M4 solo tenía filas sintéticas, PROVISIONAL; §6.1 lo resolvió después T110: cumple) |
 
 **Suite completa**: `python -m unittest discover -s tests -t .` → `Ran 812 tests in 16.842s`, `OK`.
 
@@ -804,8 +804,9 @@ M4 cadena/paso      V=2500 pasos=1 espacio=por llamada     2.7580 ms   PROVISION
 las pantallas de la vista.
 
 - Este archivo de la corrida de T116 **no** reemplaza al `resultados_bench_niebla.txt` del repositorio, que es el de
-  T109 y el que citan DECISIONES.md y la matriz.
-- M4 sigue PROVISIONAL: la grilla de 2500 no cumple, como en T109. **§6.1 no se da por cumplido** (T110).
+  la corrida de T110 (commit `70ecfdc`) y el que citan DECISIONES.md §5.3 y la matriz.
+- En esta corrida M4 solo tenía filas sintéticas, PROVISIONAL: la grilla de 2500 no cumple, como en T109. §6.1 quedó
+  para T110, que después lo dio por cumplido sobre `cripta-02` ([DECISIONES.md, §5.3](../../Decisiones/DECISIONES.md)).
 
 Respaldo automático:
 
