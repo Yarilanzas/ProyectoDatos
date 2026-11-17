@@ -2,7 +2,7 @@
 
 Guía para comprobar la capacidad de punta a punta. No contiene código de implementación: eso va en `tasks.md`. Los comandos suponen
 la raíz del repositorio y Python 3.11 o superior con `requests` instalado. **Hasta que se implemente, los escenarios 1 a 16 fallan**
-(los 14 de la capacidad y los dos de carga sin datos locales y de bitácora igual a `<guardado>.log`); sirven como criterio de aceptación.
+(los 14 de la capacidad y los dos de carga sin datos locales y de bitácora igual a `<guardado>.log` o al propio guardado); sirven como criterio de aceptación.
 
 ## Requisitos previos
 
@@ -34,10 +34,10 @@ Cada fila indica qué se comprueba, con qué se comprueba y el requisito que deb
 | 10 | Versiones y opciones | Cargar un `CRPT` 2; un `CRPT` 3 con la línea alterada; `--hasta` sin `--replay`; `--checkpoint-cada` con `--cargar` y con 0 | `Versión incompatible`, código `2`, nada cargado; errores de uso con código `1` | FR-013, FR-018, FR-023, FR-024, FR-031, SC-008 |
 | 11 | Independencia de K | Los mismos 100 instantes con K = 1, 50 y 500 | Resúmenes idénticos | FR-028, SC-003 |
 | 12 | Oráculo de la copia | En cripta de ≤ 60 salas, comparar la copia estructurada con `deepcopy` completo | Resúmenes iguales; con 200 salas la estructurada funciona y `deepcopy` completo no | R2 |
-| 13 | Sin solicitudes | Reconstruir con una fuente que cuenta llamadas; vaciar la caché de memoria; borrar un dato local | 0 llamadas; con el dato borrado, `! Error: No se puede reconstruir sin nuevas solicitudes...`, código `1` | Principio VII |
+| 13 | Sin solicitudes | Reconstruir con una fuente que cuenta llamadas; vaciar la caché de memoria; borrar un dato local | 0 llamadas (la reconstrucción no agrega ninguna llamada); con el dato borrado, `! Error: No se puede reconstruir sin nuevas solicitudes...`, código `1` | Principio VII |
 | 14 | Estado de A | Con cazadores activos, reconstruir tras guardar, cargar y retroceder | Mismas decisiones que la partida real | 003 FR-025 |
-| 15 | Cargar sin datos locales | Guardar una partida con línea; borrar la carpeta de datos locales (o un dato que el guion necesite, con el paquete offline sin red); `--cargar` y el comando `cargar` | `! Error: No se puede reconstruir sin nuevas solicitudes: faltan datos locales (<qué>)`, código `1`; no se carga nada; en el comando `cargar` la partida en curso (reloj, bitácora y línea) queda intacta; 0 llamadas a la fuente | FR-022, FR-025, Principio VII |
-| 16 | Bitácora igual a `<guardado>.log` | Intentar `guardar p.cripta` en una sesión con `--bitacora p.cripta.log`, y `--cargar p.cripta --bitacora p.cripta.log`; luego repetir con una bitácora distinta | `guardar` se rechaza con `! Error: No se pudo guardar: la bitácora no puede ser p.cripta.log, que es la copia de bitácora de la partida guardada; use otra con --bitacora` y la partida sigue; `--cargar p.cripta --bitacora p.cripta.log` sale con ese error (sin `No se pudo guardar:`) y código `1`, sin cargar; con una bitácora distinta, el replay de `--hasta` coincide con la línea (regla 2 sin excepciones) | FR-025, FR-030 |
+| 15 | Cargar sin datos locales | Guardar una partida con línea; borrar la carpeta de datos locales (o un dato que el guion necesite, con el paquete offline sin red); `--cargar` y el comando `cargar` | `! Error: No se puede reconstruir sin nuevas solicitudes: faltan datos locales (<qué>)`, código `1`; no se carga nada; en el comando `cargar` la partida en curso (reloj, bitácora y línea) queda intacta; 0 llamadas (la reconstrucción no agrega ninguna llamada a la fuente). Con el **paquete** borrado el error es el de la fuente al pedir la versión de la cripta (código `1`), no `faltan datos locales`; `--replay` con `@cargar` no usa el bloque de línea y no falla sin datos locales | FR-022, FR-025, Principio VII |
+| 16 | Bitácora igual a `<guardado>.log` o al propio guardado | Intentar `guardar p.cripta` en una sesión con `--bitacora p.cripta.log` (y con `--bitacora p.cripta`), y `--cargar p.cripta --bitacora p.cripta.log` (y `--bitacora p.cripta`); luego repetir con una bitácora distinta | `guardar` se rechaza con `! Error: No se pudo guardar: la bitácora no puede ser <ruta>, que es la partida guardada o su copia de bitácora; use otra con --bitacora` y la partida sigue; `--cargar p.cripta --bitacora p.cripta.log` (o `p.cripta`) sale con `! Error: la bitácora no puede ser <ruta>, ...` (sin `No se pudo guardar:`) y código `1`, sin cargar y sin tocar `p.cripta` ni `p.cripta.log`; con una bitácora distinta, el replay de `--hasta` coincide con la línea (regla 2 sin excepciones) | FR-025, FR-030 |
 
 Cada prueba cita el FR en su nombre o docstring. Las pruebas no usan red.
 
@@ -85,7 +85,7 @@ py main.py --offline paquete/ --replay p.log --hasta 150
 py main.py --offline paquete/ --replay p.log --hasta 99999       (aviso + estado final)
 py main.py --hasta 5                                              (error de uso, código 1)
 py main.py --cargar p.cripta --checkpoint-cada 10                 (error de uso, código 1)
-py main.py --offline paquete/ --cargar p.cripta --bitacora p.cripta.log     (error de uso, código 1: la bitácora no puede ser <guardado>.log)
+py main.py --offline paquete/ --cargar p.cripta --bitacora p.cripta.log     (error de uso, código 1: la bitácora no puede ser <guardado>.log ni el propio guardado)
 
 (con p.cripta guardada) borrar datos_locales/ y repetir --cargar sin red  (faltan datos locales: error, código 1, nada se carga)
 ```

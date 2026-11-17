@@ -28,7 +28,7 @@ como `ir a`.
 | `t` mayor que el reloj actual | aviso: `No hay historia más allá del reloj actual (<reloj>).` |
 | `#0` | aviso: `Las acciones se numeran desde 1.` |
 | `#k` con `k` mayor que acciones + 1 | aviso: `La acción <k> no existe: la próxima acción es la <acciones+1>.` |
-| La reconstrucción no se puede hacer (faltan datos locales, o el sello no coincide) | error: `No se pudo reconstruir ese momento: <causa>` |
+| La reconstrucción no se puede hacer (falta un dato en la carpeta de datos locales, o el sello no coincide) | error: `No se pudo reconstruir ese momento: <causa>` |
 
 ### Salida (resumen histórico, FR-006)
 
@@ -113,10 +113,11 @@ de B: sin cambios salvo una nota; ver el plan.)
 | `--replay F --hasta T --checkpoint-cada K` | igual; K solo cambia el costo (FR-028) |
 | `--replay F --checkpoint-cada K` (sin `--hasta`) | replay normal de la capacidad 001; K no tiene efecto (no se construye línea) |
 | `--replay F --cargar G --checkpoint-cada K` | gana `--replay`, `--cargar` se ignora, K es válido |
-| `--cargar F --checkpoint-cada K` | error de uso, código `1`, sin cargar nada (FR-031) |
+| `--mostrar-puntajes` o `--verificar X` con `--cargar F --checkpoint-cada K` | mandan `--mostrar-puntajes` o `--verificar`, `--cargar` no se ejecuta y K no le toca: no es error |
+| `--cargar F --checkpoint-cada K` (`--cargar` es el modo que manda) | error de uso, código `1`, sin cargar nada (FR-031): solo falla cuando `--cargar` es el modo que manda |
 | `--cargar F --hasta T` (sin `--replay`) | error de uso, código `1` |
-| `--cargar F` | carga; la línea se reconstruye con el K del archivo (si faltan datos locales: error, código `1`, nada cargado) |
-| `--cargar F --bitacora F.log` | `! Error: la bitácora no puede ser F.log, que es la copia de bitácora de la partida guardada; use otra con --bitacora`, código `1`, sin cargar nada (hecho por C, `b6f9f52`). El comando `guardar` con esa bitácora, dentro de la partida, solo se rechaza y la partida sigue |
+| `--cargar F` | carga; la línea se reconstruye con el K del archivo (si falta la carpeta de datos locales: error `faltan datos locales`, código `1`, nada cargado; si falta el paquete: el error de la fuente al pedir la versión de la cripta, código `1`) |
+| `--cargar F --bitacora F.log` o `--cargar F --bitacora F` | `! Error: la bitácora no puede ser <ruta>, que es la partida guardada o su copia de bitácora; use otra con --bitacora`, código `1`, sin cargar nada ni tocar `F` ni `F.log` (C: `b6f9f52`, ampliado en 001 `f592da4`). El comando `guardar` con esa bitácora, dentro de la partida, solo se rechaza y la partida sigue. Se comparan con `normcase` + `abspath` y `samefile` |
 | `--cripta X --checkpoint-cada K` (o menú) | partida nueva con ese K |
 | `--cripta X --forzar --checkpoint-cada K` | verificación en silencio, partida nueva con ese K |
 
@@ -131,19 +132,23 @@ El comando interactivo `cargar` adopta el K del archivo sin error: FR-031 se ref
 
 ## Cargar sin datos locales
 
-Cargar una partida reproduce su guion con el gestor sin red (research R8 y R10). Si falta un dato local que el disco debería tener
-(carpeta de datos locales borrada o de otra versión, paquete offline ausente):
+Cargar una partida reproduce su guion con el gestor sin red (research R8 y R10). `faltan datos locales` solo ocurre con la **carpeta de datos
+locales borrada** (o de otra versión): el gestor histórico no encuentra en el disco un dato que el guion necesita. Con el **paquete borrado**
+el error es otro: `cargar_partida` pide siempre la versión de la cripta a la fuente antes de reconstruir nada, así que el error viene de la
+fuente (por ejemplo `! Error: Falta el archivo para /criptas/<id>/version: ...`) y también es código `1`:
 
 | Caso | Resultado |
 |------|-----------|
-| `--cargar F` | `! Error: No se puede reconstruir sin nuevas solicitudes: faltan datos locales (<qué>)`, código `1`; **no se carga nada**, no se abre la partida ni se gasta presupuesto |
+| `--cargar F`, carpeta de datos locales borrada | `! Error: No se puede reconstruir sin nuevas solicitudes: faltan datos locales (<qué>)`, código `1`; **no se carga nada**, no se abre la partida; la reconstrucción no agrega ninguna llamada a la fuente («0 llamadas») |
+| `--cargar F`, paquete borrado | el error de la fuente al pedir la versión de la cripta (no `faltan datos locales`), código `1`; no se carga nada |
 | comando `cargar` dentro de una partida | `No se pudo cargar: No se puede reconstruir sin nuevas solicitudes: faltan datos locales (<qué>)`; la partida en curso, su bitácora y su línea quedan intactas |
-| `--replay F` con `@cargar` | igual que `--cargar`: código `1` |
+| `--replay F` con `@cargar` | **no usa el bloque de línea del guardado**, con o sin `--hasta`: reproduce la bitácora con el gestor normal (cada `@cargar` guarda el motor sin línea en un temporal y lo recarga con `cargar_partida`). Con la carpeta de datos locales borrada y el paquete presente (comprobado): código `0` con `--replay` solo, con `--hasta T`, con `--hasta` mayor que el final y con `--hasta T --checkpoint-cada 1`; el gestor normal vuelve a leer del paquete y recrea la carpeta, y el gestor histórico de `--hasta` lee lo que el replay acaba de guardar. Con el paquete borrado (comprobado): `! Error: Falta el archivo para /criptas/<id>/version: <ruta>`, código `1`, con o sin `--hasta` |
 
 Alternativas descartadas (cargar sin línea, reconstruir después, usar la red) y el motivo: [research R8](../research.md#r8-persistencia-de-la-línea-fr-022-fr-023-fr-024-fr-025-fr-031).
 `SinDatosParaHistoria` debe ser una subclase de `RuntimeError` para que `main.py` la atrape con las excepciones que ya convierte en el
 código `1` (hoy `ValueError`, `RuntimeError` y `OSError`). Se distingue de «Versión incompatible» (código `2`): faltar datos locales no es una
-versión distinta.
+versión distinta. «0 llamadas» significa que la reconstrucción **no agrega ninguna llamada** a la fuente (las de `cargar_partida`, que son
+anteriores, no cuentan).
 
 ## Códigos de salida
 
@@ -151,9 +156,9 @@ versión distinta.
 |-----------|--------|
 | `--replay --hasta` correcto, también con `T` mayor que el final | `0` |
 | Valor o combinación de opciones inválidos (errores de uso de arriba) | `1` |
-| `ErrorReconstruccion`, `SinDatosParaHistoria` (también al cargar: nada se carga), acción rechazada por el replay, otros errores | `1` |
-| `--cargar F --bitacora F.log` ([formato-bitacora.md](formato-bitacora.md#bitácora-igual-a-guardadolog)) | `1` (en la partida, `guardar` y `cargar` solo rechazan el comando) |
-| Bitácora, archivo de partida, cripta o catálogo de versión incompatible; línea que no coincide con la partida | `2` con `Versión incompatible: ...` |
+| `ErrorReconstruccion`, `ReferenciaInvalida`, `SinDatosParaHistoria` (también al cargar: nada se carga), acción rechazada por el replay, otros errores | `1` |
+| `--cargar F --bitacora F.log` o igual a `F` ([formato-bitacora.md](formato-bitacora.md#bitácora-igual-a-guardadolog)) | `1` (en la partida, `guardar` y `cargar` solo rechazan el comando) |
+| Bitácora, archivo de partida, cripta o catálogo de versión incompatible; línea que no coincide con la partida (`VersionIncompatible`, no `ErrorReconstruccion`) | `2` con `Versión incompatible: ...` |
 
 No se crean códigos nuevos.
 

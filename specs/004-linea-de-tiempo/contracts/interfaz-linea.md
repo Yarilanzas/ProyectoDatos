@@ -19,7 +19,7 @@ El controlador llama a `despues_de_accion` desde `_accion`, **después** de que 
 `bitacora.registrar`. `Reproductor` los llama con el parámetro `observador` ([formato-bitacora.md](formato-bitacora.md)). Una acción
 rechazada no llega: no se registra nada.
 
-**Hecho por C** (`b1b57d7`, 001-T123/T124). La firma real del `Reproductor` es `Reproductor(fabrica_motor, version_cripta, version_catalogo, recargar=None, observador=None)`, con `reproducir_acciones(encabezado, acciones) -> motor` y `reproducir(ruta) -> motor` (lee la bitácora y llama a la anterior); los avisos van en este orden: `al_crear_motor(motor)` tras crear el motor, `despues_de_accion(motor, nombre, argumento)` tras cada acción no rechazada y `despues_de_carga(motor)` tras `@cargar`. Al llegar a `@cargar`
+**Hecho por C** (`b1b57d7`, 001-T123/001-T124). La firma real del `Reproductor` es `Reproductor(fabrica_motor, version_cripta, version_catalogo, recargar=None, observador=None)`, con `reproducir_acciones(encabezado, acciones) -> motor` y `reproducir(ruta) -> motor` (lee la bitácora y llama a la anterior); los avisos van en este orden: `al_crear_motor(motor)` tras crear el motor, `despues_de_accion(motor, nombre, argumento)` tras cada acción no rechazada y `despues_de_carga(motor)` tras `@cargar`. Al llegar a `@cargar`
 llama a `recargar(motor)`, que **recibe el motor actual y devuelve el nuevo**. `despues_de_carga(motor)` recibe el motor **nuevo**
 (el que devolvió `recargar`); el adaptador no conserva el anterior. En el controlador (`cargar`) el motor nuevo viene de
 `cargar_partida` y la llamada es la misma.
@@ -53,7 +53,13 @@ Registro (los llama el ObservadorLinea)
     iniciar(motor)                                  motor recién creado o recién cargado sin historia previa
     registrar_accion(motor, nombre, argumento)      comando aceptado que cuenta como acción
     registrar_retroceso(motor)                      'retroceder' aceptado
-    registrar_carga(motor, ruta_copia)              frontera de @cargar; motor ya cargado
+    registrar_carga(motor, ruta_copia)              frontera de @cargar; motor ya cargado (el controlador no lo llama: lo hace el
+                                                    observador, o `ReconstructorLinea.reconstruir` con `motor_cargado`)
+
+Sello
+    sincronizada(motor) -> bool                     True si (motor.reloj, motor.secuencia) es el sello que la línea espera;
+                                                    False si el motor avanzó sin avisarle (p. ej. una acción que lanzó RuntimeError a medias). O(1)
+    sello_de(k) -> (reloj, secuencia)               sello de la decisión previa a la acción k (1 <= k <= acciones + 1)
 
 Consulta (solo lectura, ver garantías)
     consultar_instante(t, motor) -> ResumenHistorico
@@ -72,6 +78,15 @@ Persistencia y ciclo de vida
 
 `motor` es siempre el **motor vivo** de la partida (o del replay). La línea no lo guarda.
 
+### Contrato de `registrar_accion` y de `RETROCESO` (como están en el código)
+
+- `registrar_accion(motor, nombre, argumento)` lanza `ValueError` si `nombre` no es texto no vacío, y `ValueError("«retroceder» no es una acción que
+  cuenta: use registrar_retroceso(motor)")` si el nombre es `retroceder`; `RuntimeError` si falta `iniciar(motor)`.
+- Un `RETROCESO` del guion guarda en `guion_reloj` las **acciones vigentes que quedan** (`nuevo_n`) y no un reloj; `guion_secuencia` vale `0`. Una
+  `CARGA` guarda en `guion_reloj` el reloj del motor cargado. En `RegistroLinea` son `(RETROCESO, acciones_vigentes)` y `(CARGA, reloj_cargado)`.
+- `LineaTiempo.desde_registro(registro, ...)` lanza `ValueError` si un retroceso deja más acciones vigentes de las que había;
+  `registrar_retroceso` lanza `ErrorReconstruccion` si el motor quitó más acciones de las que la línea tenía o un número negativo.
+
 ### Excepciones
 
 | Excepción | Cuándo | Cómo la trata el controlador |
@@ -89,7 +104,7 @@ Persistencia y ciclo de vida
 | `iniciar` | partida nueva | punto de control en la acción 0, sello inicial `(reloj, secuencia)`, cantidad inicial de pergaminos | `O(S)` | `O(S)` |
 | `registrar_accion` | tras cada acción que cuenta | agrega al guion y a la historia vigente; compara y actualiza la serie de pergaminos; si `n % K == 0`, punto de control | `O(1)` + `O(S)` cada K | `O(1)` + `O(S)` cada K |
 | `registrar_retroceso` | tras `retroceder` aceptado | `V = acciones_antes - acciones_después` del motor; recorta la historia vigente y los puntos con `accion > nuevo_n`; agrega `RETROCESO`; punto del motor real en `nuevo_n`; pliega la serie | `O(V) + O(S)` | `O(S)` |
-| `registrar_carga` | tras cargar | agrega `CARGA`; punto del motor cargado en la acción `n` (reemplaza uno regular en `n`); abre época con la copia privada | `O(S)` | `O(S)` + copia |
+| `registrar_carga` | tras cargar | agrega `CARGA`; punto del motor cargado en la acción `n` (siempre agrega su punto: no reemplaza uno regular en `n`); abre época con la copia privada | `O(S)` | `O(S)` + copia |
 | `consultar_instante(t)` | `historia <t>`, `--hasta` | ver abajo | `O(log n + log C + S + K·a)` | `O(S)` temporal |
 | `consultar_accion(k)` | `historia #k` | ver abajo | `O(log C + S + K·a)` | `O(S)` temporal |
 | `a_registro` | `guardar` | copia el guion y K | `O(n)` | `O(n)` |
@@ -190,7 +205,21 @@ Medidas o leídas en T003 ([research.md](../research.md#t003-revisión-de-deepco
     `resumir(..., nombre_pergamino=...)`. Solo si la línea nunca vio un pergamino se usa la constante «Pergamino de retroceso»
     (ese caso no se muestra: la cantidad es 0). Ya no depende de si el clon de la consulta tiene un pergamino.
 20. **`resultado`** de `ResumenHistorico` solo se llena en las referencias «actual» y «final» (y solo si la partida terminó).
-21. **`pergaminos`** de `resumir(...)` es `None` hasta T048: el inventario usa los pergaminos del clon.
+21. **`pergaminos`** de `resumir(...)` (desde T048): `consultar_accion` y `consultar_instante` pasan la cantidad de la serie de pergaminos
+    (`serie.en(k - 1)` para `#k` y para `t == vig_reloj[k - 1]`; `serie.en(k)` para `t` posterior a esa decisión) y el nombre que la serie
+    recuerda; el resumen **no** usa los pergaminos del clon. Solo el estado actual (`k == acciones + 1` o `t == reloj_actual`) pasa `None`
+    y toma el inventario del motor vivo. **Limitación conocida (FR-029)**: la serie guarda un valor por posición y, al retroceder, rige la
+    última ocurrencia (el presente): en la posición a la que se retrocedió el resumen muestra la cantidad actual y no la que el jugador
+    tenía justo antes de gastar el pergamino; antes de esa posición muestra lo que tenía entonces.
+
+## Guardar, cargar y sus límites conocidos
+
+- **`guardar` descarta una línea desfasada**: si `linea.sincronizada(motor)` es False, `ControladorPartida.guardar` muestra `La línea de tiempo quedó
+  desfasada: el comando historia no estará disponible`, deja `linea = None` y escribe el archivo con largo de línea `0`.
+- **Abrir un archivo no valida el bloque de línea**: `ArchivoPartida` solo ubica los tres campos de largo; el bloque se lee y se valida entero
+  cuando se pide con `leer_linea()` (`VersionIncompatible` si está dañado), que es lo que hace `cargar`.
+- **Limitación conocida de `cargar`**: es atómico hasta reconstruir la línea; después se cierra lo anterior y, si `shutil.copyfile` de la copia de
+  bitácora falla (`OSError`), la partida ya quedó cargada: sigue sin bitácora y se muestra el aviso `No se pudo continuar la bitácora (...)`.
 
 ## Qué le pide la línea a los demás
 
@@ -198,16 +227,16 @@ Medidas o leídas en T003 ([research.md](../research.md#t003-revisión-de-deepco
 |-----------|---------|---------|
 | Todo estado nuevo cuelga del `MotorSimulacion`, de sus actores o de las salas; **ninguna caché ni estado a nivel de módulo** | A (cazador, terreno, invalidación de rutas) y todos | `deepcopy` solo copia lo que cuelga del motor; un estado global haría que la re-simulación divergiera |
 | Todo campo **mutable** nuevo de `Sala` o `Salida` se agrega a `CAMPOS_MUTABLES_SALA` o `CAMPOS_MUTABLES_SALIDA` (`Modelo/CopiaEstado.py`) | A | La foto del esqueleto copia solo esos campos; los demás se comparten entre puntos y no se pueden mutar. `Salida.cerrada_en_esqueleto` **no** es mutable: se fija en `Salida.__init__` y ninguna otra línea la cambia |
-| Excluir `Modelo/CopiaEstado.py` **por nombre**, con el motivo escrito, de la prueba de T015 que lee el código de `Modelo/` | A | Ver [Choque con T015](#choque-con-t015-de-a-persona-a-003) |
+| Excluir `Modelo/CopiaEstado.py` **por nombre**, con el motivo escrito, de la prueba de 003-T015 que lee el código de `Modelo/` | A | Ver [Choque con T015](#choque-con-t015-de-a-persona-a-003) |
 | `ciclo`, `version_puertas`, `GrafoCripta`, `EspacioBusqueda` y `CampoDistancias` cuelgan del motor | A | `deepcopy` los copia con él; el `memo` re-liga las salas del grafo al esqueleto del clon |
 | El cazador no consume azar (003 FR-021) y su decisión es función del estado | A | La re-simulación debe reproducir sus decisiones (003 FR-025) |
 | Toda mutación reversible se reporta a `historial.registrar` | A | Sin eso, un retroceso deja el motor real distinto de la historia vigente; la prueba de `consultar_accion(acciones + 1)` frente al motor vivo lo detecta |
 | El `Historial` y `usar_pergamino` no cambian | A | La línea depende de que un uso revierta exactamente un intervalo |
-| `Conocimiento` solo guarda referencias al motor y al esqueleto | C | `deepcopy` las re-liga. T119 (`copiar()`, serialización, `aplicar`/`invertir`) ya está implementado: esta capacidad **no lo usa y no debe retirarse** |
+| `Conocimiento` solo guarda referencias al motor y al esqueleto | C | `deepcopy` las re-liga. 001-T119 (`copiar()`, serialización, `aplicar`/`invertir`) ya está implementado: esta capacidad **no lo usa y no debe retirarse** |
 
 ## Choque con T015 de A (persona A, 003)
 
-La tarea T015 de 003 incluye una prueba que **lee el código fuente de `Modelo/` y falla** si aparece, fuera del método único del motor,
+La tarea 003-T015 incluye una prueba que **lee el código fuente de `Modelo/` y falla** si aparece, fuera del método único del motor,
 `.cerrada =` o `setattr(..., "cerrada", ...)` (o `_asignar_reversible(..., "cerrada", ...)`); hoy solo excluye por nombre
 `Modelo/prueba_actores.py`. `Modelo/CopiaEstado.py` (PR-02) **restaura `Salida.cerrada` desde la foto del esqueleto**, es decir,
 contiene exactamente esa escritura y haría fallar la prueba en cuanto exista.
@@ -235,13 +264,13 @@ nadie usará.
 | `EspacioBusqueda` | listas por ordinal (`dist`, `primero`, `epoca`) y cola | se copian con el motor, sin referencias al esqueleto vivo (la lista `sala` se re-liga por el `memo`) |
 | `CampoDistancias` | apunta al `EspacioBusqueda` **del mismo motor** | `deepcopy` conserva la identidad dentro de una misma copia, así que apunta al espacio copiado; queda inválido en cuanto `ciclo` avanza en el clon |
 
-La prueba de oráculo (escenario 14, y T059) lo comprueba con cazadores activos. **Si `GrafoCripta` guardara las salas fuera del motor
+La prueba de oráculo (escenario 14, y 003-T059) lo comprueba con cazadores activos. **Si `GrafoCripta` guardara las salas fuera del motor
 (en un módulo), la copia las compartiría con la partida real y el escenario 14 falla**: es el motivo del requisito «ningún estado a nivel de
 módulo».
 
 ## Lo que la línea ofrece a A
 
-Para sus tareas **T058** y **T059** (`tests/test_cazador_equivalencia.py`). Las dos comparan decisiones de cazadores (acción, sala de
+Para sus tareas **003-T058** y **003-T059** (`tests/test_cazador_equivalencia.py`). Las dos comparan decisiones de cazadores (acción, sala de
 destino, salida y costo en cada turno) entre la partida jugada y su reproducción o reconstrucción.
 
 **Requisito previo de A**: las decisiones de los cazadores se anotan en un **registro que cuelga del motor** (por ejemplo una lista en
@@ -249,10 +278,10 @@ el propio motor), no en un módulo ni en el controlador. Así el clon lo copia y
 
 | Tarea | Qué llamar | Con qué motor | Qué comparar |
 |-------|-----------|---------------|--------------|
-| T058 (a): jugada, guardada, cargada, continuada | `ControladorPartida.guardar` y `ControladorPartida.cargar` (hoy, sin la línea) | el motor del controlador antes de guardar y el que devuelve `cargar` | el registro de decisiones antes de guardar y las de la continuación contra una partida no interrumpida con la misma semilla y acciones. **No depende de esta capacidad**: `CRPT` 3 ya existe (T076) y `cargar_partida` también |
-| T058 (b): retrocedida y reproducida | `main.ejecutar_replay(ruta_bitacora, gestor)` (T096), que devuelve el motor final | el motor que devuelve y el de la partida jugada | decisiones turno a turno. **No depende de esta capacidad**; con el `observador` (PR-12) solo cambia que la línea también se arma |
-| T058 (c): cargar con línea | `ControladorPartida.cargar` tras PR-11 | `controlador.motor` | el guion reproducido al cargar da las mismas decisiones: lo exige el sello `(reloj, secuencia)`; una divergencia termina con `ErrorReconstruccion`, no con un estado falso |
-| **T059**: estado pasado de la línea | `linea.clon_antes_de(k, motor)` (PR-04), con `motor` = el motor **vivo** del controlador (`controlador.linea` y `controlador.motor`) | el clon devuelto: es un motor desechable, con gestor histórico sin red | el registro de decisiones del clon contra el del motor vivo **hasta la misma decisión** (mismo `ciclo`); el clon ya pasó por la re-simulación de a lo sumo K acciones |
+| 003-T058 (a): jugada, guardada, cargada, continuada | `ControladorPartida.guardar` y `ControladorPartida.cargar` (hoy, sin la línea) | el motor del controlador antes de guardar y el que devuelve `cargar` | el registro de decisiones antes de guardar y las de la continuación contra una partida no interrumpida con la misma semilla y acciones. **No depende de esta capacidad**: `CRPT` 3 ya existe (001-T076) y `cargar_partida` también |
+| 003-T058 (b): retrocedida y reproducida | `main.ejecutar_replay(ruta_bitacora, gestor)` (001-T096), que devuelve el motor final | el motor que devuelve y el de la partida jugada | decisiones turno a turno. **No depende de esta capacidad**; con el `observador` (PR-12) solo cambia que la línea también se arma |
+| 003-T058 (c): cargar con línea | `ControladorPartida.cargar` tras PR-11 | `controlador.motor` | el guion reproducido al cargar da las mismas decisiones: lo exige el sello `(reloj, secuencia)`; una divergencia termina con `ErrorReconstruccion`, no con un estado falso |
+| **003-T059**: estado pasado de la línea | `linea.clon_antes_de(k, motor)` (PR-04), con `motor` = el motor **vivo** del controlador (`controlador.linea` y `controlador.motor`) | el clon devuelto: es un motor desechable, con gestor histórico sin red | el registro de decisiones del clon contra el del motor vivo **hasta la misma decisión** (mismo `ciclo`); el clon ya pasó por la re-simulación de a lo sumo K acciones |
 
 Notas para A:
 
@@ -260,7 +289,7 @@ Notas para A:
   consultar el registro del motor vivo, y la línea no cambia el reloj, `ciclo` ni `version_puertas` del motor vivo.
 - `consultar_accion(k, motor)` devuelve un `ResumenHistorico` (texto del estado) y **no** expone decisiones; para decisiones de cazadores
   se usa `clon_antes_de`.
-- T059 espera a PR-02 a PR-04 de esta capacidad; T058 (c), a PR-10 y PR-11. T058 (a) y (b) no esperan.
+- 003-T059 espera a PR-02 a PR-04 de esta capacidad; 003-T058 (c), a PR-10 y PR-11. 003-T058 (a) y (b) no esperan.
 - Una partida con cazadores debe poder reproducirse con `random.Random` sin que el cazador consuma azar (003 FR-021): si lo consumiera,
   el sello lo detecta y la reconstrucción se rechaza.
 
@@ -270,7 +299,7 @@ Notas para A:
 |---------|---------|
 | `nueva_partida` | crea `LineaTiempo(k, gestor_historico)` y `iniciar(motor)` |
 | `_accion` (aceptada, después de la bitácora) | `despues_de_accion(motor, nombre, argumento)` |
-| `cargar` | reconstruye (reproduce el guion con el `Reproductor` y el observador, verifica, y entrega la línea), luego `registrar_carga`. Si faltan datos locales: `SinDatosParaHistoria`, no se carga nada y el estado del controlador no cambia |
+| `cargar` | reconstruye (reproduce el guion con el `Reproductor` y el observador, verifica, y entrega la línea); `ReconstructorLinea.reconstruir(..., motor_cargado=motor)` ya agrega la carga, no se llama a `registrar_carga` aparte. Si faltan datos locales: `SinDatosParaHistoria`, no se carga nada y el estado del controlador no cambia |
 | `guardar` | `guardar_partida(..., linea=linea.a_registro())` |
 | `historia` | `consultar_instante` / `consultar_accion` y `vista.mostrar_resumen_historico(dto)` |
 | `_cerrar` | `linea.cerrar()` y borrar las copias privadas |

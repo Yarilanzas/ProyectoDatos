@@ -24,7 +24,7 @@ reproducción. Es global y continuo en la historia vigente (FR-030):
    `motor.reloj = encabezado.reloj`; por eso, tras `@cargar`, el reloj sigue desde el del archivo cargado, que es el del punto de guardado.
 2. **Lo jugado entre ese guardado y la carga no existe en la línea**: la bitácora que se continúa es la copia hecha al guardar
    (`_continuar_bitacora`), así que esas acciones ya no están en el archivo. Cada `<t>` identifica un único momento. **Sin
-   excepciones**, porque el caso en que la bitácora en uso es el propio `<guardado>.log` se rechaza en el origen (ver
+   excepciones**, porque el caso en que la bitácora en uso es el propio `<guardado>.log` o el propio archivo de guardado se rechaza en el origen (ver
    [Bitácora igual a `<guardado>.log`](#bitácora-igual-a-guardadolog)).
 3. **`<t>` se resuelve contra la historia vigente completa** (no contra el punto de la bitácora donde se paró de leer): se reproduce
    la bitácora entera y después se consulta `<t>`. Así un `retroceder` o un `@cargar` posterior a `<t>` se refleja (US4.3, US4.6).
@@ -59,10 +59,10 @@ esperar        decisión 3 en el reloj 200 (la del motor cargado)
 
 ## Qué hace `--replay` con `--hasta` (para `Reproductor` y `ejecutar_replay`)
 
-Sigue siendo `Reproductor` (T093, ya en `main`): valida versiones, crea el motor con `preparar_partida`, ejecuta cada acción y, al llegar
+Sigue siendo `Reproductor` (001-T093, ya en `main`): valida versiones, crea el motor con `preparar_partida`, ejecuta cada acción y, al llegar
 a `@cargar`, llama a `recargar(motor)`, que **recibe el motor actual y devuelve el nuevo** (en `main.ejecutar_replay`: guarda el motor
-en un temporal, cierra su restaurador y llama a `cargar_partida`, T094). La línea de tiempo **observa** el recorrido mediante un
-parámetro opcional `observador` de `Reproductor` (**hecho por C**, `b1b57d7`, 001-T123/T124; contrato en [001 formato-bitacora.md](../../001-niebla-mapa-ir-a/contracts/formato-bitacora.md), «Observador y reproducción en memoria»), junto con `reproducir_acciones(encabezado, acciones) -> motor` y `reproducir(ruta) -> motor`:
+en un temporal, cierra su restaurador y llama a `cargar_partida`, 001-T094). La línea de tiempo **observa** el recorrido mediante un
+parámetro opcional `observador` de `Reproductor` (**hecho por C**, `b1b57d7`, 001-T123/001-T124; contrato en [001 formato-bitacora.md](../../001-niebla-mapa-ir-a/contracts/formato-bitacora.md), «Observador y reproducción en memoria»), junto con `reproducir_acciones(encabezado, acciones) -> motor` y `reproducir(ruta) -> motor`:
 
 ```text
 Reproductor(fabrica_motor, version_cripta, version_catalogo, recargar=None, observador=None)    # firma real + observador
@@ -83,15 +83,14 @@ exactamente como hoy. `--replay` sin `--hasta` no construye línea. El `Reproduc
 | (a) `@cargar` queda escrito en `contracts/formato-bitacora.md` | Cumplida por la capacidad 001 |
 | **(b) `--replay --hasta t` cuenta el reloj a través de `@cargar`** | **Cumplida por este documento** (reglas 1 a 5) |
 | (c) Versión incompatible: código `2` | Sin cambios; `--replay --hasta` conserva el rechazo (FR-011) |
-| (d) README actualizado | Pendiente de T113 (001, sigue sin hacerse) y de la tarea de README de esta capacidad (PR-15) |
+| (d) README actualizado | 001-T113 ya está hecha; pendiente de la tarea de README de esta capacidad (PR-15) |
 
-## Bitácora igual a `<guardado>.log`
+## Bitácora igual a `<guardado>.log` o al propio guardado
 
-**Hecho por C** (`b6f9f52`, 001-T120/T121): si `--bitacora` es la misma ruta que `<guardado>.log` (`ruta_bitacora_de(ruta)`, comparada con
-`_misma_ruta`), **se rechaza en el origen** como error de uso (`ValueError` de `_rechazar_bitacora_del_guardado`), sin guardar ni cargar nada. Con `--cargar F --bitacora F.log` el proceso termina con `! Error: ...` y código `1`; con el comando `guardar` o `cargar` dentro de la partida se muestra el error (`No se pudo guardar: ...` / `No se pudo cargar: ...`) y la partida sigue. Mensaje real:
+**Hecho por C** (`b6f9f52`, 001-T120/001-T121; ampliado en 001 `f592da4`): si `--bitacora` es la misma ruta que `<guardado>.log` (`ruta_bitacora_de(ruta)`) **o que el propio archivo de guardado**, **se rechaza en el origen** como error de uso (`ValueError` de `_rechazar_bitacora_del_guardado`), sin guardar ni cargar nada. La comparación usa `normcase` + `abspath` y, si ambos existen, `samefile` (`_misma_ruta`). En `cargar`, la comprobación va antes de `cargar_partida` y de tocar la bitácora: con `--cargar F --bitacora F.log` (o `--bitacora F`) el proceso termina con `! Error: ...` y código `1`, sin tocar `F` ni `F.log`; en `guardar` va antes de escribir nada: el comando muestra `No se pudo guardar: ...` y la partida sigue (igual `No se pudo cargar: ...` con el comando `cargar`). Mensaje real:
 
 ```text
-! Error: la bitácora no puede ser <guardado>.log, que es la copia de bitácora de la partida guardada; use otra con --bitacora
+! Error: la bitácora no puede ser <ruta>, que es la partida guardada o su copia de bitácora; use otra con --bitacora
 ```
 
 **El problema.** `_continuar_bitacora` (y `guardar`) no copian el archivo cuando la bitácora en uso es el propio `<guardado>.log`:
@@ -125,5 +124,5 @@ existe aunque la partida no tenga bitácora. Reproducir cualquiera de los dos da
 | Bitácora de versión incompatible (`CRIPTA-LOG 1`, o de cripta o catálogo distintos) con `--hasta` | `Versión incompatible: ...`, código `2` (FR-011) |
 | La reproducción rechaza una acción | `! Error: La reproducción se detuvo: ...`, código `1` (como hoy) |
 | La línea no coincide en un replay (sello distinto) | `! Error: La reproducción no es determinista en la acción <k>: ...`, código `1` |
-| `--bitacora` igual a `<guardado>.log` al guardar o cargar | `ValueError`, nada se guarda ni se carga: con `--cargar` el proceso termina con código `1`; con el comando `guardar`/`cargar` la partida sigue (sección anterior) |
-| `@cargar` en el replay y faltan datos locales para recargar | `! Error: No se puede reconstruir sin nuevas solicitudes: faltan datos locales (<qué>)`, código `1` |
+| `--bitacora` igual a `<guardado>.log` o al propio guardado, al guardar o cargar | `ValueError`, nada se guarda ni se carga: con `--cargar` el proceso termina con código `1`; con el comando `guardar`/`cargar` la partida sigue (sección anterior) |
+| `@cargar` en el replay sin el paquete | el error de la fuente al pedir la versión de la cripta, código `1`. **No falla con la carpeta de datos locales borrada** (código `0`, también con `--hasta`; comprobado): el replay no usa el bloque de línea del guardado (guarda el motor sin línea en un temporal y lo recarga con `cargar_partida`, con el gestor normal) |

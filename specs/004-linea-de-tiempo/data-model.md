@@ -62,7 +62,7 @@ iniciar ──► ACCION* ──┬─► RETROCESO ──► (recorte, punto de
 - `ACCION` agrega una posición vigente. Si `n % K == 0`, punto de control.
 - `RETROCESO` saca `V` posiciones vigentes y los puntos con `accion > nuevo_n`, reemplaza o agrega el punto en `nuevo_n`, y pliega la
   serie.
-- `CARGA` no saca nada: el pasado anterior sigue consultable. Reemplaza un punto regular que esté en la misma acción.
+- `CARGA` no saca nada: el pasado anterior sigue consultable. Siempre agrega su punto, aunque haya uno regular en la misma acción (quedan los dos y la búsqueda devuelve el último).
 
 ## PuntoControl
 
@@ -161,6 +161,14 @@ archivo cargado. Propuesta: tomarla de `motor.restaurador.ruta` (el motor que de
 salas pendientes que restaurar: la época se abre **sin copia privada** (`epocas_ruta = None`) y la carga no falla. Hay que
 confirmarlo con una prueba contra el código real (¿`cargar_partida` deja siempre un `restaurador`?) y que el grupo lo apruebe;
 no está definitivo.
+
+### Cambios no previstos en la implementación de la línea
+
+- **El clon cierra su restaurador**: al soltar un clon, `LineaTiempo` cierra su `restaurador` (abierto sobre la copia privada de la época) y lo deja
+  en `None`, para que el controlador pueda borrar la copia en Windows (research, «Cambios no previstos en la implementación de la línea»).
+- **`ObservadorLinea.copiar_archivo_cargado(motor)` es público**: hace la copia privada del archivo cargado (`motor.restaurador.ruta`; `None` si no hay
+  restaurador); `despues_de_carga` la usa antes de `registrar_carga`, y `ReconstructorLinea` la usa para abrir la época 0 de una línea que empieza
+  en la carga.
 
 ## Serie de pergaminos
 
