@@ -164,6 +164,53 @@ puertas estables; se reporta el k* medido.
 cazador. Sigue sin depender del tamaño de la cripta (FR-033 se mide igual con M5), pero con rangos muy dispares la
 cota máxima domina.
 
+**Resultados medidos (T070)**: de `resultados_bench_cazador.txt` (`tests/bench_cazador.py`, `python main.py --bench`).
+Cripta sintética de 300 salas (semilla 7, costo 100 por salida), cazadores activados en salas al azar a distancia ≤
+rango; una muestra es decidir los k cazadores una vez (la compartida empieza un ciclo nuevo y recalcula el campo una
+vez); 40 muestras intercaladas; medianas.
+
+| k | Rango 500 (\|R\| = 48): individual | compartida | ind/comp | Rango 2000 (\|R\| = 296): individual | compartida | ind/comp |
+|---|---|---|---|---|---|---|
+| 1 | 289.2 µs | 358.0 µs | 0.81 | 758.9 µs | 1.94 ms | 0.39 |
+| 2 | 362.1 µs | 367.1 µs | 0.99 | 1.11 ms | 1.95 ms | 0.57 |
+| 5 | 835.5 µs | 397.2 µs | 2.10 | 3.56 ms | 1.99 ms | 1.79 |
+| 10 | 1.28 ms | 429.5 µs | 2.99 | 6.35 ms | 2.09 ms | 3.03 |
+| 25 | 3.15 ms | 567.0 µs | 5.56 | 17.75 ms | 2.18 ms | 8.13 |
+| 50 | 6.74 ms | 742.9 µs | 9.08 | 31.63 ms | 2.40 ms | 13.16 |
+
+- **k\* medido = 5** con rango pequeño (500) y con rango grande (2000): desde k = 5 la compartida es más rápida para todo
+  k mayor medido. La hipótesis (k\* ≈ 2) no se confirmó: con k = 1 y 2 gana la individual, porque se detiene al extraer
+  al jugador y el campo recorre toda la cota.
+- Con 50 cazadores la compartida tarda 9.08 veces menos (rango 500) y 13.16 veces menos (rango 2000); su tiempo casi no
+  crece con k (de 1.94 ms a 2.40 ms con rango 2000), como predice W(R_max^rev) + Σ deg(uᵢ).
+- **M2** (FR-033, R1): insertar n entradas y extraer todas. `ColaPrioridad` frente a la agenda y a la búsqueda lineal
+  del mínimo, medianas: n = 10: 24.6 µs, 70.5 µs, 14.0 µs; n = 100: 360.9 µs, 943.1 µs, 755.3 µs; n = 1000: 6.23 ms,
+  15.27 ms, 92.14 ms; n = 10 000: 96.50 ms, 260.88 ms, 10045.28 ms. La lineal solo gana con n = 10; con 10 000 es
+  104.1 veces más lenta que la cola; la agenda es entre 2.45 y 2.87 veces más lenta que la cola en todos los tamaños.
+- **M5** (FR-033, SC-007, R2, R3): decisión individual, rango 600, cazador 3 salas a la derecha del jugador en la misma
+  fila, 500 llamadas de calentamiento por tamaño y 5 repeticiones de todos los tamaños. Mediana de las 5: 82.2 µs (10²
+  salas), 68.0 µs (10³), 42.2 µs (10⁴), 78.7 µs (10⁵); **cociente final tiempo(10⁵) / tiempo(10²) = 0.96 ≤ 1.5:
+  cumple** (cocientes por repetición: 0.93, 0.79, 0.97, 1.05, 0.97). Sin calentamiento, una corrida anterior dio 1.59
+  (no cumple); que fuera una medición en frío es una hipótesis no verificada por separado, y M5 calienta antes de
+  cronometrar. Entre 10⁴ y 10⁵ salas la mediana sube de 42.2 a 78.7 µs (1.87 veces); el cociente 0.96 es contra 10²,
+  cuya mediana es 82.2 µs. La subida de 10⁴ a 10⁵ probablemente es efecto de caché de memoria (ver R2, Límites). Control: con un espacio
+  nuevo por llamada (`espacio=None`) la misma búsqueda tarda 2.32 ms con 10⁵ salas, 53.5 veces más que reutilizando el
+  `EspacioBusqueda` (43.4 µs).
+
+**Decisión (T070)**: se confirma la elección. La estrategia por defecto del motor pasa a **"compartida"**
+(`MotorSimulacion.__init__`, `estrategia_cazador`; único lugar de elección, `decidir_cazador`, sin cambios). Motivo:
+desde k = 5 es más rápida con los dos rangos medidos, con 50 cazadores lo es entre 9 y 13 veces, y en el ciclo completo
+(M4, R5) cumple el límite de 20 ms donde recalcular siempre no lo cumple. Cambiar la estrategia no cambia ninguna
+decisión: la equivalencia turno a turno con la referencia desde cero la prueba T057 (`tests/test_cazador_equivalencia.py`),
+y la individual sigue siendo la referencia de las pruebas y la alternativa «recalcular siempre» del bench (FR-032).
+
+**Limitaciones de la medición**: cripta sintética **provisional** de 300 salas (la de referencia publicada aún no
+existe; se repite cuando se publique). Equipo: Windows-11-10.0.26100-SP0, Intel Core i5-7300U @ 2.60GHz (Intel64 Family 6
+Model 142 Stepping 9), Python 3.13.13. La corrida completa citada se ejecutó dentro de `python -m unittest discover`
+(la prueba de `--bench` de `tests/test_bench_niebla.py` todavía no simulaba este bench); M5 se repitió sola con
+`python -m tests.bench_cazador M5`. Con k = 1 y 2 la individual es más rápida: si una cripta tuviera casi siempre uno o
+dos cazadores activos, la ganancia se invierte (diferencia medida: hasta 1.2 ms por ciclo con rango 2000).
+
 ---
 
 ## R5. Invalidación y reutilización (FR-016, FR-024, FR-031, FR-032)
@@ -186,7 +233,9 @@ de alcance). El campo compartido depende solo de la sala del jugador, el estado 
 | Retroceso, carga, `--replay`, reconstrucción de la línea de tiempo (004) | **Sí** (se descarta) | El campo no es estado de la partida y no se guarda |
 
 **Mecanismo elegido**: el campo guarda una **llave** `(ciclo, ordinal de la sala del jugador, versión de puertas,
-cota)` y solo se reutiliza si la llave coincide y la cota es ≥ el rango del cazador que decide.
+cota, época del espacio de búsqueda)` (`Modelo/CampoDistancias.py`) y solo se reutiliza si la llave coincide y la cota
+es ≥ el rango del cazador que decide. La época coincide si ninguna otra búsqueda reutilizó el `EspacioBusqueda` del
+motor desde que se calculó el campo.
 
 - **Ciclo**: contador que se incrementa al empezar cada ciclo de eventos (entre dos decisiones del jugador). Es la base
   de la validez **entre ciclos**: el campo vive como máximo un ciclo. Retroceder, cargar, reproducir o reconstruir
@@ -232,6 +281,36 @@ Esa prueba excluye por nombre `Modelo/prueba_actores.py`, que es un archivo de p
 la exclusión queda escrita en la prueba con su motivo. Las escrituras fuera de `Modelo/` (la restauración al cargar en `Persistencia/`) ocurren entre ciclos y quedan cubiertas
 por `ciclo`. Si alguna vez una escritura fuera de `Modelo/` ocurriera dentro de un ciclo, la prueba de equivalencia lo
 detectaría como discrepancia.
+
+**Resultados medidos (T070)**: M4 de `resultados_bench_cazador.txt`. Cripta sintética de 300 salas, 50 cazadores de
+rango 2000 en salas al azar, activados con `motor.activar_enemigo` antes de medir; 100 ciclos (`ejecutar_accion("esperar")`
+hasta la siguiente decisión del jugador); búsquedas contadas en una pasada idéntica aparte, envolviendo `primer_paso` y
+`campo_hacia`; cumple = p95 < 20 ms.
+
+| Escenario | Mediana | p95 | Búsquedas (100 ciclos) | Por ciclo | ¿< 20 ms? |
+|---|---|---|---|---|---|
+| (a) puertas estables, compartida | 3.95 ms | **6.87 ms** | 100 (`campo_hacia`) | 1.0 | cumple |
+| (b) puertas que cambian (2 por ciclo, 398 escrituras), compartida | 3.82 ms | **5.72 ms** | 100 (`campo_hacia`) | 1.0 | cumple |
+| (c) recalcular siempre desde cero, individual | 2.56 ms | **29.48 ms** | 603 (`primer_paso`) | 6.0 | NO cumple |
+
+- La reutilización hace **100 búsquedas frente a 603** y lleva el p95 de 29.48 ms a 6.87 ms (estables) y 5.72 ms
+  (cambiantes): se justifica con la comparación que pide FR-032.
+- La mediana de (c) es baja (2.56 ms) porque el jugador solo espera: los cazadores lo alcanzan y luego atacan sin buscar
+  (6 búsquedas por ciclo en promedio). Los ciclos caros son los de la persecución, y eso lo recoge el p95.
+- **M7** (FR-030, SC-004), con la estrategia que entonces era la de por defecto (**individual**), 50 cazadores con rangos
+  500, 1000 y 2000: mediana 8.83 ms, **p95 19.43 ms**: cumple, pero a 0.57 ms del límite. Ese número de la individual se
+  midió antes del cambio de estrategia. **M7 con la compartida** (nueva estrategia por defecto, mismo escenario,
+  `python -m tests.bench_cazador M7`): mediana 2.01 ms, **p95 3.39 ms**: cumple. **M1**: decidir los 50
+  cazadores con la individual (rango 2000, sin el resto del ciclo) da p95 40.49 ms frente a 597.3 µs de uno solo.
+
+**Decisión (T070)**: ver R4: la compartida pasa a ser la estrategia por defecto. Con la llave
+`(ciclo, sala del jugador, version_puertas, cota, época del espacio de búsqueda)` el campo se calcula una vez por ciclo en los dos escenarios medidos.
+
+**Limitaciones de la medición**: las mismas de R4 (cripta sintética provisional de 300 salas, equipo, corrida dentro de
+la suite). Además, **M4 (b) cambia las puertas entre ciclos, no durante un ciclo**: como el campo ya vive un solo
+ciclo, esos cambios no obligan a recalcular más y (b) hace las mismas 100 búsquedas que (a). El peor caso de R5 (una
+escritura de puertas entre cada par de turnos *dentro* del ciclo, por ejemplo con el cierre automático) **no se
+midió**; FR-031 queda respaldado solo para cambios entre ciclos.
 
 ---
 
@@ -282,6 +361,18 @@ caso.
 
 **Evidencia a medir**: M8 repite las mediciones de la agenda de la Parte I §4.1 con la carga nueva (intervalos
 variables por costo), antes y después (enunciado §5.6).
+
+**Resultados medidos (T069)**: de `resultados_bench_agenda_despues.txt` (Intel Core i5-7300U @ 2.60GHz, Python
+3.13.13; N = 10, 50, 100, 250; medianas de 5 repeticiones). (1) *Antes/después con la misma carga* (tiempos
+consecutivos, `tests/bench_agenda_solo.py`, T002 frente a T069): la razón mediana después/antes es 1.20 para el heap
+(`AgendaEventos`) y 1.21 para la lista. `Modelo/AgendaEventos.py` y `Modelo/Evento.py` no cambiaron desde el «antes»
+(a4d6299), y la lista no usa código del motor, así que la diferencia es variación del equipo entre corridas, no un cambio
+de la agenda. (2) *Carga nueva frente a carga antigua en la misma corrida* (`tests/bench_agenda_costos.py`: 10 actores,
+intervalo `max(1, costo * 100 // velocidad)`, costos 50 a 300, velocidades 50, 100 y 200): 30 de 32 razones nueva/antigua
+son ≤ 1.5. Las dos mayores son «Buscar un evento», lista N=50 = 2.67 y heap N=50 = 1.75, con lecturas por debajo de
+5 µs, en una operación que no compara tiempos. Insertar todos con el heap y N=250 da 1.46, y extraer todos con el heap y
+N=250 da 0.84. Conclusión, con cautela: con estas mediciones la agenda no se degrada con intervalos variables por costo;
+son medianas de 5 repeticiones en un solo equipo, no una demostración.
 
 **Límites**: los errantes y rastreadores no cambian su elección (FR-006); solo su tiempo. SC-006 lo verifica con las
 pruebas existentes.
