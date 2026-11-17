@@ -3,6 +3,7 @@
 # en toda la partida de consultas `#k` y de consultas por instante. Todas deben responder en menos de 50 ms. La medición
 # completa (varias K, la alternativa sin puntos de control, mediana y p95) es M1 de `tests/bench_linea.py` (T101).
 
+import gc
 import os
 import sys
 import time
@@ -35,6 +36,11 @@ class PruebasRendimiento(unittest.TestCase):
         self.assertEqual(linea.acciones, ACCIONES)
         self.assertEqual(linea.k, 50)
 
+        # Se mide con el recolector de basura detenido (y vaciado antes): una pasada completa sobre el montón de las ~1 100
+        # pruebas anteriores tarda más de 100 ms y no es el costo de la consulta (sí aparecería en M1 con la mediana y el p95).
+        gc.collect()
+        gc.disable()
+        self.addCleanup(gc.enable)
         tiempos = []   # (ms, qué se pidió)
         for i in range(MUESTRA):
             numero = 1 + i * ACCIONES // MUESTRA        # repartidas desde la acción 1 hasta cerca de la última
