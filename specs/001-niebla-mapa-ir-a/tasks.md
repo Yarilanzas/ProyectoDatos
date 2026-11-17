@@ -340,8 +340,8 @@ pedido, pero T111, T112 y T113 **suben junto con su fase** si esa fase llega a `
 | 7 | Ninguna nueva: se revisan las anteriores | — |
 
 - [X] T111 [PERSONAS: aviso al grupo] Documentar `mapa`, la niebla, el estado recordado y que «Una puerta se cerró sola.» solo aparece si el jugador la observa. La parte de niebla sube con la Fase 2; la de `mapa` depende de T040. **Hecho**: niebla, estado recordado y mensaje de cierre en `c74fd6a`; `mapa` en `919ad9f`. Atiende: FR-018, FR-019, FR-020, PR-08, PR-16. Archivo: README.md.
-- [ ] T112 [PERSONAS: aviso al grupo] Documentar `ir a <sala>`, rechazos y motivos de parada. Mientras T065 no esté hecha, decir que el comando aún no está disponible. Depende de T058. Atiende: FR-020, FR-021, FR-027, PR-09, PR-16. Archivo: README.md.
-- [ ] T113 [PERSONAS: aviso al grupo] Documentar `CRPT` 3 y `CRIPTA-LOG` 2, comentarios, `@cargar`, y corregir «`cargar` no se anota». Actualizar el ejemplo de bitácora. Depende de T094. Atiende: FR-016, FR-017, FR-030, PR-06, PR-11, PR-12, PR-16. Archivo: README.md.
+- [X] T112 [PERSONAS: aviso al grupo] Documentar `ir a <sala>`, rechazos y motivos de parada. T065 ya está hecha, así que se documenta como comando disponible. Depende de T058. Hecho. README: commits 142109b y afe7e1d (2026-11-16 y 2026-11-17). Atiende: FR-020, FR-021, FR-027, PR-09, PR-16. Archivo: README.md.
+- [X] T113 [PERSONAS: aviso al grupo] Documentar `CRPT` 3 y `CRIPTA-LOG` 2, comentarios, `@cargar`, y corregir «`cargar` no se anota». Actualizar el ejemplo de bitácora. Depende de T094. Hecho. README: commits 142109b y afe7e1d (2026-11-16 y 2026-11-17). Atiende: FR-016, FR-017, FR-030, PR-06, PR-11, PR-12, PR-16. Archivo: README.md.
 
 ### Documentos
 
