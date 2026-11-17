@@ -695,8 +695,8 @@ class TestRangoDeLaFicha(unittest.TestCase):
 # Interfaz que usan estas pruebas (se llaman directamente, sin pasar por la agenda):
 #   motor.decidir_cazador_individual(cazador)  -> DecisionCazador (búsqueda desde cero, T046)
 #   motor.decidir_cazador_compartida(cazador)  -> DecisionCazador (campo compartido, T047)
-#   motor.decidir_cazador(cazador)             -> según motor.estrategia_cazador ("individual" por defecto, o
-#                                                 "compartida")
+#   motor.decidir_cazador(cazador)             -> según motor.estrategia_cazador ("compartida" por defecto desde
+#                                                 T070, o "individual")
 #   DecisionCazador: accion ("ATACAR", "ESPERAR", "MOVER"), salida (la Salida del motor que se cruza, o None) y
 #   costo_base.
 #
@@ -873,8 +873,11 @@ class TestCampoCompartido(ConDecision):
 
     def test_fr016_nuevo_ciclo_recalcula(self):
         """T047 (FR-016): tras motor.ejecutar_accion("esperar", None) empieza otro ciclo y la siguiente decisión
-        compartida vuelve a consultar entrantes; la decisión coincide con la individual."""
+        compartida vuelve a consultar entrantes; la decisión coincide con la individual. Los turnos del ciclo se
+        juegan con la estrategia individual, fijada explícitamente (por defecto es "compartida" desde T070): así nadie
+        calcula el campo durante el ciclo y el recálculo que se cuenta es el de la decisión compartida de después."""
         motor, cazadores = self._dos_rutas([(1, 400), (5, 100)])
+        motor.estrategia_cazador = "individual"
         cazador = cazadores[0]
         cuenta = contar_entrantes(motor)
         motor.decidir_cazador_compartida(cazador)
@@ -990,20 +993,21 @@ class TestCampoCompartido(ConDecision):
         self.assertEqual(firma(motor, cazador, despues), ("MOVER", "E", 2, 250))
         self.assertMismaDecision(motor, cazador, motor.decidir_cazador_individual(cazador), despues)
     def test_fr016_despacho_segun_estrategia(self):
-        """T047, T048 (FR-016): por defecto motor.estrategia_cazador es "individual" y decidir_cazador no consulta
-        entrantes; con "compartida", decidir_cazador sí la consulta y da la misma decisión."""
+        """T047, T048, T070 (FR-016): por defecto motor.estrategia_cazador es "compartida" y decidir_cazador consulta
+        entrantes; con "individual", fijada explícitamente, decidir_cazador no la consulta y da la misma decisión."""
         motor, cazadores = self._dos_rutas([(1, 400), (5, 100)])
         cazador = cazadores[0]
         cuenta = contar_entrantes(motor)
 
-        self.assertEqual(motor.estrategia_cazador, "individual")
+        self.assertEqual(motor.estrategia_cazador, "compartida")
         por_defecto = motor.decidir_cazador(cazador)
-        self.assertEqual(cuenta[0], 0, "la estrategia individual consultó entrantes")
+        self.assertGreater(cuenta[0], 0, "con la estrategia por defecto (compartida) no se consultó entrantes")
 
-        motor.estrategia_cazador = "compartida"
-        compartida = motor.decidir_cazador(cazador)
-        self.assertGreater(cuenta[0], 0, "con estrategia compartida no se consultó entrantes")
-        self.assertMismaDecision(motor, cazador, por_defecto, compartida)
+        motor.estrategia_cazador = "individual"
+        consultas = cuenta[0]
+        individual = motor.decidir_cazador(cazador)
+        self.assertEqual(cuenta[0], consultas, "la estrategia individual consultó entrantes")
+        self.assertMismaDecision(motor, cazador, individual, por_defecto)
 
 
 # ═════════════════════════ US3: el cazador espera cuando no hay ruta (T050 a T054) ═════════════════════════

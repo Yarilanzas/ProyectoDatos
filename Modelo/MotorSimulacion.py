@@ -63,9 +63,10 @@ class MotorSimulacion:
         self.espacio_busqueda = None
         # Campo compartido de distancias hacia el jugador (T047) y estrategia de decisión de los cazadores (T048). Ninguno
         # es estado de la partida. La estrategia se elige solo en `decidir_cazador`: "individual" (referencia desde
-        # cero) o "compartida" (un campo por ciclo para todos los cazadores).
+        # cero) o "compartida" (un campo por ciclo para todos los cazadores). Por defecto "compartida" desde T070 (M3 y M4
+        # de resultados_bench_cazador.txt; research R4 y R5); la equivalencia con la individual la prueba T057.
         self.campo_distancias = None
-        self.estrategia_cazador = "individual"
+        self.estrategia_cazador = "compartida"
 
         if self.gestor_datos is not None:
             self.gestor_datos.conectar_estado_juego(self)
