@@ -67,6 +67,9 @@ class MotorSimulacion:
         # de resultados_bench_cazador.txt; research R4 y R5); la equivalencia con la individual la prueba T057.
         self.campo_distancias = None
         self.estrategia_cazador = "compartida"
+        # Registro opcional de decisiones de los cazadores (T076; contracts/interfaz-cazador-linea.md §4): None apagado
+        # (por defecto), lista de tuplas encendido. Cuelga del motor, se revierte con el historial y no se guarda.
+        self.registro_decisiones = None
 
         if self.gestor_datos is not None:
             self.gestor_datos.conectar_estado_juego(self)
@@ -368,6 +371,8 @@ class MotorSimulacion:
         self.agenda = AgendaEventos()
         self.historial = Historial()
         self.mensajes = RegistroMensajes()
+        if self.registro_decisiones is not None:
+            self.registro_decisiones = []  # encendido: solo las decisiones de esta partida; apagado sigue apagado
         self.enemigos = []
         self.objetos_suelo = []
         self.jugador = jugador
@@ -587,6 +592,7 @@ class MotorSimulacion:
         if isinstance(actor, Enemigo):
             accion = self.accion_enemigo(actor, self.jugador)
             costo_base = 100  # atacar, esperar o un movimiento que no se hizo (Parte I)
+            salida_cazador = None  # (sala de origen, salida cruzada) si un cazador se movió
 
             if accion == "MOVER":
                 resultado = self.salida_errante(actor)
@@ -603,18 +609,26 @@ class MotorSimulacion:
                     costo_base = self.costo_salida(salida)
 
             elif accion == "CAZAR":
+                sala_antes = actor.sala
                 decision = self.decidir_cazador(actor)
 
                 if decision.accion == DecisionCazador.ATACAR:
                     self.atacar(actor, self.jugador)
+                    accion = "ATACAR"
                 elif (decision.accion == DecisionCazador.MOVER
                         and self.mover_enemigo(actor, self.salas, decision.salida)):
                     costo_base = decision.costo_base
+                    salida_cazador = (sala_antes, decision.salida)
 
             elif accion == "ATACAR":
                 self.atacar(actor, self.jugador)
 
             # ESPERAR no hace nada: solo se reprograma la siguiente acción.
+
+            if self.registro_decisiones is not None and actor.comportamiento == "cazador":
+                # único punto de anotación: la acción y el costo efectivamente aplicados (un MOVER que no se pudo
+                # hacer queda como ESPERAR con costo 100)
+                self._anotar_decision(actor, accion, salida_cazador, costo_base)
 
             if actor.esta_vivo():  # un actor muerto no ejecuta más eventos
                 self.proxima_accion(actor, costo_base)
@@ -682,6 +696,46 @@ class MotorSimulacion:
                 deshacer=lambda: self._escribir_cerrada(salida, anterior, descripcion, registrar=False),
                 description=descripcion
             )
+
+    def activar_registro_decisiones(self):
+        """Enciende el registro de decisiones de los cazadores con una lista vacía (T076). Para apagarlo basta con
+        volver a poner ``registro_decisiones = None``. O(1)."""
+        self.registro_decisiones = []
+
+    def _anotar_decision(self, cazador, accion, salida_cazador, costo_base):
+        """Anota el turno de ``cazador`` como la tupla ``(ciclo, reloj, id, acción, id de la sala de destino, dirección
+        o None, costo base)`` y registra en el historial su deshacer, que la quita (contrato §4). ``accion`` es la de la
+        rama de ``ejecutar_evento``: "ATACAR" o "CAZAR"; ``salida_cazador`` es ``(sala de origen, salida)`` si se movió.
+        No consume azar. O(1): la dirección se busca entre las cuatro salidas de la sala de origen."""
+        direccion = None
+        if accion == "ATACAR":
+            accion = DecisionCazador.ATACAR
+        elif salida_cazador is not None:
+            accion = DecisionCazador.MOVER
+            sala_origen, salida = salida_cazador
+            for nombre in ORDEN_DIRECCIONES:
+                if sala_origen.salidas.get(nombre) is salida:
+                    direccion = nombre
+                    break
+        else:
+            accion = DecisionCazador.ESPERAR
+        entrada = (self.ciclo, self.reloj, cazador.id, accion, cazador.sala.id, direccion, costo_base)
+        self.registro_decisiones.append(entrada)
+        self.historial.registrar(
+            deshacer=lambda: self._quitar_decision(entrada),
+            description=f"decisión de {cazador.id}"
+        )
+
+    def _quitar_decision(self, entrada):
+        """Deshacer de ``_anotar_decision``: quita ``entrada`` (por identidad) del registro vigente. Los deshacer corren
+        en orden inverso, así que es la última y el costo es O(1); si el registro se apagó, no hace nada."""
+        registro = self.registro_decisiones
+        if registro is None:
+            return
+        for indice in range(len(registro) - 1, -1, -1):
+            if registro[indice] is entrada:
+                registro.pop(indice)
+                return
 
     def _asignar_reversible(self, objeto, nombre, valor):
         anterior = getattr(objeto, nombre, None)
