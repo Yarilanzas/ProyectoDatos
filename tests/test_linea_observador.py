@@ -68,7 +68,7 @@ class PruebasObservadorLinea(unittest.TestCase):
 
     def test_fr025_despues_de_carga_hace_una_copia_privada_del_archivo_cargado(self):
         with tempfile.TemporaryDirectory() as base:
-            original = os.path.join(base, "partida.cripta")
+            original = os.path.join(base, "origen.cripta")
             with open(original, "wb") as archivo:
                 archivo.write(b"CRPT contenido")
             copias = os.path.join(base, "copias")
