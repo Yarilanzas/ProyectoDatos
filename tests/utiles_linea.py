@@ -48,9 +48,10 @@ from Modelo.ResumenHistorico import resumir
 from Persistencia.ArchivoPartida import FORMATO_ENTRADA, TAMANO_ENTRADA
 from Persistencia.ConversorPartida import RestauradorPartida
 from Persistencia.FormatoBinario import FORMATO_PREFIJO, TAMANO_ENCABEZADO
-from tests.test_integracion import VistaFalsa
+from tests.test_integracion import VistaFalsa, _escribir
 from Vista.TextoResumen import lineas_resumen
-from tests.utiles_niebla import CRIPTA_NIEBLA, ENEMIGO, PERGAMINO, TRAMPA, contenido_sala, crear_paquete_niebla, salida
+from tests.utiles_niebla import (CATALOGO_NIEBLA, CRIPTA_NIEBLA, ENEMIGO, PERGAMINO, TRAMPA, contenido_sala,
+                                 crear_paquete_niebla, salida)
 
 SIN_ATRIBUTO = "sin rastro"  # lo que `resumen_ampliado` anota de una sala sin el atributo `rastro`
 NOMBRE_BITACORA = "linea.log"
@@ -80,6 +81,12 @@ CONTENIDO_LINEA = [
 JUGADOR_RESISTENTE = {"vida_max": 100000, "ataque": 6, "defensa": 1, "velocidad": 100}
 
 DIRECCIONES = ("N", "S", "E", "O")
+
+# Ficha de un cazador **real** de A (003): `Enemigo.comportamiento == "cazador"` con su rango, para `partida_linea(catalogo_extra=)`.
+# Se activa al entrar a su sala, como cualquier enemigo; con un rango alto persigue al jugador por toda la cripta.
+ID_CAZADOR = "ent_cazador"
+FICHA_CAZADOR = {"id": ID_CAZADOR, "clase": "enemigo", "nombre": "Cazador", "vida_max": 8, "ataque": 3, "defensa": 0,
+                 "velocidad": 100, "comportamiento": "cazador", "rango": 3000}
 
 
 # ───────────────────────── Generador de acciones ─────────────────────────
@@ -286,7 +293,8 @@ class PartidaLinea:
         self.carpeta.cleanup()
 
 
-def partida_linea(salas=None, contenido=None, semilla=7, jugador=None, forzar=False, espiar=False, **opciones):
+def partida_linea(salas=None, contenido=None, semilla=7, jugador=None, forzar=False, espiar=False, catalogo_extra=(),
+                  **opciones):
     """Crea el paquete offline y empieza una partida con `ControladorPartida.nueva_partida`, sin red.
 
     Todo va a una carpeta temporal propia: el paquete, los datos locales (`ruta_datos`) y la bitácora
@@ -294,7 +302,8 @@ def partida_linea(salas=None, contenido=None, semilla=7, jugador=None, forzar=Fa
 
     La cripta debe ser **resoluble**; si una prueba necesita otra, pasa `forzar=True` con un comentario que cite el
     FR-021 de la spec 002 (una partida nueva solo inicia si la cripta es resoluble). `espiar=True` deja el motor como
-    `MotorLinea` con espía. `opciones` va tal cual a `crear_paquete_niebla`."""
+    `MotorLinea` con espía. `catalogo_extra` son fichas que se agregan al catálogo del paquete (por ejemplo `FICHA_CAZADOR`).
+    `opciones` va tal cual a `crear_paquete_niebla`."""
     carpeta = tempfile.TemporaryDirectory()
     base = carpeta.name
     paquete = os.path.join(base, NOMBRE_PAQUETE)
@@ -303,6 +312,8 @@ def partida_linea(salas=None, contenido=None, semilla=7, jugador=None, forzar=Fa
     crear_paquete_niebla(paquete, SALAS_LINEA if salas is None else salas,
                          CONTENIDO_LINEA if contenido is None else contenido,
                          jugador=JUGADOR_RESISTENTE if jugador is None else jugador, **opciones)
+    if catalogo_extra:
+        _escribir(paquete, "catalogo.json", {"entidades": list(CATALOGO_NIEBLA) + list(catalogo_extra)})
 
     gestor = GestorDatos(FuenteDatosOffline(paquete), ruta_base=ruta_datos, cache_size=25)
     vista = VistaFalsa()
