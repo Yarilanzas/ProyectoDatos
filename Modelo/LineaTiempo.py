@@ -151,6 +151,27 @@ class LineaTiempo:
     El sello previo de la acción *k* se toma **al terminar el aviso anterior** (``iniciar`` o la acción *k - 1*), de
     ``motor.reloj`` y ``motor.secuencia`` (nunca de ``jugador.evento_actual``, HL7): ``registrar_accion`` llega con el motor
     ya avanzado. La línea no guarda el motor.
+
+    Complejidad (contracts/interfaz-linea.md y data-model.md). `n` acciones vigentes, `K` acciones entre puntos, `C` puntos de
+    control, `S` tamaño del estado vivo, `N` y `E` salas y salidas, `a` costo de una acción, `V` acciones recortadas, `L`
+    cargas y `P` retrocesos:
+
+    | Operación            | Tiempo                         | Memoria                   |
+    |----------------------|--------------------------------|---------------------------|
+    | ``iniciar``          | O(S + N + E)                   | O(S)                      |
+    | ``registrar_accion`` | O(1), más O(S + N + E) cada K  | O(1), más O(S) cada K     |
+    | ``registrar_retroceso`` | O(V + S + N + E)            | O(S)                      |
+    | ``registrar_carga``  | O(S + N + E)                   | O(S), más la copia privada|
+    | ``consultar_instante`` | O(log n + log C + S + K·a)   | O(S) temporal             |
+    | ``consultar_accion`` | O(log C + S + K·a)             | O(S) temporal             |
+    | ``a_registro``       | O(n_guion)                     | O(n_guion)                |
+    | ``desde_registro``   | O(n_guion)                     | O(n_guion)                |
+    | ``cerrar``           | O(L)                           | O(L)                      |
+    | propiedades          | O(1)                           | O(1)                      |
+
+    Memoria total: ``M(n) = n·b_guion + (P + L)·b_guion + C·(S + N + E) + serie``, es decir, O(n) para el guion y la historia
+    vigente más O(C·S) para los puntos de control, con ``C <= ceil(n / K) + 1 + L + P``. No contiene el término «acciones ×
+    tamaño del estado»: para K fijo el segundo sumando crece como n / K, y duplicar n duplica M.
     """
 
     def __init__(self, k=K_POR_OMISION, gestor_historico=None, abrir_copia=None):

@@ -16,6 +16,20 @@
 # `MotorSimulacion._escribir_cerrada`: no hay motor al que sumarle `version_puertas`, y el entero que el clon recibe en
 # `estado` ya es el de la decisión de la foto, así que `cerrada` y `version_puertas` salen coherentes.
 
+"""Copia estructurada del estado de la partida: complejidad (S tamaño del estado vivo, N salas, E salidas).
+
+| Operación        | Tiempo           | Memoria           |
+|------------------|------------------|-------------------|
+| ``copiar``       | O(S + N + E)     | O(S)              |
+| ``materializar`` | O(S + N + E)     | O(S)              |
+| ``foto_rastros`` | O(N)             | O(N)              |
+| ``foto_cerradas``| O(N + E)         | O(E)              |
+
+Una línea guarda un punto cada K acciones: cuesta O(S + N + E) de tiempo cada K acciones y O(C · S) de memoria con
+C <= ceil(n / K) + 1 + L + P. El esqueleto (salas y salidas) no se recorre por recursión ni se copia entero: se comparte y
+solo se guarda lo que cambia en él (``rastro`` y ``cerrada``).
+"""
+
 import copy
 
 from Modelo.PuntoControl import PuntoControl, SIN_RASTRO

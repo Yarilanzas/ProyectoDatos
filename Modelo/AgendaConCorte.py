@@ -13,7 +13,9 @@ class AgendaConCorte(AgendaEventos):
 
     Uso: ``clon.agenda.__class__ = AgendaConCorte; clon.agenda.corte = t``.
 
-    Complejidad: ``siguiente`` O(1) más lo de ``AgendaEventos`` (limpiar cancelados de la raíz).
+    Complejidad: ``siguiente`` O(1) más lo de ``AgendaEventos`` (limpiar cancelados de la raíz); ``extraer`` O(log m) como
+    ``AgendaEventos`` (m eventos pendientes). Memoria O(1) extra: no copia la agenda. En una consulta por instante aporta,
+    junto con rehacer hasta K acciones, el término K·a del costo O(log n + log C + S + K·a).
     """
 
     corte = None  # sin corte (None) se comporta como AgendaEventos

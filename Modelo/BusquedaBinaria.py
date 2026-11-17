@@ -3,6 +3,12 @@
 # ni conjuntos como índice. Solo listas y enteros.
 
 
+"""Dónde se usa y cuánto cuesta: ``consultar_instante`` la usa dos veces (el último reloj de decisión <= t, O(log n), y el
+último punto de control, O(log C)); ``consultar_accion`` una (el último punto de control, O(log C)); la serie de pergaminos
+otra (``en``, O(log longitud)). Cada llamada es O(log longitud del arreglo) de tiempo y O(1) de memoria. El tiempo total de
+una consulta es O(log n + log C + S + K·a)."""
+
+
 def ultimo_menor_o_igual(arreglo, valor):
     """Posición del **último** elemento de ``arreglo`` que es menor o igual que ``valor``, o ``-1`` si todos son mayores
     (o el arreglo está vacío).
