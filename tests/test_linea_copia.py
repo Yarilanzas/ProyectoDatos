@@ -20,7 +20,7 @@ from Modelo.PuntoControl import SIN_RASTRO, PuntoControl
 from Modelo.retroceso import Historial
 from tests.utiles_linea import (GeneradorAcciones, agregar_cazador, agregar_enemigo, jugar, partida_linea,
                                 preparar_motor_linea, resumen_ampliado)
-from tests.utiles_terreno import armar_motor, cripta_terreno
+from tests.utiles_terreno import GestorTerreno, armar_motor, cripta_terreno
 
 
 def motor_sintetico(salas, semilla=1, espiar=False):
@@ -402,6 +402,156 @@ class PruebasMaterializarEnPartidaReal(unittest.TestCase):
         self.assertEqual(clon.decisiones_cazador, self.motor.decisiones_cazador)
         self.assertEqual(resumen_ampliado(clon), resumen_ampliado(self.motor))
         self.assertGreaterEqual(len(self.motor.decisiones_cazador), antes)
+
+
+def esta(lista, objeto):
+    """`objeto` está en `lista` por identidad (no por igualdad)."""
+    return any(elemento is objeto for elemento in lista)
+
+
+def llave_del_campo(campo):
+    """Los cinco valores de un `CampoDistancias` como tupla (None si el motor todavía no lo calculó)."""
+    if campo is None:
+        return None
+    return (campo.ciclo, campo.sala_jugador, campo.version_puertas, campo.cota, campo.epoca)
+
+
+class PruebasCazadorRealEnLaCopia(unittest.TestCase):
+    """Copiar y materializar con el cazador **real** de A (`Enemigo.comportamiento == "cazador"`, 003-T045 a T048) y la
+    estrategia «compartida»: el `campo_distancias` ya está poblado y el `espacio_busqueda` ya se usó. El clon no comparte
+    nada con el vivo y reproduce las mismas decisiones (FR-017, FR-021, FR-025; contracts/interfaz-cazador-linea.md §2).
+
+    No usa el doble del cazador de `utiles_linea`: es el motor de A tal como está en main, armado con `armar_motor`."""
+
+    CAZADORES = [(10, 3000), (14, 3000), (6, 3000)]   # rango alto: los tres persiguen al jugador desde el primer ciclo
+
+    def setUp(self):
+        self.motor = armar_motor(cripta_terreno(4, 20), sala_jugador=1, cazadores=self.CAZADORES, semilla=4)
+        self.assertEqual([e.comportamiento for e in self.motor.enemigos], ["cazador"] * 3)
+        self.motor.estrategia_cazador = "compartida"
+        for cazador in self.motor.enemigos:
+            self.motor.activar_enemigo(cazador)
+        for _ in range(2):
+            self.assertTrue(self.motor.ejecutar_accion("esperar", None))
+        # el estado de partida pedido: campo poblado y espacio usado
+        self.assertIsNotNone(self.motor.campo_distancias)
+        self.assertGreater(self.motor.espacio_busqueda.epoca_actual, 1)
+        self.assertEqual(self.motor.estrategia_cazador, "compartida")
+
+    def clon(self):
+        return materializar(copiar(self.motor), GestorTerreno())
+
+    def anotar(self, motor):
+        """Anota cada decisión de cazador del motor: (reloj, cazador, acción, sala del cazador, destino, costo). Se
+        pone sobre la instancia **después** de copiar (un cierre copiado seguiría apuntando al motor vivo)."""
+        registro = []
+        original = motor.decidir_cazador
+
+        def decidir(cazador):
+            decision = original(cazador)
+            destino = None if decision.salida is None else decision.salida.sala_destino
+            registro.append((motor.reloj, cazador.id, decision.accion, cazador.sala.id, destino, decision.costo_base))
+            return decision
+
+        motor.decidir_cazador = decidir
+        return registro
+
+    def test_fr017_el_clon_conserva_la_estrategia_el_campo_y_el_espacio(self):
+        motor, clon = self.motor, self.clon()
+        self.assertEqual(clon.estrategia_cazador, "compartida")
+        self.assertEqual((clon.ciclo, clon.version_puertas), (motor.ciclo, motor.version_puertas))
+        self.assertEqual(llave_del_campo(clon.campo_distancias), llave_del_campo(motor.campo_distancias))
+        espacio_vivo, espacio_clon = motor.espacio_busqueda, clon.espacio_busqueda
+        self.assertEqual(espacio_clon.epoca_actual, espacio_vivo.epoca_actual)
+        self.assertEqual(espacio_clon.dist, espacio_vivo.dist)
+        self.assertEqual(espacio_clon.epoca, espacio_vivo.epoca)
+        self.assertEqual(espacio_clon.cantidad_salas, espacio_vivo.cantidad_salas)
+
+    def test_fr017_el_clon_no_comparte_nada_con_el_vivo(self):
+        motor, clon = self.motor, self.clon()
+        for atributo in ("grafo_cripta", "espacio_busqueda", "campo_distancias", "conocimiento", "enemigos", "salas",
+                         "jugador", "agenda", "mensajes", "historial"):
+            self.assertIsNot(getattr(clon, atributo), getattr(motor, atributo), atributo)
+        # el espacio de búsqueda: él y cada una de sus listas y su cola
+        espacio_vivo, espacio_clon = motor.espacio_busqueda, clon.espacio_busqueda
+        for atributo in ("dist", "primero", "epoca", "sala", "cola"):
+            self.assertIsNot(getattr(espacio_clon, atributo), getattr(espacio_vivo, atributo), atributo)
+        for sala in espacio_clon.sala:
+            if sala is not None:
+                self.assertTrue(esta(clon.salas, sala), "el espacio del clon guarda una sala que no es del clon")
+        # el grafo: sus métodos están ligados al clon y sus listas, salas y salidas son las del clon
+        grafo_vivo, grafo_clon = motor.grafo_cripta, clon.grafo_cripta
+        self.assertIs(grafo_clon._destino_de.__self__, clon)
+        self.assertIs(grafo_clon._costo_de.__self__, clon)
+        self.assertIsNot(grafo_clon._entrantes, grafo_vivo._entrantes)
+        for ordinal in range(grafo_clon.cantidad_salas):
+            self.assertIsNot(grafo_clon._entrantes[ordinal], grafo_vivo._entrantes[ordinal])
+            for _direccion, sala, salida in grafo_clon._entrantes[ordinal]:
+                self.assertTrue(esta(clon.salas, sala), "el grafo del clon apunta a una sala que no es del clon")
+                self.assertTrue(any(esta(propia.salidas.values(), salida) for propia in clon.salas))
+        # las salas, las salidas y los enemigos
+        for sala_viva, sala_clon in zip(motor.salas, clon.salas):
+            self.assertIsNot(sala_viva, sala_clon)
+            self.assertEqual(sala_viva._ordinal_cripta, sala_clon._ordinal_cripta)
+            for direccion in sala_viva.salidas:
+                self.assertIsNot(sala_viva.salidas[direccion], sala_clon.salidas[direccion])
+        for vivo, copia in zip(motor.enemigos, clon.enemigos):
+            self.assertIsNot(vivo, copia)
+            self.assertEqual((copia.id, copia.comportamiento, copia.rango), (vivo.id, "cazador", vivo.rango))
+            self.assertTrue(esta(clon.salas, copia.sala))
+        self.assertTrue(esta(clon.salas, clon.jugador.sala))
+
+    def test_fr017_lo_que_hace_el_clon_no_toca_al_vivo(self):
+        motor, clon = self.motor, self.clon()
+
+        def estado_vivo():
+            return (resumen_ampliado(motor), list(motor.espacio_busqueda.dist), list(motor.espacio_busqueda.epoca),
+                    motor.espacio_busqueda.epoca_actual, llave_del_campo(motor.campo_distancias), motor.ciclo)
+
+        antes = estado_vivo()
+        for _ in range(4):
+            self.assertTrue(clon.ejecutar_accion("esperar", None))
+        self.assertEqual(estado_vivo(), antes)
+        self.assertGreater(clon.ciclo, motor.ciclo)
+
+    def test_fr025_el_clon_reproduce_las_mismas_decisiones_del_cazador_real(self):
+        motor, clon = self.motor, self.clon()
+        registro_clon = self.anotar(clon)
+        registro_vivo = self.anotar(motor)
+        for paso in range(4):
+            self.assertTrue(clon.ejecutar_accion("esperar", None), paso)
+            self.assertTrue(motor.ejecutar_accion("esperar", None), paso)
+            self.assertEqual(resumen_ampliado(clon), resumen_ampliado(motor), f"paso {paso}")
+            self.assertEqual(llave_del_campo(clon.campo_distancias), llave_del_campo(motor.campo_distancias),
+                             f"paso {paso}")
+        self.assertGreater(len(registro_vivo), 0)
+        self.assertEqual(registro_clon, registro_vivo)
+        self.assertIn("MOVER", [decision[2] for decision in registro_vivo])
+        self.assertEqual([(e.id, e.sala.id) for e in clon.enemigos], [(e.id, e.sala.id) for e in motor.enemigos])
+
+    def test_fr025_con_la_estrategia_individual_el_clon_decide_igual_que_el_vivo(self):
+        motor = self.motor
+        motor.estrategia_cazador = "individual"
+        clon = self.clon()
+        self.assertEqual(clon.estrategia_cazador, "individual")
+        for cazador_vivo, cazador_clon in zip(motor.enemigos, clon.enemigos):
+            vivo = motor.decidir_cazador_individual(cazador_vivo)
+            for decision in (clon.decidir_cazador_individual(cazador_clon), clon.decidir_cazador_compartida(cazador_clon)):
+                self.assertEqual((decision.accion, decision.costo_base), (vivo.accion, vivo.costo_base))
+
+    def test_fr017_una_puerta_que_cambia_en_el_clon_invalida_su_campo_y_no_el_del_vivo(self):
+        motor, clon = self.motor, self.clon()
+        version = motor.version_puertas
+        for salida in clon.salas[0].salidas.values():
+            clon._escribir_cerrada(salida, True, "prueba", registrar=False)
+        self.assertGreater(clon.version_puertas, version)
+        self.assertEqual(motor.version_puertas, version)
+        campo_vivo = motor.campo_distancias
+        self.assertTrue(campo_vivo.sirve(motor.ciclo, campo_vivo.sala_jugador, version, campo_vivo.cota,
+                                         motor.espacio_busqueda.epoca_actual))
+        campo_clon = clon.campo_distancias
+        self.assertFalse(campo_clon.sirve(clon.ciclo, campo_clon.sala_jugador, clon.version_puertas, campo_clon.cota,
+                                          clon.espacio_busqueda.epoca_actual))
 
 
 if __name__ == "__main__":
