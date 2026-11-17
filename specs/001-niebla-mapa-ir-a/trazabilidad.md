@@ -19,6 +19,7 @@ en `spec.md`.
 
 **Suite al escribir esta matriz**: `python -m unittest discover -s tests -t .` → `Ran 810 tests`, `OK`, sin red.
 **Actualización del 2026-11-16** (huecos de FR-020 y FR-028 cerrados con dos pruebas nuevas): `Ran 812 tests`, `OK`.
+**T116 (2026-11-16)**: escenarios 1 a 8 del quickstart jugados con `main.py`, en [evidencia_quickstart.md](evidencia_quickstart.md). Ningún estado cambió.
 
 ## Requisitos funcionales (FR)
 
@@ -75,12 +76,12 @@ en `spec.md`.
 
 | SC | PR | Tareas | Prueba o medición | Estado |
 |----|----|--------|-------------------|--------|
-| SC-001 | PR-16 | T005, T098, T116\* | Los 9 casos, en [la tabla de abajo](#los-9-casos-de-sc-001); cada uno tiene al menos una prueba automática que cita su FR | hecho (las pruebas automáticas bastan según SC-001). El recorrido manual del quickstart es T116 y no se hizo en esta tarea |
-| SC-002 | PR-04, PR-08, PR-10 | T035, T036, T044, T116\* | `tests/test_mapa.py::test_fr011_fr018_sc002_puerta_de_una_vecina_sin_observar`<br>`tests/test_mapa.py::test_fr012_sc002_muestra_el_recuerdo_y_no_la_puerta_real`<br>`tests/test_viaje.py::test_fr011_fr023_sc002_escenario_us2_4_ir_a_no_usa_salidas_sin_observar` | hecho |
-| SC-003 | PR-06 | T068, T116\* | `tests/test_persistencia_conocimiento.py::test_fr015_sc003_escenario_us5_1_el_mapa_conocido_es_identico` | hecho |
-| SC-004 | PR-11, PR-12 | T083, T087, T088, T090, T091, T094, T116\* | `tests/test_persistencia_conocimiento.py::test_fr017_sc004_escenario_us5_2_guardar_cargar_continuar_y_reproducir`<br>`tests/test_persistencia_conocimiento.py::test_fr017_fr030_fr031_ir_a_y_pergaminos_sin_y_con_carga`<br>`tests/test_viaje.py::test_fr030_sc004_viaje_completo_deja_comentario_antes_del_primer_mover_y_se_reproduce` | hecho. Nota: la prueba con «ir a» y pergaminos usa un buscador de prueba inyectado, no la búsqueda real |
-| SC-005 | PR-09, PR-11 | T045, T053, T058, T083, T085, T116\* | `tests/test_viaje.py::test_fr022_sc005_escenario_us4_1_sala_avistada_desconocida_inexistente_o_no_valida`<br>`tests/test_viaje.py::test_fr022_sc005_orden_rechazada_no_deja_linea`<br>`tests/test_viaje.py::test_fr030_sc005_rechazo_del_primer_mover_no_deja_linea` | hecho |
-| SC-006 | PR-16 | T001, T009\*, T019, T081, T097, T099, T106, T108, T116\* | Suite completa: `Ran 812 tests`, `OK`, sin red<br>`tests/test_conocimiento.py::test_sc006_motor_sin_iniciar_partida_funciona_sin_conocimiento`<br>`tests/test_bench_niebla.py::test_sc006_pr15_t108_m1_a_m6_con_tamanos_minimos_sin_red_ni_vista` | hecho |
+| SC-001 | PR-16 | T005, T098, T116\* | Los 9 casos, en [la tabla de abajo](#los-9-casos-de-sc-001); cada uno tiene al menos una prueba automática que cita su FR | hecho (las pruebas automáticas bastan según SC-001). Partidas jugadas de T116 en [evidencia_quickstart.md](evidencia_quickstart.md): escenarios 1 a 8 corridos; el caso del veneno del escenario 4 requiere prueba manual ([4.9](evidencia_quickstart.md#esc-4-veneno)) |
+| SC-002 | PR-04, PR-08, PR-10 | T035, T036, T044, T116\* | `tests/test_mapa.py::test_fr011_fr018_sc002_puerta_de_una_vecina_sin_observar`<br>`tests/test_mapa.py::test_fr012_sc002_muestra_el_recuerdo_y_no_la_puerta_real`<br>`tests/test_viaje.py::test_fr011_fr023_sc002_escenario_us2_4_ir_a_no_usa_salidas_sin_observar`<br>Partida jugada: [escenarios 1](evidencia_quickstart.md#esc-1), [3](evidencia_quickstart.md#esc-3) y [4.6](evidencia_quickstart.md#esc-4-sin-observar) | hecho |
+| SC-003 | PR-06 | T068, T116\* | `tests/test_persistencia_conocimiento.py::test_fr015_sc003_escenario_us5_1_el_mapa_conocido_es_identico`<br>Partida jugada: [escenario 6](evidencia_quickstart.md#esc-6) | hecho |
+| SC-004 | PR-11, PR-12 | T083, T087, T088, T090, T091, T094, T116\* | `tests/test_persistencia_conocimiento.py::test_fr017_sc004_escenario_us5_2_guardar_cargar_continuar_y_reproducir`<br>`tests/test_persistencia_conocimiento.py::test_fr017_fr030_fr031_ir_a_y_pergaminos_sin_y_con_carga`<br>`tests/test_viaje.py::test_fr030_sc004_viaje_completo_deja_comentario_antes_del_primer_mover_y_se_reproduce`<br>Partida jugada: [escenarios 5](evidencia_quickstart.md#esc-5) y [6](evidencia_quickstart.md#esc-6) (reloj, sala, vida y acciones; el conocimiento no se ve en la salida de `--replay`) | hecho. Nota: la prueba con «ir a» y pergaminos usa un buscador de prueba inyectado, no la búsqueda real |
+| SC-005 | PR-09, PR-11 | T045, T053, T058, T083, T085, T116\* | `tests/test_viaje.py::test_fr022_sc005_escenario_us4_1_sala_avistada_desconocida_inexistente_o_no_valida`<br>`tests/test_viaje.py::test_fr022_sc005_orden_rechazada_no_deja_linea`<br>`tests/test_viaje.py::test_fr030_sc005_rechazo_del_primer_mover_no_deja_linea`<br>Partida jugada: [escenario 4.1](evidencia_quickstart.md#esc-4-rechazos) | hecho |
+| SC-006 | PR-16 | T001, T009\*, T019, T081, T097, T099, T106, T108, T116\* | Suite completa: `Ran 812 tests`, `OK`, sin red<br>`tests/test_conocimiento.py::test_sc006_motor_sin_iniciar_partida_funciona_sin_conocimiento`<br>`tests/test_bench_niebla.py::test_sc006_pr15_t108_m1_a_m6_con_tamanos_minimos_sin_red_ni_vista`<br>T116: la misma suite, `Ran 812 tests`, `OK` ([evidencia_quickstart.md](evidencia_quickstart.md#resumen)) | hecho |
 | SC-007 | PR-15 | T003, T104, T109, T110\* | `tests/test_bench_niebla.py::test_sc007_pr15_t108_m4_con_y_sin_espacio_compara_contra_la_constante` (forma y veredicto, sin afirmar tiempos)<br>Medición M4 en [`resultados_bench_niebla.txt`](../../resultados_bench_niebla.txt), PROVISIONAL, con mapas sintéticos (ver abajo) | **pendiente de T110**: §6.1 no se da por cumplido |
 
 **SC-007 y §6.1.** El límite es de 5 ms por paso «con el mapa conocido completo de la cripta de referencia», que aún no
@@ -100,20 +101,21 @@ T110, que agrega a M4 el mapa conocido completo de la cripta de referencia. El d
 
 ## Los 9 casos de SC-001
 
-**Evidencia de partidas jugadas.** `partida.log` ya no se versiona: está en `.gitignore`. La evidencia de partidas
-jugadas que agregue T116 irá en un archivo con otro nombre, que se define en esa tarea. Esta tarea no lo crea.
+**Evidencia de partidas jugadas.** `partida.log` ya no se versiona: está en `.gitignore`. La evidencia de T116
+está en [evidencia_quickstart.md](evidencia_quickstart.md): partidas reales con `python main.py` y entradas guionadas, con bitácoras de nombre propio
+en una carpeta temporal fuera del repositorio.
 
 | # | Caso | Origen | FR | Prueba automática | Partida jugada (T116) | Estado |
 |---|------|--------|----|-------------------|-----------------------|--------|
-| 1 | Antorcha explora sin activar enemigos ni trampas | Apéndice B | FR-009, FR-010 | `tests/test_antorcha.py::test_fr009_fr010_explora_sin_activar_enemigos_ni_trampas` | pendiente (T116, quickstart 3) | hecho |
-| 2 | Pergamino revierte entrada con antorcha | Apéndice B | FR-014 | `tests/test_antorcha.py::test_fr014_pergamino_restaura_exactamente_el_conocimiento` | pendiente (T116, quickstart 3) | hecho |
-| 3 | «ir a» hacia sala no explorada | Apéndice B | FR-022 | `tests/test_viaje.py::test_fr022_sc005_escenario_us4_1_sala_avistada_desconocida_inexistente_o_no_valida` | pendiente (T116, quickstart 4) | hecho |
-| 4 | Puerta recordada abierta que está cerrada | Apéndice B | FR-006, FR-026 | `tests/test_conocimiento.py::test_fr006_al_entrar_al_origen_el_recuerdo_queda_cerrado`<br>`tests/test_viaje.py::test_fr026_con_otra_ruta_el_viaje_sigue_por_ella`<br>`tests/test_viaje.py::test_fr026_fr027_sin_otra_ruta_se_detiene_sin_tiempo_adicional` | pendiente (T116, quickstart 2 y 4) | hecho |
-| 5 | «ir a» entra a sala con enemigos dormidos | Apéndice B | FR-027b | `tests/test_viaje.py::test_fr027b_escenario_us4_3_enemigo_dormido_se_activa_y_detiene` | pendiente (T116, quickstart 4) | hecho |
-| 6 | Pergamino durante un viaje | Apéndice B | FR-031 | `tests/test_viaje.py::test_fr014_fr031_escenario_us4_4_tras_viaje_completo_deshace_solo_el_ultimo_paso`<br>`tests/test_viaje.py::test_fr014_fr031_tras_viaje_detenido_deshace_el_paso_con_su_conocimiento` | pendiente (T116, quickstart 4) | hecho |
-| 7 | Sala inicial en el instante 0 | Adicional | FR-002 | `tests/test_conocimiento.py::test_fr001_fr002_fr004_sala_inicial_en_el_instante_0` | pendiente (T116, quickstart 1) | hecho |
-| 8 | De avistada a explorada | Adicional | FR-003, FR-004 | `tests/test_conocimiento.py::test_fr003_fr004_fr005_de_avistada_a_explorada` | pendiente (T116, quickstart 1) | hecho |
-| 9 | Guardar y cargar con conocimiento | Adicional | FR-015 | `tests/test_persistencia_conocimiento.py::test_fr015_sc003_escenario_us5_1_el_mapa_conocido_es_identico` | pendiente (T116, quickstart 6) | hecho |
+| 1 | Antorcha explora sin activar enemigos ni trampas | Apéndice B | FR-009, FR-010 | `tests/test_antorcha.py::test_fr009_fr010_explora_sin_activar_enemigos_ni_trampas` | cumple: [escenario 3](evidencia_quickstart.md#esc-3) | hecho |
+| 2 | Pergamino revierte entrada con antorcha | Apéndice B | FR-014 | `tests/test_antorcha.py::test_fr014_pergamino_restaura_exactamente_el_conocimiento` | cumple: [escenario 3](evidencia_quickstart.md#esc-3) | hecho |
+| 3 | «ir a» hacia sala no explorada | Apéndice B | FR-022 | `tests/test_viaje.py::test_fr022_sc005_escenario_us4_1_sala_avistada_desconocida_inexistente_o_no_valida` | cumple: [escenario 4.1](evidencia_quickstart.md#esc-4-rechazos) | hecho |
+| 4 | Puerta recordada abierta que está cerrada | Apéndice B | FR-006, FR-026 | `tests/test_conocimiento.py::test_fr006_al_entrar_al_origen_el_recuerdo_queda_cerrado`<br>`tests/test_viaje.py::test_fr026_con_otra_ruta_el_viaje_sigue_por_ella`<br>`tests/test_viaje.py::test_fr026_fr027_sin_otra_ruta_se_detiene_sin_tiempo_adicional` | cumple: [escenario 2](evidencia_quickstart.md#esc-2) y [4.4](evidencia_quickstart.md#esc-4-puerta) | hecho |
+| 5 | «ir a» entra a sala con enemigos dormidos | Apéndice B | FR-027b | `tests/test_viaje.py::test_fr027b_escenario_us4_3_enemigo_dormido_se_activa_y_detiene` | cumple: [escenario 4.7](evidencia_quickstart.md#esc-4-enemigos) | hecho |
+| 6 | Pergamino durante un viaje | Apéndice B | FR-031 | `tests/test_viaje.py::test_fr014_fr031_escenario_us4_4_tras_viaje_completo_deshace_solo_el_ultimo_paso`<br>`tests/test_viaje.py::test_fr014_fr031_tras_viaje_detenido_deshace_el_paso_con_su_conocimiento` | cumple: [escenario 4.3](evidencia_quickstart.md#esc-4-rechazos) | hecho |
+| 7 | Sala inicial en el instante 0 | Adicional | FR-002 | `tests/test_conocimiento.py::test_fr001_fr002_fr004_sala_inicial_en_el_instante_0` | cumple: [escenario 1](evidencia_quickstart.md#esc-1) | hecho |
+| 8 | De avistada a explorada | Adicional | FR-003, FR-004 | `tests/test_conocimiento.py::test_fr003_fr004_fr005_de_avistada_a_explorada` | cumple: [escenario 1](evidencia_quickstart.md#esc-1) | hecho |
+| 9 | Guardar y cargar con conocimiento | Adicional | FR-015 | `tests/test_persistencia_conocimiento.py::test_fr015_sc003_escenario_us5_1_el_mapa_conocido_es_identico` | cumple: [escenario 6](evidencia_quickstart.md#esc-6) | hecho |
 
 ## Resumen
 
