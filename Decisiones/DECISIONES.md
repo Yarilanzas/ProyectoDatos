@@ -1039,4 +1039,72 @@ Dieron el mismo primer paso que la versión actual en 2800 casos (grilla y caden
 
 ## §5.5 — Línea de tiempo y puntos de control
 
+Fuente de todas las cifras: `resultados_bench_linea.txt` (corrida completa de `tests/bench_linea.py`, Windows 10, Python 3.12.10, cripta sintética de 20 salas, sin red ni vista). Se cita el bloque (M1 a M10, T113). Las cifras son de esa máquina. Lo no medido está marcado como **HIPÓTESIS**, igual que en ese archivo. Los cambios 1 a 3 que se justifican aquí son los de la tabla «Cambios propuestos a la spec» de `specs/004-linea-de-tiempo/plan.md`.
+
+### 1. Re-simulación desde puntos de control, en vez de guardar copias completas por acción
+
+**Problema.** Consultar el pasado (`historia <t>`, `historia #k`, `--replay --hasta`) exige reconstruir el estado de un instante sin alterar el presente.
+
+**Enunciado (§3.6, «Restricción de memoria»).** «Se permite guardar copias completas del estado, llamadas puntos de control, pero no más de una cada K acciones del jugador.» Además: «Fuera de los puntos de control, solo se almacena la información necesaria para reconstruir los cambios. Pueden reconstruir hacia adelante desde un punto de control, re-simulando, o hacia atrás desde el estado actual, invirtiendo cambios. Si re-simulan, el punto de control debe incluir el estado del generador random.Random.» (§5.5: la memoria crece con los cambios más un punto cada K acciones, nunca con «acciones por tamaño del estado»).
+
+**Decisión (cambios 1 a 3).**
+1. Lo que se guarda entre puntos de control es la **acción registrada** (el comando aceptado con su sello `(reloj, secuencia)`), no una diferencia de estado. Se reconstruye hacia adelante re-simulando; el punto de control incluye el estado de `random.Random` (`motor.azar`).
+2. Se guarda en la partida el **guion** (acciones, retrocesos y cargas) y K; los puntos de control **se reconstruyen al cargar**.
+3. Además de un punto cada K acciones, hay un punto extra tras cada retroceso y tras cada carga: la cota es ⌈n/K⌉ + 1 + cargas + usos del pergamino.
+
+**Alternativas descartadas.** Invertir cambios hacia atrás: el motor no emite cambios aplicables y el `Historial` no sirve para ir hacia atrás. Guardar los puntos completos en el archivo: exige un segundo serializador de todo el estado. Reemplazar el punto previo en lugar de agregar uno: sin el punto posterior a un retroceso o a una carga la reconstrucción no es exacta.
+
+**Condición de C (aceptación del 2026-11-12).** Los cambios 1 y 2 están respaldados por el propio enunciado. El cambio 3 es el único que **se aparta de la letra** de «no más de una cada K acciones» y por eso se justifica aquí: cada retroceso y cada carga agregan un punto, que no son «una cada K».
+
+**Evidencia.**
+- M4 (recorte): `retroceder` cuesta, con la línea, una mediana de 1.984 ms (n = 500), 2.641 ms (n = 5 000) y 2.722 ms (n = 50 000); la mediana con n = 50 000 es 1.37 veces la de n = 500 (casi constante). Máximo: 3.868 ms.
+- M6 (cargar): reconstruir 5 000 acciones con K = 50 tarda 670.1 ms sin `@cargar` y 584.0 ms con `@cargar`; el bloque pesa 133.0 KiB (27.2 B por acción). Un solo punto completo serializado con pickle pesa 13.1 KiB: guardar los 101 puntos serían unos 1.3 MiB frente a 133.0 KiB del guion.
+- M7 (SC-003): los mismos 100 instantes con K = 1, 50 y 500 dan resúmenes idénticos con las semillas 1, 2 y 3 (150 acciones).
+- M2 (memoria, K = 50): 1799.7 KiB con n = 2 500, 3599.2 KiB con n = 5 000 y 7197.2 KiB con n = 10 000; crece x2.00 al duplicar n y cumple la cota de puntos en todos los K.
+
+### 2. `copy.deepcopy` con `memo`
+
+El profesor respondió el 2026-11-12: «Para este proyecto sí pueden usar el dict como caché. No hay problema». La autorización se limita al `memo` de `copy.deepcopy` en `Modelo/CopiaEstado.py`; el resto de las estructuras de la capacidad sigue sin `dict` ni `set` como índice. Está recogida en la constitución v3.0.3 (`fcebe15`, Principio I).
+
+Evidencia (M3): con N = 2 000 salas `deepcopy` a secas falla con `RecursionError` («no sirve»); la copia estructurada termina: `copiar` 66.938 ms y 666.4 KiB, `materializar` 119.817 ms. Con N = 200, `deepcopy` a secas tarda 32.219 ms y `copiar` 4.695 ms. Con N = 20, 5.037 ms frente a 2.055 ms.
+
+### 3. K por omisión = 50
+
+**Regla (T113).** Un K cumple si todas las consultas tardan menos de 50 ms (SC-002) y su p95 × 2.5 sigue por debajo de 50 ms. Se conserva el K vigente mientras cumpla; si deja de cumplir, el mayor K que cumpla. El margen va sobre el **p95** y no sobre el máximo porque el máximo de las 200 consultas lo fija un solo valor atípico (T113: «los datos no distinguen entre ellos en el peor caso»). El margen de 2.5 es una elección del grupo, no una medición: **HIPÓTESIS**.
+
+**Tabla (T113; n = 5 000; «-» = no medido en esa celda).**
+
+| K | p95 consulta (ms) | máx consulta (ms) | memoria (KiB) | registrar p95 (ms) | reconstruir (ms) | resultado |
+|---|------|------|------|------|------|-----------|
+| 1 | 4.47 | 7.44 | - | 3.914 | - | cumple |
+| 10 | 4.42 | 7.14 | 14726.9 | 1.895 | 1764.7 | cumple |
+| **50** | 6.37 | 15.56 | 3599.2 | 0.010 | 670.1 | cumple |
+| 100 | 11.32 | 19.74 | 2207.4 | - | - | cumple |
+| 500 | 39.36 | 53.58 | 1089.7 | 0.008 | 415.0 | NO cumple |
+| sin puntos | 296.33 | 341.59 | 794.9 | - | - | NO cumple |
+
+Con K = 1 la memoria solo se midió con n = 2 500 (M2: 69528.2 KiB). Cumplen K = 1, 10, 50 y 100; más K ahorra memoria y menos K da consultas más cortas. **Se conserva 50** porque cumple (`K_POR_OMISION` no cambia). M1 con K = 50: mediana 3.085 ms, p95 6.365 ms, máximo 15.557 ms, 100 % por debajo de 50 ms. M5: registrar una acción con K = 50 tiene p95 de 0.0096 ms (máximo 3.6510 ms), por debajo de 20 ms (§5.2).
+
+### 4. Antes y después de la línea (M10)
+
+`retroceder` cuesta 0.0539 ms con solo el `Historial` y 2.7017 ms con el `Historial` y la línea (n = 5 000; n = 500: 0.0430 y 2.0266 ms; n = 50 000: 0.0579 y 2.7731 ms). El retroceso entero (`Historial` más línea) tarda a lo sumo 3.929 ms, por debajo de 20 ms. El bench de la Parte I (5 intervalos × 50 cambios, solo `Historial`) registra 250 cambios en 0.0940 ms y deshace en 0.0240 ms. **El `Historial` sigue siendo adecuado y no se cambia.** Umbral de SC-010: **8 ms por recorte** (M4: dos veces el mayor máximo medido, redondeado hacia arriba; a revisar si cambia la medición).
+
+### 5. Costo de K = 1
+
+`--replay --hasta` con `--checkpoint-cada 1` tarda unas 22 veces más (M8, 1 000 acciones): 2339.7 ms (x21.95) frente a 106.6 ms del replay normal; con K = 10, 204.9 ms; con K = 500, 144.9 ms; sin `--checkpoint-cada`, 191.6 ms. El contrato permite K = 1 y la decisión es de quien lo pide.
+
+### 6. Limitaciones conocidas (no son defectos)
+
+- **Pergaminos tras retroceder (FR-029).** La serie guarda un valor por posición: en la posición a la que se retrocedió rige la última ocurrencia (el presente); antes de ella, lo que el jugador tenía entonces.
+- **`copyfile` al cargar.** `cargar` es atómico hasta reconstruir la línea; después cierra lo anterior, y si `shutil.copyfile` de la copia de bitácora falla (`OSError`), la partida ya quedó cargada, sin bitácora, y se muestra un aviso.
+- **Guardar descarta una línea desfasada.** Si el motor avanzó sin avisar a la línea (por ejemplo una acción que lanzó `RuntimeError` a medias), `guardar` avisa, descarta la línea y escribe el archivo con largo de línea 0.
+
+### 7. Lo no medido (**HIPÓTESIS**)
+
+- M2 con K = 1 y n > 2 500 (HIPÓTESIS: crece como n · bytes por punto).
+- M3 con N > 2 000.
+- M4 con n > 50 000.
+- El costo de la agenda (P1 §4.1), que esta capacidad no mide (grupo).
+- El margen de 2.5 y el efecto de criptas mayores sobre el costo de cada punto (T113; M3: materializar pasa de 2.7 ms con N = 20 a 7.7 ms con N = 200 y a 119.8 ms con N = 2 000).
+
 ## §5.6 — Revisión de decisiones de la primera parte
