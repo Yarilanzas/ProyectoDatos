@@ -21,7 +21,13 @@ AYUDA = """Comandos:
   red              (solicitudes y cache)
   puntajes [mejores|acciones|tiempo|derrotados|nombre]
   guardar [ARCHIVO]                      cargar ARCHIVO
-  ayuda            salir"""
+  ayuda            salir
+
+Terreno: cada salida tiene un costo, el tiempo que se tarda en cruzarla
+  (100 si la salida no lo trae). Ir y volver por la misma puerta puede costar distinto.
+Cazador: persigue al jugador por la ruta más barata, si su costo total cabe
+  en su rango; espera si no hay ruta abierta o si es más cara que su rango,
+  y ataca si comparte sala con el jugador."""
 
 
 class VistaConsola:
