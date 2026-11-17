@@ -49,6 +49,12 @@ class ObservadorLinea:
     def despues_de_carga(self, motor):
         self._linea.registrar_carga(motor, self._copia_privada(motor))
 
+    def copiar_archivo_cargado(self, motor):
+        """Copia privada del archivo del que se cargó `motor` (la ruta es ``motor.restaurador.ruta``), o None si no tiene
+        restaurador o este observador no tiene carpeta. La borra ``cerrar()``. Es lo que ``despues_de_carga`` hace antes
+        de avisar a la línea; el reconstructor lo usa para abrir la época de una línea que empieza en la carga."""
+        return self._copia_privada(motor)
+
     def _copia_privada(self, motor):
         restaurador = getattr(motor, "restaurador", None)
         ruta = getattr(restaurador, "ruta", None)
