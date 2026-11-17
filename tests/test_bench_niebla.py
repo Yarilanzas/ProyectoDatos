@@ -324,7 +324,8 @@ class TestM4(unittest.TestCase):
             with self.subTest(fila=fila.texto()):
                 self.assertTrue(fila.provisional)
                 self.assertIn("PROVISIONAL", fila.texto())
-                self.assertIn("T110", fila.texto())
+                self.assertIn("prueba de estrés", fila.texto())
+                self.assertNotIn("hasta T110", fila.texto())
                 self.assertIn(fila.veredicto, ("cumple", "no cumple"))
                 self.assertIn(fila.veredicto, fila.texto())
                 por_paso = fila.ms / fila.valor("pasos")
@@ -472,6 +473,201 @@ class TestM4AM6SinRedNiVista(unittest.TestCase):
             self.assertIsNotNone(fila.ms, fila.texto())
 
 
+# T110: M4 con el mapa conocido completo de la cripta de referencia, leído al correr de las copias locales
+# (`datos_locales/esqueleto_<id>.json`). Solo forma, corrección y comparación contra la constante: ningún tiempo.
+# Atiende: SC-007, PR-15.
+
+DATOS_LOCALES = os.path.join(RAIZ, "datos_locales")
+NOTA_REFERENCIA = ("cripta publicada más grande ({}, {} salas), usada como cripta de referencia; el enunciado no la "
+                   "identifica con certeza")
+
+
+def _esqueletos_locales(carpeta=DATOS_LOCALES):
+    """(id, datos del archivo) de cada `esqueleto_<id>.json` de ``carpeta``, leído aquí y no copiado al código."""
+    import json
+    resultado = []
+    for nombre in os.listdir(carpeta):
+        if nombre.startswith("esqueleto_") and nombre.endswith(".json"):
+            with open(os.path.join(carpeta, nombre), encoding="utf-8") as archivo:
+                resultado.append((nombre[len("esqueleto_"):-len(".json")], json.load(archivo)))
+    return resultado
+
+
+def _mas_grande(carpeta=DATOS_LOCALES):
+    elegido = None
+    for id_cripta, datos in _esqueletos_locales(carpeta):
+        if elegido is None or len(datos["esqueleto"]) > len(elegido[1]["esqueleto"]):
+            elegido = (id_cripta, datos)
+    return elegido
+
+
+def _pares_alcanzables(esqueleto):
+    """Pares (origen, destino) distintos con ruta por salidas abiertas en el esqueleto. Cálculo independiente del
+    bench: recorrido en anchura sobre el JSON, sin `Conocimiento` ni `GrafoConocido`."""
+    ids = [sala["id"] for sala in esqueleto]
+    pares = 0
+    for origen in esqueleto:
+        vistos = [origen["id"]]
+        frente = [origen]
+        while frente:
+            siguiente = []
+            for sala in frente:
+                for salida in sala["salidas"].values():
+                    if salida.get("cerrada") or salida["sala"] in vistos or salida["sala"] not in ids:
+                        continue
+                    vistos.append(salida["sala"])
+                    siguiente.append(esqueleto[ids.index(salida["sala"])])
+            frente = siguiente
+        pares += len(vistos) - 1
+    return pares
+
+
+def _instantanea(carpeta):
+    """Nombre y bytes de cada archivo de ``carpeta``, en el orden de os.listdir."""
+    resultado = []
+    for nombre in os.listdir(carpeta):
+        ruta = os.path.join(carpeta, nombre)
+        if os.path.isfile(ruta):
+            with open(ruta, "rb") as archivo:
+                resultado.append((nombre, archivo.read()))
+    return resultado
+
+
+def _salida_json(destino, cerrada=False):
+    return {"sala": destino, "cerrada": cerrada, "llave": None, "cierre_automatico": None}
+
+
+class TestM4Referencia(unittest.TestCase):
+    def _medir(self, carpeta=DATOS_LOCALES, **opciones):
+        medir = getattr(bench_niebla, "medir_m4_referencia", None)
+        self.assertIsNotNone(medir, "M4 no mide la cripta de referencia (T110)")
+        return medir(repeticiones=1, carpeta=carpeta, **opciones)
+
+    def _fila_unica(self, filas):
+        self.assertEqual(len(filas), 1, [fila.texto() for fila in filas])
+        fila = filas[0]
+        self.assertEqual(fila.medicion, "M4")
+        self.assertEqual(fila.variante, "referencia/paso")
+        return fila
+
+    @unittest.skipUnless(os.path.isdir(DATOS_LOCALES) and _mas_grande() is not None,
+                         "sin copias locales de esqueletos en datos_locales/")
+    def test_sc007_pr15_t110_fila_de_la_cripta_real_con_veredicto_contra_la_constante(self):
+        id_cripta, datos = _mas_grande()
+        esqueleto = datos["esqueleto"]
+        for modo, espacio in (("por llamada", None), ("reutilizado", bench_niebla.EspacioBusqueda)):
+            with self.subTest(espacio=modo):
+                fila = self._fila_unica(self._medir(espacio=espacio))
+                self.assertIsInstance(fila.ms, float, fila.texto())
+                self.assertGreaterEqual(fila.ms, 0.0)
+                self.assertEqual(fila.valor("cripta"), id_cripta)
+                self.assertEqual(fila.valor("V"), len(esqueleto))
+                self.assertEqual(fila.valor("pasos"), 1)
+                self.assertEqual(fila.valor("espacio"), modo)
+                # Todos los pares alcanzables por puertas abiertas, contados aparte sobre el JSON.
+                self.assertEqual(fila.valor("pares"), _pares_alcanzables(esqueleto))
+                origen, destino = (int(parte) for parte in fila.valor("peor").split("->"))
+                ids = [sala["id"] for sala in esqueleto]
+                self.assertIn(origen, ids)
+                self.assertIn(destino, ids)
+                self.assertNotEqual(origen, destino)
+                # Veredicto con la única constante y la fila no es provisional.
+                self.assertEqual(fila.veredicto, bench_niebla.veredicto_paso(fila.ms))
+                with mock.patch.object(bench_niebla, "LIMITE_PASO_IR_A_MS", -1):
+                    self.assertEqual(bench_niebla.veredicto_paso(fila.ms), "no cumple")
+                self.assertFalse(fila.provisional)
+                self.assertNotIn("PROVISIONAL", fila.texto())
+                self.assertEqual(fila.nota, NOTA_REFERENCIA.format(id_cripta, len(esqueleto)))
+                self.assertIn(fila.veredicto, fila.texto())
+
+    def test_sc007_pr15_t110_elige_la_mas_grande_y_mide_solo_pares_alcanzables(self):
+        # Copias locales sintéticas: una cadena de 3 y un mapa de 4 con una puerta cerrada de un solo sentido.
+        from AlmacenamientoLocalApi.AlmacenamientoLocalApi import AlmacenamientoLocalApi
+        from DTOS.SalaEsqueleto import SalaEsqueleto
+        chica = [{"id": 1, "nombre": "a", "salidas": {"E": _salida_json(2)}},
+                 {"id": 2, "nombre": "b", "salidas": {"O": _salida_json(1), "E": _salida_json(3)}},
+                 {"id": 3, "nombre": "c", "salidas": {"O": _salida_json(2)}}]
+        # Ids desordenados a propósito: 7 -> 3 cerrada, así que 3 es alcanzable desde 7 solo por 9.
+        grande = [{"id": 7, "nombre": "w", "salidas": {"E": _salida_json(3, cerrada=True), "S": _salida_json(9)}},
+                  {"id": 3, "nombre": "x", "salidas": {"O": _salida_json(7), "S": _salida_json(4)}},
+                  {"id": 9, "nombre": "y", "salidas": {"N": _salida_json(7), "E": _salida_json(4)}},
+                  {"id": 4, "nombre": "z", "salidas": {"N": _salida_json(3), "O": _salida_json(9)}}]
+        with tempfile.TemporaryDirectory() as carpeta:
+            almacen = AlmacenamientoLocalApi(carpeta)
+            almacen.guardar_esqueleto("cripta-chica", "v-chica", [SalaEsqueleto.desde_json(s) for s in chica])
+            almacen.guardar_esqueleto("cripta-grande", "v-grande", [SalaEsqueleto.desde_json(s) for s in grande])
+            antes = _instantanea(carpeta)
+            fila = self._fila_unica(self._medir(carpeta))
+            self.assertEqual(_instantanea(carpeta), antes)
+        self.assertEqual(fila.valor("cripta"), "cripta-grande")
+        self.assertEqual(fila.valor("V"), 4)
+        # El grafo es fuertemente conexo salvo por la puerta cerrada: los 4·3 pares siguen alcanzables.
+        self.assertEqual(fila.valor("pares"), _pares_alcanzables(grande))
+        self.assertEqual(fila.valor("pares"), 12)
+        self.assertEqual(fila.nota, NOTA_REFERENCIA.format("cripta-grande", 4))
+
+    def test_sc007_pr15_t110_grafo_dirigido_excluye_la_puerta_cerrada(self):
+        # 1 -> 2 cerrada y 2 -> 1 abierta: desde 1 no se llega a 2, desde 2 sí a 1. Un solo par alcanzable.
+        from AlmacenamientoLocalApi.AlmacenamientoLocalApi import AlmacenamientoLocalApi
+        from DTOS.SalaEsqueleto import SalaEsqueleto
+        salas = [{"id": 1, "nombre": "a", "salidas": {"E": _salida_json(2, cerrada=True)}},
+                 {"id": 2, "nombre": "b", "salidas": {"O": _salida_json(1)}}]
+        with tempfile.TemporaryDirectory() as carpeta:
+            AlmacenamientoLocalApi(carpeta).guardar_esqueleto("cripta-par", "v1",
+                                                              [SalaEsqueleto.desde_json(s) for s in salas])
+            fila = self._fila_unica(self._medir(carpeta))
+        self.assertEqual(fila.valor("pares"), 1)
+        self.assertEqual(fila.valor("peor"), "2->1")
+
+    def test_sc007_pr15_t110_sin_esqueleto_la_fila_dice_no_medido_y_no_falla(self):
+        with tempfile.TemporaryDirectory() as raiz:
+            vacia = os.path.join(raiz, "vacia")
+            os.mkdir(vacia)
+            inexistente = os.path.join(raiz, "no_existe")
+            for carpeta in (vacia, inexistente):
+                with self.subTest(carpeta=os.path.basename(carpeta)):
+                    fila = self._fila_unica(self._medir(carpeta))
+                    self.assertIsNone(fila.ms)
+                    self.assertIn("no medido", fila.texto())
+                    self.assertIn("Motivo:", fila.texto())
+                    self.assertEqual(fila.veredicto, "")
+            # Leer no crea la carpeta que falta ni escribe en la vacía.
+            self.assertFalse(os.path.exists(inexistente))
+            self.assertEqual(os.listdir(vacia), [])
+
+    def test_sc007_pr15_t110_el_bench_no_contiene_datos_de_la_cripta(self):
+        # Principio IV: el id, la versión, los nombres de sala y las llaves se leen del archivo al correr.
+        if not (os.path.isdir(DATOS_LOCALES) and _mas_grande() is not None):
+            self.skipTest("sin copias locales de esqueletos en datos_locales/")
+        id_cripta, datos = _mas_grande()
+        fila = self._fila_unica(self._medir())
+        self.assertEqual(fila.valor("cripta"), id_cripta)
+        with open(bench_niebla.__file__, encoding="utf-8") as archivo:
+            codigo = archivo.read()
+        self.assertNotIn(id_cripta, codigo)
+        self.assertNotIn(str(datos["version"]), codigo)
+        self.assertNotIn(f"{len(datos['esqueleto'])} salas", codigo)
+        for sala in datos["esqueleto"]:
+            self.assertNotIn(f'"{sala["nombre"]}"', codigo)
+            for salida in sala["salidas"].values():
+                if salida.get("llave"):
+                    self.assertNotIn(salida["llave"], codigo)
+
+    def test_sc007_pr15_t110_solo_lee_datos_locales(self):
+        if not os.path.isdir(DATOS_LOCALES):
+            self.skipTest("sin datos_locales/")
+        antes = _instantanea(DATOS_LOCALES)
+        self.assertIn("catalogo.json", [nombre for nombre, _ in antes])
+        self._medir()
+        self._medir(espacio=bench_niebla.EspacioBusqueda)
+        self.assertEqual(_instantanea(DATOS_LOCALES), antes)
+
+    def test_sc007_pr15_t110_corre_sin_red_ni_vista(self):
+        with _sin_red_ni_vista():
+            filas = self._medir()
+        self._fila_unica(filas)
+
+
 # T107 y T108: `--bench` corre M1 a M6 y la prueba rápida con tamaños mínimos. Sin afirmar tiempos.
 
 def _sin_red_ni_vista():
@@ -495,41 +691,80 @@ class TestCorrerBench(unittest.TestCase):
         self.assertEqual(tamanos.m6_ciclos, bench_niebla.CICLOS_M6)
         self.assertEqual(tamanos.repeticiones, bench_niebla.REPETICIONES)
 
-    def _correr_minimo(self):
+    def _correr_minimo(self, datos_locales=bench_niebla.CARPETA_DATOS_LOCALES):
         with tempfile.TemporaryDirectory() as carpeta:
             ruta = os.path.join(carpeta, bench_niebla.ARCHIVO_RESULTADOS)
             with _sin_red_ni_vista(), contextlib.redirect_stdout(io.StringIO()):
-                filas = bench_niebla.correr_bench(ruta, bench_niebla.TAMANOS_MINIMOS)
+                filas = bench_niebla.correr_bench(ruta, bench_niebla.TAMANOS_MINIMOS, datos_locales)
             with open(ruta, encoding="utf-8") as archivo:
                 texto = archivo.read()
         return filas, texto
 
+    def _con_cada_carpeta_de_datos(self, prueba):
+        """(a) La carpeta real, si existe; (b) siempre, una carpeta temporal vacía, como una copia limpia sin
+        datos_locales/. ``prueba(filas, texto, con_datos)``: con_datos dice si la cripta de referencia se pudo medir."""
+        if os.path.isdir(bench_niebla.CARPETA_DATOS_LOCALES):
+            with self.subTest(datos_locales="real"):
+                con_datos = bench_niebla.cripta_mas_grande(bench_niebla.CARPETA_DATOS_LOCALES) is not None
+                prueba(*self._correr_minimo(bench_niebla.CARPETA_DATOS_LOCALES), con_datos)
+        with tempfile.TemporaryDirectory() as vacia:
+            with self.subTest(datos_locales="vacia"):
+                prueba(*self._correr_minimo(vacia), False)
+
+    def _comprobar_referencia_no_medida(self, fila):
+        # Sin copias locales: una fila por modo de espacio, sin tiempo ni veredicto, no provisional y con el motivo.
+        self.assertIsNone(fila.ms)
+        self.assertEqual(fila.veredicto, "")
+        self.assertFalse(fila.provisional)
+        self.assertIn("no medido", fila.texto())
+        self.assertIn("Motivo:", fila.texto())
+
     def test_sc006_pr15_t108_m1_a_m6_con_tamanos_minimos_sin_red_ni_vista(self):
-        filas, texto = self._correr_minimo()
-        for medicion in ("M1", "M2", "M3", "M4", "M5", "M6"):
-            with self.subTest(medicion=medicion):
-                propias = [fila for fila in filas if fila.medicion == medicion]
-                self.assertTrue(propias)
-                for fila in propias:
-                    self.assertIsNotNone(fila.ms, fila.texto())
-                    self.assertIn(fila.texto(), texto)
-        self.assertEqual(len(filas), 6 + 2 + 3 + 8 + 4 + 2)
-        self.assertIn(platform.python_version(), texto)
-        self.assertIn("PROVISIONAL", texto)
-        self.assertNotIn("pendiente", texto)
+        def comprobar(filas, texto, con_datos):
+            for medicion in ("M1", "M2", "M3", "M4", "M5", "M6"):
+                with self.subTest(medicion=medicion):
+                    propias = [fila for fila in filas if fila.medicion == medicion]
+                    self.assertTrue(propias)
+                    for fila in propias:
+                        self.assertIn(fila.texto(), texto)
+                        if fila.variante.startswith("referencia") and not con_datos:
+                            self._comprobar_referencia_no_medida(fila)
+                        else:
+                            self.assertIsNotNone(fila.ms, fila.texto())
+            # M4: 8 filas sintéticas más una de la cripta de referencia por modo de espacio (T110).
+            self.assertEqual(len(filas), 6 + 2 + 3 + 10 + 4 + 2)
+            self.assertIn(platform.python_version(), texto)
+            self.assertIn("PROVISIONAL", texto)
+            self.assertNotIn("pendiente", texto)
+            self.assertNotIn("no se da por cumplido hasta T110", texto)
+        self._con_cada_carpeta_de_datos(comprobar)
 
     def test_sc007_pr15_t108_m4_con_y_sin_espacio_compara_contra_la_constante(self):
+        def comprobar(filas, _, con_datos):
+            m4 = [fila for fila in filas if fila.medicion == "M4"]
+            self.assertEqual(len(m4), 10)
+            for modo in ("por llamada", "reutilizado"):
+                self.assertEqual(len([fila for fila in m4 if fila.valor("espacio") == modo]), 5)
+            for fila in m4:
+                with self.subTest(fila=fila.texto()):
+                    # Las sintéticas son pruebas de estrés (PROVISIONAL); la de la cripta de referencia no (T110).
+                    self.assertEqual(fila.provisional, not fila.variante.startswith("referencia"))
+                    if fila.variante.startswith("referencia") and not con_datos:
+                        self._comprobar_referencia_no_medida(fila)
+                        continue
+                    por_paso = fila.ms / fila.valor("pasos")
+                    esperado = "cumple" if por_paso <= bench_niebla.LIMITE_PASO_IR_A_MS else "no cumple"
+                    self.assertEqual(fila.veredicto, esperado)
+        self._con_cada_carpeta_de_datos(comprobar)
+
+    def test_sc007_pr15_t110_las_filas_de_referencia_van_despues_de_todas_las_sinteticas(self):
+        # Medir la cripta de referencia entre los dos bloques sintéticos alteraba las filas que venían después.
+        # Orden: sintéticas por llamada, sintéticas reutilizado, referencia por llamada, referencia reutilizado.
         filas, _ = self._correr_minimo()
-        m4 = [fila for fila in filas if fila.medicion == "M4"]
-        self.assertEqual(len(m4), 8)
-        for modo in ("por llamada", "reutilizado"):
-            self.assertEqual(len([fila for fila in m4 if fila.valor("espacio") == modo]), 4)
-        for fila in m4:
-            with self.subTest(fila=fila.texto()):
-                self.assertTrue(fila.provisional)
-                por_paso = fila.ms / fila.valor("pasos")
-                esperado = "cumple" if por_paso <= bench_niebla.LIMITE_PASO_IR_A_MS else "no cumple"
-                self.assertEqual(fila.veredicto, esperado)
+        m4 = [(fila.variante.startswith("referencia"), fila.valor("espacio"))
+              for fila in filas if fila.medicion == "M4"]
+        self.assertEqual(m4, [(False, "por llamada")] * 4 + [(False, "reutilizado")] * 4
+                         + [(True, "por llamada"), (True, "reutilizado")])
 
     def test_pr15_t107_main_bench_llama_a_la_medicion_de_niebla_sin_red_ni_vista(self):
         import main

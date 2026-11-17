@@ -3,8 +3,10 @@
 # versión de Python, igual que tests/bench_ciclo.py. M1 a M6 (T101 a T106) se agregan aquí; `--bench` la llama (T107).
 # Sin red y sin vista: no pasa por nueva_partida ni crear_paquete_niebla, así que no necesita forzar=True. M6 arma
 # el motor a mano con `iniciar_partida`, como tests/bench_ciclo.py.
-# Los mapas son sintéticos (tests/mapas_sinteticos.py), sin datos de ninguna cripta real.
-# Atiende: PR-15, SC-006, Principio VIII.
+# Los mapas son sintéticos (tests/mapas_sinteticos.py), sin datos de ninguna cripta real. La única excepción es la
+# fila de M4 de la cripta de referencia (T110): su esqueleto se lee al correr de las copias locales
+# (`datos_locales/esqueleto_<id>.json`), nunca se escribe en este archivo (Principio IV), y solo se lee.
+# Atiende: PR-15, SC-006, SC-007, Principio VIII.
 #
 # Principio I: la mediana usa el ordenamiento propio del repositorio (Modelo/ordenamiento.py), ni el ordenamiento
 # ni las estadísticas de la biblioteca estándar.
@@ -23,6 +25,7 @@ RAIZ = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if RAIZ not in sys.path:
     sys.path.insert(0, RAIZ)
 
+from AlmacenamientoLocalApi.AlmacenamientoLocalApi import AlmacenamientoLocalApi
 from DTOS.SalaEsqueleto import SalaEsqueleto
 from DTOS.Salida import Salida
 from Modelo.Conocimiento import _CAMBIO_SALA, Conocimiento, DESCONOCIDA, EXPLORADA, GrafoConocido, SIN_OBSERVAR
@@ -84,9 +87,10 @@ def encabezado(repeticiones=REPETICIONES):
         f"equipo: {platform.platform()} | {platform.processor() or platform.machine()}"
         f" | Python {platform.python_version()}",
         f"cada dato es la mediana de {repeticiones} repeticiones (M6: mediana y p95 de los ciclos), sin red ni "
-        "vista, con mapas sintéticos",
-        f"resultado provisional (PROVISIONAL): el límite de {LIMITE_PASO_IR_A_MS} ms de §6.1 se define para la "
-        "cripta de referencia, que aún no está publicada; §6.1 no se da por cumplido hasta T110",
+        "vista, con mapas sintéticos y, en M4, el esqueleto de la cripta de referencia leído de datos_locales",
+        f"M4: las filas sintéticas son pruebas de estrés, con resultado provisional (PROVISIONAL); la medición del "
+        f"límite de {LIMITE_PASO_IR_A_MS} ms de §6.1 es la fila «referencia/paso», con el mapa conocido completo "
+        "de la cripta de referencia",
     ]
 
 
@@ -604,12 +608,12 @@ def medir_m3(tamanos=TAMANOS_M3_N, vecinas=VECINAS_M3, repeticiones=REPETICIONES
 # Nunca un buscador de prueba: ese número no diría nada del juego. El grafo es un `GrafoConocido` real sobre un
 # `Conocimiento` con todo el mapa explorado y todas las puertas abiertas (el «mapa conocido completo»), y el costo de
 # cada salida lo da `motor.costo_salida`, como en el juego.
-# PROVISIONAL: los mapas son sintéticos. El límite de §6.1 se define para la cripta de referencia, que aún no está
-# publicada, así que el veredicto de estas filas no da §6.1 por cumplido (eso es T110).
+# PROVISIONAL: los mapas sintéticos son pruebas de estrés. El límite de §6.1 se define para la cripta de referencia;
+# su medición es la fila «referencia/paso» (T110, `medir_m4_referencia`), no estas.
 
 TAMANOS_M4 = (25, 100, 400, 2500)
 TOPOLOGIAS_M4 = (("grilla", grilla), ("cadena", cadena))
-NOTA_PROVISIONAL_M4 = ("mapa sintético, no la cripta de referencia; §6.1 no se da por cumplido hasta T110")
+NOTA_PROVISIONAL_M4 = ("mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta de referencia")
 
 
 def veredicto_paso(ms):
@@ -683,6 +687,145 @@ def medir_m4(tamanos=TAMANOS_M4, repeticiones=REPETICIONES, espacio=None):
                                   repeticiones, pasos, "dato de apoyo: el viaje crece con los pasos; veredicto con "
                                                        "el promedio por paso"))
     return filas
+
+
+# --- M4 con la cripta de referencia (T110; FR-024, SC-007, PR-15) ---------------------------------------------------
+# La cripta de referencia es la publicada más grande entre las copias locales de esqueletos que guarda la caché
+# (`AlmacenamientoLocalApi.guardar_esqueleto`, formato {"version", "esqueleto"}). Ningún dato de ella está en este
+# archivo (Principio IV): el id sale del nombre del archivo, y la versión y las salas, de su contenido, al correr.
+# La carpeta solo se lee: si no hay copias, la fila sale «no medido» con el motivo y el bench sigue.
+
+CARPETA_DATOS_LOCALES = os.path.join(RAIZ, "datos_locales")
+PREFIJO_ESQUELETO = "esqueleto_"
+EXTENSION_ESQUELETO = ".json"
+NOTA_REFERENCIA_M4 = ("cripta publicada más grande ({id_cripta}, {salas} salas), usada como cripta de referencia; "
+                      "el enunciado no la identifica con certeza")
+HIPOTESIS_REFERENCIA_M4 = (f"el peor paso con el mapa conocido completo de la cripta de referencia tarda "
+                           f"{LIMITE_PASO_IR_A_MS} ms o menos (§6.1)")
+
+
+def cripta_mas_grande(carpeta=CARPETA_DATOS_LOCALES):
+    """(id, versión, cantidad de salas) de la copia local con más salas entre los `esqueleto_<id>.json` de
+    ``carpeta``; en empate, la de id menor. None si la carpeta no existe o no tiene copias. Solo lee. O(archivos)."""
+    if not os.path.isdir(carpeta):
+        return None
+    elegida = None
+    for nombre in os.listdir(carpeta):
+        if not (nombre.startswith(PREFIJO_ESQUELETO) and nombre.endswith(EXTENSION_ESQUELETO)):
+            continue
+        with open(os.path.join(carpeta, nombre), encoding="utf-8") as archivo:
+            datos = json.load(archivo)
+        candidata = (nombre[len(PREFIJO_ESQUELETO):-len(EXTENSION_ESQUELETO)], datos["version"],
+                     len(datos["esqueleto"]))
+        if (elegida is None or candidata[2] > elegida[2]
+                or (candidata[2] == elegida[2] and candidata[0] < elegida[0])):
+            elegida = candidata
+    return elegida
+
+
+def _id_de_sala(sala):
+    return sala.id
+
+
+def _buscar_por_id(ordenadas, id_sala):
+    """Búsqueda binaria de ``id_sala`` en ``ordenadas`` (salas por id, ascendente). None si no está. O(log n)."""
+    bajo, alto = 0, len(ordenadas) - 1
+    while bajo <= alto:
+        medio = (bajo + alto) // 2
+        actual = ordenadas[medio].id
+        if actual == id_sala:
+            return ordenadas[medio]
+        if actual < id_sala:
+            bajo = medio + 1
+        else:
+            alto = medio - 1
+    return None
+
+
+def preparar_m4_referencia(carpeta=CARPETA_DATOS_LOCALES):
+    """Mapa conocido completo del esqueleto real de la cripta de referencia. Devuelve (id, grafo, salas), o None si
+    no hay copias locales.
+
+    Lee con `AlmacenamientoLocalApi.cargar_esqueleto`, con la versión que trae el propio archivo, así que las salas
+    son los `SalaEsqueleto` y `Salida` del juego. El destino de cada salida (`sala_destino`, un id) se resuelve una
+    vez por búsqueda binaria sobre las salas ordenadas por id con `merge_sort`, sin dict ni set como índice
+    (Principio I), y queda en `salida.destino`, que es lo que lee `_destino`.
+
+    Como `preparar_m4`, se entra sin antorcha a cada sala: todas quedan exploradas y cada puerta queda recordada con
+    su estado real del esqueleto. Las puertas cerradas (con llave) quedan recordadas cerradas y no entran al grafo.
+    El grafo es dirigido: una puerta cerrada en un sentido puede estar abierta en el otro. Por eso no todo par de
+    salas es alcanzable, y la medición recorre solo los pares que lo son. El costo de cada salida lo da
+    `motor.costo_salida`, como en el juego. O(V log V + e)."""
+    cripta = cripta_mas_grande(carpeta)
+    if cripta is None:
+        return None
+    id_cripta, version, _ = cripta
+    salas = AlmacenamientoLocalApi(carpeta).cargar_esqueleto(id_cripta, version)
+    if salas is None:
+        raise ValueError(f"la copia local de {id_cripta} no se pudo leer con su versión {version}")
+    ordenadas, _ = merge_sort(salas, _id_de_sala)
+    for sala in salas:
+        for salida in sala.salidas.values():
+            salida.destino = _buscar_por_id(ordenadas, salida.sala_destino)
+    conocimiento = Conocimiento(salas, _destino)
+    for sala in salas:
+        conocimiento.entrar(sala, False, _SIN_HISTORIAL)
+    grafo = GrafoConocido(conocimiento, MotorSimulacion(semilla=0).costo_salida)
+    return id_cripta, grafo, salas
+
+
+def pares_alcanzables(grafo, salas, espacio=None):
+    """Pares (origen, destino) distintos para los que `primer_paso` encuentra ruta, en el orden de ``salas``.
+    O(V² · búsqueda)."""
+    pares = []
+    for origen in salas:
+        for destino in salas:
+            if origen is not destino and primer_paso(grafo, origen, destino, None, espacio) is not None:
+                pares.append((origen, destino))
+    return pares
+
+
+def medir_m4_referencia(repeticiones=REPETICIONES, espacio=None, carpeta=CARPETA_DATOS_LOCALES):
+    """M4 de §6.1 (T110): el peor caso de un paso de «ir a» entre todos los pares alcanzables del mapa conocido
+    completo de la cripta de referencia. Cada par se mide como el paso de `medir_m4` (`medir_ms` de `primer_paso`);
+    la fila reporta el máximo en ms, el par que lo produce («peor») y cuántos pares se midieron («pares»). El
+    veredicto es `veredicto_paso` del máximo, contra `LIMITE_PASO_IR_A_MS`. La fila no es provisional.
+
+    ``espacio``: como en `medir_m4`; el `EspacioBusqueda` se crea una vez y se reutiliza en todos los pares.
+    Si no hay copias locales, o no se pueden leer, devuelve una fila «no medido» con el motivo: no falla."""
+    modo = ("espacio", "por llamada" if espacio is None else "reutilizado")
+    try:
+        preparado = preparar_m4_referencia(carpeta)
+    except Exception as error:  # noqa: BLE001 - se informa en la fila
+        return [Fila("M4", "referencia/paso", (("pasos", 1), modo), None, HIPOTESIS_REFERENCIA_M4,
+                     f"no se pudo leer la copia local del esqueleto: {type(error).__name__}: {error}")]
+    if preparado is None:
+        return [Fila("M4", "referencia/paso", (("pasos", 1), modo), None, HIPOTESIS_REFERENCIA_M4,
+                     f"no hay copias locales de esqueletos ({PREFIJO_ESQUELETO}<id>{EXTENSION_ESQUELETO}) en "
+                     f"{carpeta}; se omite la medición de §6.1")]
+    id_cripta, grafo, salas = preparado
+    reutilizado = None if espacio is None else espacio(grafo.cantidad_salas)
+    peor_ms, peor_par, medidos = None, None, 0
+    try:
+        for origen, destino in pares_alcanzables(grafo, salas, reutilizado):
+            def un_paso(origen=origen, destino=destino):
+                primer_paso(grafo, origen, destino, None, reutilizado)
+
+            ms = float(medir_ms(un_paso, repeticiones))
+            medidos += 1
+            if peor_ms is None or ms > peor_ms:
+                peor_ms, peor_par = ms, (origen, destino)
+    except Exception as error:  # noqa: BLE001 - se informa en la fila
+        return [Fila("M4", "referencia/paso", (("cripta", id_cripta), ("pasos", 1), modo), None,
+                     HIPOTESIS_REFERENCIA_M4, f"{type(error).__name__}: {error}")]
+    if peor_ms is None:
+        return [Fila("M4", "referencia/paso", (("cripta", id_cripta), ("pasos", 1), modo), None,
+                     HIPOTESIS_REFERENCIA_M4, "el mapa conocido completo no tiene ningún par de salas alcanzable")]
+    parametros = (("cripta", id_cripta), ("V", len(salas)), ("pasos", 1), ("pares", medidos),
+                  ("peor", f"{peor_par[0].id}->{peor_par[1].id}"), modo)
+    nota = NOTA_REFERENCIA_M4.format(id_cripta=id_cripta, salas=len(salas))
+    return [Fila("M4", "referencia/paso", parametros, peor_ms, HIPOTESIS_REFERENCIA_M4, nota,
+                 veredicto=veredicto_paso(peor_ms), provisional=False)]
 
 
 # --- M5: tamaño y tiempo del bloque de conocimiento; bytes leídos al cargar (T105; research R3, R9; FR-015) ----------
@@ -876,10 +1019,11 @@ TAMANOS_MINIMOS = TamanosBench(m1=(20,), consultas_m1=3, m2=(10,), m3_n=(50,), m
                                m6_enemigos=(10,), m6_ciclos=2, repeticiones=1)
 
 
-def correr_bench(ruta=ARCHIVO_RESULTADOS, tamanos=None):
+def correr_bench(ruta=ARCHIVO_RESULTADOS, tamanos=None, datos_locales=CARPETA_DATOS_LOCALES):
     """Corre M1 a M6 y escribe ``ruta`` con el encabezado (equipo y versión de Python). Devuelve las filas.
     M4 se mide dos veces (T109): con un `EspacioBusqueda` nuevo en cada llamada a `primer_paso` y con uno
-    reutilizado en todo el viaje. ``tamanos`` es un `TamanosBench`; None usa los de research R9."""
+    reutilizado en todo el viaje. En cada una, además de los mapas sintéticos, va la fila de la cripta de
+    referencia leída de ``datos_locales`` (T110). ``tamanos`` es un `TamanosBench`; None usa los de research R9."""
     t = TamanosBench() if tamanos is None else tamanos
     secciones = (
         (f"M1: consultar estado de sala y recuerdo de puerta, {t.consultas_m1} consultas por fila "
@@ -888,8 +1032,14 @@ def correr_bench(ruta=ARCHIVO_RESULTADOS, tamanos=None):
         ("M3: registrar y deshacer una entrada con antorcha (R2; FR-014)",
          medir_m3(t.m3_n, t.m3_vecinas, t.repeticiones)),
         (f"M4: un paso y un viaje de «ir a» por primer_paso, límite {LIMITE_PASO_IR_A_MS} ms por paso, con y sin "
-         f"EspacioBusqueda reutilizado (R6; FR-024, FR-026, SC-007). PROVISIONAL: {NOTA_PROVISIONAL_M4}",
-         medir_m4(t.m4, t.repeticiones) + medir_m4(t.m4, t.repeticiones, espacio=EspacioBusqueda)),
+         f"EspacioBusqueda reutilizado (R6; FR-024, FR-026, SC-007). Filas sintéticas, PROVISIONAL: "
+         f"{NOTA_PROVISIONAL_M4}. Fila «referencia/paso»: medición de §6.1, el peor paso entre todos los pares "
+         "alcanzables del mapa conocido completo de la cripta de referencia (T110)",
+         # Las filas de la cripta de referencia van después de todas las sintéticas: medirlas entre los dos
+         # bloques sintéticos alteraba las filas que venían después.
+         medir_m4(t.m4, t.repeticiones) + medir_m4(t.m4, t.repeticiones, espacio=EspacioBusqueda)
+         + medir_m4_referencia(t.repeticiones, None, datos_locales)
+         + medir_m4_referencia(t.repeticiones, EspacioBusqueda, datos_locales)),
         ("M5: bloque de conocimiento, binario frente a JSON; bytes = bloque, leidos = al cargar (R3; FR-015)",
          medir_m5(t.m5, t.repeticiones)),
         (f"M6: ciclo completo con y sin conocimiento, {t.m6_ciclos} ciclos por fila, límite {LIMITE_CICLO_MS} ms "
