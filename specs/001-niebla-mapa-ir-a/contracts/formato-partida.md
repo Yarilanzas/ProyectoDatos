@@ -85,6 +85,21 @@ Little endian y sin relleno, como el resto del archivo. Textos con largo `<H` + 
 
 La lectura de `leer_conocimiento` es de una sola vez y no lee bloques de sala: la carga sigue siendo perezosa.
 
+## Bitácora activa frente al archivo de partida (FR-017)
+
+La bitácora activa (`--bitacora`) no puede ser el archivo de partida ni su copia de bitácora `<guardado>.log`. Si lo
+es, es un error de uso con `! Error: ...` y código `1`, antes de jugar (hallazgo H2 de Persona D: `--cargar G
+--bitacora G` sobrescribía `G` con la bitácora).
+
+- **Cargar**: se rechaza con código `1` antes de abrir nada para escritura; el archivo de partida y `<guardado>.log`
+  quedan byte por byte iguales.
+- **Guardar**: el comando se rechaza con `! Error: ...`, no se escribe nada (ni la partida ni su bitácora) y la
+  partida continúa.
+- **Rutas equivalentes**: se comparan con `os.path.normcase(os.path.abspath(...))` y, si ambos archivos existen, con
+  `os.path.samefile`. En Windows `X.LOG` y `x.log` son el mismo archivo; `./g` y `g` también.
+
+Detalle y mensaje en [comandos.md](comandos.md).
+
 ## Qué no se guarda
 
 Igual que hoy: antorcha, veneno, velocidad, cierres automáticos pendientes e historial de retroceso, salvo lo que el

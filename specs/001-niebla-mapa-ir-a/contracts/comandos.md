@@ -87,20 +87,26 @@ rechazado tampoco consume tiempo: el viaje termina ahí, con el mensaje de recha
 | `Salidas:` de la pantalla de estado | Se muestra el estado recordado (FR-012) |
 | Mensaje «Una puerta se cerró sola.» | Solo si el jugador observa la puerta (FR-007, FR-012) |
 | `ayuda` | Agrega `mapa` e `ir a <sala>` (FR-020) |
-| `guardar <archivo>` | Si la bitácora activa es `<archivo>.log`, error de uso (ver abajo) |
-| `--cargar <archivo>` | Si `--bitacora` es `<archivo>.log`, error de uso (ver abajo) |
+| `guardar <archivo>` | Si la bitácora activa es `<archivo>` o `<archivo>.log`, error de uso (ver abajo) |
+| `--cargar <archivo>` | Si `--bitacora` es `<archivo>` o `<archivo>.log`, error de uso (ver abajo) |
 | Demás comandos | Sin cambios |
 
-## `--bitacora` igual a `<guardado>.log` (FR-017)
+## `--bitacora` igual al guardado o a `<guardado>.log` (FR-017)
 
-Pedido de Persona D (FR-030 de la spec 004). La bitácora activa no puede ser la copia de bitácora de un guardado
-(`ruta_bitacora_de(guardado)`). Se compara con la misma normalización de rutas que ya usa el controlador
-(`_misma_ruta`).
+Pedido de Persona D (FR-030 de la spec 004), ampliado por el hallazgo H2 de su revisión: `--cargar G --bitacora G`
+sobrescribía el guardado `G` con la bitácora. La bitácora activa no puede ser **ni el propio archivo de partida**
+(`guardado`) **ni su copia de bitácora** (`ruta_bitacora_de(guardado)`, es decir `<guardado>.log`). Es un error de
+uso, con `! Error: ...` y código `1`, y se detecta antes de jugar.
+
+**Rutas equivalentes, no solo texto igual.** Dos rutas se toman como la misma si coinciden tras
+`os.path.normcase(os.path.abspath(...))` o, cuando ambos archivos existen, si `os.path.samefile` dice que son el mismo
+archivo. Así se detectan `X.LOG` frente a `x.log` en Windows, `./g` frente a `g`, y una ruta absoluta frente a una
+relativa. La comparación la hace `_misma_ruta` del controlador.
 
 | Caso | Cuándo se detecta | Comportamiento |
 |------|-------------------|----------------|
-| (i) `--cargar <archivo>` con `--bitacora <archivo>.log` | Al cargar, antes de jugar y antes de tocar la bitácora | `! Error: ...`, código de salida `1`; no se escribe nada |
-| (ii) `guardar <destino>` con bitácora activa `<destino>.log` | Al guardar, antes de escribir | `! Error: ...`; no se escribe ni el archivo de partida ni su bitácora |
+| (i) `--cargar <archivo>` con `--bitacora` igual a `<archivo>` o a `<archivo>.log` | Al cargar, antes de abrir nada para escritura (antes de `cargar_partida`, de copiar la bitácora y de jugar) | `! Error: ...`, código de salida `1`; ni el guardado ni su bitácora cambian (mismo contenido y tamaño) |
+| (ii) `guardar <destino>` con bitácora activa igual a `<destino>` o a `<destino>.log` | Al guardar, antes de escribir | `! Error: ...`; no se escribe ni el archivo de partida ni su bitácora, y la partida continúa |
 
-Mensaje propuesto: `! Error: la bitácora no puede ser <ruta>.log, que es la copia de bitácora de la partida guardada;
+Mensaje propuesto: `! Error: la bitácora no puede ser <ruta>, que es la partida guardada o su copia de bitácora;
 use otra con --bitacora`. El texto puede ajustarse; el prefijo `! Error:` y el código `1` son contractuales.
