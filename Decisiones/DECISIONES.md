@@ -1015,6 +1015,18 @@ Dieron el mismo primer paso que la versión actual en 2800 casos (grilla y caden
 
 **Confirmación de Persona A (2026-11-16), responsable de `Modelo/BusquedaRuta.py`.** La búsqueda ya corta al sacar el destino de la cola (`if ordinal == ordinal_destino:` devuelve el paso), así que no hay ahorro por ahí. El costo de la grilla de 2500 es el de un Dijkstra sin heurística con el destino lejano. Un A* lo reduciría, pero cambia el algoritmo y obliga a repetir las pruebas de desempate; por eso no entra antes de la entrega y la grilla de 2500 queda como prueba de estrés documentada, con su veredicto «no cumple». El criterio de §6.1 se mide en la cripta de referencia; según A, si la cripta real tiene 400 salas o menos, está dentro de los 5 ms. Esa es la lectura de A: nuestras mediciones son con mapas sintéticos y provisionales, y §6.1 sigue sin darse por cumplido hasta T110.
 
+### Veneno no jugable (límite conocido)
+
+**Qué pasa.** En una partida real el veneno nunca se aplica. `MotorSimulacion.aplicar_veneno` (`Modelo/MotorSimulacion.py`) solo se invoca desde las pruebas, así que la parada de «ir a» por daño de veneno (FR-027c, caso «veneno activo» de SC-001) no se puede producir jugando.
+
+**Causa.** Ningún DTO de `DTOS/` trae un dato de veneno: no hay enemigo, trampa ni objeto de la cripta que diga que envenena, y por eso nada del juego llama a `aplicar_veneno`. (`EFECTO_VENENO` de `DTOS/ResumenHistorico.py` solo describe, para `historia`, un veneno ya aplicado; no es una fuente.)
+
+**Qué sí está probado.** `tests/test_viaje.py::test_fr027c_escenario_us4_6_veneno_activo_desde_antes_de_la_orden` aplica el veneno directamente al motor y comprueba que el viaje se detiene. La parada por daño sí se jugó con una trampa ([evidencia_quickstart.md, 4.8](../specs/001-niebla-mapa-ir-a/evidencia_quickstart.md#esc-4-dano)).
+
+**Cuándo se reabre.** Solo si Persona B confirma que el API manda un dato de veneno. Entonces habría que leerlo en el DTO, llamar a `aplicar_veneno` desde el juego y correr los pasos de [4.9](../specs/001-niebla-mapa-ir-a/evidencia_quickstart.md#esc-4-veneno).
+
+**De quién es la decisión.** Persona A, autora del motor, votó dejarlo como límite conocido salvo que Persona B confirme que el API manda el dato; a falta de esa confirmación, la decisión queda en Persona B y el grupo.
+
 ### Hipótesis abiertas de esta sección
 
 - Memoria del lote frente a cierres y copia (decisión 2).

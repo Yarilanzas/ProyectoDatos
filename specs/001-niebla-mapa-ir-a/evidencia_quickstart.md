@@ -40,7 +40,7 @@ red.
 | [1. Niebla al empezar y al moverse](#esc-1) | sí | cumple |
 | [2. Puerta recordada](#esc-2) | sí | cumple |
 | [3. Antorcha](#esc-3) | sí | cumple |
-| [4. «ir a»](#esc-4) | sí, 8 de los 9 casos de la tabla | cumple en los 8 casos corridos; el caso «veneno activo» **requiere prueba manual**, y hoy no se puede producir jugando ([4.9](#esc-4-veneno)) |
+| [4. «ir a»](#esc-4) | sí, 8 de los 9 casos de la tabla | cumple en los 8 casos corridos; el caso «veneno activo» es un **límite conocido (no se puede producir jugando)** ([4.9](#esc-4-veneno)) |
 | [5. Reproducción](#esc-5) | sí | cumple en reloj, posición, vida y acciones; el conocimiento final no se ve en la salida de `--replay` |
 | [6. Guardar, cargar y reproducir](#esc-6) | sí | cumple; azar y `secuencia` no se ven por consola |
 | [7. Versiones viejas](#esc-7) | sí | cumple |
@@ -523,11 +523,11 @@ terminar ese paso.
 Respaldo automático: `tests/test_viaje.py::test_fr027c_trampa_rearmada_en_la_ruta`.
 
 <a id="esc-4-veneno"></a>
-### 4.9 Veneno activo: **requiere prueba manual**
+### 4.9 Veneno activo: **límite conocido (no se puede producir jugando)**
 
 No se corrió. Ningún dato de cripta ni ninguna acción del juego aplica veneno: `MotorSimulacion.aplicar_veneno` solo
 se llama desde las pruebas, y ninguna cripta offline del repositorio envenena. Por eso este caso no se puede producir
-hoy jugando y no se simuló.
+hoy jugando y no se simuló. Queda como límite conocido ([DECISIONES.md, «Veneno no jugable»](../../Decisiones/DECISIONES.md#veneno-no-jugable-límite-conocido)); se reabre solo si Persona B confirma que el API manda ese dato.
 
 Respaldo automático: `tests/test_viaje.py::test_fr027c_escenario_us4_6_veneno_activo_desde_antes_de_la_orden`
 (aplica el veneno directamente al motor).
