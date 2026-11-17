@@ -2,7 +2,9 @@
 # disposicion (CRPT 3, contracts/formato-partida.md):
 # [encabezado][largo jugador][jugador][largo conocimiento][conocimiento][largo linea de tiempo][linea de tiempo][salas][indice]
 # el indice son registros de tamaño fijo ordenados por id de sala asi una sala se busca con busqueda binaria directo sobre el archivo, sin cargarlo completo
-# la linea de tiempo es de Persona D (spec 004): aqui es un bloque opaco, se escribe con largo 0 y al leer solo se salta con su largo
+# la linea de tiempo es de Persona D (spec 004): su bloque es un RegistroLinea (K y el guion de la partida). Al guardar se escribe
+# lo que entregue `linea.to_bytes()` o, sin linea, largo 0; al abrir solo se leen los tres largos y el bloque se lee entero (y se
+# valida) cuando se pide con `leer_linea()`. Leer una sala no lee la linea. No cambia VERSION_FORMATO (contracts/formato-partida.md)
 
 import struct
 import os
@@ -13,13 +15,14 @@ from Persistencia.FormatoBinario import EncabezadoPartida, VersionIncompatible, 
 from Persistencia.RegistroConocimiento import RegistroConocimiento
 from Persistencia.RegistroSala import RegistroSala
 from Persistencia.RegistroJugador import RegistroJugador
+from Persistencia.RegistroLinea import RegistroLinea
 
 # I id de sala | Q posicion del bloque en el archivo | I largo del bloque
 FORMATO_ENTRADA = "<IQI"
 TAMANO_ENTRADA = struct.calcsize(FORMATO_ENTRADA)
 
 # I largo de un bloque: jugador (0 si la partida no tiene jugador, p. ej. en el benchmark),
-# conocimiento (0 si no hay conocimiento) y linea de tiempo (opaco, por ahora siempre 0)
+# conocimiento (0 si no hay conocimiento) y linea de tiempo (0 si la partida no tiene linea)
 FORMATO_LARGO_JUGADOR = "<I"
 TAMANO_LARGO_JUGADOR = struct.calcsize(FORMATO_LARGO_JUGADOR)
 FORMATO_LARGO_BLOQUE = "<I"
@@ -31,10 +34,11 @@ INICIO_MINIMO_SALAS = TAMANO_ENCABEZADO + TAMANO_LARGO_JUGADOR + 2 * TAMANO_LARG
 
 def guardar_partida(
     ruta, cripta_id, version_cripta, version_catalogo,
-    semilla, reloj, registros, jugador=None, conocimiento=None
+    semilla, reloj, registros, jugador=None, conocimiento=None, linea=None
 ):
     """Escribe el CRPT 3. `conocimiento` es un RegistroConocimiento (o cualquier objeto con
-    `to_bytes()`); None escribe largo 0. La linea de tiempo se escribe con largo 0.
+    `to_bytes()`); None escribe largo 0. `linea` es el bloque de la linea de tiempo (un RegistroLinea, o cualquier
+    objeto con `to_bytes()`); None escribe largo 0, que significa «sin linea» (el benchmark, el temporal del replay).
 
     O(s log s + B): ordenar las s salas con `elegir_algoritmo` y escribir los B bytes del archivo.
     """
@@ -52,7 +56,7 @@ def guardar_partida(
     # serializa todo antes de tocar el archivo final
     datos_jugador = jugador.to_bytes() if jugador is not None else b""
     datos_conocimiento = conocimiento.to_bytes() if conocimiento is not None else b""
-    datos_linea_tiempo = b""  # bloque de Persona D: por ahora vacio
+    datos_linea_tiempo = linea.to_bytes() if linea is not None else b""  # bloque de Persona D
     bloques = []
 
     for registro in ordenados:
@@ -174,12 +178,12 @@ class LectorPartida:
         self._inicio_jugador, self._largo_jugador = self._leer_largo(TAMANO_ENCABEZADO, "del jugador")
         self._inicio_conocimiento, self._largo_conocimiento = self._leer_largo(
             self._inicio_jugador + self._largo_jugador, "de conocimiento")
-        # linea de tiempo de Persona D: opaca, solo se salta con su largo
-        inicio_linea, largo_linea = self._leer_largo(
+        # linea de tiempo de Persona D: aqui solo se ubica; su contenido se lee con leer_linea()
+        self._inicio_linea, self._largo_linea = self._leer_largo(
             self._inicio_conocimiento + self._largo_conocimiento, "de línea de tiempo")
 
         # las salas empiezan justo despues de la linea de tiempo
-        self._inicio_salas = inicio_linea + largo_linea
+        self._inicio_salas = self._inicio_linea + self._largo_linea
 
     def _leer(self, posicion, cantidad):
         if posicion < 0 or cantidad < 0:
@@ -223,6 +227,19 @@ class LectorPartida:
             return RegistroConocimiento.from_bytes(datos)
         except ValueError as error:
             raise VersionIncompatible(f"El bloque de conocimiento está dañado: {error}") from error
+
+    def leer_linea(self):
+        """RegistroLinea del bloque de la linea de tiempo, leido de una sola vez; None si el largo es 0.
+
+        Un bloque truncado, con un tipo desconocido, con K < 1, con un nombre invalido o con bytes sobrantes lanza
+        VersionIncompatible (FR-024). Reconstruir el estado a partir del guion no es de este modulo (es del controlador).
+        O(l) en los l bytes del bloque; no lee bloques de sala.
+        """
+        if self._largo_linea == 0:
+            return None
+
+        datos = self._leer(self._inicio_linea, self._largo_linea)
+        return RegistroLinea.from_bytes(datos)
 
     def buscar_sala(self, sala_id):
         inicio = 0

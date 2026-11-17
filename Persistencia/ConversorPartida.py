@@ -303,6 +303,9 @@ class RestauradorPartida:
     def leer_conocimiento(self):
         return self.lector.leer_conocimiento()
 
+    def leer_linea(self):
+        return self.lector.leer_linea()
+
     def restaurar_sala(self, motor, id_sala):
         registro = self.lector.leer_sala(id_sala)
         if registro is None:
