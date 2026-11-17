@@ -298,6 +298,26 @@ class TestRegistroReversible(unittest.TestCase):
             self.assertEqual(motor.obtener_estado_resumen(), resumen)
         self.assertGreater(retrocesos, 0)
 
+    def test_fr024_retroceso_quita_la_ultima_decision_y_conserva_las_anteriores(self):
+        """T076 (contrato §4, «Reversible con la historia»): con al menos 3 entradas ya anotadas, retroceder UNA acción
+        con el historial deja la lista completa de registro_decisiones igual, en orden y entrada por entrada, a la que
+        había justo antes de esa acción. La última acción anotó al menos una entrada y antes ya había otras: un deshacer
+        que quitara las primeras en vez de las últimas (o que no quitara nada) da otra lista."""
+        motor = armar(encendido=True)
+        antes = None
+        for _ in range(50):
+            antes = list(motor.registro_decisiones)
+            self.assertTrue(motor.ejecutar_accion("esperar", ""))
+            if len(motor.registro_decisiones) >= 3 and len(antes) >= 1 and len(motor.registro_decisiones) > len(antes):
+                break
+        else:
+            self.fail("en 50 esperas el registro no llegó a 3 entradas con una última acción que anotara algo")
+        despues = list(motor.registro_decisiones)
+
+        self.assertTrue(motor.historial.deshacer_ultimo())
+        self.assertEqual(motor.registro_decisiones, antes)
+        self.assertNotEqual(motor.registro_decisiones, despues)
+
     def test_fr024_retroceso_y_nueva_accion_anotan_la_historia_vigente(self):
         """T076: después de retroceder, la acción nueva anota sus decisiones sobre la historia vigente: el registro
         coincide con el de un motor que nunca hizo la acción revertida (sin el ciclo, que solo crece). Solo «esperar»,
