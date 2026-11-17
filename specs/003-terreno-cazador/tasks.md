@@ -197,7 +197,7 @@ Proyecto único MVC en la raíz: reglas en `Modelo/`, pruebas y bench en `tests/
 - [ ] T073 [P] Docstrings de complejidad en `Modelo/ColaPrioridad.py`, `Modelo/BusquedaRuta.py` y `Modelo/GrafoCripta.py`, copiando las tablas de `data-model.md` (FR-033; Principio I)
 - [ ] T074 Revisar en `tests/test_terreno.py` y `tests/test_cazador.py` que cada uno de los 7 casos de «Terreno y cazador» del Apéndice B tiene su prueba y cita su FR: T022, T023, T034, T035, T050, T051, T055 (FR-027, SC-001)
 - [ ] T075 Correr `python -m unittest discover -s tests -v` sobre `tests/` y dejarla al 100 % (FR-027; Constitución V)
-- [ ] T076 Registro opcional de decisiones de los cazadores colgado del motor (apagado por defecto, reversible con la historia, sin consumir azar, fuera del guardado salvo decisión de 004): ver `contracts/interfaz-cazador-linea.md` §4; lo piden T058 y T059 (FR-024, FR-025). **⏳ el formato de consulta depende del plan de la capacidad 004**
+- [x] T076 Registro opcional de decisiones de los cazadores colgado del motor (apagado por defecto, reversible con la historia, sin consumir azar, fuera del guardado salvo decisión de 004): ver `contracts/interfaz-cazador-linea.md` §4; lo piden T058 y T059 (FR-024, FR-025). **⏳ el formato de consulta depende del plan de la capacidad 004**
 - [ ] T077 Validar `specs/003-terreno-cazador/quickstart.md`: recorrer sus escenarios cuando la capacidad esté implementada (FR-027)
 
 ---
