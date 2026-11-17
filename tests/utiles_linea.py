@@ -1,7 +1,7 @@
 # Utilidades de prueba de la línea de tiempo (spec 004, T009 y T010; SC-003, FR-001, FR-008, FR-025).
 # Este archivo no lleva prefijo test: `unittest discover` no lo ejecuta. Sin red: arma paquetes offline temporales
-# con `crear_paquete_niebla`. Ninguna prueba que use esto depende de partida.cripta, partida.cripta.log ni partida.log
-# (FR-024): la bitácora y los datos locales viven en una carpeta temporal propia de cada partida.
+# con `crear_paquete_niebla`. Ninguna prueba que use esto depende de los archivos de ejemplo de la Parte I que hay en la raíz del repositorio
+# (el guardado y las bitácoras de muestra; FR-024, T120): la bitácora y los datos locales viven en una carpeta temporal propia de cada partida.
 #
 # Interfaz
 # --------
@@ -243,7 +243,7 @@ def agregar_cazador(motor, id_enemigo, id_sala, velocidad=100):
 class PartidaLinea:
     """Motor y controlador de una partida de prueba, con su carpeta temporal propia.
 
-    `ruta_bitacora` es la ruta que se pasa como `--bitacora` (nunca el `partida.log` de `main.py`) y `ruta_datos` la
+    `ruta_bitacora` es la ruta que se pasa como `--bitacora` (nunca la bitácora por omisión de `main.py`) y `ruta_datos` la
     carpeta de datos locales de la caché; `nuevo_gestor()` arma un gestor nuevo sobre **esa misma carpeta** (equivale a
     un proceso nuevo). Llamar a `cerrar()` (o `addCleanup(partida.cerrar)`) cierra la bitácora y borra la carpeta."""
 
@@ -554,12 +554,17 @@ class SesionLinea:
         del self.decisiones[self.linea.acciones:]
         return True
 
-    def guardar_y_cargar(self):
-        """Guarda el motor actual, lo carga en un motor nuevo y registra la carga. Devuelve la ruta de la copia privada."""
+    def guardar_y_cargar(self, entre=()):
+        """Guarda el motor actual, lo carga en un motor nuevo y registra la carga. Devuelve la ruta de la copia privada.
+
+        `entre` son acciones (nombre, argumento) que el motor viejo juega **después de guardar y antes de cargar**: no se
+        registran en la línea (lo posterior al guardado no existe cuando se carga)."""
         base = self.partida.carpeta.name
         numero = self.cargas + 1
         ruta = os.path.join(base, f"guardado_{numero}.cripta")
         guardar_motor(self.motor, ruta, self.partida.gestor)
+        for nombre, argumento in entre:
+            self.motor.ejecutar_accion(nombre, argumento)
         nuevo = cargar_partida(ruta, self.partida.nuevo_gestor(iniciado=False))
         copia = os.path.join(base, f"epoca_{numero}.cripta")
         shutil.copyfile(ruta, copia)
@@ -582,7 +587,7 @@ class SesionLinea:
 
 # ───────────────────────── Archivos propios del CRPT (T067; FR-022, FR-024) ─────────────────────────
 # Todo se fabrica a partir de un archivo que el propio motor guardó con `guardar_motor` (CRPT 3, `largo línea = 0`).
-# Ninguna prueba que use esto depende de partida.cripta, partida.cripta.log ni partida.log (FR-024).
+# Ninguna prueba que use esto depende de los archivos de ejemplo de la raíz del repositorio (FR-024, T120).
 
 FORMATO_LARGO = "<I"
 TAMANO_LARGO = struct.calcsize(FORMATO_LARGO)
