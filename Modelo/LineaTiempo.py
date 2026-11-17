@@ -1,9 +1,11 @@
 # Núcleo de la línea de tiempo (spec 004, T017; data-model.md#lineatiempo; FR-016, FR-017, FR-018, FR-021, PR-03).
 #
-# Guion, historia vigente, puntos de control, sellos, consultas, retroceso (T047) y serie de pergaminos (T046). La carga y la
-# persistencia llegan en tareas posteriores. Principio I: todo son listas paralelas; sin dict ni set como
+# Guion, historia vigente, puntos de control, sellos, consultas, retroceso (T047), serie de pergaminos (T046), épocas y
+# cargas (T082: `registrar_carga`), paso a datos (`a_registro`, `desde_registro`, T082) y contador de lo rehecho por la
+# última consulta (`acciones_rehechas`, T096). Principio I: todo son listas paralelas; sin dict ni set como
 # índice, sin bisect, sorted, sort, heapq ni collections. Principio II: no importa red, archivos ni consola; lo externo
-# (gestor histórico, apertura de copias privadas) se inyecta.
+# (gestor histórico, apertura de copias privadas) se inyecta. Lo único que importa de `Persistencia/` es la clase de datos
+# `RegistroLinea` (solo `struct`): `a_registro` la arma y la guarda el archivo; la reconstrucción la hace el controlador.
 #
 # Complejidad (n acciones vigentes, K acciones entre puntos, S tamaño del estado vivo, N/E salas y salidas,
 # C puntos de control):
@@ -14,6 +16,10 @@
 #   | registrar_accion   | O(1), más O(S + N + E) cada K  | O(1), más O(S) cada K    |
 #   | sello_de           | O(1)                           | O(1)                     |
 #   | registrar_retroceso| O(V + S + N + E)               | O(S)                     |
+#   | registrar_carga    | O(S + N + E)                   | O(S)                     |
+#   | a_registro         | O(n_guion)                     | O(n_guion)               |
+#   | desde_registro     | O(n_guion)                     | O(n_guion)               |
+#   | cerrar             | O(L)                           | O(L)                     |
 #   | serie: registrar   | O(capacidad del inventario)    | O(1)                     |
 #   | serie: plegar      | O(registros sacados)           | O(1)                     |
 #   | serie: en          | O(log longitud)                | O(1)                     |
@@ -22,22 +28,26 @@
 #   | clon_antes_de      | O(log C + S + K·a)             | O(S) (lo descarta quien lo pide) |
 #   | comprobar_sello    | O(1)                           | O(1)                     |
 #   | propiedades        | O(1)                           | O(1)                     |
+#   | acciones_rehechas  | O(1)                           | O(1)                     |
 #
 #   Memoria total: O(n) para el guion y la historia vigente, más O(C·S) para los puntos de control.
 #   Cota de puntos de control: C <= ceil(n / K) + 1 + L + P, con L cargas y P usos del pergamino que no coinciden con un
-#   punto existente (el +1 es el estado inicial). L y P no existen todavía en este núcleo.
+#   punto existente (el +1 es el estado inicial). Cada carga agrega siempre un punto del motor cargado, aunque ya hubiera uno
+#   regular en esa misma acción: `pc_accion` queda con repetidos y la búsqueda devuelve el último.
 
 from DTOS.ResumenHistorico import REFERENCIA_ACCION, REFERENCIA_ACTUAL, REFERENCIA_INSTANTE
 from Modelo.AgendaConCorte import AgendaConCorte
 from Modelo.BusquedaBinaria import ultimo_menor_o_igual
 from Modelo.CopiaEstado import copiar, materializar
 from Modelo.ResumenHistorico import resumir
+from Persistencia.RegistroLinea import ACCION, CARGA, RETROCESO, RegistroLinea
 
 TIPO_ACCION = "ACCION"
 TIPO_RETROCESO = "RETROCESO"
 TIPO_CARGA = "CARGA"
 
 K_POR_OMISION = 50
+NOMBRE_CARGA = "@cargar"  # el mismo texto con que la bitácora anota una carga
 
 
 class ReferenciaInvalida(Exception):
@@ -165,6 +175,9 @@ class LineaTiempo:
         self.pc_epoca = []
         self.pc_punto = []
 
+        self.epocas_accion = [0]    # acción en que empezó cada época; la 0 es la partida desde su inicio
+        self.epocas_ruta = [None]   # copia privada del archivo cargado de cada época (None en la 0 y sin restaurador)
+
         self.serie = SeriePergaminos(0)
         self._acciones_motor = 0    # motor.acciones_jugador en el último registro (para calcular V)
         self._epoca = 0
@@ -172,6 +185,8 @@ class LineaTiempo:
         self._sello_secuencia = 0
         self._reloj_actual = 0
         self._iniciada = False
+        self._rehechas = 0          # acciones que rehízo la última consulta (T096)
+        self._clon_vivo = None      # el último clon materializado: su restaurador se cierra al soltarlo (Windows)
 
     # ───────────── propiedades ─────────────
 
@@ -194,6 +209,13 @@ class LineaTiempo:
         """Puntos de control guardados `C`. O(1)."""
         return len(self.pc_accion)
 
+    @property
+    def acciones_rehechas(self):
+        """Acciones que rehízo la última consulta (`consultar_accion`, `consultar_instante` o `clon_antes_de`) para llegar
+        a la decisión pedida, contando la acción parcial de un instante intermedio. Solo lectura: no cambia ningún
+        comportamiento y sirve para probar que ninguna consulta rehace más de K acciones (FR-019). O(1)."""
+        return self._rehechas
+
     # ───────────── registro ─────────────
 
     def iniciar(self, motor):
@@ -211,6 +233,9 @@ class LineaTiempo:
         self.pc_reloj = []
         self.pc_epoca = []
         self.pc_punto = []
+        self.epocas_accion = [0]
+        self.epocas_ruta = [None]
+        self._rehechas = 0
         self._epoca = 0
         cuenta, nombre = leer_pergaminos(motor)
         self.serie = SeriePergaminos(cuenta)
@@ -292,6 +317,100 @@ class LineaTiempo:
         self._tomar_sello(motor)
         self._acciones_motor = motor.acciones_jugador
 
+    def registrar_carga(self, motor, ruta_copia):
+        """Registra la frontera de un ``@cargar``: `motor` es el motor **cargado** (el que devolvió ``cargar_partida``) y
+        `ruta_copia` la copia privada del archivo que se cargó (None si el motor no tiene restaurador: no hay salas
+        pendientes que restaurar).
+
+        Agrega ``CARGA`` al guion con el reloj cargado; no saca nada de la historia vigente (el pasado anterior sigue
+        consultable); abre una época nueva que empieza en la acción actual `n` con su copia privada; toma un punto de
+        control del motor cargado en `n` (aunque ya haya uno regular en `n`: quedan los dos y la búsqueda devuelve el
+        último); y guarda el sello de la decisión del motor cargado, que es la que tendrá la próxima acción.
+        O(S + N + E)."""
+        if not self._iniciada:
+            raise RuntimeError("La línea de tiempo no se ha iniciado: falta iniciar(motor)")
+        n = len(self.vig_guion)
+        self.guion_tipo.append(TIPO_CARGA)
+        self.guion_nombre.append(NOMBRE_CARGA)
+        self.guion_argumento.append("")
+        self.guion_reloj.append(motor.reloj)   # para CARGA: el reloj cargado (data-model.md)
+        self.guion_secuencia.append(0)
+
+        self._epoca += 1
+        self.epocas_accion.append(n)
+        self.epocas_ruta.append(ruta_copia)
+        self._agregar_punto(motor, n)
+        self._registrar_pergaminos(n, motor)
+        self._tomar_sello(motor)
+        self._acciones_motor = motor.acciones_jugador
+
+    def a_registro(self):
+        """El guion completo (acciones, retrocesos y cargas, en orden cronológico) y K, listos para ``guardar_partida``.
+        Los puntos de control no se guardan: se reconstruyen al cargar. O(n_guion)."""
+        registros = []
+        for posicion in range(len(self.guion_tipo)):
+            tipo = self.guion_tipo[posicion]
+            if tipo == TIPO_ACCION:
+                registros.append((ACCION, self.guion_nombre[posicion], self.guion_argumento[posicion],
+                                  self.guion_reloj[posicion], self.guion_secuencia[posicion]))
+            elif tipo == TIPO_RETROCESO:
+                registros.append((RETROCESO, self.guion_reloj[posicion]))
+            else:
+                registros.append((CARGA, self.guion_reloj[posicion]))
+        return RegistroLinea(self._k, registros)
+
+    @classmethod
+    def desde_registro(cls, registro, gestor_historico=None, abrir_copia=None):
+        """Línea con **solo los datos** del `registro` (``RegistroLinea``): K, el guion y la historia vigente, que se
+        deduce del guion. No tiene puntos de control, épocas ni serie de pergaminos y no está iniciada: reconstruir el
+        estado es trabajo del controlador (``ReconstructorLinea``), que reproduce el guion. ``ValueError`` si un retroceso
+        deja más acciones vigentes de las que había. O(n_guion)."""
+        linea = cls(registro.k, gestor_historico, abrir_copia)
+        for entrada in registro.registros:
+            tipo = entrada[0]
+            if tipo == ACCION:
+                linea.vig_guion.append(len(linea.guion_tipo))
+                linea.vig_reloj.append(entrada[3])
+                linea.vig_sec.append(entrada[4])
+                linea.guion_tipo.append(TIPO_ACCION)
+                linea.guion_nombre.append(entrada[1])
+                linea.guion_argumento.append(entrada[2])
+                linea.guion_reloj.append(entrada[3])
+                linea.guion_secuencia.append(entrada[4])
+            elif tipo == RETROCESO:
+                quedan = entrada[1]
+                if quedan > len(linea.vig_guion):
+                    raise ValueError(f"un retroceso deja {quedan} acciones vigentes y solo había {len(linea.vig_guion)}")
+                while len(linea.vig_guion) > quedan:
+                    linea.vig_guion.pop()
+                    linea.vig_reloj.pop()
+                    linea.vig_sec.pop()
+                linea.guion_tipo.append(TIPO_RETROCESO)
+                linea.guion_nombre.append("retroceder")
+                linea.guion_argumento.append("")
+                linea.guion_reloj.append(quedan)
+                linea.guion_secuencia.append(0)
+            else:
+                linea.guion_tipo.append(TIPO_CARGA)
+                linea.guion_nombre.append(NOMBRE_CARGA)
+                linea.guion_argumento.append("")
+                linea.guion_reloj.append(entrada[1])
+                linea.guion_secuencia.append(0)
+        return linea
+
+    def cerrar(self):
+        """Termina de usar la línea: suelta el clon que pudiera tener el gestor histórico, deja de aceptar registros y
+        **devuelve** las rutas de las copias privadas de sus épocas para que el controlador las borre (la línea no toca
+        archivos: Principio II). Idempotente: la segunda vez devuelve una lista vacía. O(L)."""
+        rutas = []
+        for posicion in range(len(self.epocas_ruta)):
+            if self.epocas_ruta[posicion] is not None:
+                rutas.append(self.epocas_ruta[posicion])
+                self.epocas_ruta[posicion] = None
+        self._soltar_clon()
+        self._iniciada = False
+        return rutas
+
     def _recordar_nombre(self, nombre):
         if nombre is not None and self.serie.nombre is None:
             self.serie.nombre = nombre
@@ -350,7 +469,9 @@ class LineaTiempo:
     # ───────────── consultas (solo lectura) ─────────────
 
     def _ruta_de_epoca(self, epoca):
-        """Ruta de la copia privada del archivo de la época (None si no tiene). Las épocas llegan con `registrar_carga`."""
+        """Ruta de la copia privada del archivo de la época (None si no tiene: la época 0 o una carga sin restaurador)."""
+        if 0 <= epoca < len(self.epocas_ruta):
+            return self.epocas_ruta[epoca]
         return None
 
     def _rehacer_hasta(self, k):
@@ -362,7 +483,9 @@ class LineaTiempo:
             raise ErrorReconstruccion(f"no hay un punto de control anterior a la decisión {k}")
         punto = self.pc_punto[indice]
         self._tomar_falta()  # olvida una falta vieja
+        self._cerrar_clon()  # un solo clon vivo a la vez: el anterior suelta su archivo
         clon = materializar(punto, self.gestor_historico, self.abrir_copia, self._ruta_de_epoca(punto.epoca))
+        self._clon_vivo = clon
         self.comprobar_sello(clon, punto.accion + 1)
         for j in range(punto.accion + 1, k):
             posicion = self.vig_guion[j - 1]
@@ -370,6 +493,7 @@ class LineaTiempo:
             if nombre == "retroceder":
                 raise ErrorReconstruccion(f"la acción {j} es «retroceder»: la reconstrucción nunca lo ejecuta")
             aceptada = clon.ejecutar_accion(nombre, self.guion_argumento[posicion])
+            self._rehechas += 1
             self._lanzar_si_falta_un_dato()
             if not aceptada:
                 raise ErrorReconstruccion(f"el clon rechazó la acción {j} ({nombre} {self.guion_argumento[posicion]})")
@@ -393,7 +517,17 @@ class LineaTiempo:
         if k > self.acciones + 1:
             raise ReferenciaInvalida(f"La acción {k} no existe: la próxima acción es la {self.acciones + 1}.")
 
+    def _cerrar_clon(self):
+        """Cierra el restaurador del último clon (abierto sobre la copia privada de una época) para que el controlador pueda
+        borrar la copia, también en Windows. O(1)."""
+        clon = self._clon_vivo
+        self._clon_vivo = None
+        if clon is not None and clon.restaurador is not None:
+            clon.restaurador.cerrar()
+            clon.restaurador = None
+
     def _soltar_clon(self):
+        self._cerrar_clon()
         if self.gestor_historico is not None:
             self.gestor_historico.conectar_estado_juego(None)  # un solo clon vivo por gestor: se descarta
 
@@ -401,6 +535,7 @@ class LineaTiempo:
         """Clon desechable del estado justo antes de la acción `k` (`1 <= k <= acciones + 1`), para las pruebas de A.
         La consulta de producción no lo expone. Quien lo pide lo descarta antes de materializar otro. `motor` es el vivo
         y no se toca (se acepta por uniformidad con las consultas). O(log C + S + K·a)."""
+        self._rehechas = 0
         self._validar_accion(k)
         return self._rehacer_hasta(k)
 
@@ -409,6 +544,7 @@ class LineaTiempo:
         ``k == acciones + 1`` es el estado actual: se resume el motor vivo, sin ejecutar nada en él.
         ``ReferenciaInvalida`` si `k` está fuera de rango; ``ErrorReconstruccion`` si la re-simulación diverge.
         O(log C + S + K·a). Solo lectura."""
+        self._rehechas = 0
         self._validar_accion(k)
         if k == self.acciones + 1:
             return resumir(motor, motor.reloj, (REFERENCIA_ACTUAL, None))
@@ -426,6 +562,7 @@ class LineaTiempo:
         decisión; si no, el clon de la decisión `k` ejecuta la acción `k` con una ``AgendaConCorte(corte = t)`` y se
         detiene en `t`. ``ReferenciaInvalida`` si `t` es negativo o mayor que el reloj actual.
         O(log n + log C + S + K·a). Solo lectura."""
+        self._rehechas = 0
         if not _es_entero(t) or t < 0:
             raise ReferenciaInvalida("El instante debe ser un entero mayor o igual que 0.")
         if t > self._reloj_actual:
@@ -443,6 +580,7 @@ class LineaTiempo:
             clon.agenda.corte = t
             posicion = self.vig_guion[k - 1]
             aceptada = clon.ejecutar_accion(self.guion_nombre[posicion], self.guion_argumento[posicion])
+            self._rehechas += 1
             self._lanzar_si_falta_un_dato()
             if not aceptada:
                 raise ErrorReconstruccion(f"el clon rechazó la acción {k} ({self.guion_nombre[posicion]})")

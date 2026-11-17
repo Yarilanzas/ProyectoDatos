@@ -14,9 +14,17 @@
 # partida_con_linea(...) -> PartidaConLinea                              partida con línea de tiempo y espía de resúmenes
 # agregar_cazador(motor, id_enemigo, id_sala) -> Enemigo                  doble del cazador (T010)
 # agregar_enemigo(motor, id_enemigo, id_sala, comportamiento) -> Enemigo  p. ej. un «errante», que consume azar
+# SesionLinea(k, semilla, pergaminos, huellas) -> sesión                  partida + línea real que sobrevive a retrocesos y cargas
+# crpt_con_version(origen, destino, version)                              copia un CRPT 3 con otro número de versión (T067)
+# insertar_bloque_linea(origen, destino, bloque)                          reescribe un CRPT 3 con el bloque de la línea dado
+# archivo_con_linea(origen, destino, registro, modo=None)                 lo mismo con un RegistroLinea, sano o alterado
+# leer_bloque_linea(ruta) -> bytes                                        el bloque de la línea de un CRPT 3 (sin usar LectorPartida)
+# copia_sin_datos(partida, borrar) -> CopiaSinDatos                       la carpeta de la partida sin el paquete o sin los datos locales
 
 import os
 import random
+import shutil
+import struct
 import sys
 import tempfile
 
@@ -25,17 +33,21 @@ if RAIZ not in sys.path:
     sys.path.insert(0, RAIZ)
 
 from API.Fuentes import FuenteDatosOffline
-from Controlador.ControladorPartida import ControladorPartida
+from Controlador.ControladorPartida import ControladorPartida, guardar_motor
 from Gestor.GestorDatos import GestorDatos
 from Gestor.GestorHistorico import GestorHistorico
+from Gestor.PreparadorPartida import cargar_partida
 from Modelo.Enemigo import Enemigo
 from Modelo.Inventario import NodoInventario
 from Modelo.LineaTiempo import LineaTiempo
 from Modelo.MotorSimulacion import MotorSimulacion
 from Modelo.ResumenHistorico import resumir
+from Persistencia.ArchivoPartida import FORMATO_ENTRADA, TAMANO_ENTRADA
+from Persistencia.ConversorPartida import RestauradorPartida
+from Persistencia.FormatoBinario import FORMATO_PREFIJO, TAMANO_ENCABEZADO
 from tests.test_integracion import VistaFalsa
 from Vista.TextoResumen import lineas_resumen
-from tests.utiles_niebla import CRIPTA_NIEBLA, ENEMIGO, TRAMPA, contenido_sala, crear_paquete_niebla, salida
+from tests.utiles_niebla import CRIPTA_NIEBLA, ENEMIGO, PERGAMINO, TRAMPA, contenido_sala, crear_paquete_niebla, salida
 
 SIN_ATRIBUTO = "sin rastro"  # lo que `resumen_ampliado` anota de una sala sin el atributo `rastro`
 NOMBRE_BITACORA = "linea.log"
@@ -468,3 +480,238 @@ def partida_coincidencia(k=3, semilla=3, acciones=4):
     pl.hacer([("esperar", "")] * acciones)
     orden = [evento for evento in motor.orden if evento[0] == t]
     return Coincidencia(pl, t, orden)
+
+
+# ───────────────────────── Sesión con retrocesos y cargas (T068, T069, T090 a T094) ─────────────────────────
+
+class SesionLinea:
+    """Una partida real (`partida_linea`, sin enemigos de prueba) con una `LineaTiempo` propia que registra cada acción
+    aceptada, cada `retroceder` aceptado y cada carga. A diferencia de `PartidaConLinea` no usa el motor espía: la
+    comparación se hace con `decisiones`, la huella del estado justo antes de cada acción vigente (si `huellas`).
+
+    `pergaminos=N` pone N pergaminos de retroceso en el suelo de la sala inicial y los **recoge con las primeras N
+    acciones** (entran en el guion): así una reproducción desde cero (el reconstructor) llega al mismo estado. No se
+    entregan por la puerta de atrás como `partida_con_linea`, que no se puede reproducir.
+
+    `guardar_y_cargar()` guarda el motor, lo carga con un gestor nuevo sobre la misma carpeta de datos locales (como un
+    proceso nuevo), hace la copia privada del archivo y avisa a la línea con `registrar_carga`. Desde ahí `motor` es el
+    motor cargado. `cerrar()` cierra los restauradores y borra la carpeta (también en Windows)."""
+
+    def __init__(self, k=3, semilla=3, pergaminos=0, huellas=True, **opciones):
+        if pergaminos > 0 and "contenido" not in opciones:
+            opciones["contenido"] = CONTENIDO_LINEA + [contenido_sala(1, objetos=(PERGAMINO,) * pergaminos)]
+        self.partida = partida_linea(semilla=semilla, **opciones)
+        self.motor = self.partida.motor
+        self.motores = [self.motor]
+        self.linea = LineaTiempo(k=k, gestor_historico=self.partida.nuevo_gestor_historico(),
+                                 abrir_copia=RestauradorPartida)
+        self.linea.iniciar(self.motor)
+        self.generador = GeneradorAcciones(semilla)
+        self.huellas = huellas
+        self.decisiones = []   # (reloj, huella) antes de cada acción vigente, en orden
+        self.cargas = 0
+        self.rutas_guardadas = []
+        self.copias = []
+        for _ in range(pergaminos):
+            objeto = self.motor.obtener_objetos_suelo(self.motor.jugador.sala)[0]
+            self.hacer([("recoger", objeto.instancia_id)])
+
+    def _decision(self):
+        return (self.motor.reloj, huella(self.motor)) if self.huellas else None
+
+    def hacer(self, acciones):
+        """Ejecuta una lista de (nombre, argumento) y registra las aceptadas. Devuelve cuántas se aceptaron."""
+        aceptadas = 0
+        for nombre, argumento in acciones:
+            antes = self._decision()
+            if self.motor.ejecutar_accion(nombre, argumento):
+                if self.huellas:
+                    self.decisiones.append(antes)
+                self.linea.registrar_accion(self.motor, nombre, argumento)
+                aceptadas += 1
+        return aceptadas
+
+    def jugar(self, cantidad):
+        """Juega con el generador hasta `cantidad` acciones aceptadas (o hasta que la partida termine). Devuelve las
+        aceptadas como (nombre, argumento)."""
+        jugadas = []
+        motor = self.motor
+        intentos = 0
+        while len(jugadas) < cantidad and intentos < cantidad * 4:
+            intentos += 1
+            if not motor.jugador.esta_vivo() or motor.victoria:
+                break
+            nombre, argumento = self.generador.siguiente(motor)
+            if self.hacer([(nombre, argumento)]):
+                jugadas.append((nombre, argumento))
+        return jugadas
+
+    def retroceder(self):
+        """`retroceder` por el motor; si lo aceptó, `registrar_retroceso`. Devuelve si fue aceptado."""
+        if not self.motor.ejecutar_accion("retroceder", ""):
+            return False
+        self.linea.registrar_retroceso(self.motor)
+        del self.decisiones[self.linea.acciones:]
+        return True
+
+    def guardar_y_cargar(self):
+        """Guarda el motor actual, lo carga en un motor nuevo y registra la carga. Devuelve la ruta de la copia privada."""
+        base = self.partida.carpeta.name
+        numero = self.cargas + 1
+        ruta = os.path.join(base, f"guardado_{numero}.cripta")
+        guardar_motor(self.motor, ruta, self.partida.gestor)
+        nuevo = cargar_partida(ruta, self.partida.nuevo_gestor(iniciado=False))
+        copia = os.path.join(base, f"epoca_{numero}.cripta")
+        shutil.copyfile(ruta, copia)
+        self.motor = nuevo
+        self.motores.append(nuevo)
+        self.cargas = numero
+        self.rutas_guardadas.append(ruta)
+        self.copias.append(copia)
+        self.linea.registrar_carga(nuevo, copia)
+        return copia
+
+    def cerrar(self):
+        for motor in self.motores:
+            if motor.restaurador is not None:
+                motor.restaurador.cerrar()
+                motor.restaurador = None
+        self.linea.cerrar()
+        self.partida.cerrar()
+
+
+# ───────────────────────── Archivos propios del CRPT (T067; FR-022, FR-024) ─────────────────────────
+# Todo se fabrica a partir de un archivo que el propio motor guardó con `guardar_motor` (CRPT 3, `largo línea = 0`).
+# Ninguna prueba que use esto depende de partida.cripta, partida.cripta.log ni partida.log (FR-024).
+
+FORMATO_LARGO = "<I"
+TAMANO_LARGO = struct.calcsize(FORMATO_LARGO)
+
+
+def _leer_todo(ruta):
+    with open(ruta, "rb") as archivo:
+        return archivo.read()
+
+
+def _posicion_largo_linea(datos):
+    """Posición del campo `largo línea` de un CRPT 3: tras el encabezado, el bloque del jugador y el de conocimiento."""
+    posicion = TAMANO_ENCABEZADO
+    for _ in range(2):
+        (largo,) = struct.unpack_from(FORMATO_LARGO, datos, posicion)
+        posicion += TAMANO_LARGO + largo
+    return posicion
+
+
+def crpt_con_version(ruta_origen, ruta_destino, version):
+    """Copia `ruta_origen` cambiando solo el número de versión del prefijo: el lector rechaza la versión antes de leer
+    nada más (1 y 2 son las de la Parte I; otro valor es una versión desconocida)."""
+    datos = bytearray(_leer_todo(ruta_origen))
+    struct.pack_into(FORMATO_PREFIJO, datos, 0, b"CRPT", version)
+    with open(ruta_destino, "wb") as archivo:
+        archivo.write(bytes(datos))
+    return ruta_destino
+
+
+def insertar_bloque_linea(ruta_origen, ruta_destino, bloque):
+    """Reescribe un CRPT 3 con `bloque` (bytes) como bloque de la línea: cambia el campo `largo línea`, mueve las salas y
+    el índice y corrige `offset_indice` y las posiciones del índice. No valida `bloque`: puede ser basura a propósito."""
+    datos = _leer_todo(ruta_origen)
+    posicion = _posicion_largo_linea(datos)
+    (largo_anterior,) = struct.unpack_from(FORMATO_LARGO, datos, posicion)
+    inicio_salas = posicion + TAMANO_LARGO + largo_anterior
+    (offset_indice,) = struct.unpack_from("<Q", datos, TAMANO_ENCABEZADO - 8)
+    (cantidad_salas,) = struct.unpack_from("<I", datos, TAMANO_ENCABEZADO - 12)
+    delta = len(bloque) - largo_anterior
+
+    encabezado = bytearray(datos[:TAMANO_ENCABEZADO])
+    struct.pack_into("<Q", encabezado, TAMANO_ENCABEZADO - 8, offset_indice + delta)
+    indice = bytearray(datos[offset_indice:])
+    for numero in range(cantidad_salas):
+        desplazamiento = numero * TAMANO_ENTRADA
+        sala_id, donde, largo = struct.unpack_from(FORMATO_ENTRADA, indice, desplazamiento)
+        struct.pack_into(FORMATO_ENTRADA, indice, desplazamiento, sala_id, donde + delta, largo)
+
+    nuevo = (bytes(encabezado) + datos[TAMANO_ENCABEZADO:posicion] + struct.pack(FORMATO_LARGO, len(bloque)) + bloque
+             + datos[inicio_salas:offset_indice] + bytes(indice))
+    with open(ruta_destino, "wb") as archivo:
+        archivo.write(nuevo)
+    return ruta_destino
+
+
+def leer_bloque_linea(ruta):
+    """Los bytes del bloque de la línea de un CRPT 3 (vacío si `largo línea = 0`). Lee el archivo a mano: no usa
+    `LectorPartida`, así sirve antes y después de que el lector tenga `leer_linea`."""
+    datos = _leer_todo(ruta)
+    posicion = _posicion_largo_linea(datos)
+    (largo,) = struct.unpack_from(FORMATO_LARGO, datos, posicion)
+    return datos[posicion + TAMANO_LARGO:posicion + TAMANO_LARGO + largo]
+
+
+MODOS_ALTERADOS = ("sello", "truncado", "tipo")
+
+
+def bytes_de_linea(registro, modo=None):
+    """Bytes del bloque de `registro` (un `RegistroLinea`), sanos o alterados:
+
+    - ``"sello"``: el bloque es válido, pero el reloj de la primera acción cambió en 1 (la reproducción no coincide);
+    - ``"truncado"``: al bloque le faltan sus últimos 3 bytes;
+    - ``"tipo"``: el `tipo` del primer registro vale 9 (desconocido).
+    """
+    if modo is None:
+        return registro.to_bytes()
+    if modo == "sello":
+        registros = []
+        cambiado = False
+        for entrada in registro.registros:
+            if not cambiado and entrada[0] == 1:  # ACCION
+                entrada = (entrada[0], entrada[1], entrada[2], entrada[3] + 1, entrada[4])
+                cambiado = True
+            registros.append(entrada)
+        if not cambiado:
+            raise ValueError("No hay ninguna acción cuyo sello cambiar")
+        return type(registro)(registro.k, registros).to_bytes()
+    datos = bytearray(registro.to_bytes())
+    if modo == "truncado":
+        return bytes(datos[:-3])
+    if modo == "tipo":
+        if len(registro.registros) == 0:
+            raise ValueError("No hay ningún registro cuyo tipo cambiar")
+        datos[8] = 9  # el primer registro empieza tras `<I` K y `<I` cantidad
+        return bytes(datos)
+    raise ValueError(f"Modo desconocido: {modo!r} (use uno de {MODOS_ALTERADOS})")
+
+
+def archivo_con_linea(ruta_origen, ruta_destino, registro, modo=None):
+    """`insertar_bloque_linea` con los bytes de `registro` (ver `bytes_de_linea` para los modos alterados)."""
+    return insertar_bloque_linea(ruta_origen, ruta_destino, bytes_de_linea(registro, modo))
+
+
+class CopiaSinDatos:
+    """Copia de la carpeta de una partida (paquete offline, datos locales y archivos guardados) a la que se le borró el
+    paquete o los datos locales. `paquete` y `ruta_datos` son las rutas dentro de la copia (una de las dos ya no
+    existe); `ruta(nombre)` es un archivo de la copia."""
+
+    def __init__(self, carpeta, paquete, ruta_datos):
+        self.carpeta = carpeta
+        self.paquete = paquete
+        self.ruta_datos = ruta_datos
+
+    def ruta(self, nombre):
+        return os.path.join(self.carpeta.name, "copia", nombre)
+
+    def cerrar(self):
+        self.carpeta.cleanup()
+
+
+def copia_sin_datos(partida, borrar):
+    """Copia la carpeta de `partida` (un `PartidaLinea`) y borra de la copia ``"paquete"`` o ``"datos"`` (la carpeta de
+    datos locales). Los archivos guardados quedan en la copia."""
+    if borrar not in ("paquete", "datos"):
+        raise ValueError("`borrar` debe ser «paquete» o «datos»")
+    carpeta = tempfile.TemporaryDirectory()
+    destino = os.path.join(carpeta.name, "copia")
+    shutil.copytree(partida.carpeta.name, destino)
+    paquete = os.path.join(destino, NOMBRE_PAQUETE)
+    ruta_datos = os.path.join(destino, NOMBRE_DATOS)
+    shutil.rmtree(paquete if borrar == "paquete" else ruta_datos)
+    return CopiaSinDatos(carpeta, paquete, ruta_datos)
