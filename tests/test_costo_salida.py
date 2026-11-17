@@ -36,7 +36,7 @@ class TestCostoSalida(unittest.TestCase):
         self.assertEqual(self.motor.costo_salida(SimpleNamespace(costo=None)), 100)
 
     def test_fr005_salida_del_dto_actual_cuesta_100(self):
-        # El DTO aún no tiene el campo: lo agrega la capacidad de terreno y costos.
+        # El DTO trae `costo` con 100 por defecto (COSTO_POR_DEFECTO, spec 003 T030): sin declararlo, cuesta 100.
         self.assertEqual(self.motor.costo_salida(Salida(2, False, None, None)), 100)
 
     def test_fr005_solo_lee_la_salida(self):
@@ -92,6 +92,7 @@ from API.Fuentes import FuenteDatosOffline
 from Controlador.ControladorPartida import ControladorPartida
 from Gestor.GestorDatos import GestorDatos
 from tests.test_integracion import VistaFalsa
+from Vista.VistaConsola import VistaConsola
 from tests.utiles_niebla import CRIPTA_NIEBLA, JUGADOR, PERGAMINO, contenido_sala, crear_paquete_niebla, salida
 
 VELOCIDAD = 80   # distinta de 100, para que el intervalo dependa de la fórmula costo * 100 // velocidad
@@ -193,6 +194,25 @@ class TestCostoDesdeElPaquete(BasePaquete):
         antes = motor.reloj
         self.assertTrue(motor.ejecutar_accion("mover", "S"))       # sin costo declarado: 100
         self.assertEqual(motor.reloj - antes, intervalo(100))
+
+    def test_fr005_el_mapa_muestra_el_costo_que_viene_del_paquete(self):
+        # FR-005 por el comando real: el controlador le pasa a la vista el MapaConocido de `mapa`, y la vista de
+        # consola le da formato. 1 -E-> 2 declara 250 en el paquete; 1 -S-> 3 no declara costo y vale 100.
+        carpeta = self.carpeta()
+        _, controlador = self.partida(carpeta, FuenteDatosOffline(self.paquete(carpeta, mapa_costos())))
+        controlador.vista.lineas.clear()
+        self.assertTrue(controlador.ejecutar("mapa"))
+        llamadas = [args for nombre, args in controlador.vista.lineas if nombre == "mostrar_mapa"]
+        self.assertEqual(len(llamadas), 1, controlador.vista.lineas)
+
+        lineas = []
+        VistaConsola(salida=lineas.append).mostrar_mapa(llamadas[0][0])
+        self.assertEqual(lineas[:4], [
+            "Mapa conocido:",
+            "  Sala 1: Entrada",
+            "    E -> sala 2   costo 250   abierta",
+            "    S -> sala 3   costo 100   abierta",
+        ])
 
     def test_fr005_un_paquete_sin_costos_da_el_mismo_reloj_que_la_parte_i(self):
         # Antes de la capacidad de terreno, `mover` costaba siempre 100: intervalo(100) por paso.

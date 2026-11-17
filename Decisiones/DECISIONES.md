@@ -933,11 +933,15 @@ Las filas `guardar` (binario 0.8708, 5.0914 y 72.9557 ms; JSON 0.8722, 5.4020 y 
 - `tests/test_costo_salida.py`: el acceso único (T118 de esta capacidad) y `TestMoverUsaElCosto`, que la spec 003 actualizó en su T027 a la regla `costo * 100 // velocidad`.
 - `tests/test_validacion_datos.py` (T030 y T031 de la 003): dominio del costo, 100 sin la clave y sentidos con costos distintos.
 - `tests/test_terreno.py` (T019 a T026 de la 003, con la numeración de FR de esa spec): incluye el cobro de cada paso de «ir a».
+- `tests/test_costo_salida.py`, con costos que vienen de un paquete offline (T006, T007 y T009 de esta capacidad). Son pruebas de caracterización, escritas después del código de la 003:
+  - `TestCostoDesdeElPaquete::test_fr005_el_costo_llega_del_paquete_pasa_por_la_cache_y_mover_lo_cobra`: el costo llega desde `FuenteDatosOffline`, pasa por la caché en disco y `mover` lo cobra.
+  - `TestCostoDesdeElPaquete::test_fr005_el_mapa_muestra_el_costo_que_viene_del_paquete`: el comando `mapa` muestra el costo declarado y el 100 de la salida sin costo.
+  - `TestIrAConCostosDelPaquete::test_fr024_ir_a_elige_la_ruta_de_menor_suma_aunque_tenga_mas_saltos`: «ir a» elige la ruta de menor suma de costos.
 
 **Límites.**
 
 - El DTO ya no distingue «sin costo propio» de «cuesta 100».
-- No hay prueba de que un costo declarado en un paquete offline atraviese la caché en disco y llegue al cobro de `mover`. Era T009 de esta capacidad, que sigue abierta.
+- El recorrido completo del costo ya tiene prueba, pero solo de caracterización, escrita después del código de la 003. T009 de esta capacidad quedó cubierta por `tests/test_costo_salida.py::TestCostoDesdeElPaquete`: el costo llega desde `FuenteDatosOffline`, pasa por la caché en disco y `mover` lo cobra. El comando `mapa` lo muestra (`test_fr005_el_mapa_muestra_el_costo_que_viene_del_paquete`) e «ir a» elige por la suma (`test_fr024_ir_a_elige_la_ruta_de_menor_suma_aunque_tenga_mas_saltos`).
 
 **¿Coincide con el plan?** En parte.
 

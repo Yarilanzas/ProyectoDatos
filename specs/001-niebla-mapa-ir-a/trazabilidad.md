@@ -29,7 +29,7 @@ en `spec.md`.
 | FR-002 | PR-01, PR-05 | T013, T019, T026, T029 | `tests/test_conocimiento.py::test_fr001_fr002_fr004_sala_inicial_en_el_instante_0`<br>`tests/test_conocimiento.py::test_fr002_la_sala_inicial_no_se_puede_revertir` | hecho |
 | FR-003 | PR-01 | T014, T026, T030, T102 | `tests/test_conocimiento.py::test_fr003_fr004_fr005_de_avistada_a_explorada`<br>`tests/test_conocimiento.py::test_fr003_una_trampa_mortal_no_impide_explorar_la_sala` | hecho |
 | FR-004 | PR-01 | T013, T014, T024, T025, T069, T074 | `tests/test_conocimiento.py::test_fr004_una_sala_explorada_no_vuelve_a_avistada`<br>`tests/test_antorcha.py::test_fr004_los_vecinos_de_una_explorada_con_antorcha_quedan_avistados`<br>`tests/test_persistencia_conocimiento.py::test_fr004_fr015_avistadas_recalculadas_y_no_guardadas` | hecho |
-| FR-005 | PR-01, PR-13 | T002, T003, T118, T006\*, T007\*, T008 (sustituida), T009\*, T010, T011, T012 (sustituida), T014, T025, T033, T036, T038, T101 | `tests/test_conocimiento.py::test_fr003_fr004_fr005_de_avistada_a_explorada`<br>`tests/test_mapa.py::test_fr005_avistada_solo_por_su_id`<br>`tests/test_mapa.py::test_fr005_costo_distinto_de_100`<br>`tests/test_costo_salida.py::test_fr005_mover_usa_el_costo_de_la_salida`<br>`tests/test_viaje.py::test_fr005_fr024_el_costo_viene_de_costo_salida` | pendiente: T010 ya está cubierta por la spec 003 (ver [Estado de T010](#estado-de-t010)), pero **ninguna prueba de la 001 usa un costo que venga de los datos**: todas lo ponen a mano en la salida o usan grafos de prueba |
+| FR-005 | PR-01, PR-13 | T002, T003, T118, T006, T007, T008 (sustituida), T009, T010, T011, T012 (sustituida), T014, T025, T033, T036, T038, T101 | `tests/test_conocimiento.py::test_fr003_fr004_fr005_de_avistada_a_explorada`<br>`tests/test_mapa.py::test_fr005_avistada_solo_por_su_id`<br>`tests/test_mapa.py::test_fr005_costo_distinto_de_100`<br>`tests/test_costo_salida.py::test_fr005_mover_usa_el_costo_de_la_salida`<br>`tests/test_viaje.py::test_fr005_fr024_el_costo_viene_de_costo_salida`<br>`tests/test_costo_salida.py::test_fr005_el_mapa_muestra_el_costo_que_viene_del_paquete`<br>`tests/test_costo_salida.py::test_fr005_el_costo_llega_del_paquete_pasa_por_la_cache_y_mover_lo_cobra` | hecho. Con costos que vienen del paquete offline: el comando `mapa` muestra el 250 declarado y el 100 de la salida sin costo, y `mover` los cobra después de pasar por la caché en disco |
 | FR-006 | PR-02, PR-07 | T061, T016, T017, T023, T026, T031, T071, T077 | `tests/test_conocimiento.py::test_fr006_al_entrar_al_origen_el_recuerdo_queda_cerrado`<br>`tests/test_conocimiento.py::test_fr006_al_entrar_al_destino_el_recuerdo_queda_cerrado`<br>`tests/test_conocimiento.py::test_fr006_esperando_en_la_sala_se_observa_el_cierre`<br>`tests/test_persistencia_conocimiento.py::test_fr006_fr015_h2_puerta_abierta_de_una_sala_no_restaurada` | hecho |
 | FR-007 | PR-02 | T015, T016, T026, T031 | `tests/test_conocimiento.py::test_fr007_fr012_cierre_no_observado_conserva_el_recuerdo` | hecho |
 | FR-008 | PR-02 | T017, T026, T031 | `tests/test_conocimiento.py::test_fr008_abrir_se_refleja_de_inmediato` | hecho |
@@ -48,8 +48,8 @@ en `spec.md`.
 | FR-021 | PR-09 | T053, T054, T058, T064, T065, T112\* | `tests/test_viaje.py::test_fr021_fr023_recorrido_completo_de_ida_y_vuelta_sin_inyeccion`<br>`tests/test_viaje.py::test_fr021_ir_mal_formado_da_error_de_uso`<br>`tests/test_viaje.py::test_fr021_el_comando_admite_mayusculas_y_espacios` | hecho |
 | FR-022 | PR-09 | T045, T053, T057, T058, T083, T085 | `tests/test_viaje.py::test_fr022_sc005_escenario_us4_1_sala_avistada_desconocida_inexistente_o_no_valida`<br>`tests/test_viaje.py::test_fr022_sala_actual`<br>`tests/test_viaje.py::test_fr022_explorada_sin_ruta`<br>`tests/test_viaje.py::test_fr022_rechazos_sin_inyeccion_no_tienen_efectos` | hecho |
 | FR-023 | PR-10 | T041, T043, T044, T051, T055, T057, T062, T064 | `tests/test_viaje.py::test_fr023_fr029_solo_salas_exploradas_y_puertas_recordadas_abiertas`<br>`tests/test_viaje.py::test_fr005_fr023_el_motor_arma_el_grafo_con_su_conocimiento_y_costo_salida`<br>`tests/test_ruta_contrato.py::test_fr023_las_aristas_son_dirigidas` | hecho |
-| FR-024 | PR-10, PR-13 | T003, T118, T008 (sustituida), T012 (sustituida), T041, T042, T043, T049, T062, T063, T064, T104, T109, T110\* | `tests/test_ruta_contrato.py::test_fr024_ruta_mas_barata_con_mas_saltos`<br>`tests/test_ruta_contrato.py::test_fr024_empate_va_a_la_vecina_de_menor_id_en_cualquier_orden`<br>`tests/test_ruta_contrato.py::test_fr024_dos_salidas_a_la_misma_vecina_gana_n_s_e_o`<br>`tests/test_ruta_contrato.py::test_fr024_pr10_misma_tabla_de_desempates_que_la_busqueda_compartida`<br>`tests/test_viaje.py::test_fr024_escenario_us4_5_empate_va_a_la_vecina_de_menor_id_con_busqueda_real` | pendiente: T010 ya está cubierta por la spec 003 (ver [Estado de T010](#estado-de-t010)), pero **ninguna prueba de la 001 elige una ruta con costos que vengan de los datos**: hoy se prueba con grafos de prueba y costos puestos a mano. La ruta suma el costo de cada salida en su sentido, que puede ser distinto del de la vuelta (spec 003, FR-001 y FR-003) |
-| FR-025 | PR-09 | T002\*, T007\*, T009\*, T011\*, T054, T056, T058 | `tests/test_viaje.py::test_fr021_fr025_mismo_estado_y_bitacora_que_los_mover_a_mano` | hecho |
+| FR-024 | PR-10, PR-13 | T003, T118, T008 (sustituida), T012 (sustituida), T041, T042, T043, T049, T062, T063, T064, T104, T109, T110\* | `tests/test_ruta_contrato.py::test_fr024_ruta_mas_barata_con_mas_saltos`<br>`tests/test_ruta_contrato.py::test_fr024_empate_va_a_la_vecina_de_menor_id_en_cualquier_orden`<br>`tests/test_ruta_contrato.py::test_fr024_dos_salidas_a_la_misma_vecina_gana_n_s_e_o`<br>`tests/test_ruta_contrato.py::test_fr024_pr10_misma_tabla_de_desempates_que_la_busqueda_compartida`<br>`tests/test_viaje.py::test_fr024_escenario_us4_5_empate_va_a_la_vecina_de_menor_id_con_busqueda_real`<br>`tests/test_costo_salida.py::test_fr024_ir_a_elige_la_ruta_de_menor_suma_aunque_tenga_mas_saltos` | hecho. Con costos del paquete y la búsqueda real, `ir a` toma la ruta de 3 saltos que suma 300 y no el salto directo de 500. La ruta suma el costo de cada salida en su sentido, que puede ser distinto del de la vuelta (spec 003, FR-001 y FR-003) |
+| FR-025 | PR-09 | T002, T007, T009, T011, T054, T056, T058 | `tests/test_viaje.py::test_fr021_fr025_mismo_estado_y_bitacora_que_los_mover_a_mano` | hecho |
 | FR-026 | PR-09 | T046, T053, T054, T056, T104 | `tests/test_viaje.py::test_fr026_con_otra_ruta_el_viaje_sigue_por_ella`<br>`tests/test_viaje.py::test_fr026_recalcula_antes_de_cada_paso`<br>`tests/test_viaje.py::test_fr026_puerta_que_se_cierra_sola_con_el_jugador_en_ella` | hecho |
 | FR-027 | PR-09 | T046, T047, T050, T052 a T054, T056 a T058, T060, T112\* | (a) y prioridad: `tests/test_viaje.py::test_fr027_prioridad_fin_dano_enemigos_destino`<br>(b) `tests/test_viaje.py::test_fr027b_escenario_us4_3_enemigo_dormido_se_activa_y_detiene`<br>(c) `tests/test_viaje.py::test_fr027c_escenario_us4_6_veneno_activo_desde_antes_de_la_orden`<br>(d) `tests/test_viaje.py::test_fr027d_sin_ruta_al_recalcular`<br>(e) `tests/test_viaje.py::test_fr027e_victoria_en_un_paso`<br>(f) `tests/test_viaje.py::test_fr027f_paso_rechazado_detiene_con_el_mensaje_de_mover_sin_tiempo` | hecho |
 | FR-028 | PR-09 | T052, T057 | `tests/test_viaje.py::test_fr028_escenario_us4_9_se_acepta_con_enemigos_en_la_sala_actual` (enemigo activo)<br>`tests/test_viaje.py::test_fr028_se_acepta_con_un_enemigo_dormido_en_la_sala_actual` (enemigo dormido) | hecho. Nota: el motor activa a los enemigos de una sala al entrar, al iniciar y al cargar, así que la prueba del enemigo dormido omite esa activación solo mientras prepara la partida |
@@ -60,40 +60,41 @@ en `spec.md`.
 ### Estado de T010
 
 Conciliación del 2026-11-16 entre las tareas de terreno y costos de esta capacidad y lo que hizo la spec 003 (detalle en
-[tasks.md](tasks.md), notas de T002 y T006 a T012).
+[tasks.md](tasks.md), notas de T002 y T006 a T012). **Ya no queda ninguna causa de pendiente por costos.**
 
-- **Cubiertas por la spec 003**, marcadas `[X]`:
+- **Cubiertas**, marcadas `[X]`:
   - **T002**: el cambio de `Salida` lo hizo Persona B dentro de la 003.
+  - **T006**: T030 de la 003 y `tests/test_costo_salida.py::TestSalidaSerializacion` (`null` y la ida y vuelta por
+    `a_json`/`desde_json`).
+  - **T007**: T025 y T027 de la 003, T118 de esta capacidad y
+    `tests/test_costo_salida.py::TestRetrocederTrasMoverConCosto`.
+  - **T009**: `tests/test_costo_salida.py::TestCostoDesdeElPaquete` (paquete offline, caché en disco, cobro de `mover`
+    y el mapa).
   - **T010**, con otro diseño: `COSTO_POR_DEFECTO = 100` en el DTO, no `None`, y `a_json` escribe `costo` siempre.
   - **T011**, por T027 y T028 de la 003 y T118 de esta capacidad.
 - **Sustituidas por T031 de la 003**: T008 y T012. Los sentidos de una conexión pueden declarar costos distintos y no
   existe `validar_costos_salidas`.
-- **Abiertas**: T006, T007 y T009, porque la 003 las cubre solo en parte:
-  - **T006**: no hay prueba de `null` ni de la ida y vuelta por `a_json`/`desde_json`.
-  - **T007**: no hay prueba de `retroceder` tras un `mover` con costo.
-  - **T009**: no hay prueba de punta a punta desde un paquete offline y la caché en disco.
 - **En el código**:
   - `DTOS/Salida.py` valida el costo en `desde_json` (entero, mayor o igual que 1, no `bool`; 100 sin la clave).
   - `mover_jugador` y los enemigos cobran `max(1, costo * 100 // velocidad)` con `costo_salida`
     (`Modelo/MotorSimulacion.py`).
-- **Pruebas**: las de la 001 ponen el costo a mano en la salida o usan grafos de prueba. La spec 003 sí usa costos
-  declarados en el esqueleto (`SalaEsqueleto.desde_json`, a través de `mapa_a_mano`). Ejemplos:
-  `tests/test_validacion_datos.py` y `tests/test_terreno.py::test_fr004_fr026_cada_paso_de_ir_a_avanza_el_costo_de_su_salida`,
-  que mide el reloj de cada paso con un buscador inyectado. Siguen la numeración de FR de la 003 y no se citan como
-  evidencia de FR-005 ni de FR-024 de la 001.
-- **Lo que falta para pasar FR-005 y FR-024 a «hecho»**: una prueba de la 001 con costos que lleguen desde los datos.
-  Para FR-005, el mapa los muestra. Para FR-024, `ir a` elige la ruta de menor suma.
+- **Pruebas con costos que vienen de los datos** (paquete offline, numeración de FR de la 001):
+  - `tests/test_costo_salida.py::test_fr005_el_mapa_muestra_el_costo_que_viene_del_paquete`
+  - `tests/test_costo_salida.py::test_fr005_el_costo_llega_del_paquete_pasa_por_la_cache_y_mover_lo_cobra`
+  - `tests/test_costo_salida.py::test_fr024_ir_a_elige_la_ruta_de_menor_suma_aunque_tenga_mas_saltos`
+
+  Son pruebas de caracterización: el código ya lo había escrito la spec 003, y pasaron desde el primer intento.
 
 ## Criterios de éxito (SC)
 
 | SC | PR | Tareas | Prueba o medición | Estado |
 |----|----|--------|-------------------|--------|
-| SC-001 | PR-16 | T005, T098, T116\* | Los 9 casos, en [la tabla de abajo](#los-9-casos-de-sc-001); cada uno tiene al menos una prueba automática que cita su FR | hecho (las pruebas automáticas bastan según SC-001). Partidas jugadas de T116 en [evidencia_quickstart.md](evidencia_quickstart.md): escenarios 1 a 8 corridos; el caso del veneno del escenario 4 requiere prueba manual ([4.9](evidencia_quickstart.md#esc-4-veneno)) |
-| SC-002 | PR-04, PR-08, PR-10 | T035, T036, T044, T116\* | `tests/test_mapa.py::test_fr011_fr018_sc002_puerta_de_una_vecina_sin_observar`<br>`tests/test_mapa.py::test_fr012_sc002_muestra_el_recuerdo_y_no_la_puerta_real`<br>`tests/test_viaje.py::test_fr011_fr023_sc002_escenario_us2_4_ir_a_no_usa_salidas_sin_observar`<br>Partida jugada: [escenarios 1](evidencia_quickstart.md#esc-1), [3](evidencia_quickstart.md#esc-3) y [4.6](evidencia_quickstart.md#esc-4-sin-observar) | hecho |
-| SC-003 | PR-06 | T068, T116\* | `tests/test_persistencia_conocimiento.py::test_fr015_sc003_escenario_us5_1_el_mapa_conocido_es_identico`<br>Partida jugada: [escenario 6](evidencia_quickstart.md#esc-6) | hecho |
-| SC-004 | PR-11, PR-12 | T083, T087, T088, T090, T091, T094, T116\* | `tests/test_persistencia_conocimiento.py::test_fr017_sc004_escenario_us5_2_guardar_cargar_continuar_y_reproducir`<br>`tests/test_persistencia_conocimiento.py::test_fr017_fr030_fr031_ir_a_y_pergaminos_sin_y_con_carga`<br>`tests/test_viaje.py::test_fr030_sc004_viaje_completo_deja_comentario_antes_del_primer_mover_y_se_reproduce`<br>Partida jugada: [escenarios 5](evidencia_quickstart.md#esc-5) y [6](evidencia_quickstart.md#esc-6) (reloj, sala, vida y acciones; el conocimiento no se ve en la salida de `--replay`) | hecho. Nota: la prueba con «ir a» y pergaminos usa un buscador de prueba inyectado, no la búsqueda real |
-| SC-005 | PR-09, PR-11 | T045, T053, T058, T083, T085, T116\* | `tests/test_viaje.py::test_fr022_sc005_escenario_us4_1_sala_avistada_desconocida_inexistente_o_no_valida`<br>`tests/test_viaje.py::test_fr022_sc005_orden_rechazada_no_deja_linea`<br>`tests/test_viaje.py::test_fr030_sc005_rechazo_del_primer_mover_no_deja_linea`<br>Partida jugada: [escenario 4.1](evidencia_quickstart.md#esc-4-rechazos) | hecho |
-| SC-006 | PR-16 | T001, T009\*, T019, T081, T097, T099, T106, T108, T116\* | Suite completa: `Ran 812 tests`, `OK`, sin red<br>`tests/test_conocimiento.py::test_sc006_motor_sin_iniciar_partida_funciona_sin_conocimiento`<br>`tests/test_bench_niebla.py::test_sc006_pr15_t108_m1_a_m6_con_tamanos_minimos_sin_red_ni_vista`<br>T116: la misma suite, `Ran 812 tests`, `OK` ([evidencia_quickstart.md](evidencia_quickstart.md#resumen)) | hecho |
+| SC-001 | PR-16 | T005, T098, T116 | Los 9 casos, en [la tabla de abajo](#los-9-casos-de-sc-001); cada uno tiene al menos una prueba automática que cita su FR | hecho (las pruebas automáticas bastan según SC-001). Partidas jugadas de T116 en [evidencia_quickstart.md](evidencia_quickstart.md): escenarios 1 a 8 corridos; el caso del veneno del escenario 4 requiere prueba manual ([4.9](evidencia_quickstart.md#esc-4-veneno)) |
+| SC-002 | PR-04, PR-08, PR-10 | T035, T036, T044, T116 | `tests/test_mapa.py::test_fr011_fr018_sc002_puerta_de_una_vecina_sin_observar`<br>`tests/test_mapa.py::test_fr012_sc002_muestra_el_recuerdo_y_no_la_puerta_real`<br>`tests/test_viaje.py::test_fr011_fr023_sc002_escenario_us2_4_ir_a_no_usa_salidas_sin_observar`<br>Partida jugada: [escenarios 1](evidencia_quickstart.md#esc-1), [3](evidencia_quickstart.md#esc-3) y [4.6](evidencia_quickstart.md#esc-4-sin-observar) | hecho |
+| SC-003 | PR-06 | T068, T116 | `tests/test_persistencia_conocimiento.py::test_fr015_sc003_escenario_us5_1_el_mapa_conocido_es_identico`<br>Partida jugada: [escenario 6](evidencia_quickstart.md#esc-6) | hecho |
+| SC-004 | PR-11, PR-12 | T083, T087, T088, T090, T091, T094, T116 | `tests/test_persistencia_conocimiento.py::test_fr017_sc004_escenario_us5_2_guardar_cargar_continuar_y_reproducir`<br>`tests/test_persistencia_conocimiento.py::test_fr017_fr030_fr031_ir_a_y_pergaminos_sin_y_con_carga`<br>`tests/test_viaje.py::test_fr030_sc004_viaje_completo_deja_comentario_antes_del_primer_mover_y_se_reproduce`<br>Partida jugada: [escenarios 5](evidencia_quickstart.md#esc-5) y [6](evidencia_quickstart.md#esc-6) (reloj, sala, vida y acciones; el conocimiento no se ve en la salida de `--replay`) | hecho. Nota: la prueba con «ir a» y pergaminos usa un buscador de prueba inyectado, no la búsqueda real |
+| SC-005 | PR-09, PR-11 | T045, T053, T058, T083, T085, T116 | `tests/test_viaje.py::test_fr022_sc005_escenario_us4_1_sala_avistada_desconocida_inexistente_o_no_valida`<br>`tests/test_viaje.py::test_fr022_sc005_orden_rechazada_no_deja_linea`<br>`tests/test_viaje.py::test_fr030_sc005_rechazo_del_primer_mover_no_deja_linea`<br>Partida jugada: [escenario 4.1](evidencia_quickstart.md#esc-4-rechazos) | hecho |
+| SC-006 | PR-16 | T001, T009, T019, T081, T097, T099, T106, T108, T116 | Suite completa: `Ran 812 tests`, `OK`, sin red<br>`tests/test_conocimiento.py::test_sc006_motor_sin_iniciar_partida_funciona_sin_conocimiento`<br>`tests/test_bench_niebla.py::test_sc006_pr15_t108_m1_a_m6_con_tamanos_minimos_sin_red_ni_vista`<br>T116: la misma suite, `Ran 812 tests`, `OK` ([evidencia_quickstart.md](evidencia_quickstart.md#resumen)) | hecho |
 | SC-007 | PR-15 | T003, T104, T109, T110\* | `tests/test_bench_niebla.py::test_sc007_pr15_t108_m4_con_y_sin_espacio_compara_contra_la_constante` (forma y veredicto, sin afirmar tiempos)<br>Medición M4 en [`resultados_bench_niebla.txt`](../../resultados_bench_niebla.txt), PROVISIONAL, con mapas sintéticos (ver abajo) | **pendiente de T110**: §6.1 no se da por cumplido |
 
 **SC-007 y §6.1.** El límite es de 5 ms por paso «con el mapa conocido completo de la cripta de referencia», que aún no
@@ -133,13 +134,12 @@ en una carpeta temporal fuera del repositorio.
 
 | | Total | hecho | bloqueado | pendiente |
 |---|---|---|---|---|
-| FR | 31 | 27 | 0 | 4 (FR-005, FR-016, FR-024, FR-030) |
+| FR | 31 | 29 | 0 | 2 (FR-016, FR-030) |
 | SC | 7 | 6 | 0 | 1 (SC-007) |
 | Casos de SC-001 | 9 | 9 | 0 | 0 |
 
 **Causas de lo pendiente**
 
-- **FR-005 y FR-024**: T010 ya está cubierta por la spec 003, pero falta una prueba de la 001 con costos que vengan de los datos.
 - **FR-016 y FR-030**: falta el README de los formatos (T113).
 - **SC-007**: §6.1 queda pendiente de T110.
 

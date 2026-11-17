@@ -218,8 +218,8 @@ class TestContratoDeSalida(BaseMapa):
             self.assertNotIn(prohibido, texto)
 
     def test_fr005_costo_distinto_de_100(self):
-        # El DTO `Salida` aún no trae `costo` (T010, capacidad de terreno y costos): se pone a mano en la
-        # salida, que es lo que `costo_salida` lee.
+        # El DTO `Salida` trae `costo` con 100 por defecto (spec 003 T030). Aquí se cambia a mano en la salida, que
+        # es lo que `costo_salida` lee; el costo que viene del paquete lo prueba tests/test_costo_salida.py.
         motor = self.partida(mapa_conocimiento())
         self.puerta(motor, 1, "E").costo = 250
         self.assertIn("    E -> sala 2   costo 250   abierta", self.texto_mapa(motor))

@@ -184,7 +184,7 @@ class TestGrafoConocido(unittest.TestCase):
     def test_fr005_fr024_el_costo_viene_de_costo_salida(self):
         uno = SalaFalsa(1, {"E": puerta(2)})
         dos = SalaFalsa(2, {"O": puerta(1)})
-        uno.salidas["E"].costo = 7  # puesto a mano: el DTO Salida aún no trae costo (T010)
+        uno.salidas["E"].costo = 7  # puesto a mano en una salida de prueba; el DTO Salida trae costo (spec 003 T030)
         conocimiento = conocimiento_falso([uno, dos])
         grafo = GrafoConocido(conocimiento, MotorSimulacion().costo_salida)
         historial = Historial()
