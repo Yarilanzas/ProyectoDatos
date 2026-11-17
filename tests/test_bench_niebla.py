@@ -533,16 +533,17 @@ class TestCorrerBench(unittest.TestCase):
 
     def test_pr15_t107_main_bench_llama_a_la_medicion_de_niebla_sin_red_ni_vista(self):
         import main
-        from tests import bench_ciclo, bench_personaD, bench_resolubilidad
+        from tests import bench_cazador, bench_ciclo, bench_personaD, bench_resolubilidad
         with mock.patch.object(bench_personaD, "correr_bench") as persistencia, \
                 mock.patch.object(bench_ciclo, "correr_bench") as ciclo, \
+                mock.patch.object(bench_cazador, "correr_bench") as cazador, \
                 mock.patch.object(bench_resolubilidad, "correr_bench") as resolubilidad, \
                 mock.patch.object(bench_niebla, "correr_bench") as niebla, \
                 mock.patch("sys.argv", ["main.py", "--bench"]), \
                 _sin_red_ni_vista(), contextlib.redirect_stdout(io.StringIO()):
             codigo = main.main()
         self.assertEqual(codigo, 0)
-        for medicion in (persistencia, ciclo, resolubilidad):
+        for medicion in (persistencia, ciclo, cazador, resolubilidad):
             medicion.assert_called_once_with()
         niebla.assert_called_once_with()
 

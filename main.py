@@ -91,7 +91,7 @@ def main():
     parser.add_argument(
         "--bench",
         action="store_true",
-        help="Ejecuta las mediciones de persistencia, ciclo de eventos, resolubilidad y niebla de guerra / «ir a»",
+        help="Ejecuta las mediciones de persistencia, ciclo de eventos, cazador, resolubilidad y niebla de guerra / «ir a»",
     )
     parser.add_argument(
         "--verificar",
@@ -164,12 +164,15 @@ def main():
     if argumentos.bench:
         from tests.bench_personaD import correr_bench as bench_persistencia
         from tests.bench_ciclo import correr_bench as bench_ciclo
+        from tests.bench_cazador import correr_bench as bench_cazador
         from tests.bench_resolubilidad import correr_bench as bench_resolubilidad
         from tests.bench_niebla import correr_bench as bench_niebla
 
         bench_persistencia()
         print()
         bench_ciclo()
+        print()
+        bench_cazador()
         print()
         bench_resolubilidad()
         print()
