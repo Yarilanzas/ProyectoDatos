@@ -91,7 +91,7 @@ def main():
     parser.add_argument(
         "--bench",
         action="store_true",
-        help="Ejecuta el benchmark de persistencia",
+        help="Ejecuta las mediciones de persistencia, ciclo de eventos, resolubilidad y niebla de guerra / «ir a»",
     )
     parser.add_argument(
         "--verificar",

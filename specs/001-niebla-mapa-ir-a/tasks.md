@@ -312,8 +312,8 @@ T084, T085, T091 a T094, T096, T097, T121 y T124 hechas; suite completa en verde
 - [X] T109 Correr M4 con `primer_paso` real y guardar el resultado, marcado como provisional. Medir con y sin un `EspacioBusqueda` reutilizado por viaje (parámetro `espacio` de `primer_paso`). Ya no está bloqueada: Persona A subió `Modelo/BusquedaRuta.py`. Si no cumple, corregir el diseño o el documento (R9). Depende de T062 y T107. Atiende: FR-024, PR-15. Archivo: resultados_bench_niebla.txt.
 - [ ] T110 [PERSONAS: curso, publicación de la cripta de referencia] Agregar a M4 el mapa conocido completo de la cripta de referencia y dar el veredicto definitivo de §6.1. Sus datos se obtienen de la fuente o quedan en `tests/` (Principio IV). Depende de T109. Atiende: FR-024, PR-15. Archivo: tests/bench_niebla.py.
 
-**Punto de control 6**: `python main.py --bench` genera `resultados_bench_niebla.txt`, con M1, M2, M3, M5 y M6 medidas, y M4
-como provisional o `pendiente BusquedaRuta.py`. **El límite de §6.1 no se da por cumplido hasta T110.**
+**Punto de control 6**: `python main.py --bench` genera `resultados_bench_niebla.txt`, con M1 a M6 medidas y M4
+PROVISIONAL (mapas sintéticos; §6.1 sin veredicto definitivo hasta T110). **El límite de §6.1 no se da por cumplido hasta T110.**
 
 ---
 
@@ -380,7 +380,7 @@ T074 (exportar/restaurar) ─ T119 (copia, serialización y lotes reversibles, p
 | T002, T006 a T012 | Quien implemente §3.1 | Capacidad de terreno y costos | `costo_salida` sigue en 100 y esta capacidad continúa |
 | T004 | Cada persona del grupo | Sus notas de prompts (fecha, modelo, prompt textual, para qué se usó) para armar `PROMPTS_LLM.md` | Falta parte del registro del Principio XI |
 | T061 | Grupo | P-05 (✅ confirmada por Personas A y B) | Se mantiene la lectura del plan |
-| T062 a T065, T109 | Persona A | Que suba `Modelo/ColaPrioridad.py` (miércoles 11) y `Modelo/BusquedaRuta.py` (jueves 12) (D-PEND-01 resuelta con la opción A) | `ir a` no funciona en el juego real |
+| T062 a T065, T109 | Persona A | ✅ **Resuelta**: Persona A subió `Modelo/ColaPrioridad.py` y `Modelo/BusquedaRuta.py` (D-PEND-01 resuelta con la opción A) | Nada: T062 a T065 y T109 están hechas |
 | T076 | Persona D | Fórmula final de `_inicio_salas` y contenido de la línea de tiempo, en su plan (spec 004). El orden ya está acordado (P-10) | La línea de tiempo se trata como bloque opaco con su largo |
 | T098 | Personas A y D | Destino de los archivos versionados (Persona B está de acuerdo en retirarlos) | Quedan archivos obsoletos en el repositorio |
 | T110 | Curso | Publicación de la cripta de referencia | §6.1 queda sin veredicto definitivo |
