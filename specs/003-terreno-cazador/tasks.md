@@ -175,16 +175,16 @@ Proyecto único MVC en la raíz: reglas en `Modelo/`, pruebas y bench en `tests/
 
 **Independent Test**: correr `python main.py --bench` y revisar los archivos de resultados.
 
-- [ ] T061 [US5] Crear `tests/bench_cazador.py` con la estructura de los bench existentes (resultados en `resultados_bench_cazador.txt`, equipo y versión de Python, mediana y p95) y registrarlo en `main.py` dentro de `--bench`, sin instanciar la vista (FR-032; Constitución II y VIII)
-- [ ] T062 [P] [US5] M1 en `tests/bench_cazador.py`: decisión de un cazador frente a 50 en la misma cripta (FR-030)
-- [ ] T063 [P] [US5] M2 en `tests/bench_cazador.py`: `ColaPrioridad` frente a la agenda y a la búsqueda lineal del mínimo, regiones de 10 a 10 000 salas (FR-033)
-- [ ] T064 [P] [US5] M3 en `tests/bench_cazador.py`: campo compartido frente a individual con k ∈ {1, 2, 5, 10, 25, 50} y rango pequeño y grande, puertas estables; reportar el k* medido (FR-030, FR-032)
-- [ ] T065 [P] [US5] M4 en `tests/bench_cazador.py`: 50 cazadores activados antes de medir, en tres escenarios: puertas estables, puertas que cambian con frecuencia y recalcular siempre desde cero; mediana, p95, búsquedas hechas y si cumple < 20 ms (FR-030, FR-031, FR-032)
-- [ ] T066 [P] [US5] M5 en `tests/bench_cazador.py`: criptas sintéticas deterministas por semilla (enunciado §6.3), del generador de Persona B (tests/generador_criptas.py), usado mediante tests/utiles_terreno.py (T003), de 10², 10³, 10⁴ y 10⁵ salas con el mismo rango y la misma posición relativa; la más grande ≤ 1,5 × la más pequeña; incluir el control con listas nuevas por búsqueda (FR-033, SC-007)
-- [ ] T067 [P] [US5] M6 en `tests/bench_cazador.py`: rango pequeño frente a grande en la misma cripta (FR-033)
-- [ ] T068 [P] [US5] M7 en `tests/bench_cazador.py`: 50 cazadores activos en la cripta de referencia; ciclo completo, mediana y p95 < 20 ms (FR-030, SC-004)
-- [ ] T069 [US5] M8 «después»: repetir `bench_agenda` de `tests/bench_motor.py` con la carga nueva (intervalos variables por costo) y guardar en `resultados_bench_agenda_despues.txt` junto a la comparación con T002 (FR-022, FR-032; enunciado §5.6)
-- [ ] T070 [US5] Con M3 y M4, confirmar o invertir la estrategia del juego en el lugar único de T048 y registrar los números y la conclusión en `specs/003-terreno-cazador/research.md` (R4 y R5) para el Documento de Decisiones (FR-030, FR-031, FR-032; Constitución VIII)
+- [x] T061 [US5] Crear `tests/bench_cazador.py` con la estructura de los bench existentes (resultados en `resultados_bench_cazador.txt`, equipo y versión de Python, mediana y p95) y registrarlo en `main.py` dentro de `--bench`, sin instanciar la vista (FR-032; Constitución II y VIII)
+- [x] T062 [P] [US5] M1 en `tests/bench_cazador.py`: decisión de un cazador frente a 50 en la misma cripta (FR-030)
+- [x] T063 [P] [US5] M2 en `tests/bench_cazador.py`: `ColaPrioridad` frente a la agenda y a la búsqueda lineal del mínimo, regiones de 10 a 10 000 salas (FR-033)
+- [x] T064 [P] [US5] M3 en `tests/bench_cazador.py`: campo compartido frente a individual con k ∈ {1, 2, 5, 10, 25, 50} y rango pequeño y grande, puertas estables; reportar el k* medido (FR-030, FR-032)
+- [x] T065 [P] [US5] M4 en `tests/bench_cazador.py`: 50 cazadores activados antes de medir, en tres escenarios: puertas estables, puertas que cambian con frecuencia y recalcular siempre desde cero; mediana, p95, búsquedas hechas y si cumple < 20 ms (FR-030, FR-031, FR-032)
+- [x] T066 [P] [US5] M5 en `tests/bench_cazador.py`: criptas sintéticas deterministas por semilla (enunciado §6.3), del generador de Persona B (tests/generador_criptas.py), usado mediante tests/utiles_terreno.py (T003), de 10², 10³, 10⁴ y 10⁵ salas con el mismo rango y la misma posición relativa; la más grande ≤ 1,5 × la más pequeña; incluir el control con listas nuevas por búsqueda (FR-033, SC-007)
+- [x] T067 [P] [US5] M6 en `tests/bench_cazador.py`: rango pequeño frente a grande en la misma cripta (FR-033)
+- [x] T068 [P] [US5] M7 en `tests/bench_cazador.py`: 50 cazadores activos en la cripta de referencia; ciclo completo, mediana y p95 < 20 ms (FR-030, SC-004)
+- [x] T069 [US5] M8 «después»: repetir `bench_agenda` de `tests/bench_motor.py` con la carga nueva (intervalos variables por costo) y guardar en `resultados_bench_agenda_despues.txt` junto a la comparación con T002 (FR-022, FR-032; enunciado §5.6)
+- [x] T070 [US5] Con M3 y M4, confirmar o invertir la estrategia del juego en el lugar único de T048 y registrar los números y la conclusión en `specs/003-terreno-cazador/research.md` (R4 y R5) para el Documento de Decisiones (FR-030, FR-031, FR-032; Constitución VIII)
 
 **Checkpoint**: FR-030 a FR-033 medidos y reproducibles.
 
