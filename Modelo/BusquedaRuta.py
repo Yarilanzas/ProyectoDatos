@@ -17,6 +17,20 @@ class EspacioBusqueda:
     | reiniciar     | O(1)        |
     | validar       | O(1)        |
 
+    Campos (specs/003-terreno-cazador/data-model.md §4.3; n salas):
+
+    | Campo                    | Contenido                                              | Complejidad               |
+    |--------------------------|--------------------------------------------------------|---------------------------|
+    | dist, primero, epoca     | Listas de tamaño n (research R2)                       | O(n) memoria al crearlo   |
+    | epoca_actual             | Entero; se incrementa en cada búsqueda                 | O(1)                      |
+    | cola                     | Una ``ColaPrioridad`` reutilizable                     | O(1) para vaciarla        |
+    | sala                     | Lista de tamaño n con la sala de cada ordinal; vale    | O(n) memoria al crearlo   |
+    |                          | solo si su ``epoca`` coincide con ``epoca_actual``     |                           |
+
+    Sin espacio, ``primer_paso`` y ``campo_hacia`` crean uno por llamada: O(n) por llamada (lo que hace «ir a»). Con
+    espacio, el motor guarda uno persistente para los cazadores, creado al iniciar o cargar la partida junto con
+    ``GrafoCripta``: la decisión del cazador nunca paga el O(n) de creación (FR-033).
+
     Un espacio solo sirve para grafos con la misma ``cantidad_salas`` con que se creó. Todo su estado cuelga de la
     instancia, nunca del módulo (contrato con la línea de tiempo, §1).
     """
@@ -82,6 +96,8 @@ def primer_paso(grafo, origen, destino, limite=None, espacio=None):
     | con ``espacio``  | O((|R| + |E_R|) log |E_R|)                                         |
 
     R son las salas con distancia <= ``limite`` desde ``origen`` (o hasta extraer ``destino``) y E_R sus salidas.
+    Es la tabla de specs/003-terreno-cazador/data-model.md §4.1 (n salas, m salidas): sin ``limite``, R puede ser
+    toda la cripta y el costo es O((n + m) log m). Es la referencia desde cero del cazador (FR-028).
     """
     # Se importa aquí para evitar un import circular: Modelo.rutas_ir_a delega en este módulo.
     from Modelo.rutas_ir_a import Paso
@@ -158,7 +174,8 @@ def campo_hacia(grafo, destino, cota, espacio=None):
     | sin ``espacio``  | O(n) para crearlo, más lo de abajo                                       |
     | con ``espacio``  | O((|R| + |E_R|) log |E_R|)                                               |
 
-    R son las salas a distancia <= ``cota`` hacia ``destino`` y E_R las salidas que llegan a ellas.
+    R son las salas a distancia <= ``cota`` hacia ``destino`` y E_R las salidas que llegan a ellas (en
+    specs/003-terreno-cazador/data-model.md §4.2, R^rev y E_R^rev): O((|R^rev| + |E_R^rev|) log |E_R^rev|).
     """
     if espacio is None:
         espacio = EspacioBusqueda(grafo.cantidad_salas)

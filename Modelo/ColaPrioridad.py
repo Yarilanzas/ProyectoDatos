@@ -17,7 +17,20 @@ class ColaPrioridad:
     | vaciar           | O(1)        |
     | len              | O(1)        |
 
-    t es la cantidad de entradas en la cola. No guarda estado fuera de la instancia (Principio I).
+    Tabla de specs/003-terreno-cazador/data-model.md §3, con la notación de ese documento: n salas, m salidas,
+    R la región dentro de la cota de la búsqueda y E_R sus salidas.
+
+    | Operación (data-model §3)                    | Complejidad                 |
+    |----------------------------------------------|-----------------------------|
+    | insertar(distancia, ordinal)                 | O(log t)                    |
+    | extraer_minimo() → (distancia, ordinal)      | O(log t)                    |
+    | vacia()                                      | O(1)                        |
+    | vaciar()                                     | O(1) (reasigna la lista)    |
+
+    t es la cantidad de entradas en la cola, ≤ |E_R| + 1 en una búsqueda (una por relajación más el origen). Las
+    entradas con distancia mayor que la vigente de su ordinal se descartan al extraerlas. El orden entre claves
+    iguales es determinista (por ordinal) y no define la decisión (research R6). No guarda estado fuera de la
+    instancia (Principio I).
     """
 
     def __init__(self):

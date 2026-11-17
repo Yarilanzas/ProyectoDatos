@@ -26,6 +26,19 @@ class GrafoCripta:
     | entrantes(sala)         | O(ent(s))   |
     | memoria                 | O(n + m)    |
 
+    Tabla de specs/003-terreno-cazador/data-model.md §2 (n salas, m salidas, deg(u) salidas de u):
+
+    | Miembro (data-model §2) | Contenido                                                       | Complejidad              |
+    |-------------------------|-----------------------------------------------------------------|--------------------------|
+    | cantidad_salas          | n                                                               | O(1)                     |
+    | ordinal(sala)           | Ordinal propio de ``GrafoCripta``, en un atributo de la sala     | O(1)                     |
+    | aristas(sala)           | (dirección, destino, costo) por cada salida abierta de la sala  | O(deg)                   |
+    | entrantes(sala)         | (dirección, origen, costo) por cada salida abierta w→sala, con   | O(grado de entrada)      |
+    |                         | el costo y el estado de esa salida                              |                          |
+    | lista de entrantes      | Por ordinal, pares (origen, salida)                             | O(n + m) memoria, una vez|
+
+    Construcción: al iniciar o cargar la partida, O(n + m), una sola vez.
+
     ``destino_de(salida)`` devuelve la sala destino de una salida o ``None`` (en el juego, ``motor._destino``) y
     ``costo_de(salida)`` su costo (en el juego, ``motor.costo_salida``, que vale 100 si la salida no lo declara).
     """
