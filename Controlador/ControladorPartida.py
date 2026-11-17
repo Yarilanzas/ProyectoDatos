@@ -85,19 +85,25 @@ def guardar_motor(motor, ruta, gestor):
 
 
 def _misma_ruta(ruta_a, ruta_b):
-    # normcase: en Windows X.LOG y x.log son el mismo archivo
-    return os.path.normcase(os.path.abspath(ruta_a)) == os.path.normcase(os.path.abspath(ruta_b))
+    # rutas equivalentes, no solo texto igual (contracts/comandos.md): normcase + abspath (en Windows X.LOG y
+    # x.log son el mismo archivo; ./g y g también) y, si ambos existen, samefile (p. ej. un enlace duro)
+    if os.path.normcase(os.path.abspath(ruta_a)) == os.path.normcase(os.path.abspath(ruta_b)):
+        return True
+    try:
+        return os.path.exists(ruta_a) and os.path.exists(ruta_b) and os.path.samefile(ruta_a, ruta_b)
+    except OSError:
+        return False
 
 
 def _rechazar_bitacora_del_guardado(ruta_bitacora, ruta_guardado):
-    """La bitácora activa no puede ser la copia de bitácora de un guardado (`<guardado>.log`): `@cargar`
-    asume que esa copia termina en el guardado. Error de uso (FR-017, pedido de Persona D, FR-030 de la spec
-    004, contracts/comandos.md). ValueError: main.py lo muestra como «! Error: ...» con código 1 al cargar,
-    y en la partida el comando se rechaza sin cerrar el juego."""
-    copia = ruta_bitacora_de(ruta_guardado)
-    if _misma_ruta(ruta_bitacora, copia):
-        raise ValueError(f"la bitácora no puede ser {copia}, que es la copia de bitácora de la partida "
-                         "guardada; use otra con --bitacora")
+    """La bitácora activa no puede ser ni el archivo de partida (lo sobrescribiría, hallazgo H2 de Persona D)
+    ni su copia de bitácora `<guardado>.log` (`@cargar` asume que esa copia termina en el guardado). Error de
+    uso (FR-017, FR-030 de la spec 004, contracts/comandos.md). ValueError: main.py lo muestra como
+    «! Error: ...» con código 1 al cargar, y en la partida el comando se rechaza sin cerrar el juego."""
+    for prohibida in (ruta_guardado, ruta_bitacora_de(ruta_guardado)):
+        if _misma_ruta(ruta_bitacora, prohibida):
+            raise ValueError(f"la bitácora no puede ser {prohibida}, que es la partida guardada o su copia de "
+                             "bitácora; use otra con --bitacora")
 
 
 def _texto_rechazo_ir(rechazo):

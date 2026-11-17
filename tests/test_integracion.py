@@ -339,6 +339,60 @@ class PruebasGuardado(BaseIntegracion):
         with open(copia, "rb") as archivo:
             self.assertEqual(archivo.read(), antes)
 
+    def main_cargar_con_bitacora(self, ruta_cargar, ruta_bitacora):
+        # T126: corre main.main() con --cargar y --bitacora, sin entrada; devuelve (código, salida)
+        import contextlib
+        import io
+        import sys
+        from unittest import mock
+        import main
+        from Vista.VistaConsola import VistaConsola
+
+        def sin_entrada(_mensaje):
+            raise EOFError
+
+        argumentos = ["main.py", "--offline", self.paquete,
+                      "--datos-locales", os.path.join(self.carpeta.name, "datos"),
+                      "--puntajes", os.path.join(self.carpeta.name, "puntajes.json"),
+                      "--cargar", ruta_cargar, "--bitacora", ruta_bitacora]
+        salida = io.StringIO()
+        with mock.patch.object(main, "VistaConsola", lambda: VistaConsola(entrada=sin_entrada)), \
+                mock.patch.object(main, "configurar_logging", lambda *a, **k: None), \
+                mock.patch.object(sys, "argv", argumentos), contextlib.redirect_stdout(salida):
+            codigo = main.main()
+        return codigo, salida.getvalue()
+
+    def assertMainRechazaBitacoraIgualAlGuardado(self, ruta_cargar, ruta_bitacora):
+        # T126 (hallazgo H2 de Persona D): --cargar G --bitacora G da código 1 y G queda byte por byte igual
+        self.guardar_partida_jugada()
+        with open(self.ruta_guardado, "rb") as archivo:
+            guardado = archivo.read()
+        with open(ruta_bitacora_de(self.ruta_guardado), "rb") as archivo:
+            copia = archivo.read()
+        self.assertEqual(guardado[:4], b"CRPT")  # un guardado real
+
+        codigo, texto = self.main_cargar_con_bitacora(ruta_cargar, ruta_bitacora)
+
+        self.assertEqual(codigo, 1)
+        self.assertTrue(texto.startswith("! Error: "), texto)
+        self.assertNotIn("=== CRIPTA ===", texto)  # no se llegó a jugar
+        self.assertEqual(os.path.getsize(self.ruta_guardado), len(guardado))
+        with open(self.ruta_guardado, "rb") as archivo:
+            self.assertEqual(archivo.read(), guardado)
+        with open(ruta_bitacora_de(self.ruta_guardado), "rb") as archivo:
+            self.assertEqual(archivo.read(), copia)
+
+    def test_fr017_main_cargar_con_bitacora_igual_al_guardado_da_codigo_1(self):
+        self.assertMainRechazaBitacoraIgualAlGuardado(self.ruta_guardado, self.ruta_guardado)
+
+    def test_fr017_main_cargar_con_bitacora_igual_al_guardado_escrito_distinto_da_codigo_1(self):
+        anterior = os.getcwd()
+        os.chdir(self.carpeta.name)
+        try:  # se vuelve antes de tearDown, que borra la carpeta
+            self.assertMainRechazaBitacoraIgualAlGuardado("partida.cripta", os.path.join(".", "partida.cripta"))
+        finally:
+            os.chdir(anterior)
+
     def test_cargar_detecta_cripta_incompatible(self):
         self.guardar_partida_jugada()
         crear_paquete_offline(self.paquete, version_cripta="v2")

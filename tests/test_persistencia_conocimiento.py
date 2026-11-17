@@ -831,6 +831,113 @@ class TestRiesgosDelReplay(BaseReplay):
         self.assertEqual(self.replay("partida.log").obtener_estado_resumen(), esperado)
 
 
+class TestBitacoraIgualAlGuardado(BaseReplay):
+
+    # T126 (hallazgo H2 de Persona D): `--bitacora` igual al propio guardado también es un error de uso.
+    # Antes, `--cargar G --bitacora G` copiaba G.log encima de G. Rutas equivalentes, no solo texto igual
+    # (contracts/comandos.md). El código 1 de main se prueba en tests/test_integracion.py.
+
+    def leer_bytes(self, ruta):
+        with open(ruta, "rb") as archivo:
+            return archivo.read()
+
+    def guardado_real(self):
+        # Juega y guarda prueba.cripta (CRPT 3) con su prueba.cripta.log; devuelve los bytes de ambos.
+        self.partida(mapa_antorcha(), CONTENIDO_ANTORCHA)
+        primera = self.controlador_nuevo("partida.log")
+        primera.nueva_partida(CRIPTA_NIEBLA, 7)
+        self.jugar(primera, ANTES_ANTORCHA)
+        self.assertTrue(primera.guardar(self.ruta()))
+        primera._cerrar()
+        guardado = self.leer_bytes(self.ruta())
+        self.assertEqual(guardado[:4], b"CRPT")  # es un guardado real, no una bitácora
+        return guardado, self.leer_bytes(self.ruta("prueba.cripta.log"))
+
+    def en_la_carpeta(self):
+        # para probar rutas relativas: el directorio actual pasa a ser la carpeta de la prueba
+        anterior = os.getcwd()
+        os.chdir(self.carpeta)
+        self.addCleanup(os.chdir, anterior)
+
+    def assertCargaRechazada(self, ruta_bitacora, ruta_cargar=None, relativa=False):
+        from Controlador.ControladorPartida import ControladorPartida
+        from tests.test_integracion import VistaFalsa
+        guardado, copia = self.guardado_real()
+        if relativa:
+            self.en_la_carpeta()  # después de guardado_real, que crea la carpeta
+        ruta_bitacora = ruta_bitacora(self) if callable(ruta_bitacora) else ruta_bitacora
+        segunda = ControladorPartida(self.gestor_nuevo(), VistaFalsa(), ruta_bitacora)
+        self.addCleanup(segunda._cerrar)
+        with self.assertRaises(ValueError):
+            segunda.cargar(ruta_cargar or self.ruta())
+        self.assertIsNone(segunda.motor)  # no se cargó nada
+        self.assertIsNone(segunda.bitacora)  # ni se abrió la bitácora
+        despues = self.leer_bytes(self.ruta())
+        self.assertEqual(len(despues), len(guardado))  # el guardado queda byte por byte igual
+        self.assertEqual(despues, guardado)
+        self.assertEqual(self.leer_bytes(self.ruta("prueba.cripta.log")), copia)
+
+    def test_fr017_cargar_con_la_bitacora_igual_al_guardado_se_rechaza(self):
+        # el caso de D: --cargar G --bitacora G
+        self.assertCargaRechazada(lambda prueba: prueba.ruta())
+
+    @unittest.skipUnless(os.path.normcase("A") == "a", "solo donde las rutas no distinguen mayúsculas")
+    def test_fr017_cargar_con_el_guardado_en_mayusculas_se_rechaza(self):
+        self.assertCargaRechazada(lambda prueba: prueba.ruta("PRUEBA.CRIPTA"))
+
+    def test_fr017_cargar_con_el_guardado_con_punto_barra_se_rechaza(self):
+        self.assertCargaRechazada(os.path.join(".", "prueba.cripta"), "prueba.cripta", relativa=True)
+
+    def test_fr017_cargar_con_el_guardado_relativo_frente_a_absoluto_se_rechaza(self):
+        self.assertCargaRechazada("prueba.cripta", relativa=True)
+
+    def test_fr017_cargar_con_el_guardado_absoluto_frente_a_relativo_se_rechaza(self):
+        self.assertCargaRechazada(lambda prueba: prueba.ruta(), "prueba.cripta", relativa=True)
+
+    def test_fr017_cargar_con_un_enlace_duro_al_guardado_se_rechaza(self):
+        # mismo archivo con otro nombre: solo os.path.samefile lo detecta
+        guardado, copia = self.guardado_real()
+        enlace = self.ruta("enlace.cripta")
+        try:
+            os.link(self.ruta(), enlace)
+        except (OSError, AttributeError) as error:
+            self.skipTest(f"el sistema de archivos no admite enlaces duros: {error}")
+        segunda = self.controlador_nuevo("enlace.cripta")
+        with self.assertRaises(ValueError):
+            segunda.cargar(self.ruta())
+        self.assertIsNone(segunda.motor)
+        self.assertEqual(self.leer_bytes(self.ruta()), guardado)
+        self.assertEqual(self.leer_bytes(self.ruta("prueba.cripta.log")), copia)
+
+    def test_fr017_guardar_con_la_bitacora_igual_al_destino_se_rechaza_y_la_partida_sigue(self):
+        self.partida(mapa_antorcha(), CONTENIDO_ANTORCHA)
+        controlador = self.controlador_nuevo("prueba.cripta")  # la bitácora activa es el destino
+        controlador.nueva_partida(CRIPTA_NIEBLA, 7)
+        self.jugar(controlador, ANTES_ANTORCHA)
+        antes_log = self.leer_bytes(self.ruta())
+        reloj = controlador.motor.reloj
+        try:
+            controlador.guardar(self.ruta())
+        except ValueError:
+            pass  # error de uso, lo esperado
+        except OSError as error:
+            # sin el rechazo, en Windows reemplazar la bitácora abierta falla con PermissionError
+            self.fail(f"guardar no se rechazó como error de uso: {error!r}")
+        else:
+            self.fail("guardar no se rechazó: ValueError no lanzado")
+        self.assertEqual(self.leer_bytes(self.ruta()), antes_log)  # no se escribió la partida encima
+        self.assertFalse(os.path.exists(self.ruta("prueba.cripta.log")))  # ni su bitácora
+        self.assertEqual(controlador.motor.reloj, reloj)
+
+        # por el comando: muestra el error y la partida continúa
+        self.assertTrue(controlador.ejecutar(f"guardar {self.ruta()}"))
+        nombre, _ = controlador.vista.lineas[-1]
+        self.assertEqual(nombre, "mostrar_error")
+        self.assertEqual(self.leer_bytes(self.ruta()), antes_log)
+        self.jugar(controlador, ["n"])
+        self.assertTrue(controlador.guardar(self.ruta("otro.cripta")))
+
+
 # T122: disposición final del CRPT 3 cerrada por Persona D (contracts/formato-partida.md, FR-016, PR-05).
 
 class TestDisposicionCrpt3(unittest.TestCase):
