@@ -737,6 +737,8 @@ Mapa conocido:
 - El azar y la `secuencia` no se ven por consola. Los comparan las pruebas automáticas, a través del resumen del
   motor.
 
+Repetido el 2026-11-17 con el main.py posterior a los cambios de la spec 004 (cargar con línea de tiempo): mismo resultado en todos los puntos, con el paquete offline presente.
+
 Respaldo automático:
 
 - `tests/test_persistencia_conocimiento.py::test_fr015_sc003_escenario_us5_1_el_mapa_conocido_es_identico`
