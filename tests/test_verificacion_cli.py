@@ -5,6 +5,7 @@ import contextlib
 import io
 import json
 import os
+import shutil
 import sys
 import tempfile
 import unittest
@@ -560,9 +561,16 @@ class PruebasForzarCli(unittest.TestCase):
 
     def _sin_verificar(self, *argumentos):
         """Corre con datos locales nuevos (sin caché de llaves) contando las solicitudes: si algo verificara,
-        tendría que pedir /llaves."""
+        tendría que pedir /llaves. Al cargar una partida con su línea de tiempo (spec 004, T085) la carpeta nueva lleva lo
+        que la partida ya había guardado en disco (esqueleto y contenido de las salas), porque reproducir el guion no
+        puede pedir nada a la red; lo único que no se copia es la caché de llaves."""
         FuenteOfflineContada.rutas = []
         datos = os.path.join(self.temporal.name, f"datos_{len(os.listdir(self.temporal.name))}")
+        if "--cargar" in argumentos:
+            shutil.copytree(self.datos, datos)
+            for nombre in os.listdir(datos):
+                if nombre.startswith("llaves_"):
+                    os.remove(os.path.join(datos, nombre))
         with mock.patch.object(main, "FuenteDatosOffline", FuenteOfflineContada):
             codigo, texto = self.correr(self.paquete_nr, ["salir"], "--datos-locales", datos, *argumentos)
         pedidas = [r for r in FuenteOfflineContada.rutas if r.endswith("/llaves")]

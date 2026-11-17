@@ -7,8 +7,9 @@ import os
 import random
 import shutil
 
-from Bitacora.BitacoraPartida import BitacoraPartida
+from Bitacora.BitacoraPartida import BitacoraPartida, leer_bitacora
 from Controlador.ObservadorLinea import ObservadorLinea
+from Controlador.ReconstructorLinea import ReconstructorLinea
 from Gestor.GestorHistorico import GestorHistorico, SinDatosParaHistoria
 from Gestor.PreparadorPartida import preparar_partida, cargar_partida, verificar_cripta
 from Modelo.LineaTiempo import ErrorReconstruccion, K_POR_OMISION, LineaTiempo, ReferenciaInvalida
@@ -27,8 +28,11 @@ CRITERIOS_INVENTARIO = ("peso", "valor", "nombre")
 ARCHIVO_GUARDADO = "partida.cripta"
 PUNTAJES_EN_PANTALLA = 10  # cuantos puntajes se muestran al terminar una partida o con el comando puntajes
 
-# errores esperables al guardar o cargar: se muestran al jugador sin cerrar el juego
-ERRORES_ARCHIVO = (VersionIncompatible, ValueError, RuntimeError, OSError)
+# errores esperables al guardar o cargar: se muestran al jugador sin cerrar el juego (SinDatosParaHistoria es un RuntimeError)
+ERRORES_ARCHIVO = (VersionIncompatible, ValueError, RuntimeError, OSError, ErrorReconstruccion)
+
+AVISO_SIN_BITACORA = "La partida no tiene bitácora: lo que se juegue ahora no se podrá reproducir con --replay"
+AVISO_BITACORA_AJENA = "La bitácora no corresponde a esta partida; no se usará"
 
 
 class CriptaNoResoluble(Exception):
@@ -52,9 +56,10 @@ def ruta_bitacora_de(ruta_guardado):
     return ruta_guardado + ".log"
 
 
-def guardar_motor(motor, ruta, gestor):
+def guardar_motor(motor, ruta, gestor, linea=None):
     """Guarda el motor en `ruta` (CRPT 3), sin vista ni bitácora: lo usan `guardar` y la recarga del
-    --replay (FR-015, FR-017, PR-12).
+    --replay (FR-015, FR-017, PR-12). `linea` es el `RegistroLinea` del bloque de la línea de tiempo (FR-022); sin él (la
+    recarga del replay, el benchmark) el archivo lleva `largo línea = 0`.
 
     Si el motor viene de una partida cargada, su archivo se cierra antes de reemplazarlo (en Windows no se
     puede reemplazar un archivo abierto) y el motor queda leyendo las salas pendientes del archivo nuevo.
@@ -75,13 +80,20 @@ def guardar_motor(motor, ruta, gestor):
         guardar_partida(
             ruta, motor.cripta_id,
             gestor.version_cripta(motor.cripta_id), gestor.version_catalogo(),
-            motor.semilla, motor.reloj, registros, jugador, conocimiento=conocimiento,
+            motor.semilla, motor.reloj, registros, jugador, conocimiento=conocimiento, linea=linea,
         )
         if anterior is not None:
             ruta_lectura = ruta  # las salas pendientes ahora estan en el archivo nuevo
     finally:
         if ruta_lectura is not None:
             motor.restaurador = RestauradorPartida(ruta_lectura)
+
+
+def _cerrar_restaurador_de(motor):
+    # cierra el archivo del que se cargó un motor que no llegó a usarse (en Windows no se podría reemplazar ni borrar)
+    if motor.restaurador is not None:
+        motor.restaurador.cerrar()
+        motor.restaurador = None
 
 
 def _misma_ruta(ruta_a, ruta_b):
@@ -145,6 +157,7 @@ class ControladorPartida:
         self.k_linea = K_POR_OMISION
         self.linea = None
         self.observador = None
+        self._reconstructor = None  # dueño de las copias privadas de una partida cargada (ver `cargar`)
 
     # inicio de partida
 
@@ -191,30 +204,69 @@ class ControladorPartida:
         self.vista.mostrar_aviso(f"Partida nueva en {cripta_id} (semilla {semilla})")
 
     def cargar(self, ruta):
+        """Carga la partida de `ruta` con su línea de tiempo y la bitácora que la acompaña. **Es atómico** (hallazgo H1 de
+        la revisión T117, R8): todo se arma en variables locales y el controlador solo cambia al final; si algo falla (un
+        archivo dañado, una bitácora inválida, `SinDatosParaHistoria`, un guion que no coincide) el motor, la bitácora y la
+        línea que había quedan como estaban y se cierra solo lo nuevo.
+
+        1. `cargar_partida` valida versiones y crea el motor; 2. se revisa la copia de bitácora sin escribir nada;
+        3. `ReconstructorLinea.reconstruir` reproduce el guion y deja la época de esta carga (el punto del motor cargado y
+        la copia privada del archivo: no se llama a `registrar_carga` aparte); 4. recién entonces se cierra lo anterior y se
+        continúa la bitácora. El comando `cargar` adopta el K del archivo (FR-031)."""
         _rechazar_bitacora_del_guardado(self.ruta_bitacora, ruta)  # antes de cargar y de tocar la bitácora
         motor = cargar_partida(ruta, self.gestor)  # valida version de cripta y catalogo
 
+        reconstructor = None
+        try:
+            copia, avisos = self._revisar_bitacora(ruta, motor)  # sin escribir nada
+            reconstructor = ReconstructorLinea(self.gestor)
+            restaurador = motor.restaurador
+            linea = reconstructor.reconstruir(restaurador.leer_linea(), restaurador.encabezado,
+                                              restaurador.leer_jugador(), motor_cargado=motor, k=self.k_linea)
+        except BaseException:
+            if reconstructor is not None:
+                reconstructor.cerrar()
+            _cerrar_restaurador_de(motor)
+            raise
+
+        # desde aquí no se puede fallar sin perder la partida anterior: se cierra lo anterior y se asigna lo nuevo
         self._cerrar()
         self.motor = motor
-        self.bitacora = self._continuar_bitacora(ruta)
+        self.linea = linea
+        self.observador = reconstructor.observador
+        self._reconstructor = reconstructor
+        self.k_linea = linea.k  # con bloque de línea rige el K guardado; sin él, el de la ejecución
+        try:
+            self.bitacora = self._continuar_bitacora(copia)
+        except OSError as error:
+            self.bitacora = None
+            avisos = [f"No se pudo continuar la bitácora ({error}): lo que se juegue ahora no se podrá reproducir con --replay"]
+        for aviso in avisos:
+            self.vista.mostrar_aviso(aviso)
         self.vista.mostrar_aviso(f"Partida cargada desde {ruta}")
 
-    def _continuar_bitacora(self, ruta_guardado):
+    def _revisar_bitacora(self, ruta_guardado, motor):
+        """(copia a continuar o None, avisos) para la partida cargada. Solo lee: `VersionIncompatible` si la copia de
+        bitácora está dañada o es de otra versión. No toca la bitácora en uso."""
         copia = ruta_bitacora_de(ruta_guardado)
 
         if not os.path.exists(copia):
-            self.vista.mostrar_aviso("La partida no tiene bitácora: lo que se juegue ahora no se podrá reproducir con --replay")
+            return None, [AVISO_SIN_BITACORA]
+
+        encabezado, _ = leer_bitacora(copia)  # lanza VersionIncompatible si no es valida
+
+        if encabezado.cripta_id != motor.cripta_id or encabezado.semilla != motor.semilla:
+            return None, [AVISO_BITACORA_AJENA]
+
+        return copia, []
+
+    def _continuar_bitacora(self, copia):
+        if copia is None:
             return None
 
         # se continua sobre una copia, asi la bitacora guardada no cambia (cargar ya rechazo que sean la misma)
         shutil.copyfile(copia, self.ruta_bitacora)
-
-        bitacora, encabezado = BitacoraPartida.continuar(self.ruta_bitacora)
-
-        if encabezado.cripta_id != self.motor.cripta_id or encabezado.semilla != self.motor.semilla:
-            bitacora.cerrar()
-            self.vista.mostrar_aviso("La bitácora no corresponde a esta partida; no se usará")
-            return None
+        bitacora, _ = BitacoraPartida.continuar(self.ruta_bitacora)
 
         # el --replay repite aqui la carga: guarda y vuelve a cargar el motor (FR-017, contracts/formato-bitacora.md)
         bitacora.marcar_carga()
@@ -230,7 +282,12 @@ class ControladorPartida:
             return False
 
         _rechazar_bitacora_del_guardado(self.ruta_bitacora, ruta)  # antes de escribir nada
-        guardar_motor(motor, ruta, self.gestor)
+        if self.linea is not None and not self.linea.sincronizada(motor):
+            # el motor avanzó sin avisar a la línea: su guion no llevaría a este estado y el archivo no se podría cargar
+            self.linea = self.observador = None
+            self.vista.mostrar_aviso("La línea de tiempo quedó desfasada: el comando historia no estará disponible")
+        linea = None if self.linea is None else self.linea.a_registro()  # el guion y K (FR-022)
+        guardar_motor(motor, ruta, self.gestor, linea=linea)
 
         if self.bitacora is not None:
             shutil.copyfile(self.ruta_bitacora, ruta_bitacora_de(ruta))
@@ -449,9 +506,20 @@ class ControladorPartida:
         self.vista.mostrar_puntajes(puntajes[:PUNTAJES_EN_PANTALLA], criterio)
 
     def _cerrar(self):
+        # la línea y sus copias privadas: primero se suelta el clon (en Windows no se borra un archivo abierto) y luego se
+        # borran las copias que la línea pidió borrar, las del observador y la carpeta del reconstructor
+        if self.linea is not None:
+            for ruta in self.linea.cerrar():
+                try:
+                    os.remove(ruta)
+                except OSError:
+                    pass
         if self.observador is not None:
             self.observador.cerrar()
-        self.linea = self.observador = None  # una partida cargada no tiene línea hasta T085
+        if self._reconstructor is not None:
+            self._reconstructor.cerrar()
+            self._reconstructor = None
+        self.linea = self.observador = None
         if self.bitacora is not None:
             self.bitacora.cerrar()
             self.bitacora = None

@@ -370,7 +370,7 @@ class BaseGuardado(BasePersistencia):
 
     def gestor_nuevo(self):
         return GestorDatos(FuenteDatosOffline(os.path.join(self.carpeta, "paquete")),
-                           ruta_base=os.path.join(self.carpeta, "cache_carga"), cache_size=25)
+                           ruta_base=os.path.join(self.carpeta, "cache"), cache_size=25)  # la carpeta de datos de la partida (T085)
 
     def guardar(self):
         self.assertTrue(self.controlador.guardar(self.ruta()))

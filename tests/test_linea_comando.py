@@ -143,16 +143,20 @@ class PruebasEnganche(BaseComando):
         self.assertIs(self.motor.ejecutar_accion.__func__, type(self.motor).ejecutar_accion)
         self.assertEqual(original.__name__, "ejecutar_accion")
 
-    def test_fr025_cerrar_cierra_la_linea_y_una_partida_cargada_no_tiene_historia_hasta_t085(self):
+    def test_fr025_cerrar_cierra_la_linea_y_una_partida_cargada_tiene_su_historia(self):
+        # desde T085 una partida cargada reconstruye su línea: `historia` responde y cerrar la suelta
         self.jugar(["esperar", "s"])
         ruta = os.path.join(self.partida.carpeta.name, "guardada.cripta")
         self.assertTrue(self.controlador.guardar(ruta))
+        self.addCleanup(self.controlador._cerrar)
         self.controlador.cargar(ruta)
-        self.assertIsNone(self.controlador.linea)
+        self.assertIsNotNone(self.controlador.linea)
         self.controlador.ejecutar("historia 0")
-        self.assertIn("La historia no está disponible en esta partida", mensajes(self.vista, "mostrar_aviso"))
+        self.assertEqual(len(mensajes(self.vista, "mostrar_resumen_historico")), 1)
+        self.assertNotIn("La historia no está disponible en esta partida", mensajes(self.vista, "mostrar_aviso"))
         self.controlador._cerrar()
         self.assertIsNone(self.controlador.observador)
+        self.assertIsNone(self.controlador.linea)
 
 
 class PruebasComandoHistoria(BaseComando):
