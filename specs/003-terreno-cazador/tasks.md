@@ -193,7 +193,7 @@ Proyecto único MVC en la raíz: reglas en `Modelo/`, pruebas y bench en `tests/
 ## Phase 8: Polish & Cross-Cutting Concerns
 
 - [x] T071 [P] Ayuda del juego en `Vista/VistaConsola.py` (`AYUDA`): explicar que cada salida tiene un costo que define cuánto se tarda en cruzarla y que el cazador persigue por la ruta más barata dentro de su rango (FR-029)
-- [ ] T072 [P] `README.md`: costo de las salidas (100 si falta), tiempo de movimiento y comportamiento del cazador; el README está en UTF-16 y se edita avisando al grupo (FR-029)
+- [x] T072 [P] `README.md`: costo de las salidas (100 si falta), tiempo de movimiento y comportamiento del cazador; el README está en UTF-16 y se edita avisando al grupo (FR-029)
 - [x] T073 [P] Docstrings de complejidad en `Modelo/ColaPrioridad.py`, `Modelo/BusquedaRuta.py` y `Modelo/GrafoCripta.py`, copiando las tablas de `data-model.md` (FR-033; Principio I)
 - [x] T074 Revisar en `tests/test_terreno.py` y `tests/test_cazador.py` que cada uno de los 7 casos de «Terreno y cazador» del Apéndice B tiene su prueba y cita su FR: T022, T023, T034, T035, T050, T051, T055 (FR-027, SC-001)
 - [ ] T075 Correr `python -m unittest discover -s tests -v` sobre `tests/` y dejarla al 100 % (FR-027; Constitución V)
