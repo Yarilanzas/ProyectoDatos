@@ -1013,6 +1013,8 @@ Dieron el mismo primer paso que la versión actual en 2800 casos (grilla y caden
 - **§6.1 NO se da por cumplido.** El veredicto definitivo queda pendiente de T110, que agregará a M4 el mapa conocido completo de la cripta de referencia cuando se publique.
 - **HIPÓTESIS** (research R9, M4): «con la cripta de referencia, el cálculo de un paso cumple el límite de 5 ms».
 
+**Confirmación de Persona A (2026-11-16), responsable de `Modelo/BusquedaRuta.py`.** La búsqueda ya corta al sacar el destino de la cola (`if ordinal == ordinal_destino:` devuelve el paso), así que no hay ahorro por ahí. El costo de la grilla de 2500 es el de un Dijkstra sin heurística con el destino lejano. Un A* lo reduciría, pero cambia el algoritmo y obliga a repetir las pruebas de desempate; por eso no entra antes de la entrega y la grilla de 2500 queda como prueba de estrés documentada, con su veredicto «no cumple». El criterio de §6.1 se mide en la cripta de referencia; según A, si la cripta real tiene 400 salas o menos, está dentro de los 5 ms. Esa es la lectura de A: nuestras mediciones son con mapas sintéticos y provisionales, y §6.1 sigue sin darse por cumplido hasta T110.
+
 ### Hipótesis abiertas de esta sección
 
 - Memoria del lote frente a cierres y copia (decisión 2).

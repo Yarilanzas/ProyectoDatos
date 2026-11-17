@@ -345,8 +345,11 @@ Las salidas de los dobles de prueba y el DTO actual no tienen el atributo, por e
   contrato compartido (`Salida`) sin ser su responsable.
 
 **Resuelto** (enunciado §3.1 y §4.1; P-02 del plan): el campo JSON se llama `costo`, es un entero mayor o igual que 1,
-vale 100 si la salida no lo declara y es el mismo en ambos sentidos. Con ese dominio se cumple la precondición de
-costos no negativos de la búsqueda. Quién agrega el campo y cambia `mover`: la capacidad de terreno y costos.
+vale 100 si la salida no lo declara; el enunciado §3.1 lo da por igual en ambos sentidos, pero la spec 003
+(aclaración del 2026-11-09, FR-003) lo trata como supuesto de los datos y no lo valida: cada actor, y la ruta de
+«ir a», usan el costo de la salida que se atraviesa. Persona A confirmó el 2026-11-16 que es la decisión definitiva.
+Con ese dominio se cumple la precondición de costos no negativos de la búsqueda. Quién agrega el campo y cambia
+`mover`: la capacidad de terreno y costos.
 
 ---
 
