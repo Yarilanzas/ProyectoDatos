@@ -509,14 +509,19 @@ class SesionLinea:
 
     `guardar_y_cargar()` guarda el motor, lo carga con un gestor nuevo sobre la misma carpeta de datos locales (como un
     proceso nuevo), hace la copia privada del archivo y avisa a la línea con `registrar_carga`. Desde ahí `motor` es el
-    motor cargado. `cerrar()` cierra los restauradores y borra la carpeta (también en Windows)."""
+    motor cargado. Con `registro=True` enciende en cada motor el registro de decisiones de los cazadores (003-T076) antes
+    de que la línea lo copie. `cerrar()` cierra los restauradores y borra la carpeta (también en Windows)."""
 
-    def __init__(self, k=3, semilla=3, pergaminos=0, huellas=True, **opciones):
+    def __init__(self, k=3, semilla=3, pergaminos=0, huellas=True, registro=False, **opciones):
         if pergaminos > 0 and "contenido" not in opciones:
             opciones["contenido"] = CONTENIDO_LINEA + [contenido_sala(1, objetos=(PERGAMINO,) * pergaminos)]
         self.partida = partida_linea(semilla=semilla, **opciones)
         self.motor = self.partida.motor
         self.motores = [self.motor]
+        self.registro = registro
+        if registro:
+            # el registro de decisiones de A (003-T076) se enciende ANTES de `iniciar` (y por tanto de clonar): el clon lo hereda
+            self.motor.activar_registro_decisiones()
         self.linea = LineaTiempo(k=k, gestor_historico=self.partida.nuevo_gestor_historico(),
                                  abrir_copia=RestauradorPartida)
         self.linea.iniciar(self.motor)
@@ -582,6 +587,8 @@ class SesionLinea:
         nuevo = cargar_partida(ruta, self.partida.nuevo_gestor(iniciado=False))
         copia = os.path.join(base, f"epoca_{numero}.cripta")
         shutil.copyfile(ruta, copia)
+        if self.registro:
+            nuevo.activar_registro_decisiones()   # el archivo no guarda el registro: se enciende antes de `registrar_carga`
         self.motor = nuevo
         self.motores.append(nuevo)
         self.cargas = numero
