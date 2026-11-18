@@ -972,7 +972,7 @@ M4 (`resultados_bench_cazador.txt`): 50 cazadores de rango 2000 en una cripta si
 >
 > • Las mediciones usan una cripta sintética provisional y un solo equipo.
 >
-> • Un cazador activo que está en una sala que el jugador ya visitó, pero donde ya no está, no sobrevive a guardar y cargar: el guardado restaura solo la sala del jugador y las demás se leen perezosas, así que ese cazador no existe ni actúa hasta que el jugador vuelve a esa sala. Se detectó con la prueba de equivalencia de guardado y carga (T058).
+> • Tras guardar y cargar, dos enemigos de salas distintas que actúan en el mismo instante pueden ejecutarse en otro orden que en la partida guardada (primero la sala del jugador, luego las demás por id), porque el formato CRPT 3 guarda el instante de cada enemigo pero no su secuencia. Resolverlo exigiría un formato nuevo.
 
 ## §5.3 — El mapa conocido
 
