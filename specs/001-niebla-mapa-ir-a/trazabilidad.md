@@ -98,9 +98,11 @@ Conciliación del 2026-11-16 entre las tareas de terreno y costos de esta capaci
 | SC-007 | PR-15 | T003, T104, T109, T110 | `tests/test_bench_niebla.py::test_sc007_pr15_t108_m4_con_y_sin_espacio_compara_contra_la_constante` (forma y veredicto, sin afirmar tiempos)<br>`tests/test_bench_niebla.py::test_sc007_pr15_t110_fila_de_la_cripta_real_con_veredicto_contra_la_constante`<br>`tests/test_bench_niebla.py::test_sc007_pr15_t110_elige_la_mas_grande_y_mide_solo_pares_alcanzables`<br>`tests/test_bench_niebla.py::test_sc007_pr15_t110_grafo_dirigido_excluye_la_puerta_cerrada`<br>`tests/test_bench_niebla.py::test_sc007_pr15_t110_sin_esqueleto_la_fila_dice_no_medido_y_no_falla`<br>`tests/test_bench_niebla.py::test_sc007_pr15_t110_el_bench_no_contiene_datos_de_la_cripta`<br>`tests/test_bench_niebla.py::test_sc007_pr15_t110_solo_lee_datos_locales`<br>`tests/test_bench_niebla.py::test_sc007_pr15_t110_corre_sin_red_ni_vista`<br>`tests/test_bench_niebla.py::test_sc007_pr15_t110_las_filas_de_referencia_van_despues_de_todas_las_sinteticas`<br>Medición M4: fila «referencia/paso» de [`resultados_bench_niebla.txt`](../../resultados_bench_niebla.txt) (ver abajo) | hecho: §6.1 cumple sobre la cripta sustituta ([DECISIONES.md, §6.1 en §5.3](../../Decisiones/DECISIONES.md)). Se usó como sustituta `cripta-02`, la mayor de las copias locales (HIPÓTESIS: la cripta de referencia del enunciado aún no está publicada); el veredicto definitivo queda pendiente de su publicación |
 
 **SC-007 y §6.1.** El límite es de 5 ms por paso «con el mapa conocido completo de la cripta de referencia». M4 mide
-la `primer_paso` real en el peor caso de un par por origen (hacia su destino alcanzable más lejano; SUPOSICIÓN: es el
-peor caso de ese origen) del mapa conocido completo de `cripta-02` (20 salas), leída de
-`datos_locales/esqueleto_cripta-02.json`. Filas «referencia/paso» de `resultados_bench_niebla.txt`:
+la `primer_paso` real en el peor caso del mapa conocido completo de `cripta-02` (20 salas), leída de
+`datos_locales/esqueleto_cripta-02.json`, con cribado y confirmación: los 325 pares alcanzables se miden con 1
+repetición y los 50 más lentos se confirman con la mediana de 7 (la fila dice «pares» y «confirmados»). Filas
+«referencia/paso» del `resultados_bench_niebla.txt` actual, que todavía son de la corrida con el método anterior (un par
+por origen, hacia su destino más lejano); se reemplazan al regenerar el archivo:
 
 ```text
 M4 referencia/paso  cripta=cripta-02 V=20 pasos=1 origenes=20 pares=20 peor=19->17 costo=1100 espacio=por llamada     0.0295 ms   cumple

@@ -501,10 +501,10 @@ def _mas_grande(carpeta=DATOS_LOCALES):
     return elegido
 
 
-def _mas_lejanos_json(esqueleto):
-    """[(origen, destino, costo)] por cada origen con algún destino alcanzable, en el orden del esqueleto: el destino
-    alcanzable de mayor costo acumulado (en empate, el de menor id). Cálculo independiente del bench: Bellman-Ford
-    sobre el JSON, por salidas abiertas, con el costo de cada salida (100 si no lo trae), sin `GrafoConocido`."""
+def _pares_json(esqueleto):
+    """[(origen, destino, costo)]: todos los pares distintos con ruta por salidas abiertas, en el orden del
+    esqueleto (origen y luego destino), con el costo acumulado mínimo (100 si la salida no trae costo). Cálculo
+    independiente del bench: Bellman-Ford sobre el JSON, sin `Conocimiento` ni `GrafoConocido`."""
     ids = [sala["id"] for sala in esqueleto]
     aristas = []
     for sala in esqueleto:
@@ -519,16 +519,18 @@ def _mas_lejanos_json(esqueleto):
             for a, b, costo in aristas:
                 if dist[a] is not None and (dist[b] is None or dist[a] + costo < dist[b]):
                     dist[b] = dist[a] + costo
-        elegido = None
         for indice in range(len(ids)):
-            if indice == inicio or dist[indice] is None:
-                continue
-            if (elegido is None or dist[indice] > dist[elegido]
-                    or (dist[indice] == dist[elegido] and ids[indice] < ids[elegido])):
-                elegido = indice
-        if elegido is not None:
-            resultado.append((ids[inicio], ids[elegido], dist[elegido]))
+            if indice != inicio and dist[indice] is not None:
+                resultado.append((ids[inicio], ids[indice], dist[indice]))
     return resultado
+
+
+def _origenes_con_pares(pares):
+    origenes = []
+    for origen, _, _ in pares:
+        if origen not in origenes:
+            origenes.append(origen)
+    return len(origenes)
 
 
 def _instantanea(carpeta):
@@ -550,8 +552,8 @@ def _salida_json(destino, cerrada=False, costo=None):
 
 
 # Mapa chico con costos variados. 4 -> 5 está cerrada: 5 solo se alcanza desde sí misma, así que ningún otro origen
-# la tiene como destino. 6 solo tiene una salida cerrada: no alcanza ninguna sala y se omite como origen.
-MAPA_LEJANOS = [
+# la tiene como destino. 6 solo tiene una salida cerrada: no alcanza ninguna sala y no aporta pares.
+MAPA_CHICO = [
     {"id": 1, "nombre": "a", "salidas": {"E": _salida_json(2, costo=1), "S": _salida_json(3, costo=10)}},
     {"id": 2, "nombre": "b", "salidas": {"O": _salida_json(1, costo=1), "E": _salida_json(4, costo=2)}},
     {"id": 3, "nombre": "c", "salidas": {"N": _salida_json(1, costo=1)}},
@@ -559,8 +561,9 @@ MAPA_LEJANOS = [
     {"id": 5, "nombre": "e", "salidas": {"O": _salida_json(4, costo=1)}},
     {"id": 6, "nombre": "f", "salidas": {"N": _salida_json(5, cerrada=True)}},
 ]
-# Calculado a mano: (origen, destino más lejano, costo acumulado). 6 no aparece: no alcanza ninguna sala.
-LEJANOS_ESPERADOS = [(1, 3, 10), (2, 3, 11), (3, 4, 4), (4, 3, 16), (5, 3, 17)]
+# Contado a mano: 1 a 4 alcanzan 3 salas cada una (nunca la 5 ni la 6), 5 alcanza 4 y 6 ninguna.
+PARES_MAPA_CHICO = 3 * 4 + 4
+ORIGENES_MAPA_CHICO = 5
 
 
 def _guardar_copia(carpeta, id_cripta, salas_json):
@@ -596,14 +599,9 @@ class TestM4Referencia(unittest.TestCase):
                 self.assertEqual(fila.valor("V"), len(esqueleto))
                 self.assertEqual(fila.valor("pasos"), 1)
                 self.assertEqual(fila.valor("espacio"), modo)
-                # Un par por origen con algún destino alcanzable (su destino más lejano), calculado aparte sobre
-                # el JSON; el peor par es uno de ellos y la fila trae su costo acumulado.
-                lejanos = _mas_lejanos_json(esqueleto)
-                self.assertEqual(fila.valor("origenes"), len(lejanos))
-                self.assertEqual(fila.valor("pares"), len(lejanos))
-                origen, destino = (int(parte) for parte in fila.valor("peor").split("->"))
-                self.assertNotEqual(origen, destino)
-                self.assertIn((origen, destino, fila.valor("costo")), lejanos)
+                # Todos los pares alcanzables, contados aparte sobre el JSON; se confirman min(K, pares). El peor
+                # par es uno de ellos y la fila trae su costo acumulado.
+                self._comprobar_cribado(fila, _pares_json(esqueleto))
                 # Veredicto con la única constante y la fila no es provisional.
                 self.assertEqual(fila.veredicto, bench_niebla.veredicto_paso(fila.ms))
                 with mock.patch.object(bench_niebla, "LIMITE_PASO_IR_A_MS", -1):
@@ -634,10 +632,10 @@ class TestM4Referencia(unittest.TestCase):
             self.assertEqual(_instantanea(carpeta), antes)
         self.assertEqual(fila.valor("cripta"), "cripta-grande")
         self.assertEqual(fila.valor("V"), 4)
-        # El grafo es fuertemente conexo salvo por la puerta cerrada: los 4 orígenes alcanzan algo, un par cada uno.
+        # El grafo es fuertemente conexo salvo por la puerta cerrada: los 4·3 pares siguen alcanzables.
         self.assertEqual(fila.valor("origenes"), 4)
-        self.assertEqual(fila.valor("pares"), 4)
-        self.assertEqual(fila.valor("pares"), len(_mas_lejanos_json(grande)))
+        self.assertEqual(fila.valor("pares"), 12)
+        self._comprobar_cribado(fila, _pares_json(grande))
         self.assertEqual(fila.nota, NOTA_REFERENCIA.format("cripta-grande", 4))
 
     def test_sc007_pr15_t110_grafo_dirigido_excluye_la_puerta_cerrada(self):
@@ -652,55 +650,70 @@ class TestM4Referencia(unittest.TestCase):
             fila = self._fila_unica(self._medir(carpeta))
         self.assertEqual(fila.valor("origenes"), 1)
         self.assertEqual(fila.valor("pares"), 1)
+        self.assertEqual(fila.valor("confirmados"), 1)
         self.assertEqual(fila.valor("peor"), "2->1")
         self.assertEqual(fila.valor("costo"), 100)
 
-    def test_sc007_pr15_t110_por_cada_origen_elige_el_destino_alcanzable_mas_lejano(self):
-        # (a) Mapa chico con costos variados y salidas cerradas: el destino de cada origen es el alcanzable de mayor
-        # costo acumulado, comparado con lo calculado a mano y con Bellman-Ford sobre el JSON. (b) La sala 6 no
-        # alcanza ninguna otra: se omite como origen, sin fallar.
-        calcular = getattr(bench_niebla, "destinos_mas_lejanos", None)
-        self.assertIsNotNone(calcular, "el bench no calcula el destino más lejano de cada origen")
-        self.assertEqual(_mas_lejanos_json(MAPA_LEJANOS), LEJANOS_ESPERADOS)
+    def _comprobar_cribado(self, fila, pares):
+        """La fila del cribado y confirmación frente a los pares ``[(origen, destino, costo)]`` contados aparte."""
+        k = getattr(bench_niebla, "CONFIRMADOS_M4_REFERENCIA", None)
+        self.assertIsNotNone(k, "falta la constante K de pares confirmados")
+        self.assertEqual(fila.valor("pares"), len(pares))
+        self.assertEqual(fila.valor("origenes"), _origenes_con_pares(pares))
+        self.assertEqual(fila.valor("confirmados"), min(k, len(pares)))
+        origen, destino = (int(parte) for parte in fila.valor("peor").split("->"))
+        self.assertIn((origen, destino, fila.valor("costo")), pares)
+        self.assertIsInstance(fila.ms, float, fila.texto())
+        self.assertEqual(fila.veredicto, bench_niebla.veredicto_paso(fila.ms))
+        self.assertIn("confirmados={}".format(fila.valor("confirmados")), fila.texto())
+
+    def test_sc007_pr15_t110_enumera_todos_los_pares_alcanzables(self):
+        # (a) Mapa chico con costos variados y puertas cerradas: los pares que enumera el bench (con las distancias
+        # de un Dijkstra completo por origen) son los del Bellman-Ford sobre el JSON, con el mismo costo. La sala 6
+        # no alcanza ninguna otra: no aporta pares y no falla.
+        enumerar = getattr(bench_niebla, "pares_alcanzables", None)
+        self.assertIsNotNone(enumerar, "el bench no enumera los pares alcanzables")
+        esperados = _pares_json(MAPA_CHICO)
+        self.assertEqual(len(esperados), PARES_MAPA_CHICO)
+        self.assertEqual(_origenes_con_pares(esperados), ORIGENES_MAPA_CHICO)
         with tempfile.TemporaryDirectory() as carpeta:
-            _guardar_copia(carpeta, "cripta-lejanos", MAPA_LEJANOS)
+            _guardar_copia(carpeta, "cripta-chica", MAPA_CHICO)
             _, grafo, salas = bench_niebla.preparar_m4_referencia(carpeta)
         for modo, espacio in (("por llamada", None), ("reutilizado", bench_niebla.EspacioBusqueda)):
             with self.subTest(espacio=modo):
                 reutilizado = None if espacio is None else espacio(grafo.cantidad_salas)
-                elegidos = calcular(grafo, salas, reutilizado)
-                self.assertEqual([(o.id, d.id, costo) for o, d, costo in elegidos], LEJANOS_ESPERADOS)
+                pares = enumerar(grafo, salas, reutilizado)
+                self.assertEqual([(o.id, d.id, costo) for o, d, costo in pares], esperados)
+                self.assertNotIn(6, [o.id for o, _, _ in pares])
                 # El costo acumulado es el de la ruta que encuentra `primer_paso`.
-                for origen, destino, costo in elegidos:
+                for origen, destino, costo in pares:
                     self.assertEqual(bench_niebla.primer_paso(grafo, origen, destino).costo_total, costo)
 
-    def test_sc007_pr15_t110_desempate_del_mas_lejano_por_menor_id(self):
-        # Dos destinos a la misma distancia máxima: se elige el de menor id, sin depender del orden de las salas.
-        calcular = getattr(bench_niebla, "destinos_mas_lejanos", None)
-        self.assertIsNotNone(calcular, "el bench no calcula el destino más lejano de cada origen")
-        salas_json = [{"id": 5, "nombre": "a", "salidas": {"E": _salida_json(9, costo=3), "O": _salida_json(2, costo=3)}},
-                      {"id": 9, "nombre": "b", "salidas": {"O": _salida_json(5, costo=3)}},
-                      {"id": 2, "nombre": "c", "salidas": {"E": _salida_json(5, costo=3)}}]
+    def test_sc007_pr15_t110_la_fila_dice_pares_confirmados_peor_y_su_costo(self):
+        # (b) «pares» = todos los alcanzables, «confirmados» = min(K, pares), y el peor par con su costo es uno de
+        # los alcanzables. En las dos variantes de espacio.
         with tempfile.TemporaryDirectory() as carpeta:
-            _guardar_copia(carpeta, "cripta-empate", salas_json)
-            _, grafo, salas = bench_niebla.preparar_m4_referencia(carpeta)
-        elegidos = [(o.id, d.id, costo) for o, d, costo in calcular(grafo, salas)]
-        self.assertEqual(elegidos, _mas_lejanos_json(salas_json))
-        self.assertEqual(elegidos[0], (5, 2, 3))
-
-    def test_sc007_pr15_t110_la_fila_dice_origenes_pares_peor_y_su_costo(self):
-        # (c) Un paso por origen medido: pares = orígenes medidos; el peor par es uno de ellos, con su costo.
-        with tempfile.TemporaryDirectory() as carpeta:
-            _guardar_copia(carpeta, "cripta-lejanos", MAPA_LEJANOS)
+            _guardar_copia(carpeta, "cripta-chica", MAPA_CHICO)
             for modo, espacio in (("por llamada", None), ("reutilizado", bench_niebla.EspacioBusqueda)):
                 with self.subTest(espacio=modo):
                     fila = self._fila_unica(self._medir(carpeta, espacio=espacio))
-                    self.assertEqual(fila.valor("origenes"), len(LEJANOS_ESPERADOS))
-                    self.assertEqual(fila.valor("pares"), fila.valor("origenes"))
-                    origen, destino = (int(parte) for parte in fila.valor("peor").split("->"))
-                    self.assertIn((origen, destino, fila.valor("costo")), LEJANOS_ESPERADOS)
-                    self.assertIn("origenes=5", fila.texto())
-                    self.assertEqual(fila.veredicto, bench_niebla.veredicto_paso(fila.ms))
+                    self.assertEqual(fila.valor("espacio"), modo)
+                    self._comprobar_cribado(fila, _pares_json(MAPA_CHICO))
+                    self.assertFalse(fila.provisional)
+                    self.assertEqual(fila.nota, NOTA_REFERENCIA.format("cripta-chica", len(MAPA_CHICO)))
+
+    def test_sc007_pr15_t110_con_k_menor_o_mayor_que_los_pares_la_fila_es_valida(self):
+        # (c) K = 1 confirma un solo par; K mayor que los pares confirma todos.
+        self.assertIsNotNone(getattr(bench_niebla, "CONFIRMADOS_M4_REFERENCIA", None), "falta la constante K")
+        with tempfile.TemporaryDirectory() as carpeta:
+            _guardar_copia(carpeta, "cripta-chica", MAPA_CHICO)
+            for k, confirmados in ((1, 1), (PARES_MAPA_CHICO + 10, PARES_MAPA_CHICO)):
+                with mock.patch.object(bench_niebla, "CONFIRMADOS_M4_REFERENCIA", k):
+                    for modo, espacio in (("por llamada", None), ("reutilizado", bench_niebla.EspacioBusqueda)):
+                        with self.subTest(k=k, espacio=modo):
+                            fila = self._fila_unica(self._medir(carpeta, espacio=espacio))
+                            self.assertEqual(fila.valor("confirmados"), confirmados)
+                            self._comprobar_cribado(fila, _pares_json(MAPA_CHICO))
 
     def test_sc007_pr15_t110_sin_esqueleto_la_fila_dice_no_medido_y_no_falla(self):
         with tempfile.TemporaryDirectory() as raiz:

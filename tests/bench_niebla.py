@@ -707,6 +707,9 @@ NOTA_REFERENCIA_M4 = ("la mayor de las copias locales ({id_cripta}, {salas} sala
                       "de referencia (HIPÓTESIS: la del enunciado, §6.1, aún no está publicada)")
 HIPOTESIS_REFERENCIA_M4 = (f"el peor paso con el mapa conocido completo de la cripta sustituta tarda "
                            f"{LIMITE_PASO_IR_A_MS} ms o menos (§6.1)")
+# Cribado y confirmación: todos los pares alcanzables se miden con 1 repetición, y los K más lentos del cribado se
+# vuelven a medir con la mediana de `repeticiones`. La fila da el máximo de esas medianas.
+CONFIRMADOS_M4_REFERENCIA = 50
 
 
 def cripta_mas_grande(carpeta=CARPETA_DATOS_LOCALES):
@@ -802,45 +805,42 @@ def _distancias_desde(grafo, origen, espacio):
                 cola.insertar(nueva, otro)
 
 
-def destinos_mas_lejanos(grafo, salas, espacio=None):
-    """[(origen, destino, costo)]: por cada origen de ``salas`` con algún destino alcanzable, el destino alcanzable
-    de MAYOR costo acumulado desde él (en empate, el de menor id), en el orden de ``salas``. Los orígenes sin ningún
-    destino alcanzable se omiten. ``espacio`` es un `EspacioBusqueda` para ``grafo.cantidad_salas``; None crea uno.
-
-    SUPOSICIÓN sobre el peor caso: `primer_paso` es un Dijkstra que corta al sacar el destino de la cola, y saca las
-    salas en orden de distancia; así, el trabajo hasta el destino no decrece con su distancia, y el destino más lejano
-    es el peor caso de ese origen. Los empates de distancia pueden alterar el orden en que salen las salas, así que es
-    una suposición, no una garantía. O(V · (V + E) log E)."""
+def pares_alcanzables(grafo, salas, espacio=None):
+    """[(origen, destino, costo)]: todos los pares distintos (origen, destino) con ruta en ``grafo``, en el orden de
+    ``salas`` (origen y luego destino), con el costo acumulado mínimo. Se enumeran con las distancias de
+    `_distancias_desde` (un Dijkstra completo por origen), no con un `primer_paso` por par. Los orígenes sin ningún
+    destino alcanzable no aportan pares. ``espacio`` es un `EspacioBusqueda` para ``grafo.cantidad_salas``; None crea
+    uno. O(V · (V + E) log E)."""
     if espacio is None:
         espacio = EspacioBusqueda(grafo.cantidad_salas)
     else:
         espacio.validar(grafo)
-    elegidos = []
+    pares = []
     for origen in salas:
         _distancias_desde(grafo, origen, espacio)
-        vigente, mejor, mejor_costo = espacio.epoca_actual, None, None
+        vigente = espacio.epoca_actual
         for destino in salas:
             ordinal = grafo.ordinal(destino)
-            if destino is origen or espacio.epoca[ordinal] != vigente:
-                continue
-            costo = espacio.dist[ordinal]
-            if (mejor is None or costo > mejor_costo
-                    or (costo == mejor_costo and destino.id < mejor.id)):
-                mejor, mejor_costo = destino, costo
-        if mejor is not None:
-            elegidos.append((origen, mejor, mejor_costo))
-    return elegidos
+            if destino is not origen and espacio.epoca[ordinal] == vigente:
+                pares.append((origen, destino, espacio.dist[ordinal]))
+    return pares
+
+
+def _ms_del_cribado(medido):
+    return medido[0]
 
 
 def medir_m4_referencia(repeticiones=REPETICIONES, espacio=None, carpeta=CARPETA_DATOS_LOCALES):
     """M4 de §6.1 (T110): el peor caso de un paso de «ir a» en el mapa conocido completo de la cripta sustituta (la
     mayor de las copias locales; HIPÓTESIS: la cripta de referencia del enunciado aún no está publicada, así que el
-    veredicto no es definitivo). No mide todos los pares (con cientos de salas serían decenas de miles): por cada
-    origen con algún destino alcanzable mide un solo paso, hacia su destino más lejano (`destinos_mas_lejanos`, con
-    su SUPOSICIÓN sobre el peor caso). Cada par se mide como el paso de `medir_m4` (`medir_ms` de `primer_paso`).
-    La fila reporta el máximo en ms, el par que lo produce («peor») con su costo acumulado («costo»), cuántos
-    orígenes se midieron («origenes») y cuántos pares («pares», uno por origen). El veredicto es `veredicto_paso`
-    del máximo, contra `LIMITE_PASO_IR_A_MS`. La fila no es provisional.
+    veredicto no es definitivo). Cada par se mide como el paso de `medir_m4` (`medir_ms` de `primer_paso`).
+
+    Cribado y confirmación: (1) se miden TODOS los pares alcanzables (`pares_alcanzables`) con 1 repetición cada
+    uno; (2) los `CONFIRMADOS_M4_REFERENCIA` (K) pares más lentos del cribado se vuelven a medir con la mediana de
+    ``repeticiones``; si hay menos de K pares, se confirman todos; (3) la fila da el máximo de esas medianas. Reporta
+    cuántos orígenes aportan pares («origenes»), cuántos pares hay («pares»), cuántos se confirmaron
+    («confirmados»), el par del máximo («peor») y su costo acumulado («costo»). El veredicto es `veredicto_paso` del
+    máximo, contra `LIMITE_PASO_IR_A_MS`. La fila no es provisional.
 
     ``espacio``: como en `medir_m4`; el `EspacioBusqueda` se crea una vez y se reutiliza en todos los pares medidos.
     Si no hay copias locales, o no se pueden leer, devuelve una fila «no medido» con el motivo: no falla."""
@@ -856,14 +856,26 @@ def medir_m4_referencia(repeticiones=REPETICIONES, espacio=None, carpeta=CARPETA
                      f"{carpeta}; se omite la medición de §6.1")]
     id_cripta, grafo, salas = preparado
     reutilizado = None if espacio is None else espacio(grafo.cantidad_salas)
-    peor_ms, peor_par, medidos = None, None, 0
-    try:
-        for origen, destino, costo in destinos_mas_lejanos(grafo, salas, reutilizado):
-            def un_paso(origen=origen, destino=destino):
-                primer_paso(grafo, origen, destino, None, reutilizado)
 
-            ms = float(medir_ms(un_paso, repeticiones))
-            medidos += 1
+    def paso(origen, destino):
+        def un_paso():
+            primer_paso(grafo, origen, destino, None, reutilizado)
+        return un_paso
+
+    try:
+        pares = pares_alcanzables(grafo, salas, reutilizado)
+        # (1) Cribado: 1 repetición por par.
+        cribado = []
+        for indice in range(len(pares)):
+            origen, destino, _ = pares[indice]
+            cribado.append((float(medir_ms(paso(origen, destino), 1)), indice))
+        # (2) Confirmación: los K más lentos (los últimos del orden ascendente), con la mediana de `repeticiones`.
+        ordenado, _ = merge_sort(cribado, _ms_del_cribado)
+        confirmar = ordenado[max(0, len(ordenado) - CONFIRMADOS_M4_REFERENCIA):]
+        peor_ms, peor_par = None, None
+        for _, indice in confirmar:
+            origen, destino, costo = pares[indice]
+            ms = float(medir_ms(paso(origen, destino), repeticiones))
             if peor_ms is None or ms > peor_ms:
                 peor_ms, peor_par = ms, (origen, destino, costo)
     except Exception as error:  # noqa: BLE001 - se informa en la fila
@@ -872,8 +884,13 @@ def medir_m4_referencia(repeticiones=REPETICIONES, espacio=None, carpeta=CARPETA
     if peor_ms is None:
         return [Fila("M4", "referencia/paso", (("cripta", id_cripta), ("pasos", 1), modo), None,
                      HIPOTESIS_REFERENCIA_M4, "el mapa conocido completo no tiene ningún par de salas alcanzable")]
-    parametros = (("cripta", id_cripta), ("V", len(salas)), ("pasos", 1), ("origenes", medidos),
-                  ("pares", medidos), ("peor", f"{peor_par[0].id}->{peor_par[1].id}"), ("costo", peor_par[2]), modo)
+    origenes = 0
+    for indice in range(len(pares)):
+        if indice == 0 or pares[indice][0] is not pares[indice - 1][0]:
+            origenes += 1  # los pares vienen agrupados por origen
+    parametros = (("cripta", id_cripta), ("V", len(salas)), ("pasos", 1), ("origenes", origenes),
+                  ("pares", len(pares)), ("confirmados", len(confirmar)),
+                  ("peor", f"{peor_par[0].id}->{peor_par[1].id}"), ("costo", peor_par[2]), modo)
     nota = NOTA_REFERENCIA_M4.format(id_cripta=id_cripta, salas=len(salas))
     return [Fila("M4", "referencia/paso", parametros, peor_ms, HIPOTESIS_REFERENCIA_M4, nota,
                  veredicto=veredicto_paso(peor_ms), provisional=False)]
@@ -1084,9 +1101,9 @@ def correr_bench(ruta=ARCHIVO_RESULTADOS, tamanos=None, datos_locales=CARPETA_DA
          medir_m3(t.m3_n, t.m3_vecinas, t.repeticiones)),
         (f"M4: un paso y un viaje de «ir a» por primer_paso, límite {LIMITE_PASO_IR_A_MS} ms por paso, con y sin "
          f"EspacioBusqueda reutilizado (R6; FR-024, FR-026, SC-007). Filas sintéticas, PROVISIONAL: "
-         f"{NOTA_PROVISIONAL_M4}. Fila «referencia/paso»: medición de §6.1, el peor paso entre un par por "
-         "origen (hacia su destino alcanzable más lejano; SUPOSICIÓN: es el peor caso de ese origen) del mapa "
-         "conocido completo de la cripta sustituta, la mayor de las copias locales (T110; "
+         f"{NOTA_PROVISIONAL_M4}. Fila «referencia/paso»: medición de §6.1, el peor paso del mapa conocido "
+         "completo de la cripta sustituta (cribado de todos los pares alcanzables con 1 repetición y confirmación "
+         f"de los {CONFIRMADOS_M4_REFERENCIA} más lentos con la mediana), la mayor de las copias locales (T110; "
          "HIPÓTESIS: la cripta de referencia del enunciado aún no está publicada)",
          # Las filas de la cripta sustituta van después de todas las sintéticas: medirlas entre los dos
          # bloques sintéticos alteraba las filas que venían después.
