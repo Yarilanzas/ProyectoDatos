@@ -516,9 +516,13 @@ def _pares_json(esqueleto):
         dist = [None] * len(ids)
         dist[inicio] = 0
         for _ in range(len(ids) - 1):
+            cambio = False
             for a, b, costo in aristas:
                 if dist[a] is not None and (dist[b] is None or dist[a] + costo < dist[b]):
                     dist[b] = dist[a] + costo
+                    cambio = True
+            if not cambio:
+                break  # ninguna distancia bajó en esta ronda: ya son las definitivas
         for indice in range(len(ids)):
             if indice != inicio and dist[indice] is not None:
                 resultado.append((ids[inicio], ids[indice], dist[indice]))
@@ -588,10 +592,15 @@ class TestM4Referencia(unittest.TestCase):
     @unittest.skipUnless(os.path.isdir(DATOS_LOCALES) and _mas_grande() is not None,
                          "sin copias locales de esqueletos en datos_locales/")
     def test_sc007_pr15_t110_fila_de_la_cripta_real_con_veredicto_contra_la_constante(self):
+        # La ÚNICA prueba que mide la carpeta real: forma y conteos, con K = 1 y 1 repetición para que sea rápida, y
+        # comprobando que solo lee datos_locales/ (la instantánea de antes y después es la misma).
         id_cripta, datos = _mas_grande()
         esqueleto = datos["esqueleto"]
+        pares = _pares_json(esqueleto)
+        antes = _instantanea(DATOS_LOCALES)
+        self.assertIn("catalogo.json", [nombre for nombre, _ in antes])
         for modo, espacio in (("por llamada", None), ("reutilizado", bench_niebla.EspacioBusqueda)):
-            with self.subTest(espacio=modo):
+            with self.subTest(espacio=modo), mock.patch.object(bench_niebla, "CONFIRMADOS_M4_REFERENCIA", 1):
                 fila = self._fila_unica(self._medir(espacio=espacio))
                 self.assertIsInstance(fila.ms, float, fila.texto())
                 self.assertGreaterEqual(fila.ms, 0.0)
@@ -599,9 +608,10 @@ class TestM4Referencia(unittest.TestCase):
                 self.assertEqual(fila.valor("V"), len(esqueleto))
                 self.assertEqual(fila.valor("pasos"), 1)
                 self.assertEqual(fila.valor("espacio"), modo)
-                # Todos los pares alcanzables, contados aparte sobre el JSON; se confirman min(K, pares). El peor
-                # par es uno de ellos y la fila trae su costo acumulado.
-                self._comprobar_cribado(fila, _pares_json(esqueleto))
+                # Todos los pares alcanzables, contados aparte sobre el JSON; se confirman min(K, pares) = 1. El
+                # peor par es uno de ellos y la fila trae su costo acumulado.
+                self._comprobar_cribado(fila, pares)
+                self.assertEqual(fila.valor("confirmados"), 1)
                 # Veredicto con la única constante y la fila no es provisional.
                 self.assertEqual(fila.veredicto, bench_niebla.veredicto_paso(fila.ms))
                 with mock.patch.object(bench_niebla, "LIMITE_PASO_IR_A_MS", -1):
@@ -610,6 +620,7 @@ class TestM4Referencia(unittest.TestCase):
                 self.assertNotIn("PROVISIONAL", fila.texto())
                 self.assertEqual(fila.nota, NOTA_REFERENCIA.format(id_cripta, len(esqueleto)))
                 self.assertIn(fila.veredicto, fila.texto())
+        self.assertEqual(_instantanea(DATOS_LOCALES), antes)
 
     def test_sc007_pr15_t110_elige_la_mas_grande_y_mide_solo_pares_alcanzables(self):
         # Copias locales sintéticas: una cadena de 3 y un mapa de 4 con una puerta cerrada de un solo sentido.
@@ -732,12 +743,12 @@ class TestM4Referencia(unittest.TestCase):
             self.assertEqual(os.listdir(vacia), [])
 
     def test_sc007_pr15_t110_el_bench_no_contiene_datos_de_la_cripta(self):
-        # Principio IV: el id, la versión, los nombres de sala y las llaves se leen del archivo al correr.
+        # Principio IV: el id, la versión, los nombres de sala y las llaves se leen del archivo al correr. Necesita
+        # la copia real para saber qué buscar, pero solo la lee: no mide (que el bench lee el id de la copia real lo
+        # comprueba la prueba de la cripta real, y con una copia chica, la que elige la más grande).
         if not (os.path.isdir(DATOS_LOCALES) and _mas_grande() is not None):
             self.skipTest("sin copias locales de esqueletos en datos_locales/")
         id_cripta, datos = _mas_grande()
-        fila = self._fila_unica(self._medir())
-        self.assertEqual(fila.valor("cripta"), id_cripta)
         with open(bench_niebla.__file__, encoding="utf-8") as archivo:
             codigo = archivo.read()
         self.assertNotIn(id_cripta, codigo)
@@ -750,17 +761,23 @@ class TestM4Referencia(unittest.TestCase):
                     self.assertNotIn(salida["llave"], codigo)
 
     def test_sc007_pr15_t110_solo_lee_datos_locales(self):
-        if not os.path.isdir(DATOS_LOCALES):
-            self.skipTest("sin datos_locales/")
-        antes = _instantanea(DATOS_LOCALES)
-        self.assertIn("catalogo.json", [nombre for nombre, _ in antes])
-        self._medir()
-        self._medir(espacio=bench_niebla.EspacioBusqueda)
-        self.assertEqual(_instantanea(DATOS_LOCALES), antes)
+        # Una carpeta como datos_locales/ (copia chica más un catalogo.json) no cambia al medir con las dos
+        # variantes. La misma comprobación sobre la carpeta real la hace la prueba de la cripta real.
+        with tempfile.TemporaryDirectory() as carpeta:
+            _guardar_copia(carpeta, "cripta-chica", MAPA_CHICO)
+            with open(os.path.join(carpeta, "catalogo.json"), "w", encoding="utf-8") as archivo:
+                archivo.write("{}")
+            antes = _instantanea(carpeta)
+            self.assertIn("catalogo.json", [nombre for nombre, _ in antes])
+            self._medir(carpeta)
+            self._medir(carpeta, espacio=bench_niebla.EspacioBusqueda)
+            self.assertEqual(_instantanea(carpeta), antes)
 
     def test_sc007_pr15_t110_corre_sin_red_ni_vista(self):
-        with _sin_red_ni_vista():
-            filas = self._medir()
+        with tempfile.TemporaryDirectory() as carpeta:
+            _guardar_copia(carpeta, "cripta-chica", MAPA_CHICO)
+            with _sin_red_ni_vista():
+                filas = self._medir(carpeta)
         self._fila_unica(filas)
 
 
@@ -797,12 +814,14 @@ class TestCorrerBench(unittest.TestCase):
         return filas, texto
 
     def _con_cada_carpeta_de_datos(self, prueba):
-        """(a) La carpeta real, si existe; (b) siempre, una carpeta temporal vacía, como una copia limpia sin
-        datos_locales/. ``prueba(filas, texto, con_datos)``: con_datos dice si la cripta de referencia se pudo medir."""
-        if os.path.isdir(bench_niebla.CARPETA_DATOS_LOCALES):
-            with self.subTest(datos_locales="real"):
-                con_datos = bench_niebla.cripta_mas_grande(bench_niebla.CARPETA_DATOS_LOCALES) is not None
-                prueba(*self._correr_minimo(bench_niebla.CARPETA_DATOS_LOCALES), con_datos)
+        """(a) Una carpeta temporal con una copia chica armada a mano (`MAPA_CHICO`), en lugar de la carpeta real,
+        para no medir la cripta grande en cada prueba; (b) siempre, una carpeta temporal vacía, como una copia limpia
+        sin datos_locales/. ``prueba(filas, texto, con_datos)``: con_datos dice si la cripta de referencia se pudo
+        medir."""
+        with tempfile.TemporaryDirectory() as chica:
+            _guardar_copia(chica, "cripta-chica", MAPA_CHICO)
+            with self.subTest(datos_locales="copia chica"):
+                prueba(*self._correr_minimo(chica), True)
         with tempfile.TemporaryDirectory() as vacia:
             with self.subTest(datos_locales="vacia"):
                 prueba(*self._correr_minimo(vacia), False)
@@ -856,7 +875,9 @@ class TestCorrerBench(unittest.TestCase):
     def test_sc007_pr15_t110_las_filas_de_referencia_van_despues_de_todas_las_sinteticas(self):
         # Medir la cripta de referencia entre los dos bloques sintéticos alteraba las filas que venían después.
         # Orden: sintéticas por llamada, sintéticas reutilizado, referencia por llamada, referencia reutilizado.
-        filas, _ = self._correr_minimo()
+        with tempfile.TemporaryDirectory() as chica:
+            _guardar_copia(chica, "cripta-chica", MAPA_CHICO)
+            filas, _ = self._correr_minimo(chica)
         m4 = [(fila.variante.startswith("referencia"), fila.valor("espacio"))
               for fila in filas if fila.medicion == "M4"]
         self.assertEqual(m4, [(False, "por llamada")] * 4 + [(False, "reutilizado")] * 4
