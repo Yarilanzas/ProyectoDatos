@@ -220,6 +220,7 @@ Medidas o leídas en T003 ([research.md](../research.md#t003-revisión-de-deepco
   cuando se pide con `leer_linea()` (`VersionIncompatible` si está dañado), que es lo que hace `cargar`.
 - **Limitación conocida de `cargar`**: es atómico hasta reconstruir la línea; después se cierra lo anterior y, si `shutil.copyfile` de la copia de
   bitácora falla (`OSError`), la partida ya quedó cargada: sigue sin bitácora y se muestra el aviso `No se pudo continuar la bitácora (...)`.
+- **Orden de enemigos con el mismo instante tras cargar**: Tras cargar, dos enemigos de salas distintas con el mismo instante pueden ejecutarse en otro orden, porque el archivo no guarda la secuencia de los enemigos (el CRPT 3 guarda el instante de cada enemigo, no su secuencia): no cambia las decisiones, solo su orden, y la historia posterior a la carga se reconstruye desde la partida cargada. Ver el paso nuevo del orden de carga en [data-model.md](../data-model.md#orden-de-carga-lo-que-la-línea-ve-al-cargar).
 
 ## Qué le pide la línea a los demás
 

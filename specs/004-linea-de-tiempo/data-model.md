@@ -150,6 +150,15 @@ Es **hasta 2.6 veces más lento y +43 % de memoria para N ≥ 200** que las cifr
 cifras como referencia y, mientras tanto, las de esta sección siguen siendo **HIPÓTESIS**. Riesgo para FR-020 en N altas: la copia de
 cada punto y la materialización pesan más de lo anotado; T098 sigue siendo el plan B (copia a mano por campos del estado vivo).
 
+### Orden de carga (lo que la línea ve al cargar)
+
+`cargar_partida` (`Gestor/PreparadorPartida.py`) restaura en este orden: jugador y conocimiento, motor, puertas reales, conocimiento,
+jugador y reloj, y la sala actual con sus enemigos activos. **Paso nuevo**: tras restaurar al jugador (su sala y los enemigos activos
+de ella), se restauran las salas con enemigos activos (tiempo >= 0) en **orden de id ascendente**. Para saber cuáles son, la carga lee
+todos los bloques de sala guardados (`leer_salas_con_enemigos_activos`), así que los eventos de esos
+enemigos reciben su secuencia en ese orden y no en el de la partida guardada. Es el límite que recoge
+[interfaz-linea.md](contracts/interfaz-linea.md#guardar-cargar-y-sus-límites-conocidos): el archivo no guarda la secuencia de los enemigos.
+
 ## Época
 
 Una por carga (la época 0 es la partida desde su inicio). Guarda la acción en que empezó y la **copia privada** del archivo cargado
