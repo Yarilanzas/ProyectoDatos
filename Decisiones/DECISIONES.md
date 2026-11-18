@@ -1289,6 +1289,7 @@ Consultar el pasado (`historia <t>`, `historia #k`, `--replay --hasta`) exige re
 - **Guardar los puntos completos en el archivo:** descartada. Exige un segundo serializador de todo el estado.
 - **Reemplazar el punto previo en lugar de agregar uno:** descartada. Sin el punto posterior a un retroceso o a una carga la reconstrucción no es exacta.
 - **`copy.deepcopy` a secas del motor:** descartada. Con N = 2 000 salas falla con `RecursionError` y con N = 200 es más lento que la copia estructurada (cifras en 5, M3).
+- **Permitir que la carga vuelva a pedir datos a la fuente cuando faltan los datos locales:** descartada. La reconstrucción gastaría presupuesto de solicitudes (Principio VII); por eso reconstruye con un gestor que solo lee del disco y, si falta algo, rechaza la carga.
 
 ### 3. Decisión
 
@@ -1361,6 +1362,7 @@ Limitaciones (no son defectos):
 - **`copyfile` al cargar.** `cargar` es atómico hasta reconstruir la línea; después cierra lo anterior, y si `shutil.copyfile` de la copia de bitácora falla (`OSError`), la partida ya quedó cargada, sin bitácora, y se muestra un aviso.
 - **Orden de enemigos con el mismo instante tras cargar.** Tras cargar, dos enemigos de salas distintas con el mismo instante pueden ejecutarse en otro orden, porque el archivo no guarda la secuencia de los enemigos (el CRPT 3 guarda el instante de cada enemigo, no su secuencia): no cambia las decisiones, solo su orden, y la historia posterior a la carga se reconstruye desde la partida cargada.
 - **Guardar descarta una línea desfasada.** Si el motor avanzó sin avisar a la línea (por ejemplo una acción que lanzó `RuntimeError` a medias), `guardar` avisa, descarta la línea y escribe el archivo con largo de línea 0.
+- **Cargar una partida con línea de tiempo necesita los datos locales de la partida** (la carpeta de datos con el esqueleto y las salas guardadas al jugar); si faltan, la carga se rechaza con código 1 y no se carga nada (no se crea la bitácora de la continuación). Comprobado con `main.py` real, `--offline` y `--datos-locales` en carpetas temporales (2026-11-17): (a) partida guardada con línea y carpeta de datos vacía: código 1, `! Error: No se puede reconstruir sin nuevas solicitudes: faltan datos locales (contenido de las salas 1, 4, 2, 5, 3, 6 de la cripta cripta-niebla)`; (b) la misma con la carpeta borrada: código 1 y el mismo mensaje; (c) partida guardada con largo de línea 0 (archivo v3 sin línea) y carpeta de datos vacía: **código 0**, «Partida cargada desde ...» y el estado del reloj 400; con la carpeta borrada también código 0. **El límite solo rige para archivos con línea:** sin línea no hay guion que reproducir y la línea empieza en la carga.
 
 Lo no medido (**HIPÓTESIS**):
 - M2 con K = 1 y n > 2 500 (HIPÓTESIS: crece como n · bytes por punto).
