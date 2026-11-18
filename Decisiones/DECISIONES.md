@@ -271,7 +271,7 @@ Spec: [specs/002-resolubilidad/spec.md](../specs/002-resolubilidad/spec.md) · P
 
 ### 1. Problema
 
-AAntes de iniciar una partida hay que decidir Y confirmar si la cripta es resoluble. Una cripta es resoluble si desde la sala inicial se puede conseguir "llave_salida" y llegar a "sala_salida" por una puerta que la pida. Se asume que toda salida abierta se cruza, que una cerrada se cruza si ya se tiene su llave, que las llaves no se gastan, que todo enemigo se vence (la llave que suelta cuenta en la sala donde empieza) y que trampas y cierres automáticos no bloquean.
+Antes de iniciar una partida hay que decidir Y confirmar si la cripta es resoluble. Una cripta es resoluble si desde la sala inicial se puede conseguir "llave_salida" y llegar a "sala_salida" por una puerta que la pida. Se asume que toda salida abierta se cruza, que una cerrada se cruza si ya se tiene su llave, que las llaves no se gastan, que todo enemigo se vence (la llave que suelta cuenta en la sala donde empieza) y que trampas y cierres automáticos no bloquean.
 
 Si es resoluble se muestra un orden de llaves en el que cada una aparece después de las que hacen falta para alcanzarla. Si una cripta no es resoluble, el reporte muestra las llaves que no se pueden obtener, las puertas de la frontera bloqueada con su llave, dónde está cada llave, las dependencias entre llaves y los ciclos (una llave encerrada detrás de puertas que solo ella misma puede abrir). El resultado debe ser idéntico en cada ejecución (deterministico), sin importar el orden en que la fuente entregue los datos (FR-012, FR-013). Además, la verificación debe tardar menos de 200 ms en la cripta publicada más grande y crecer de forma aproximadamente lineal con salas, salidas y llaves (FR-029). Todo esto sin `dict`, `set`, `sorted()` ni `.sort()`, que el curso no permite.
 
@@ -1278,7 +1278,7 @@ Dieron el mismo primer paso que la versión actual en 2800 casos (grilla y caden
 - Que las mejoras pequeñas de la búsqueda ganen de forma consistente, y que reutilizar el `EspacioBusqueda` mejore (M4).
 - Que el veredicto de §6.1 sobre la cripta sustituta (`cripta-06`, 300 salas, medida: peor paso entre 0.15 y 0.43 ms) se mantenga con la cripta de referencia del enunciado, que aún no está publicada.
 
-## §5.4 — Resolubilidad
+
 
 ## §5.5 — Línea de tiempo y puntos de control
 

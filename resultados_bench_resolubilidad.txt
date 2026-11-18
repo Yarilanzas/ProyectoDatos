@@ -3,68 +3,68 @@ equipo: Windows-11-10.0.26200-SP0 | AMD64 Family 25 Model 80 Stepping 0, Authent
 solo Resolubilidad.verificar con los datos en memoria; 3 de calentamiento y 30 repeticiones por caso; semilla 2026
 
 -M1: cripta sintética de 300 salas y 4 llaves, p95 < 200 ms (SC-004)-
-resoluble               S =  300  E =  760  K =  4   mediana =    2.000 ms   p95 =    3.074 ms   CUMPLE
-no resoluble con ciclo  S =  300  E =  760  K =  4   mediana =    2.159 ms   p95 =    2.992 ms   CUMPLE
+resoluble               S =  300  E =  760  K =  4   mediana =    2.503 ms   p95 =    3.836 ms   CUMPLE
+no resoluble con ciclo  S =  300  E =  760  K =  4   mediana =    2.208 ms   p95 =    3.025 ms   CUMPLE
 
 -M2: duplicaciones, caso resoluble, cociente de medianas <= 2.5 (SC-005)-
-S =   300  E =   760  K =   4   mediana =    2.048 ms   p95 =    2.773 ms
-S =   600  E =  1520  K =   8   mediana =    4.201 ms   p95 =    5.070 ms
-S =  1200  E =  3040  K =  16   mediana =    8.881 ms   p95 =   34.209 ms
-S =  2400  E =  6080  K =  32   mediana =   18.408 ms   p95 =   46.607 ms
-S =  4800  E = 12160  K =  64   mediana =   39.786 ms   p95 =   60.676 ms
-S =  9600  E = 24320  K = 128   mediana =   98.654 ms   p95 =  107.823 ms
-S   300 ->   600   cociente de medianas =  2.05   CUMPLE
-S   600 ->  1200   cociente de medianas =  2.11   CUMPLE
-S  1200 ->  2400   cociente de medianas =  2.07   CUMPLE
-S  2400 ->  4800   cociente de medianas =  2.16   CUMPLE
-S  4800 ->  9600   cociente de medianas =  2.48   CUMPLE
+S =   300  E =   760  K =   4   mediana =    2.064 ms   p95 =    2.234 ms
+S =   600  E =  1520  K =   8   mediana =    4.244 ms   p95 =    4.796 ms
+S =  1200  E =  3040  K =  16   mediana =    9.117 ms   p95 =   31.286 ms
+S =  2400  E =  6080  K =  32   mediana =   21.250 ms   p95 =   45.026 ms
+S =  4800  E = 12160  K =  64   mediana =   53.904 ms   p95 =   81.508 ms
+S =  9600  E = 24320  K = 128   mediana =  117.936 ms   p95 =  188.718 ms
+S   300 ->   600   cociente de medianas =  2.06   CUMPLE
+S   600 ->  1200   cociente de medianas =  2.15   CUMPLE
+S  1200 ->  2400   cociente de medianas =  2.33   CUMPLE
+S  2400 ->  4800   cociente de medianas =  2.54   NO CUMPLE
+S  4800 ->  9600   cociente de medianas =  2.19   CUMPLE
 
 -M3: duplicaciones, caso no resoluble con reporte, dependencias y ciclos, zonas disjuntas, cociente <= 2.5 (SC-005)-
-S =   300  E =   760  K =   4   mediana =    2.134 ms   p95 =    3.306 ms
-S =   600  E =  1520  K =   8   mediana =    4.637 ms   p95 =    5.676 ms
-S =  1200  E =  3040  K =  16   mediana =    9.945 ms   p95 =   26.827 ms
-S =  2400  E =  6080  K =  32   mediana =   21.317 ms   p95 =   39.492 ms
-S =  4800  E = 12160  K =  64   mediana =   40.365 ms   p95 =   59.010 ms
-S =  9600  E = 24320  K = 128   mediana =   90.365 ms   p95 =  100.044 ms
-S   300 ->   600   cociente de medianas =  2.17   CUMPLE
-S   600 ->  1200   cociente de medianas =  2.14   CUMPLE
-S  1200 ->  2400   cociente de medianas =  2.14   CUMPLE
-S  2400 ->  4800   cociente de medianas =  1.89   CUMPLE
-S  4800 ->  9600   cociente de medianas =  2.24   CUMPLE
+S =   300  E =   760  K =   4   mediana =    2.128 ms   p95 =    2.615 ms
+S =   600  E =  1520  K =   8   mediana =    4.465 ms   p95 =    5.434 ms
+S =  1200  E =  3040  K =  16   mediana =    9.986 ms   p95 =   27.256 ms
+S =  2400  E =  6080  K =  32   mediana =   17.335 ms   p95 =   35.761 ms
+S =  4800  E = 12160  K =  64   mediana =   40.982 ms   p95 =   73.606 ms
+S =  9600  E = 24320  K = 128   mediana =   96.864 ms   p95 =  124.370 ms
+S   300 ->   600   cociente de medianas =  2.10   CUMPLE
+S   600 ->  1200   cociente de medianas =  2.24   CUMPLE
+S  1200 ->  2400   cociente de medianas =  1.74   CUMPLE
+S  2400 ->  4800   cociente de medianas =  2.36   CUMPLE
+S  4800 ->  9600   cociente de medianas =  2.36   CUMPLE
 
 -Peor caso de dependencias (P-11, zonas que se solapan): informativo, sin límite (FR-029, SC-005)-
 5 repeticiones por caso; K = L, ubicaciones de llaves, casi todas en salas distintas de una región no alcanzable
-S =   300  E =   760  K =   5   mediana =    1.976 ms   p95 =   18.221 ms
-S =   600  E =  1520  K =   9   mediana =    4.432 ms   p95 =    4.971 ms
-S =  1200  E =  3040  K =  17   mediana =   13.592 ms   p95 =   29.601 ms
-S =  2400  E =  6080  K =  33   mediana =   41.052 ms   p95 =   56.853 ms
-S =  4800  E = 12160  K =  65   mediana =  152.358 ms   p95 =  162.974 ms
-S =  9600  E = 24320  K = 129   mediana =  511.600 ms   p95 =  548.471 ms
-S   300 ->   600   cociente de medianas =  2.24
-S   600 ->  1200   cociente de medianas =  3.07
-S  1200 ->  2400   cociente de medianas =  3.02
-S  2400 ->  4800   cociente de medianas =  3.71
-S  4800 ->  9600   cociente de medianas =  3.36
+S =   300  E =   760  K =   5   mediana =    1.985 ms   p95 =   20.783 ms
+S =   600  E =  1520  K =   9   mediana =    4.817 ms   p95 =    6.024 ms
+S =  1200  E =  3040  K =  17   mediana =   16.013 ms   p95 =   37.227 ms
+S =  2400  E =  6080  K =  33   mediana =   43.310 ms   p95 =   61.728 ms
+S =  4800  E = 12160  K =  65   mediana =  161.136 ms   p95 =  175.861 ms
+S =  9600  E = 24320  K = 129   mediana =  513.198 ms   p95 =  529.393 ms
+S   300 ->   600   cociente de medianas =  2.43
+S   600 ->  1200   cociente de medianas =  3.32
+S  1200 ->  2400   cociente de medianas =  2.70
+S  2400 ->  4800   cociente de medianas =  3.72
+S  4800 ->  9600   cociente de medianas =  3.18
 
 -M4: versión elegida frente a A1 (recorrido completo por llave), A2 (zona de cada llave por separado) y A3 (búsqueda lineal del id) (FR-029, FR-030)-
 medianas en ms con 9 repeticiones intercaladas por ronda; (xN) = alternativa / elegida; antes de medir se comprobó que cada alternativa da el mismo resultado que verificar
 Salas fijas (S = 1200) y K creciente, caso resoluble: A1 y A3
-S =  1200  E =  3040  K =   4   elegida =     6.076 ms   A1 =     7.742 ms (x 1.27)   A3 =     6.293 ms (x 1.04)
-S =  1200  E =  3040  K =  16   elegida =     6.732 ms   A1 =    12.277 ms (x 1.82)   A3 =     6.554 ms (x 0.97)
-S =  1200  E =  3040  K =  64   elegida =     7.823 ms   A1 =    31.223 ms (x 3.99)   A3 =     7.687 ms (x 0.98)
-S =  1200  E =  3040  K = 256   elegida =     9.719 ms   A1 =   109.644 ms (x11.28)   A3 =    12.697 ms (x 1.31)
+S =  1200  E =  3040  K =   4   elegida =     6.776 ms   A1 =     8.405 ms (x 1.24)   A3 =     6.471 ms (x 0.95)
+S =  1200  E =  3040  K =  16   elegida =     7.701 ms   A1 =    14.007 ms (x 1.82)   A3 =     6.943 ms (x 0.90)
+S =  1200  E =  3040  K =  64   elegida =     7.730 ms   A1 =    32.461 ms (x 4.20)   A3 =     8.699 ms (x 1.13)
+S =  1200  E =  3040  K = 256   elegida =    18.137 ms   A1 =   237.287 ms (x13.08)   A3 =    25.741 ms (x 1.42)
 Salas fijas (S = 1200) y K creciente, caso no resoluble con ciclo: A1, A2 y A3
-S =  1200  E =  3040  K =   4   elegida =     6.592 ms   A1 =     6.451 ms (x 0.98)   A2 =     7.373 ms (x 1.12)   A3 =     6.549 ms (x 0.99)
-S =  1200  E =  3040  K =  16   elegida =     7.347 ms   A1 =    12.145 ms (x 1.65)   A2 =     8.474 ms (x 1.15)   A3 =     7.348 ms (x 1.00)
-S =  1200  E =  3040  K =  64   elegida =     9.038 ms   A1 =    30.567 ms (x 3.38)   A2 =     9.950 ms (x 1.10)   A3 =     9.360 ms (x 1.04)
-S =  1200  E =  3040  K = 256   elegida =    12.721 ms   A1 =   109.494 ms (x 8.61)   A2 =    13.586 ms (x 1.07)   A3 =    19.250 ms (x 1.51)
+S =  1200  E =  3040  K =   4   elegida =    13.785 ms   A1 =    13.289 ms (x 0.96)   A2 =    17.221 ms (x 1.25)   A3 =    13.881 ms (x 1.01)
+S =  1200  E =  3040  K =  16   elegida =    14.393 ms   A1 =    23.205 ms (x 1.61)   A2 =    15.650 ms (x 1.09)   A3 =    14.062 ms (x 0.98)
+S =  1200  E =  3040  K =  64   elegida =    18.223 ms   A1 =    60.390 ms (x 3.31)   A2 =    19.917 ms (x 1.09)   A3 =    20.378 ms (x 1.12)
+S =  1200  E =  3040  K = 256   elegida =    25.673 ms   A1 =   213.814 ms (x 8.33)   A2 =    25.719 ms (x 1.00)   A3 =    36.572 ms (x 1.42)
 Duplicaciones de M2 (caso resoluble): A1 y A3
-S =   300  E =   760  K =   4   elegida =     1.485 ms   A1 =     1.841 ms (x 1.24)   A3 =     1.488 ms (x 1.00)
-S =   600  E =  1520  K =   8   elegida =     3.130 ms   A1 =     4.568 ms (x 1.46)   A3 =     3.122 ms (x 1.00)
-S =  1200  E =  3040  K =  16   elegida =     6.606 ms   A1 =    12.753 ms (x 1.93)   A3 =     6.705 ms (x 1.01)
-S =  2400  E =  6080  K =  32   elegida =    14.114 ms   A1 =    37.225 ms (x 2.64)   A3 =    18.105 ms (x 1.28)
-S =  4800  E = 12160  K =  64   elegida =    48.501 ms   A1 =   121.297 ms (x 2.50)   A3 =    29.515 ms (x 0.61)
-S =  9600  E = 24320  K = 128   elegida =    81.628 ms   A1 =   450.318 ms (x 5.52)   A3 =    84.428 ms (x 1.03)
+S =   300  E =   760  K =   4   elegida =     2.913 ms   A1 =     3.798 ms (x 1.30)   A3 =     2.957 ms (x 1.01)
+S =   600  E =  1520  K =   8   elegida =     6.053 ms   A1 =     9.237 ms (x 1.53)   A3 =     6.018 ms (x 0.99)
+S =  1200  E =  3040  K =  16   elegida =    13.316 ms   A1 =    26.009 ms (x 1.95)   A3 =    13.102 ms (x 0.98)
+S =  2400  E =  6080  K =  32   elegida =    28.042 ms   A1 =    75.961 ms (x 2.71)   A3 =    28.083 ms (x 1.00)
+S =  4800  E = 12160  K =  64   elegida =    81.515 ms   A1 =   242.244 ms (x 2.97)   A3 =    58.231 ms (x 0.71)
+S =  9600  E = 24320  K = 128   elegida =   147.466 ms   A1 =   894.066 ms (x 6.06)   A3 =   150.925 ms (x 1.02)
 
 -M5: comparaciones de merge_sort al construir el índice y pasos de la búsqueda binaria de IndiceLlaves (FR-029, FR-030)-
 merge_sort de las M menciones de llaves (duplicaciones de M2); cociente = comparaciones / (M·log2 M)
