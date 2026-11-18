@@ -291,4 +291,4 @@ Luego en orden: T045 → T046 → T047 → T048 → T049
 - T032: la caché guarda costo 100 explícito cuando la salida no lo declara (Salida.desde_json y a_json); el juego ve 100 en ambos casos.
 - Línea base de T001: 295 pruebas corridas, 285 pasan, 0 fallan, 0 errores, 10 omitidas (skip: `test_ruta_contrato`, T063 pendiente de `Modelo/BusquedaRuta.py`) — `python -m unittest discover -s tests -v`, Python 3.13.13, 2026-11-10.
 - Cierre de US1: 428 pruebas corridas, 418 pasan, 0 fallan, 0 errores, 10 omitidas — `python -m unittest discover -s tests`, 2026-11-11.
-- T075: suite completa al cierre de la capacidad: 1174 pruebas, 0 fallos, 0 errores — `python -m unittest discover -s tests`, 2026-11-17.
+- T075: suite completa al cierre de la capacidad: 1183 pruebas, 0 fallos, 0 errores — `python -m unittest discover -s tests`, 2026-11-17.
