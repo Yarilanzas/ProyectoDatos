@@ -1097,7 +1097,7 @@ Todas las filas quedan con el p95 por debajo de 20 ms (§5.2), con y sin conocim
 | Consulta `historia` | 50 ms | con una partida de al menos 5000 acciones y K por defecto | No |
 | Paso de «ir a» | 5 ms | con el mapa conocido completo de la cripta de referencia | **Sí: es el único del que se ocupa esta capacidad** |
 
-**Veredicto de §6.1 (T110): CUMPLE sobre la cripta de referencia.** M4 mide con la `primer_paso` real (la de Persona A), nunca un buscador de prueba, el peor paso de «ir a» entre todos los pares (origen, destino) alcanzables del mapa conocido completo de la cripta de referencia. Es la fila `M4 referencia/paso` de `resultados_bench_niebla.txt` (`tests/bench_niebla.py::medir_m4_referencia`, commit `70ecfdc`).
+**Veredicto de §6.1 (T110): CUMPLE sobre la cripta sustituta (`cripta-02`, la mayor de las copias locales). El veredicto definitivo sobre la cripta de referencia del enunciado queda pendiente de su publicación.** M4 mide con la `primer_paso` real (la de Persona A), nunca un buscador de prueba, el peor paso de «ir a» entre todos los pares (origen, destino) alcanzables del mapa conocido completo de la cripta sustituta. Es la fila `M4 referencia/paso` de `resultados_bench_niebla.txt` (`tests/bench_niebla.py::medir_m4_referencia`, commit `70ecfdc`).
 
 | Dato | Valor |
 |---|---|
@@ -1107,7 +1107,7 @@ Todas las filas quedan con el p95 por debajo de 20 ms (§5.2), con y sin conocim
 | Límite | 5 ms (`LIMITE_PASO_IR_A_MS`) |
 | Veredicto | **cumple**, con un margen de al menos 50 veces |
 
-- **Qué es la cripta de referencia (SUPOSICIÓN).** Se interpreta como la cripta publicada más grande: `cripta-02`, con 20 salas (las otras son `cripta-01`, con 6, y `cripta-test`, con 5). Es una suposición, porque el enunciado no la identifica con certeza. Esa definición viene del FR-029 de la spec 002: Persona B confirmó el 2026-11-17 que coincide con su FR-029. Aun así, el enunciado sigue sin identificarla con certeza.
+- **Qué cripta se mide (HIPÓTESIS).** La cripta de referencia del enunciado (§6.1) todavía no está publicada. No es la «cripta publicada más grande»: esa es la de la verificación de resolubilidad, no la de «ir a». Como sustituta se usa `cripta-02`, con 20 salas, porque es la mayor de las copias locales de `datos_locales/` (las otras son `cripta-01`, con 6, y `cripta-test`, con 5). La mayor publicada es `cripta-06`, con 300 salas y 760 salidas (según `specs/002-resolubilidad/research.md`). No hay copia local de ella y está **SIN MEDIR**. Por las filas sintéticas de 400 salas (grilla: de 1.0 a 1.7 ms por paso, hasta 3.8 ms con el equipo cargado) se espera que con 300 salas también cumpla, pero es una **HIPÓTESIS**, no una medición.
 - **Método.** Cada par se mide como un paso de las filas sintéticas: `medir_ms` de `primer_paso`, mediana de 7 repeticiones. La fila da el máximo, el par que lo produce y cuántos pares se midieron, en dos variantes: un `EspacioBusqueda` nuevo en cada llamada y uno reutilizado en todos los pares. Equipo: Windows 11, Intel, Python 3.12.10, con la carga normal de PyCharm y otros programas abiertos, así que las cifras varían entre corridas (también cambia el par que da el peor caso).
 - **Mapa conocido completo.** Se entra sin antorcha a cada sala, como en las filas sintéticas: todas quedan exploradas y cada puerta queda recordada con su estado real. Hay 2 salidas cerradas con llave (5→19 y 17→18) que el jugador recuerda cerradas, así que no entran al grafo. El grafo es dirigido: desde la sala 1 solo se alcanzan 17 de las 20 salas, y los 55 pares restantes no tienen ruta.
 - **Enemigos (confirmado por Persona B el 2026-11-17).** En las salas conocidas de `cripta-02` (1 a 8, 19 y 20) hay 1 enemigo, `ent_rata_gigante` (rastreador), en la sala 7, y 0 cazadores. Las salas 9 a 18 nunca se descargaron, así que no hay garantía para toda la cripta. No cambia la medición, porque el costo de una salida no depende de los enemigos: `MotorSimulacion.costo_salida` (`Modelo/MotorSimulacion.py`) solo lee `salida.costo`, o `COSTO_MOVER` si no lo trae, y `GrafoConocido.aristas` (`Modelo/Conocimiento.py`) solo mira el estado de las salas, el recuerdo de la puerta y ese costo.
@@ -1126,7 +1126,7 @@ Resultados por paso:
 
 Las cifras de la última corrida están en `resultados_bench_niebla.txt`.
 
-**Nota metodológica: orden de las filas.** Medir la cripta de referencia entre los dos bloques sintéticos («por llamada» y «reutilizado») empeoraba las filas que venían después: la cadena de 2500 reutilizada subió de ≈2.9 a 4.4–7.9 ms por paso. Por eso las filas de la cripta de referencia van al final de M4 (`tests/test_bench_niebla.py::test_sc007_pr15_t110_las_filas_de_referencia_van_despues_de_todas_las_sinteticas`). La causa no se investigó.
+**Nota metodológica: orden de las filas.** Medir la cripta sustituta (`cripta-02`) entre los dos bloques sintéticos («por llamada» y «reutilizado») empeoraba las filas que venían después: la cadena de 2500 reutilizada subió de ≈2.9 a 4.4–7.9 ms por paso. Por eso las filas de la cripta sustituta van al final de M4 (`tests/test_bench_niebla.py::test_sc007_pr15_t110_las_filas_de_referencia_van_despues_de_todas_las_sinteticas`). La causa no se investigó.
 
 **Diagnóstico (medición puntual del 2026-11-16, fuera de `--bench`).** Se perfiló con `cProfile` una búsqueda de la sala 1 a la 2500 de la grilla de 2500, en el mismo equipo. Son mediciones puntuales y ruidosas: el mismo paso dio una mediana de 8.6 ms en una corrida y de 20 a 24 ms en otra.
 
@@ -1140,9 +1140,9 @@ Las cifras de la última corrida están en `resultados_bench_niebla.txt`.
 
 Dieron el mismo primer paso que la versión actual en 2800 casos (grilla y cadena de V = 400, con costos variados y con todos los costos en 1 para forzar empates). Ganaron entre 0 % y 9 %, dentro del ruido. **HIPÓTESIS**: que alguna de ellas mejore de forma consistente. Bajar de verdad exigiría cambiar el algoritmo, con búsqueda bidireccional o A* con una estimación de distancia. Queda como trabajo futuro y corresponde a Persona A, responsable de `Modelo/BusquedaRuta.py`.
 
-**Espacio reutilizado.** Reutilizar el `EspacioBusqueda` no dio una mejora consistente. En la corrida de `resultados_bench_niebla.txt`, el paso de la grilla de 2500 tarda 15.0791 ms por llamada y 15.9985 ms reutilizado, y el de la cadena de 2500, 2.8774 y 2.9908 ms. **HIPÓTESIS no concluyente**.
+**Espacio reutilizado.** Reutilizar el `EspacioBusqueda` no dio una mejora consistente. En la corrida de `resultados_bench_niebla.txt`, el paso de la grilla de 2500 tarda 9.2726 ms por llamada y 21.9315 ms reutilizado, y el de la cadena de 2500, 3.0830 y 8.5576 ms. **HIPÓTESIS no concluyente**.
 
-**Confirmación de Persona A (2026-11-16), responsable de `Modelo/BusquedaRuta.py`.** La búsqueda ya corta al sacar el destino de la cola (`if ordinal == ordinal_destino:` devuelve el paso), así que no hay ahorro por ahí. El costo de la grilla de 2500 es el de un Dijkstra sin heurística con el destino lejano. Un A* lo reduciría, pero cambia el algoritmo y obliga a repetir las pruebas de desempate; por eso no entra antes de la entrega y la grilla de 2500 queda como prueba de estrés documentada, con su veredicto «no cumple». El criterio de §6.1 se mide en la cripta de referencia; según A, si la cripta real tiene 400 salas o menos, debería quedar dentro de los 5 ms. Esa fue la lectura de A antes de T110; la medición de T110 con la cripta de referencia, de 20 salas, cumple (arriba).
+**Confirmación de Persona A (2026-11-16), responsable de `Modelo/BusquedaRuta.py`.** La búsqueda ya corta al sacar el destino de la cola (`if ordinal == ordinal_destino:` devuelve el paso), así que no hay ahorro por ahí. El costo de la grilla de 2500 es el de un Dijkstra sin heurística con el destino lejano. Un A* lo reduciría, pero cambia el algoritmo y obliga a repetir las pruebas de desempate; por eso no entra antes de la entrega y la grilla de 2500 queda como prueba de estrés documentada, con su veredicto «no cumple». El criterio de §6.1 se mide en la cripta de referencia; según A, si la cripta real tiene 400 salas o menos, debería quedar dentro de los 5 ms. Esa fue la lectura de A antes de T110; la medición de T110 con la cripta sustituta (`cripta-02`, de 20 salas) cumple (arriba).
 
 ### Veneno no jugable (límite conocido)
 
@@ -1164,7 +1164,7 @@ Dieron el mismo primer paso que la versión actual en 2800 casos (grilla y caden
 - Costo de `@cargar` en el replay y su efecto en el presupuesto con red (decisión 3).
 - Tiempos de `mapa` y de resolver el destino de `ir a` (decisión 4).
 - Que las mejoras pequeñas de la búsqueda ganen de forma consistente, y que reutilizar el `EspacioBusqueda` mejore (M4).
-- Que la cripta publicada más grande (`cripta-02`) sea la cripta de referencia del enunciado (§6.1, suposición de T110). Persona B confirmó el 2026-11-17 que coincide con su FR-029 (spec 002), pero el enunciado sigue sin identificarla con certeza.
+- Que el veredicto de §6.1 sobre la cripta sustituta (`cripta-02`, 20 salas, la mayor de las copias locales) se mantenga con la cripta de referencia del enunciado, que aún no está publicada. La mayor publicada, `cripta-06` (300 salas, 760 salidas), no tiene copia local y está SIN MEDIR; se espera que cumpla por las sintéticas de 400 salas, pero no se ha medido.
 
 ## §5.4 — Resolubilidad
 

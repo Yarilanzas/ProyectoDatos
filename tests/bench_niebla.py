@@ -4,8 +4,9 @@
 # Sin red y sin vista: no pasa por nueva_partida ni crear_paquete_niebla, así que no necesita forzar=True. M6 arma
 # el motor a mano con `iniciar_partida`, como tests/bench_ciclo.py.
 # Los mapas son sintéticos (tests/mapas_sinteticos.py), sin datos de ninguna cripta real. La única excepción es la
-# fila de M4 de la cripta de referencia (T110): su esqueleto se lee al correr de las copias locales
-# (`datos_locales/esqueleto_<id>.json`), nunca se escribe en este archivo (Principio IV), y solo se lee.
+# fila de M4 de la cripta sustituta de la de referencia (T110): la mayor de las copias locales
+# (`datos_locales/esqueleto_<id>.json`). Su esqueleto se lee al correr, nunca se escribe en este archivo
+# (Principio IV), y solo se lee. HIPÓTESIS: la cripta de referencia del enunciado (§6.1) aún no está publicada.
 # Atiende: PR-15, SC-006, SC-007, Principio VIII.
 #
 # Principio I: la mediana usa el ordenamiento propio del repositorio (Modelo/ordenamiento.py), ni el ordenamiento
@@ -87,10 +88,11 @@ def encabezado(repeticiones=REPETICIONES):
         f"equipo: {platform.platform()} | {platform.processor() or platform.machine()}"
         f" | Python {platform.python_version()}",
         f"cada dato es la mediana de {repeticiones} repeticiones (M6: mediana y p95 de los ciclos), sin red ni "
-        "vista, con mapas sintéticos y, en M4, el esqueleto de la cripta de referencia leído de datos_locales",
+        "vista, con mapas sintéticos y, en M4, el esqueleto de la mayor de las copias locales de datos_locales",
         f"M4: las filas sintéticas son pruebas de estrés, con resultado provisional (PROVISIONAL); la medición del "
         f"límite de {LIMITE_PASO_IR_A_MS} ms de §6.1 es la fila «referencia/paso», con el mapa conocido completo "
-        "de la cripta de referencia",
+        "de la cripta sustituta (la mayor de las copias locales); HIPÓTESIS: la cripta de referencia del "
+        "enunciado aún no está publicada",
     ]
 
 
@@ -609,11 +611,12 @@ def medir_m3(tamanos=TAMANOS_M3_N, vecinas=VECINAS_M3, repeticiones=REPETICIONES
 # `Conocimiento` con todo el mapa explorado y todas las puertas abiertas (el «mapa conocido completo»), y el costo de
 # cada salida lo da `motor.costo_salida`, como en el juego.
 # PROVISIONAL: los mapas sintéticos son pruebas de estrés. El límite de §6.1 se define para la cripta de referencia;
-# su medición es la fila «referencia/paso» (T110, `medir_m4_referencia`), no estas.
+# su medición, sobre la cripta sustituta (la mayor de las copias locales), es la fila «referencia/paso» (T110,
+# `medir_m4_referencia`), no estas.
 
 TAMANOS_M4 = (25, 100, 400, 2500)
 TOPOLOGIAS_M4 = (("grilla", grilla), ("cadena", cadena))
-NOTA_PROVISIONAL_M4 = ("mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta de referencia")
+NOTA_PROVISIONAL_M4 = ("mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta sustituta")
 
 
 def veredicto_paso(ms):
@@ -689,18 +692,20 @@ def medir_m4(tamanos=TAMANOS_M4, repeticiones=REPETICIONES, espacio=None):
     return filas
 
 
-# --- M4 con la cripta de referencia (T110; FR-024, SC-007, PR-15) ---------------------------------------------------
-# La cripta de referencia es la publicada más grande entre las copias locales de esqueletos que guarda la caché
-# (`AlmacenamientoLocalApi.guardar_esqueleto`, formato {"version", "esqueleto"}). Ningún dato de ella está en este
-# archivo (Principio IV): el id sale del nombre del archivo, y la versión y las salas, de su contenido, al correr.
+# --- M4 con la cripta sustituta de la de referencia (T110; FR-024, SC-007, PR-15) -----------------------------------
+# HIPÓTESIS: la cripta de referencia del enunciado (§6.1) aún no está publicada. Se usa como sustituta la mayor de
+# las copias locales de esqueletos que guarda la caché (`AlmacenamientoLocalApi.guardar_esqueleto`, formato
+# {"version", "esqueleto"}). La fila «referencia/paso» es la medición de §6.1 sobre esa sustituta; el veredicto
+# definitivo depende de la publicación de la cripta de referencia. Ningún dato de la sustituta
+# está en este archivo (Principio IV): el id sale del nombre del archivo, y la versión y las salas, de su contenido, al correr.
 # La carpeta solo se lee: si no hay copias, la fila sale «no medido» con el motivo y el bench sigue.
 
 CARPETA_DATOS_LOCALES = os.path.join(RAIZ, "datos_locales")
 PREFIJO_ESQUELETO = "esqueleto_"
 EXTENSION_ESQUELETO = ".json"
-NOTA_REFERENCIA_M4 = ("cripta publicada más grande ({id_cripta}, {salas} salas), usada como cripta de referencia; "
-                      "el enunciado no la identifica con certeza")
-HIPOTESIS_REFERENCIA_M4 = (f"el peor paso con el mapa conocido completo de la cripta de referencia tarda "
+NOTA_REFERENCIA_M4 = ("la mayor de las copias locales ({id_cripta}, {salas} salas), usada como sustituta de la cripta "
+                      "de referencia (HIPÓTESIS: la del enunciado, §6.1, aún no está publicada)")
+HIPOTESIS_REFERENCIA_M4 = (f"el peor paso con el mapa conocido completo de la cripta sustituta tarda "
                            f"{LIMITE_PASO_IR_A_MS} ms o menos (§6.1)")
 
 
@@ -743,8 +748,8 @@ def _buscar_por_id(ordenadas, id_sala):
 
 
 def preparar_m4_referencia(carpeta=CARPETA_DATOS_LOCALES):
-    """Mapa conocido completo del esqueleto real de la cripta de referencia. Devuelve (id, grafo, salas), o None si
-    no hay copias locales.
+    """Mapa conocido completo del esqueleto real de la cripta sustituta (la mayor de las copias locales). Devuelve
+    (id, grafo, salas), o None si no hay copias locales.
 
     Lee con `AlmacenamientoLocalApi.cargar_esqueleto`, con la versión que trae el propio archivo, así que las salas
     son los `SalaEsqueleto` y `Salida` del juego. El destino de cada salida (`sala_destino`, un id) se resuelve una
@@ -787,7 +792,8 @@ def pares_alcanzables(grafo, salas, espacio=None):
 
 def medir_m4_referencia(repeticiones=REPETICIONES, espacio=None, carpeta=CARPETA_DATOS_LOCALES):
     """M4 de §6.1 (T110): el peor caso de un paso de «ir a» entre todos los pares alcanzables del mapa conocido
-    completo de la cripta de referencia. Cada par se mide como el paso de `medir_m4` (`medir_ms` de `primer_paso`);
+    completo de la cripta sustituta (la mayor de las copias locales; HIPÓTESIS: la cripta de referencia del
+    enunciado aún no está publicada, así que el veredicto no es definitivo). Cada par se mide como el paso de `medir_m4` (`medir_ms` de `primer_paso`);
     la fila reporta el máximo en ms, el par que lo produce («peor») y cuántos pares se midieron («pares»). El
     veredicto es `veredicto_paso` del máximo, contra `LIMITE_PASO_IR_A_MS`. La fila no es provisional.
 
@@ -1022,8 +1028,8 @@ TAMANOS_MINIMOS = TamanosBench(m1=(20,), consultas_m1=3, m2=(10,), m3_n=(50,), m
 def correr_bench(ruta=ARCHIVO_RESULTADOS, tamanos=None, datos_locales=CARPETA_DATOS_LOCALES):
     """Corre M1 a M6 y escribe ``ruta`` con el encabezado (equipo y versión de Python). Devuelve las filas.
     M4 se mide dos veces (T109): con un `EspacioBusqueda` nuevo en cada llamada a `primer_paso` y con uno
-    reutilizado en todo el viaje. En cada una, además de los mapas sintéticos, va la fila de la cripta de
-    referencia leída de ``datos_locales`` (T110). ``tamanos`` es un `TamanosBench`; None usa los de research R9."""
+    reutilizado en todo el viaje. En cada una, además de los mapas sintéticos, va la fila de la cripta sustituta
+    de la de referencia, la mayor de las copias locales de ``datos_locales`` (T110). ``tamanos`` es un `TamanosBench`; None usa los de research R9."""
     t = TamanosBench() if tamanos is None else tamanos
     secciones = (
         (f"M1: consultar estado de sala y recuerdo de puerta, {t.consultas_m1} consultas por fila "
@@ -1034,8 +1040,9 @@ def correr_bench(ruta=ARCHIVO_RESULTADOS, tamanos=None, datos_locales=CARPETA_DA
         (f"M4: un paso y un viaje de «ir a» por primer_paso, límite {LIMITE_PASO_IR_A_MS} ms por paso, con y sin "
          f"EspacioBusqueda reutilizado (R6; FR-024, FR-026, SC-007). Filas sintéticas, PROVISIONAL: "
          f"{NOTA_PROVISIONAL_M4}. Fila «referencia/paso»: medición de §6.1, el peor paso entre todos los pares "
-         "alcanzables del mapa conocido completo de la cripta de referencia (T110)",
-         # Las filas de la cripta de referencia van después de todas las sintéticas: medirlas entre los dos
+         "alcanzables del mapa conocido completo de la cripta sustituta, la mayor de las copias locales (T110; "
+         "HIPÓTESIS: la cripta de referencia del enunciado aún no está publicada)",
+         # Las filas de la cripta sustituta van después de todas las sintéticas: medirlas entre los dos
          # bloques sintéticos alteraba las filas que venían después.
          medir_m4(t.m4, t.repeticiones) + medir_m4(t.m4, t.repeticiones, espacio=EspacioBusqueda)
          + medir_m4_referencia(t.repeticiones, None, datos_locales)

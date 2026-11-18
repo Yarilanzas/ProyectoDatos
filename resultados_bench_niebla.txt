@@ -1,125 +1,125 @@
 -Niebla de guerra, mapa conocido e «ir a» (Fase 6, M1 a M6)-
 equipo: Windows-11-10.0.26200-SP0 | Intel64 Family 6 Model 154 Stepping 4, GenuineIntel | Python 3.12.10
-cada dato es la mediana de 7 repeticiones (M6: mediana y p95 de los ciclos), sin red ni vista, con mapas sintéticos y, en M4, el esqueleto de la cripta de referencia leído de datos_locales
-M4: las filas sintéticas son pruebas de estrés, con resultado provisional (PROVISIONAL); la medición del límite de 5 ms de §6.1 es la fila «referencia/paso», con el mapa conocido completo de la cripta de referencia
+cada dato es la mediana de 7 repeticiones (M6: mediana y p95 de los ciclos), sin red ni vista, con mapas sintéticos y, en M4, el esqueleto de la mayor de las copias locales de datos_locales
+M4: las filas sintéticas son pruebas de estrés, con resultado provisional (PROVISIONAL); la medición del límite de 5 ms de §6.1 es la fila «referencia/paso», con el mapa conocido completo de la cripta sustituta (la mayor de las copias locales); HIPÓTESIS: la cripta de referencia del enunciado aún no está publicada
 M1: consultar estado de sala y recuerdo de puerta, 100 consultas por fila (R1; FR-001, FR-005)
-M1 sala/arreglos    n=20 consultas=100               0.0032 ms   hipótesis: el tiempo de los arreglos no crece con n (O(1))
-M1 sala/binaria     n=20 consultas=100               0.0290 ms   hipótesis: la lista ordenada con binaria crece con log n
-M1 sala/lineal      n=20 consultas=100               0.0340 ms   hipótesis: línea base: la lista lineal crece con n
-M1 puerta/arreglos  n=20 consultas=100               0.0033 ms   hipótesis: el tiempo de los arreglos no crece con n (O(1))
-M1 puerta/binaria   n=20 consultas=100               0.0380 ms   hipótesis: la lista ordenada con binaria crece con log n
-M1 puerta/lineal    n=20 consultas=100               0.0645 ms   hipótesis: línea base: la lista lineal crece con n
-M1 sala/arreglos    n=200 consultas=100              0.0032 ms   hipótesis: el tiempo de los arreglos no crece con n (O(1))
-M1 sala/binaria     n=200 consultas=100              0.0415 ms   hipótesis: la lista ordenada con binaria crece con log n
-M1 sala/lineal      n=200 consultas=100              0.1936 ms   hipótesis: línea base: la lista lineal crece con n
-M1 puerta/arreglos  n=200 consultas=100              0.0042 ms   hipótesis: el tiempo de los arreglos no crece con n (O(1))
-M1 puerta/binaria   n=200 consultas=100              0.0562 ms   hipótesis: la lista ordenada con binaria crece con log n
-M1 puerta/lineal    n=200 consultas=100              0.5143 ms   hipótesis: línea base: la lista lineal crece con n
-M1 sala/arreglos    n=2000 consultas=100             0.0038 ms   hipótesis: el tiempo de los arreglos no crece con n (O(1))
-M1 sala/binaria     n=2000 consultas=100             0.0757 ms   hipótesis: la lista ordenada con binaria crece con log n
-M1 sala/lineal      n=2000 consultas=100             2.3397 ms   hipótesis: línea base: la lista lineal crece con n
-M1 puerta/arreglos  n=2000 consultas=100             0.0067 ms   hipótesis: el tiempo de los arreglos no crece con n (O(1))
-M1 puerta/binaria   n=2000 consultas=100             0.0960 ms   hipótesis: la lista ordenada con binaria crece con log n
-M1 puerta/lineal    n=2000 consultas=100             6.7442 ms   hipótesis: línea base: la lista lineal crece con n
-M1 sala/arreglos    n=20000 consultas=100            0.0043 ms   hipótesis: el tiempo de los arreglos no crece con n (O(1))
-M1 sala/binaria     n=20000 consultas=100            0.0930 ms   hipótesis: la lista ordenada con binaria crece con log n
-M1 sala/lineal      n=20000 consultas=100           27.5740 ms   hipótesis: línea base: la lista lineal crece con n
-M1 puerta/arreglos  n=20000 consultas=100            0.0057 ms   hipótesis: el tiempo de los arreglos no crece con n (O(1))
-M1 puerta/binaria   n=20000 consultas=100            0.1462 ms   hipótesis: la lista ordenada con binaria crece con log n
-M1 puerta/lineal    n=20000 consultas=100          107.4384 ms   hipótesis: línea base: la lista lineal crece con n
+M1 sala/arreglos    n=20 consultas=100               0.0033 ms   hipótesis: el tiempo de los arreglos no crece con n (O(1))
+M1 sala/binaria     n=20 consultas=100               0.0292 ms   hipótesis: la lista ordenada con binaria crece con log n
+M1 sala/lineal      n=20 consultas=100               0.0336 ms   hipótesis: línea base: la lista lineal crece con n
+M1 puerta/arreglos  n=20 consultas=100               0.0032 ms   hipótesis: el tiempo de los arreglos no crece con n (O(1))
+M1 puerta/binaria   n=20 consultas=100               0.0374 ms   hipótesis: la lista ordenada con binaria crece con log n
+M1 puerta/lineal    n=20 consultas=100               0.0654 ms   hipótesis: línea base: la lista lineal crece con n
+M1 sala/arreglos    n=200 consultas=100              0.0033 ms   hipótesis: el tiempo de los arreglos no crece con n (O(1))
+M1 sala/binaria     n=200 consultas=100              0.0450 ms   hipótesis: la lista ordenada con binaria crece con log n
+M1 sala/lineal      n=200 consultas=100              0.2060 ms   hipótesis: línea base: la lista lineal crece con n
+M1 puerta/arreglos  n=200 consultas=100              0.0051 ms   hipótesis: el tiempo de los arreglos no crece con n (O(1))
+M1 puerta/binaria   n=200 consultas=100              0.0657 ms   hipótesis: la lista ordenada con binaria crece con log n
+M1 puerta/lineal    n=200 consultas=100              0.6136 ms   hipótesis: línea base: la lista lineal crece con n
+M1 sala/arreglos    n=2000 consultas=100             0.0043 ms   hipótesis: el tiempo de los arreglos no crece con n (O(1))
+M1 sala/binaria     n=2000 consultas=100             0.0894 ms   hipótesis: la lista ordenada con binaria crece con log n
+M1 sala/lineal      n=2000 consultas=100             2.6926 ms   hipótesis: línea base: la lista lineal crece con n
+M1 puerta/arreglos  n=2000 consultas=100             0.0057 ms   hipótesis: el tiempo de los arreglos no crece con n (O(1))
+M1 puerta/binaria   n=2000 consultas=100             0.1130 ms   hipótesis: la lista ordenada con binaria crece con log n
+M1 puerta/lineal    n=2000 consultas=100             8.0028 ms   hipótesis: línea base: la lista lineal crece con n
+M1 sala/arreglos    n=20000 consultas=100            0.0036 ms   hipótesis: el tiempo de los arreglos no crece con n (O(1))
+M1 sala/binaria     n=20000 consultas=100            0.1008 ms   hipótesis: la lista ordenada con binaria crece con log n
+M1 sala/lineal      n=20000 consultas=100           26.2575 ms   hipótesis: línea base: la lista lineal crece con n
+M1 puerta/arreglos  n=20000 consultas=100            0.0055 ms   hipótesis: el tiempo de los arreglos no crece con n (O(1))
+M1 puerta/binaria   n=20000 consultas=100            0.1502 ms   hipótesis: la lista ordenada con binaria crece con log n
+M1 puerta/lineal    n=20000 consultas=100          102.5383 ms   hipótesis: línea base: la lista lineal crece con n
 M2: revelar r salas con k ya conocidas (R1; FR-003, FR-009)
-M2 arreglos         k=10 r=8                         0.0024 ms   hipótesis: con arreglos no crece con k (revelar y deshacer)
-M2 lista ordenada   k=10 r=8                         0.0075 ms   hipótesis: con lista ordenada crece con k (insertar desplaza) (revelar y deshacer; inserción al frente)
-M2 arreglos         k=100 r=8                        0.0026 ms   hipótesis: con arreglos no crece con k (revelar y deshacer)
-M2 lista ordenada   k=100 r=8                        0.0111 ms   hipótesis: con lista ordenada crece con k (insertar desplaza) (revelar y deshacer; inserción al frente)
-M2 arreglos         k=1000 r=8                       0.0019 ms   hipótesis: con arreglos no crece con k (revelar y deshacer)
-M2 lista ordenada   k=1000 r=8                       0.0126 ms   hipótesis: con lista ordenada crece con k (insertar desplaza) (revelar y deshacer; inserción al frente)
-M2 arreglos         k=10000 r=8                      0.0022 ms   hipótesis: con arreglos no crece con k (revelar y deshacer)
-M2 lista ordenada   k=10000 r=8                      0.1501 ms   hipótesis: con lista ordenada crece con k (insertar desplaza) (revelar y deshacer; inserción al frente)
+M2 arreglos         k=10 r=8                         0.0025 ms   hipótesis: con arreglos no crece con k (revelar y deshacer)
+M2 lista ordenada   k=10 r=8                         0.0082 ms   hipótesis: con lista ordenada crece con k (insertar desplaza) (revelar y deshacer; inserción al frente)
+M2 arreglos         k=100 r=8                        0.0023 ms   hipótesis: con arreglos no crece con k (revelar y deshacer)
+M2 lista ordenada   k=100 r=8                        0.0100 ms   hipótesis: con lista ordenada crece con k (insertar desplaza) (revelar y deshacer; inserción al frente)
+M2 arreglos         k=1000 r=8                       0.0020 ms   hipótesis: con arreglos no crece con k (revelar y deshacer)
+M2 lista ordenada   k=1000 r=8                       0.0127 ms   hipótesis: con lista ordenada crece con k (insertar desplaza) (revelar y deshacer; inserción al frente)
+M2 arreglos         k=10000 r=8                      0.0023 ms   hipótesis: con arreglos no crece con k (revelar y deshacer)
+M2 lista ordenada   k=10000 r=8                      0.1453 ms   hipótesis: con lista ordenada crece con k (insertar desplaza) (revelar y deshacer; inserción al frente)
 M3: registrar y deshacer una entrada con antorcha (R2; FR-014)
-M3 lote             n=200 vecinas=4 r=18             0.0090 ms   hipótesis: el lote crece con r y no con n (registrar y deshacer)
-M3 cierres          n=200 vecinas=4 r=18             0.0147 ms   hipótesis: los cierres crecen con r (un Cambio y una función por escritura) (registrar y deshacer)
-M3 copia            n=200 vecinas=4 r=18             0.0081 ms   hipótesis: la copia crece con n (registrar y deshacer)
-M3 lote             n=200 vecinas=16 r=66            0.0255 ms   hipótesis: el lote crece con r y no con n (registrar y deshacer)
-M3 cierres          n=200 vecinas=16 r=66            0.0431 ms   hipótesis: los cierres crecen con r (un Cambio y una función por escritura) (registrar y deshacer)
-M3 copia            n=200 vecinas=16 r=66            0.0187 ms   hipótesis: la copia crece con n (registrar y deshacer)
-M3 lote             n=200 vecinas=64 r=258           0.1082 ms   hipótesis: el lote crece con r y no con n (registrar y deshacer)
-M3 cierres          n=200 vecinas=64 r=258           0.2176 ms   hipótesis: los cierres crecen con r (un Cambio y una función por escritura) (registrar y deshacer)
-M3 copia            n=200 vecinas=64 r=258           0.0604 ms   hipótesis: la copia crece con n (registrar y deshacer)
-M3 lote             n=2000 vecinas=4 r=18            0.0080 ms   hipótesis: el lote crece con r y no con n (registrar y deshacer)
-M3 cierres          n=2000 vecinas=4 r=18            0.0119 ms   hipótesis: los cierres crecen con r (un Cambio y una función por escritura) (registrar y deshacer)
-M3 copia            n=2000 vecinas=4 r=18            0.0111 ms   hipótesis: la copia crece con n (registrar y deshacer)
-M3 lote             n=2000 vecinas=16 r=66           0.0251 ms   hipótesis: el lote crece con r y no con n (registrar y deshacer)
-M3 cierres          n=2000 vecinas=16 r=66           0.0447 ms   hipótesis: los cierres crecen con r (un Cambio y una función por escritura) (registrar y deshacer)
-M3 copia            n=2000 vecinas=16 r=66           0.0231 ms   hipótesis: la copia crece con n (registrar y deshacer)
-M3 lote             n=2000 vecinas=64 r=258          0.0911 ms   hipótesis: el lote crece con r y no con n (registrar y deshacer)
-M3 cierres          n=2000 vecinas=64 r=258          0.1832 ms   hipótesis: los cierres crecen con r (un Cambio y una función por escritura) (registrar y deshacer)
-M3 copia            n=2000 vecinas=64 r=258          0.0630 ms   hipótesis: la copia crece con n (registrar y deshacer)
-M3 lote             n=20000 vecinas=4 r=18           0.0091 ms   hipótesis: el lote crece con r y no con n (registrar y deshacer)
+M3 lote             n=200 vecinas=4 r=18             0.0080 ms   hipótesis: el lote crece con r y no con n (registrar y deshacer)
+M3 cierres          n=200 vecinas=4 r=18             0.0139 ms   hipótesis: los cierres crecen con r (un Cambio y una función por escritura) (registrar y deshacer)
+M3 copia            n=200 vecinas=4 r=18             0.0079 ms   hipótesis: la copia crece con n (registrar y deshacer)
+M3 lote             n=200 vecinas=16 r=66            0.0340 ms   hipótesis: el lote crece con r y no con n (registrar y deshacer)
+M3 cierres          n=200 vecinas=16 r=66            0.0429 ms   hipótesis: los cierres crecen con r (un Cambio y una función por escritura) (registrar y deshacer)
+M3 copia            n=200 vecinas=16 r=66            0.0183 ms   hipótesis: la copia crece con n (registrar y deshacer)
+M3 lote             n=200 vecinas=64 r=258           0.0902 ms   hipótesis: el lote crece con r y no con n (registrar y deshacer)
+M3 cierres          n=200 vecinas=64 r=258           0.1802 ms   hipótesis: los cierres crecen con r (un Cambio y una función por escritura) (registrar y deshacer)
+M3 copia            n=200 vecinas=64 r=258           0.0582 ms   hipótesis: la copia crece con n (registrar y deshacer)
+M3 lote             n=2000 vecinas=4 r=18            0.0082 ms   hipótesis: el lote crece con r y no con n (registrar y deshacer)
+M3 cierres          n=2000 vecinas=4 r=18            0.0124 ms   hipótesis: los cierres crecen con r (un Cambio y una función por escritura) (registrar y deshacer)
+M3 copia            n=2000 vecinas=4 r=18            0.0099 ms   hipótesis: la copia crece con n (registrar y deshacer)
+M3 lote             n=2000 vecinas=16 r=66           0.0224 ms   hipótesis: el lote crece con r y no con n (registrar y deshacer)
+M3 cierres          n=2000 vecinas=16 r=66           0.0383 ms   hipótesis: los cierres crecen con r (un Cambio y una función por escritura) (registrar y deshacer)
+M3 copia            n=2000 vecinas=16 r=66           0.0201 ms   hipótesis: la copia crece con n (registrar y deshacer)
+M3 lote             n=2000 vecinas=64 r=258          0.0889 ms   hipótesis: el lote crece con r y no con n (registrar y deshacer)
+M3 cierres          n=2000 vecinas=64 r=258          0.1900 ms   hipótesis: los cierres crecen con r (un Cambio y una función por escritura) (registrar y deshacer)
+M3 copia            n=2000 vecinas=64 r=258          0.0682 ms   hipótesis: la copia crece con n (registrar y deshacer)
+M3 lote             n=20000 vecinas=4 r=18           0.0096 ms   hipótesis: el lote crece con r y no con n (registrar y deshacer)
 M3 cierres          n=20000 vecinas=4 r=18           0.0158 ms   hipótesis: los cierres crecen con r (un Cambio y una función por escritura) (registrar y deshacer)
-M3 copia            n=20000 vecinas=4 r=18           0.1828 ms   hipótesis: la copia crece con n (registrar y deshacer)
-M3 lote             n=20000 vecinas=16 r=66          0.0306 ms   hipótesis: el lote crece con r y no con n (registrar y deshacer)
-M3 cierres          n=20000 vecinas=16 r=66          0.0471 ms   hipótesis: los cierres crecen con r (un Cambio y una función por escritura) (registrar y deshacer)
-M3 copia            n=20000 vecinas=16 r=66          0.1241 ms   hipótesis: la copia crece con n (registrar y deshacer)
-M3 lote             n=20000 vecinas=64 r=258         0.1071 ms   hipótesis: el lote crece con r y no con n (registrar y deshacer)
-M3 cierres          n=20000 vecinas=64 r=258         0.1894 ms   hipótesis: los cierres crecen con r (un Cambio y una función por escritura) (registrar y deshacer)
-M3 copia            n=20000 vecinas=64 r=258         0.1206 ms   hipótesis: la copia crece con n (registrar y deshacer)
-M4: un paso y un viaje de «ir a» por primer_paso, límite 5 ms por paso, con y sin EspacioBusqueda reutilizado (R6; FR-024, FR-026, SC-007). Filas sintéticas, PROVISIONAL: mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta de referencia. Fila «referencia/paso»: medición de §6.1, el peor paso entre todos los pares alcanzables del mapa conocido completo de la cripta de referencia (T110)
-M4 grilla/paso      V=25 pasos=1 espacio=por llamada     0.0517 ms   PROVISIONAL cumple   hipótesis: un paso con el mapa conocido completo tarda 5 ms o menos (§6.1) (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta de referencia)
-M4 grilla/viaje     V=25 pasos=8 espacio=por llamada     0.3629 ms   PROVISIONAL cumple   hipótesis: dato de apoyo: el viaje crece con los pasos; veredicto con el promedio por paso (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta de referencia)
-M4 grilla/paso      V=100 pasos=1 espacio=por llamada     0.2586 ms   PROVISIONAL cumple   hipótesis: un paso con el mapa conocido completo tarda 5 ms o menos (§6.1) (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta de referencia)
-M4 grilla/viaje     V=100 pasos=18 espacio=por llamada     3.6577 ms   PROVISIONAL cumple   hipótesis: dato de apoyo: el viaje crece con los pasos; veredicto con el promedio por paso (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta de referencia)
-M4 grilla/paso      V=400 pasos=1 espacio=por llamada     1.1735 ms   PROVISIONAL cumple   hipótesis: un paso con el mapa conocido completo tarda 5 ms o menos (§6.1) (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta de referencia)
-M4 grilla/viaje     V=400 pasos=38 espacio=por llamada    30.3767 ms   PROVISIONAL cumple   hipótesis: dato de apoyo: el viaje crece con los pasos; veredicto con el promedio por paso (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta de referencia)
-M4 grilla/paso      V=2500 pasos=1 espacio=por llamada    15.0791 ms   PROVISIONAL no cumple   hipótesis: un paso con el mapa conocido completo tarda 5 ms o menos (§6.1) (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta de referencia)
-M4 grilla/viaje     V=2500 pasos=98 espacio=por llamada   818.6132 ms   PROVISIONAL no cumple   hipótesis: dato de apoyo: el viaje crece con los pasos; veredicto con el promedio por paso (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta de referencia)
-M4 cadena/paso      V=25 pasos=1 espacio=por llamada     0.0297 ms   PROVISIONAL cumple   hipótesis: un paso con el mapa conocido completo tarda 5 ms o menos (§6.1) (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta de referencia)
-M4 cadena/viaje     V=25 pasos=24 espacio=por llamada     0.7821 ms   PROVISIONAL cumple   hipótesis: dato de apoyo: el viaje crece con los pasos; veredicto con el promedio por paso (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta de referencia)
-M4 cadena/paso      V=100 pasos=1 espacio=por llamada     0.1279 ms   PROVISIONAL cumple   hipótesis: un paso con el mapa conocido completo tarda 5 ms o menos (§6.1) (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta de referencia)
-M4 cadena/viaje     V=100 pasos=99 espacio=por llamada    18.5879 ms   PROVISIONAL cumple   hipótesis: dato de apoyo: el viaje crece con los pasos; veredicto con el promedio por paso (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta de referencia)
-M4 cadena/paso      V=400 pasos=1 espacio=por llamada     0.6874 ms   PROVISIONAL cumple   hipótesis: un paso con el mapa conocido completo tarda 5 ms o menos (§6.1) (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta de referencia)
-M4 cadena/viaje     V=400 pasos=399 espacio=por llamada   215.7309 ms   PROVISIONAL cumple   hipótesis: dato de apoyo: el viaje crece con los pasos; veredicto con el promedio por paso (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta de referencia)
-M4 cadena/paso      V=2500 pasos=1 espacio=por llamada     2.8774 ms   PROVISIONAL cumple   hipótesis: un paso con el mapa conocido completo tarda 5 ms o menos (§6.1) (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta de referencia)
-M4 cadena/viaje     V=2500 pasos=2499 espacio=por llamada  7146.2080 ms   PROVISIONAL cumple   hipótesis: dato de apoyo: el viaje crece con los pasos; veredicto con el promedio por paso (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta de referencia)
-M4 grilla/paso      V=25 pasos=1 espacio=reutilizado     0.0517 ms   PROVISIONAL cumple   hipótesis: un paso con el mapa conocido completo tarda 5 ms o menos (§6.1) (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta de referencia)
-M4 grilla/viaje     V=25 pasos=8 espacio=reutilizado     0.3587 ms   PROVISIONAL cumple   hipótesis: dato de apoyo: el viaje crece con los pasos; veredicto con el promedio por paso (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta de referencia)
-M4 grilla/paso      V=100 pasos=1 espacio=reutilizado     0.2432 ms   PROVISIONAL cumple   hipótesis: un paso con el mapa conocido completo tarda 5 ms o menos (§6.1) (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta de referencia)
-M4 grilla/viaje     V=100 pasos=18 espacio=reutilizado     3.3607 ms   PROVISIONAL cumple   hipótesis: dato de apoyo: el viaje crece con los pasos; veredicto con el promedio por paso (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta de referencia)
-M4 grilla/paso      V=400 pasos=1 espacio=reutilizado     1.0220 ms   PROVISIONAL cumple   hipótesis: un paso con el mapa conocido completo tarda 5 ms o menos (§6.1) (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta de referencia)
-M4 grilla/viaje     V=400 pasos=38 espacio=reutilizado    29.3680 ms   PROVISIONAL cumple   hipótesis: dato de apoyo: el viaje crece con los pasos; veredicto con el promedio por paso (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta de referencia)
-M4 grilla/paso      V=2500 pasos=1 espacio=reutilizado    15.9985 ms   PROVISIONAL no cumple   hipótesis: un paso con el mapa conocido completo tarda 5 ms o menos (§6.1) (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta de referencia)
-M4 grilla/viaje     V=2500 pasos=98 espacio=reutilizado   761.7750 ms   PROVISIONAL no cumple   hipótesis: dato de apoyo: el viaje crece con los pasos; veredicto con el promedio por paso (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta de referencia)
-M4 cadena/paso      V=25 pasos=1 espacio=reutilizado     0.0225 ms   PROVISIONAL cumple   hipótesis: un paso con el mapa conocido completo tarda 5 ms o menos (§6.1) (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta de referencia)
-M4 cadena/viaje     V=25 pasos=24 espacio=reutilizado     0.4938 ms   PROVISIONAL cumple   hipótesis: dato de apoyo: el viaje crece con los pasos; veredicto con el promedio por paso (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta de referencia)
-M4 cadena/paso      V=100 pasos=1 espacio=reutilizado     0.1073 ms   PROVISIONAL cumple   hipótesis: un paso con el mapa conocido completo tarda 5 ms o menos (§6.1) (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta de referencia)
-M4 cadena/viaje     V=100 pasos=99 espacio=reutilizado     8.8273 ms   PROVISIONAL cumple   hipótesis: dato de apoyo: el viaje crece con los pasos; veredicto con el promedio por paso (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta de referencia)
-M4 cadena/paso      V=400 pasos=1 espacio=reutilizado     0.4684 ms   PROVISIONAL cumple   hipótesis: un paso con el mapa conocido completo tarda 5 ms o menos (§6.1) (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta de referencia)
-M4 cadena/viaje     V=400 pasos=399 espacio=reutilizado   163.1817 ms   PROVISIONAL cumple   hipótesis: dato de apoyo: el viaje crece con los pasos; veredicto con el promedio por paso (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta de referencia)
-M4 cadena/paso      V=2500 pasos=1 espacio=reutilizado     2.9908 ms   PROVISIONAL cumple   hipótesis: un paso con el mapa conocido completo tarda 5 ms o menos (§6.1) (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta de referencia)
-M4 cadena/viaje     V=2500 pasos=2499 espacio=reutilizado  7117.9356 ms   PROVISIONAL cumple   hipótesis: dato de apoyo: el viaje crece con los pasos; veredicto con el promedio por paso (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta de referencia)
-M4 referencia/paso  cripta=cripta-02 V=20 pasos=1 pares=325 peor=9->1 espacio=por llamada     0.0385 ms   cumple   hipótesis: el peor paso con el mapa conocido completo de la cripta de referencia tarda 5 ms o menos (§6.1) (cripta publicada más grande (cripta-02, 20 salas), usada como cripta de referencia; el enunciado no la identifica con certeza)
-M4 referencia/paso  cripta=cripta-02 V=20 pasos=1 pares=325 peor=19->17 espacio=reutilizado     0.0243 ms   cumple   hipótesis: el peor paso con el mapa conocido completo de la cripta de referencia tarda 5 ms o menos (§6.1) (cripta publicada más grande (cripta-02, 20 salas), usada como cripta de referencia; el enunciado no la identifica con certeza)
+M3 copia            n=20000 vecinas=4 r=18           0.0590 ms   hipótesis: la copia crece con n (registrar y deshacer)
+M3 lote             n=20000 vecinas=16 r=66          0.0259 ms   hipótesis: el lote crece con r y no con n (registrar y deshacer)
+M3 cierres          n=20000 vecinas=16 r=66          0.0438 ms   hipótesis: los cierres crecen con r (un Cambio y una función por escritura) (registrar y deshacer)
+M3 copia            n=20000 vecinas=16 r=66          0.2043 ms   hipótesis: la copia crece con n (registrar y deshacer)
+M3 lote             n=20000 vecinas=64 r=258         0.0978 ms   hipótesis: el lote crece con r y no con n (registrar y deshacer)
+M3 cierres          n=20000 vecinas=64 r=258         0.1658 ms   hipótesis: los cierres crecen con r (un Cambio y una función por escritura) (registrar y deshacer)
+M3 copia            n=20000 vecinas=64 r=258         0.2610 ms   hipótesis: la copia crece con n (registrar y deshacer)
+M4: un paso y un viaje de «ir a» por primer_paso, límite 5 ms por paso, con y sin EspacioBusqueda reutilizado (R6; FR-024, FR-026, SC-007). Filas sintéticas, PROVISIONAL: mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta sustituta. Fila «referencia/paso»: medición de §6.1, el peor paso entre todos los pares alcanzables del mapa conocido completo de la cripta sustituta, la mayor de las copias locales (T110; HIPÓTESIS: la cripta de referencia del enunciado aún no está publicada)
+M4 grilla/paso      V=25 pasos=1 espacio=por llamada     0.0490 ms   PROVISIONAL cumple   hipótesis: un paso con el mapa conocido completo tarda 5 ms o menos (§6.1) (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta sustituta)
+M4 grilla/viaje     V=25 pasos=8 espacio=por llamada     0.3514 ms   PROVISIONAL cumple   hipótesis: dato de apoyo: el viaje crece con los pasos; veredicto con el promedio por paso (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta sustituta)
+M4 grilla/paso      V=100 pasos=1 espacio=por llamada     0.2574 ms   PROVISIONAL cumple   hipótesis: un paso con el mapa conocido completo tarda 5 ms o menos (§6.1) (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta sustituta)
+M4 grilla/viaje     V=100 pasos=18 espacio=por llamada     3.6193 ms   PROVISIONAL cumple   hipótesis: dato de apoyo: el viaje crece con los pasos; veredicto con el promedio por paso (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta sustituta)
+M4 grilla/paso      V=400 pasos=1 espacio=por llamada     1.0485 ms   PROVISIONAL cumple   hipótesis: un paso con el mapa conocido completo tarda 5 ms o menos (§6.1) (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta sustituta)
+M4 grilla/viaje     V=400 pasos=38 espacio=por llamada    30.9363 ms   PROVISIONAL cumple   hipótesis: dato de apoyo: el viaje crece con los pasos; veredicto con el promedio por paso (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta sustituta)
+M4 grilla/paso      V=2500 pasos=1 espacio=por llamada     9.2726 ms   PROVISIONAL no cumple   hipótesis: un paso con el mapa conocido completo tarda 5 ms o menos (§6.1) (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta sustituta)
+M4 grilla/viaje     V=2500 pasos=98 espacio=por llamada   848.5844 ms   PROVISIONAL no cumple   hipótesis: dato de apoyo: el viaje crece con los pasos; veredicto con el promedio por paso (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta sustituta)
+M4 cadena/paso      V=25 pasos=1 espacio=por llamada     0.0364 ms   PROVISIONAL cumple   hipótesis: un paso con el mapa conocido completo tarda 5 ms o menos (§6.1) (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta sustituta)
+M4 cadena/viaje     V=25 pasos=24 espacio=por llamada     0.7357 ms   PROVISIONAL cumple   hipótesis: dato de apoyo: el viaje crece con los pasos; veredicto con el promedio por paso (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta sustituta)
+M4 cadena/paso      V=100 pasos=1 espacio=por llamada     0.1667 ms   PROVISIONAL cumple   hipótesis: un paso con el mapa conocido completo tarda 5 ms o menos (§6.1) (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta sustituta)
+M4 cadena/viaje     V=100 pasos=99 espacio=por llamada    12.1917 ms   PROVISIONAL cumple   hipótesis: dato de apoyo: el viaje crece con los pasos; veredicto con el promedio por paso (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta sustituta)
+M4 cadena/paso      V=400 pasos=1 espacio=por llamada     0.7797 ms   PROVISIONAL cumple   hipótesis: un paso con el mapa conocido completo tarda 5 ms o menos (§6.1) (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta sustituta)
+M4 cadena/viaje     V=400 pasos=399 espacio=por llamada   200.8827 ms   PROVISIONAL cumple   hipótesis: dato de apoyo: el viaje crece con los pasos; veredicto con el promedio por paso (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta sustituta)
+M4 cadena/paso      V=2500 pasos=1 espacio=por llamada     3.0830 ms   PROVISIONAL cumple   hipótesis: un paso con el mapa conocido completo tarda 5 ms o menos (§6.1) (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta sustituta)
+M4 cadena/viaje     V=2500 pasos=2499 espacio=por llamada  7112.5096 ms   PROVISIONAL cumple   hipótesis: dato de apoyo: el viaje crece con los pasos; veredicto con el promedio por paso (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta sustituta)
+M4 grilla/paso      V=25 pasos=1 espacio=reutilizado     0.1053 ms   PROVISIONAL cumple   hipótesis: un paso con el mapa conocido completo tarda 5 ms o menos (§6.1) (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta sustituta)
+M4 grilla/viaje     V=25 pasos=8 espacio=reutilizado     0.8059 ms   PROVISIONAL cumple   hipótesis: dato de apoyo: el viaje crece con los pasos; veredicto con el promedio por paso (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta sustituta)
+M4 grilla/paso      V=100 pasos=1 espacio=reutilizado     0.5817 ms   PROVISIONAL cumple   hipótesis: un paso con el mapa conocido completo tarda 5 ms o menos (§6.1) (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta sustituta)
+M4 grilla/viaje     V=100 pasos=18 espacio=reutilizado     8.7775 ms   PROVISIONAL cumple   hipótesis: dato de apoyo: el viaje crece con los pasos; veredicto con el promedio por paso (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta sustituta)
+M4 grilla/paso      V=400 pasos=1 espacio=reutilizado     3.0730 ms   PROVISIONAL cumple   hipótesis: un paso con el mapa conocido completo tarda 5 ms o menos (§6.1) (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta sustituta)
+M4 grilla/viaje     V=400 pasos=38 espacio=reutilizado    47.3107 ms   PROVISIONAL cumple   hipótesis: dato de apoyo: el viaje crece con los pasos; veredicto con el promedio por paso (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta sustituta)
+M4 grilla/paso      V=2500 pasos=1 espacio=reutilizado    21.9315 ms   PROVISIONAL no cumple   hipótesis: un paso con el mapa conocido completo tarda 5 ms o menos (§6.1) (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta sustituta)
+M4 grilla/viaje     V=2500 pasos=98 espacio=reutilizado  1442.1302 ms   PROVISIONAL no cumple   hipótesis: dato de apoyo: el viaje crece con los pasos; veredicto con el promedio por paso (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta sustituta)
+M4 cadena/paso      V=25 pasos=1 espacio=reutilizado     0.0398 ms   PROVISIONAL cumple   hipótesis: un paso con el mapa conocido completo tarda 5 ms o menos (§6.1) (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta sustituta)
+M4 cadena/viaje     V=25 pasos=24 espacio=reutilizado     1.7198 ms   PROVISIONAL cumple   hipótesis: dato de apoyo: el viaje crece con los pasos; veredicto con el promedio por paso (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta sustituta)
+M4 cadena/paso      V=100 pasos=1 espacio=reutilizado     0.4355 ms   PROVISIONAL cumple   hipótesis: un paso con el mapa conocido completo tarda 5 ms o menos (§6.1) (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta sustituta)
+M4 cadena/viaje     V=100 pasos=99 espacio=reutilizado    24.2829 ms   PROVISIONAL cumple   hipótesis: dato de apoyo: el viaje crece con los pasos; veredicto con el promedio por paso (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta sustituta)
+M4 cadena/paso      V=400 pasos=1 espacio=reutilizado     0.6478 ms   PROVISIONAL cumple   hipótesis: un paso con el mapa conocido completo tarda 5 ms o menos (§6.1) (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta sustituta)
+M4 cadena/viaje     V=400 pasos=399 espacio=reutilizado   349.6024 ms   PROVISIONAL cumple   hipótesis: dato de apoyo: el viaje crece con los pasos; veredicto con el promedio por paso (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta sustituta)
+M4 cadena/paso      V=2500 pasos=1 espacio=reutilizado     8.5576 ms   PROVISIONAL no cumple   hipótesis: un paso con el mapa conocido completo tarda 5 ms o menos (§6.1) (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta sustituta)
+M4 cadena/viaje     V=2500 pasos=2499 espacio=reutilizado  7081.1365 ms   PROVISIONAL cumple   hipótesis: dato de apoyo: el viaje crece con los pasos; veredicto con el promedio por paso (mapa sintético, prueba de estrés; la medición de §6.1 es la fila de la cripta sustituta)
+M4 referencia/paso  cripta=cripta-02 V=20 pasos=1 pares=325 peor=19->17 espacio=por llamada     0.0248 ms   cumple   hipótesis: el peor paso con el mapa conocido completo de la cripta sustituta tarda 5 ms o menos (§6.1) (la mayor de las copias locales (cripta-02, 20 salas), usada como sustituta de la cripta de referencia (HIPÓTESIS: la del enunciado, §6.1, aún no está publicada))
+M4 referencia/paso  cripta=cripta-02 V=20 pasos=1 pares=325 peor=5->17 espacio=reutilizado     0.0371 ms   cumple   hipótesis: el peor paso con el mapa conocido completo de la cripta sustituta tarda 5 ms o menos (§6.1) (la mayor de las copias locales (cripta-02, 20 salas), usada como sustituta de la cripta de referencia (HIPÓTESIS: la del enunciado, §6.1, aún no está publicada))
 M5: bloque de conocimiento, binario frente a JSON; bytes = bloque, leidos = al cargar (R3; FR-015)
-M5 binario/guardar  k=20 n=80 bytes=1156 leidos=1298     0.9991 ms   hipótesis: el bloque crece con lo conocido
-M5 binario/cargar   k=20 n=80 bytes=1156 leidos=1298     0.4820 ms   hipótesis: cargar lee el bloque y no las salas
-M5 json/guardar     k=20 n=80 bytes=1704 leidos=8236     0.8331 ms   hipótesis: línea base: el bloque JSON crece con lo conocido
-M5 json/cargar      k=20 n=80 bytes=1704 leidos=8236     0.7781 ms   hipótesis: línea base: JSON lee el archivo completo
-M5 binario/guardar  k=200 n=800 bytes=12060 leidos=12202    11.2216 ms   hipótesis: el bloque crece con lo conocido
-M5 binario/cargar   k=200 n=800 bytes=12060 leidos=12202     2.5398 ms   hipótesis: cargar lee el bloque y no las salas
-M5 json/guardar     k=200 n=800 bytes=19003 leidos=83836    10.3696 ms   hipótesis: línea base: el bloque JSON crece con lo conocido
-M5 json/cargar      k=200 n=800 bytes=19003 leidos=83836     6.5527 ms   hipótesis: línea base: JSON lee el archivo completo
-M5 binario/guardar  k=2000 n=8000 bytes=122292 leidos=122434    76.9753 ms   hipótesis: el bloque crece con lo conocido
-M5 binario/cargar   k=2000 n=8000 bytes=122292 leidos=122434    15.1799 ms   hipótesis: cargar lee el bloque y no las salas
-M5 json/guardar     k=2000 n=8000 bytes=208578 leidos=863612    96.5378 ms   hipótesis: línea base: el bloque JSON crece con lo conocido
-M5 json/cargar      k=2000 n=8000 bytes=208578 leidos=863612    46.1474 ms   hipótesis: línea base: JSON lee el archivo completo
+M5 binario/guardar  k=20 n=80 bytes=1156 leidos=1298     0.8538 ms   hipótesis: el bloque crece con lo conocido
+M5 binario/cargar   k=20 n=80 bytes=1156 leidos=1298     0.4398 ms   hipótesis: cargar lee el bloque y no las salas
+M5 json/guardar     k=20 n=80 bytes=1704 leidos=8236     0.8057 ms   hipótesis: línea base: el bloque JSON crece con lo conocido
+M5 json/cargar      k=20 n=80 bytes=1704 leidos=8236     0.5232 ms   hipótesis: línea base: JSON lee el archivo completo
+M5 binario/guardar  k=200 n=800 bytes=12060 leidos=12202     5.3527 ms   hipótesis: el bloque crece con lo conocido
+M5 binario/cargar   k=200 n=800 bytes=12060 leidos=12202     1.3738 ms   hipótesis: cargar lee el bloque y no las salas
+M5 json/guardar     k=200 n=800 bytes=19003 leidos=83836     5.5928 ms   hipótesis: línea base: el bloque JSON crece con lo conocido
+M5 json/cargar      k=200 n=800 bytes=19003 leidos=83836     3.7052 ms   hipótesis: línea base: JSON lee el archivo completo
+M5 binario/guardar  k=2000 n=8000 bytes=122292 leidos=122434    65.2747 ms   hipótesis: el bloque crece con lo conocido
+M5 binario/cargar   k=2000 n=8000 bytes=122292 leidos=122434    15.0978 ms   hipótesis: cargar lee el bloque y no las salas
+M5 json/guardar     k=2000 n=8000 bytes=208578 leidos=863612    86.5375 ms   hipótesis: línea base: el bloque JSON crece con lo conocido
+M5 json/cargar      k=2000 n=8000 bytes=208578 leidos=863612    65.4528 ms   hipótesis: línea base: JSON lee el archivo completo
 M6: ciclo completo con y sin conocimiento, 100 ciclos por fila, límite 20 ms al p95 (R1, R2; FR-014, SC-006)
-M6 con conocimiento enemigos=10 ciclos=100           0.0710 ms p95     0.0998 ms   cumple   hipótesis: sin regresión frente a 20 ms (§5.2) (ms = mediana)
-M6 sin conocimiento enemigos=10 ciclos=100           0.0683 ms p95     0.0888 ms   cumple   hipótesis: sin regresión frente a 20 ms (§5.2) (ms = mediana)
-M6 con conocimiento enemigos=50 ciclos=100           0.4023 ms p95     0.6440 ms   cumple   hipótesis: sin regresión frente a 20 ms (§5.2) (ms = mediana)
-M6 sin conocimiento enemigos=50 ciclos=100           0.3665 ms p95     0.5439 ms   cumple   hipótesis: sin regresión frente a 20 ms (§5.2) (ms = mediana)
-M6 con conocimiento enemigos=100 ciclos=100          0.8125 ms p95     1.2872 ms   cumple   hipótesis: sin regresión frente a 20 ms (§5.2) (ms = mediana)
-M6 sin conocimiento enemigos=100 ciclos=100          0.7285 ms p95     1.1527 ms   cumple   hipótesis: sin regresión frente a 20 ms (§5.2) (ms = mediana)
-M6 con conocimiento enemigos=300 ciclos=100          2.8645 ms p95     6.8339 ms   cumple   hipótesis: sin regresión frente a 20 ms (§5.2) (ms = mediana)
-M6 sin conocimiento enemigos=300 ciclos=100          3.0078 ms p95     6.2885 ms   cumple   hipótesis: sin regresión frente a 20 ms (§5.2) (ms = mediana)
-M6 con conocimiento enemigos=500 ciclos=100          5.2197 ms p95    11.0252 ms   cumple   hipótesis: sin regresión frente a 20 ms (§5.2) (ms = mediana)
-M6 sin conocimiento enemigos=500 ciclos=100          5.5175 ms p95    12.9363 ms   cumple   hipótesis: sin regresión frente a 20 ms (§5.2) (ms = mediana)
+M6 con conocimiento enemigos=10 ciclos=100           0.0739 ms p95     0.0963 ms   cumple   hipótesis: sin regresión frente a 20 ms (§5.2) (ms = mediana)
+M6 sin conocimiento enemigos=10 ciclos=100           0.0630 ms p95     0.0872 ms   cumple   hipótesis: sin regresión frente a 20 ms (§5.2) (ms = mediana)
+M6 con conocimiento enemigos=50 ciclos=100           1.0242 ms p95     4.1183 ms   cumple   hipótesis: sin regresión frente a 20 ms (§5.2) (ms = mediana)
+M6 sin conocimiento enemigos=50 ciclos=100           2.3124 ms p95     4.8007 ms   cumple   hipótesis: sin regresión frente a 20 ms (§5.2) (ms = mediana)
+M6 con conocimiento enemigos=100 ciclos=100          3.7435 ms p95     7.7929 ms   cumple   hipótesis: sin regresión frente a 20 ms (§5.2) (ms = mediana)
+M6 sin conocimiento enemigos=100 ciclos=100          2.8030 ms p95     6.8980 ms   cumple   hipótesis: sin regresión frente a 20 ms (§5.2) (ms = mediana)
+M6 con conocimiento enemigos=300 ciclos=100          9.2837 ms p95    21.5056 ms   no cumple   hipótesis: sin regresión frente a 20 ms (§5.2) (ms = mediana)
+M6 sin conocimiento enemigos=300 ciclos=100          9.1567 ms p95    17.8365 ms   cumple   hipótesis: sin regresión frente a 20 ms (§5.2) (ms = mediana)
+M6 con conocimiento enemigos=500 ciclos=100         18.3795 ms p95    40.5643 ms   no cumple   hipótesis: sin regresión frente a 20 ms (§5.2) (ms = mediana)
+M6 sin conocimiento enemigos=500 ciclos=100         15.3102 ms p95    30.4417 ms   no cumple   hipótesis: sin regresión frente a 20 ms (§5.2) (ms = mediana)

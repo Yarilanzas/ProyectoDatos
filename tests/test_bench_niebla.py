@@ -478,8 +478,8 @@ class TestM4AM6SinRedNiVista(unittest.TestCase):
 # Atiende: SC-007, PR-15.
 
 DATOS_LOCALES = os.path.join(RAIZ, "datos_locales")
-NOTA_REFERENCIA = ("cripta publicada más grande ({}, {} salas), usada como cripta de referencia; el enunciado no la "
-                   "identifica con certeza")
+NOTA_REFERENCIA = ("la mayor de las copias locales ({}, {} salas), usada como sustituta de la cripta de referencia "
+                   "(HIPÓTESIS: la del enunciado, §6.1, aún no está publicada)")
 
 
 def _esqueletos_locales(carpeta=DATOS_LOCALES):
