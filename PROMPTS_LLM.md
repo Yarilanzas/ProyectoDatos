@@ -1,3 +1,1918 @@
+# Proyecto Cripta — Documento de prompts
+
+**Integrantes:** Marielle Céspedes Saborio · Lucía Garay García · Camila González Artavia · Yariela Lanzas Cubero  
+Escuela de Informática, Universidad Nacional de Costa Rica · 50560 Estructuras de Datos  
+**Profesor:** Jose Pablo Calvo Suarez
+
+# Prompts Parte 1
+
+*Entregada el 18 de octubre de 2026.*
+
+## Prompts Persona A
+
+### [Fecha: 01/10/2026 (aproximada)] — ChatGPT
+
+**Prompt:** "ayúdame a visualizar qué clases son las necesarias para mi implementación".
+
+**Uso:** Identificar las clases necesarias para implementar el motor de simulación, establecer sus responsabilidades y comprender las relaciones entre los componentes del proyecto.
+
+### [Fecha: 01/10/2026 (aproximada)] — ChatGPT
+
+**Prompt:** Texto literal no recuperado; reconstrucción del tema consultado: "Ayúdame a definir qué responsabilidades debe tener el motor de simulación y cómo organizar sus clases".
+
+**Uso:** Delimitar las responsabilidades del motor de simulación y organizar la lógica relacionada con actores, eventos y ejecución de acciones.
+
+### [Fecha: 02/10/2026 (aproximada)] — ChatGPT
+
+**Prompt:** "Ayúdame a entender como implementar el reloj virtual y la agenda de eventos, respetando el orden por tiempo y número de secuencia".
+
+**Uso:** Comprender cómo Debian funcionar los eventos del juego en orden determinista, resolviendo correctamente los empates entre eventos.
+
+### [Fecha: 09/10/2026 (aproximada)] — ChatGPT
+
+**Prompt:** "Ayúdame a  saber como integrar o conectar el historial reversible con el motor de simulación para registrar las acciones y los cambios de estado".
+
+**Uso:** Analizar la integración entre el motor de simulación y el historial reversible, considerando el registro de movimientos, ataques y cambios de velocidad, sin modificar la implementación del pergamino de retroceso asignada a otra integrante.
+
+### [Fecha: 11/10/2026] — ChatGPT
+
+**Prompt:** "Revisa mi implementación de MotorSimulacion.py, AgendaEventos.py y Evento.py e indícame como voy".
+
+**Uso:** Revisar el estado de la implementación del motor y de la agenda de eventos, identificar funcionalidades pendientes y determinar qué pruebas eran necesarias para comprobar su funcionamiento.
+
+### [Fecha: 11/10/2026 (aproximada)] — ChatGPT
+
+**Prompt:** "Ayúdame a saber como funciona integrar los enemigos con las fichas correspondientes del catálogo en el motor de simulación".
+
+**Uso:** Analizar la integración de los datos de los enemigos con sus instancias particulares y sus estadísticas, de manera que el motor pueda procesarlos durante la partida.
+
+### [Fecha: 11/10/2026 (aproximada)] — ChatGPT
+
+**Prompt:** "Ayúdame a comprobar que el motor de simulación y el gestor de eventos se inicialicen correctamente".
+
+**Uso:** Revisar la inicialización de los componentes del motor y detectar posibles errores antes de realizar pruebas más completas de la simulación.
+
+### [Fecha: 11/10/2026 (aproximada)] — ChatGPT
+
+**Prompt:** "Ayúdame a revisar qué pruebas unitarias necesita el motor de simulación para comprobar el orden de los eventos, los empates, la muerte de los actores y los cambios de velocidad".
+
+**Uso:** Definir casos de prueba para comprobar el comportamiento determinista de la agenda de eventos y verificar las reglas principales del motor de simulación.
+
+### [Fecha: 12/10/2026 (aproximada)] — ChatGPT
+
+**Prompt:** "Ayúdame a identificar las funcionalidades pendientes del motor de simulación y a organizar las tareas necesarias para completar mi parte del proyecto".
+
+**Uso:** Identificar los aspectos pendientes de la implementación, incluyendo el ciclo del jugador, los comportamientos de los enemigos, los efectos temporales y la cancelación de eventos.
+
+### [Fecha: 12/10/2026] — Claude (Sonnet)
+
+**Prompt:** "esto es lo que me tocaba en una escala del 1 al 100 cuanto me das, ya esta completo o me falta" [con imagen de mis responsabilidades y el zip del proyecto]
+
+**Uso:** que evaluara mi módulo (motor, agenda, combate, movimiento).
+
+### [Fecha: 12/10/2026] — Claude (Sonnet)
+
+**Prompt:** " Ayúdame a revisar si cumplo con el enunciado" [con el enunciado adjunto]
+
+**Uso:** darle el enunciado para que las decisiones siguieran lo que pide el profesor.
+
+### [Fecha: 12/10/2026] — Claude (Sonnet)
+
+**Prompt:** "segun las responsabilidades que te pase crees que son mias si es así para poder trabajar"
+
+**Uso:** confirmar qué partes del enunciado me tocaban a mí (efectos temporales,
+victoria/derrota, botín, rastro) y empezar a implementarlas.
+
+### [Fecha: 13/10/2026] — Claude (Sonnet)
+
+**Prompt:** "Explicame bien el funcionamiento para implementar (puertas, efectos, comportamientos de enemigos)."
+
+**Uso:** continuar la implementación (puertas, efectos, comportamientos de enemigos) con conocimiento de que era.
+
+### [Fecha: 13/10/2026] — Claude (Sonnet)
+
+**Prompt:** [salida del --bench de mi computadora]
+
+**Uso:** revisar las mediciones del bench y verificar el límite de 20 ms por ciclo.
+
+### [Fecha: 13/10/2026] — Claude (Sonnet)
+
+**Prompt:** "Me puedes decir a quien le corresponden los mensajes para saber si lo puedo implementar"
+
+**Uso:** aclarar de quién es la bitácora en pantalla (§4.8). Resultado: buffer circular
+de 20 mensajes en el motor; mostrarlo le toca a la Vista (Persona D).
+
+### [Fecha: 13/10/2026] — Claude (Sonnet)
+
+**Prompt:** [responsabilidades de Personas B, C y D pegadas]
+
+**Uso:** separar lo mío de lo de los demás y detectar qué debía coordinar con cada uno.
+
+### [Fecha: 13/10/2026] — Claude (Sonnet)
+
+**Prompt:** [cambios #5 y #6 pedidos por Persona D] "esto me lo mando la persona d queria preguntarte si estos cambio ya los implemente de buena manera o no"
+
+**Uso:** saber si ya estaba hecha la búsqueda de inventario por ID y la conexión del
+contenido de la sala con el motor. Resultado: no estaban del todo listos; se implementaron
+(acciones por ID y preparar_sala).
+
+### [Fecha: 14/10/2026] — Claude (Sonnet)
+
+**Prompt:** "Verificacion de checklist de persona c" [checklist de integración de Persona C]
+
+**Uso:** verificar contra el código qué puntos del checklist ya estaban cumplidos.
+
+### [Fecha: 14/10/2026] — Claude (Sonnet)
+
+**Prompt:** " Una consulta dime que puntos son los que debería de reforzar"
+
+**Uso:** seguir con mis pendientes. (agenda, historial, rastro, bitácora, rendimiento).
+
+### [Fecha: 14/10/2026 10:37] — Claude (Sonnet)
+
+**Prompt:** "y lo mio ya estaría las implementaciones?"
+
+**Uso:** confirmar si mi parte estaba completa. Resultado: sí; lo pendiente era
+integración con D y preguntas al equipo.
+
+### [Fecha: 14/10/2026 10:38] — Claude (Sonnet)
+
+**Prompt:** "VERIFICAR ESTO CON MARI!!! ... def esta_en_uso(self, id_ficha) ... verificar implementación de acuerdo con persona B?"
+
+**Uso:** comprobar que el motor ya tenía es_ficha_activa para la caché de Persona B.
+Resultado: sí fué verificado, anotó la duda sobre desalojar() de la caché.
+
+### [Fecha: 14/10/2026 10:43] — Claude (Sonnet)
+
+**Prompt:** " porfavor, revisemos todo que cumpla con el enunciado para que no se me pase nada" [zip del proyecto]
+
+**Uso:** revisar el proyecto contra el enunciado. Resultado: se encontró el archivo
+del motor con defectos y se reemplazó sorted() por el ordenamiento propio (§4.9).
+
+### [Fecha: 14/10/2026] — Claude (Sonnet)
+
+**Prompt:** "dime que faltaría"
+
+**Uso:** obtener la lista de lo que faltaba ( motor limpio, justificar la
+caducidad del rastro, probar con D, preguntas a B).
+
+### [Fecha: 14/10/2026] — Claude (Sonnet)
+
+**Prompt:** " Confirmame que lo que le voy a explicar a mi compañera sobre la simulación me doy a entender y esta correcto"
+
+**Uso:** responder la pregunta de otra persona del equipo con el código real
+(MotorSimulacion(...) e iniciar_partida(...)).
+
+### [Fecha: 14/10/2026 11:34] — Claude (Sonnet)
+
+**Prompt:** "mira ahora me enviaron esto me afecta en algo ..." [respuesta de Persona C sobre no guardar el Historial en el archivo binario]
+
+**Uso:** saber si esa decisión me afectaba. Resultado: no afecta al historial, pero el
+motor aún necesita exportar_estado/restaurar_estado para poder cargar partidas.
+
+### [Fecha: 17/10/2026 19:53] — Claude (Sonnet)
+
+**Prompt:** "hagame una bitacora con los prompts del proyecto hasta el día de hoy con formato especifico"
+
+**Uso:** generar esta bitácora.
+## Prompts Persona B
+
+### 2026-10-02 — Claude (Sonnet)
+
+**Prompt:** "si yo soy persona b puedo empezar a hacer algo sin tener esto?"
+
+**Uso:** confirmar que podía avanzar en mi módulo sin esperar la reunión de contratos del equipo.
+
+### 2026-10-02 — Claude (Sonnet)
+
+**Prompt:** "estoy leyendo el proyecto pero la mitad de las cosas no se de que me esta hablando, por que habla de http?"
+
+**Uso:** entender por qué el proyecto exige consumir un servicio HTTP.
+
+### 2026-10-02 — Claude (Sonnet)
+
+**Prompt:** "[código de la clase FuenteDatosHTTP con listarCriptas] tipo asi dices tu?"
+
+**Uso:** revisar mi primera versión de la clase y entender que las variables van en __init__ con self.
+
+### 2026-10-02 — Claude (Sonnet)
+
+**Prompt:** "[clase con los métodos de los endpoints] lo ultimo vez hice algo del proyecto quede aqui me puedes recordar que estaba haciendo? no darme codigo"
+
+**Uso:** retomar mi trabajo y detectar los bugs de URL pendientes.
+
+### 2026-10-02 — Claude (Sonnet)
+
+**Prompt:** "ok entonces para ver si entendi. En este codigo de ejemplo que dio el profe [...] BASE_URL= define a donde se van a solicitar los datos? [...]"
+
+**Uso:** verificar línea por línea mi comprensión del ejemplo de cliente HTTP del profesor.
+
+### 2026-10-02 — Claude (Sonnet)
+
+**Prompt:** "especificamente en este caso que es una cripta"
+
+**Uso:** entender qué es una cripta y su relación con el id usado en las URLs.
+
+### 2026-10-02 — Claude (Sonnet)
+
+**Prompt:** "caundo habla de lote a que se refiere con lotes?"
+
+**Uso:** entender el concepto de lotes (batching).
+
+### 2026-10-02 — Claude (Sonnet)
+
+**Prompt:** "ok ya sabiendo estas cosas dame un manual de como trabajar siendo persona b. Entendiedno que es la primera vez que trabajo con APIS [...]"
+
+**Uso:** obtener un plan de trabajo para empezar mi rol sin saber Python ni APIs.
+
+### 2026-10-02 — Claude (Sonnet)
+
+**Prompt:** "tengo una duda, yo vengo de algo en que TODO se lleva por clases entonces digamos en la sesion 2 yo haria como una clase GETTERS [...]"
+
+**Uso:** decidir si organizar el cliente HTTP como una clase y qué nombre darle.
+
+### 2026-10-02 — Claude (Sonnet)
+
+**Prompt:** "mmm y que opinas de hacer un singlenton para que esa clase 'base' [...] esto se llamaria o se crearia solo una vez, me entiendes el punto?"
+
+**Uso:** evaluar Singleton frente a inyección de dependencias para tener un solo client_id.
+
+### 2026-10-02 — Claude (Sonnet)
+
+**Prompt:** "pero tipo el metodo solo le entra UN id, no tiene que haber un ciclo que devuelva tipo de la sala 1 a la sala 6 de la cripta"
+
+**Uso:** aclarar que el método recibe una lista de ids y cuándo se necesita dividir en bloques de 10.
+
+### 2026-10-02 — Claude (Sonnet)
+
+**Prompt:** "como funciona un try catch en python dame un perqueño ejempli"
+
+**Uso:** entender la sintaxis de try/except antes de implementar el manejo de errores HTTP.
+
+### 2026-10-02 — Claude (Sonnet)
+
+**Prompt:** "ok volvamos a mi parrte, me puedes enlistar en total todas las cosas que me tocaria hacer como b”
+
+**Uso:** obtener la lista completa de tareas de Persona B.
+
+### 2026-10-03 — Claude (Sonnet)
+
+**Prompt:** "[código de _hacer_solicitud] esto esta bien?"
+
+**Uso:** revisar el manejo de 429 y de errores.
+
+### 2026-10-03 — Claude (Sonnet)
+
+**Prompt:** "[_hacer_solicitud con except anidado] asi?"
+
+**Uso:** corregir la estructura de los except y usar raise con contexto.
+
+### 2026-10-03 — Claude (Sonnet)
+
+**Prompt:** "[get_cripta_skeleton con params dentro de la URL] asi?"
+
+**Uso:** corregir cómo se pasa el parámetro de página.
+
+### 2026-10-03 — Claude (Sonnet)
+
+**Prompt:** "[solicitud de la página 1] esta bien no? yo se que falta todo lo demas solo me refiero a la solicitud"
+
+**Uso:** validar la primera solicitud de la paginación del esqueleto.
+
+### 2026-10-03 — Claude (Sonnet)
+
+**Prompt:** "[get_cripta_skeleton con while] ok que opinamos"
+
+**Uso:** detectar que el ciclo no pedía las páginas siguientes.
+
+### 2026-10-03 — Claude (Sonnet)
+
+**Prompt:** "[get_cripta_skeleton final] asi ya estaria totalmente bien?"
+
+**Uso:** confirmar que la paginación quedó completa.
+
+### 2026-10-03 — Claude (Sonnet)
+
+**Prompt:** "[obtener_contenido_sala] okay hice mi mejor intento que tan mal estoy"
+
+**Uso:** revisar la lógica de lotes de 10 y corregir sus bugs.
+
+### 2026-10-03 — Claude (Sonnet)
+
+**Prompt:** "de estos metodos a cuales me falta hacerle logiva mas avanzada como estos que acabamos de hacer?"
+
+**Uso:** identificar qué métodos faltaban por completar.
+
+### 2026-10-03 — Claude (Sonnet)
+
+**Prompt:** "[obtener_fichas_catalogo]"
+
+**Uso:** revisar el método de catálogo y corregir su URL.
+### 2026-10-04 — Claude (Sonnet)
+
+**Prompt:** "[obtener_detalles_cripta] esto esta bien?"
+
+**Uso:** entender que un endpoint de un solo recurso devuelve un objeto y no una lista.
+
+### 2026-10-04 — Claude (Sonnet)
+
+**Prompt:** "[obtener_esqueleto_cripta] que tan bien essta esto? proque ya salas totales tiene TODAS las salas existentes en la cripta segun las paginas no?"
+
+**Uso:** revisar la conversión del esqueleto a DTOs.
+
+### 2026-10-04 — Claude (Sonnet)
+
+**Prompt:** "[ContenidoSala] quedaria asi entonces?"
+
+**Uso:** revisar ContenidoSala y agregar el atributo de objetos.
+
+### 2026-10-04 — Claude (Sonnet)
+
+**Prompt:** "[list_criptas con error] AttributeError: module 'DTOS.CriptaResumen' has no attribute 'desde_json'"
+
+**Uso:** entender el error de importar el módulo en vez de la clase.
+
+### 2026-10-04 — Claude (Sonnet)
+
+**Prompt:** "[FichaCatalogo] segun mis pensamientos tengo que sacar ese metodo de ahi nO?"
+
+**Uso:** corregir la indentación del método de clase en la fábrica de fichas
+
+### 2026-10-06 — Claude (Sonnet)
+
+**Prompt:** "ok entonces dame un lista completa de pasos a seguir para poder emepzar y concluir con la sesion 9 [...] adicionalmente me puedes explicar lo de --cachesize, es un comando en la terminal?"
+
+**Uso:** ordenar los pasos de las sesiones 6 a 9 y entender qué es --cache-size.
+
+### 2026-10-06 — Claude (Sonnet)
+
+**Prompt:** "[CacheCatalogo] esta logica esta bien? cada vez que lguien consulte si esta en cache entonces que se haga un enqueue en la lista"
+
+**Uso:** revisar la lógica de la cola de uso y detectar bugs de la caché.
+
+### 2026-10-06 — Claude (Sonnet)
+
+**Prompt:** "[CacheCatalogo] mira hice esto"
+
+**Uso:** revisar actualizar_orden y desalojar.
+
+### 2026-10-06 — Claude (Sonnet)
+
+**Prompt:** "[obtener y esta_en_cache] asi esta bien?"
+
+**Uso:** evitar duplicar la lógica entre obtener y esta_en_cache.
+
+### 2026-10-08 — Claude (Sonnet)
+
+**Prompt:** "ok no mejor empecemos un poquito la 7, para hacer algo de aqui a las 12"
+
+**Uso:** empezar la sesión 7 (persistencia) con una meta pequeña.
+
+### 2026-10-08 — Claude (Sonnet)
+
+**Prompt:** "[método de AlmacenamientoLocalApi] algo asi?"
+
+**Uso:** revisar el guardado y la carga del catálogo y corregir sus errores.
+
+### 2026-10-08 — Claude (Sonnet)
+
+**Prompt:** "[traceback JSONDecodeError en cargar_contenido] gestor de datos pasa eso"
+
+**Uso:** entender el error por un archivo guardado a medias y cómo evitarlo.
+
+### 2026-10-11 — Claude (Sonnet)
+
+**Prompt:** "ok voy por la sesion 9, dame una guia para hacerla, me habias dicho que basicamnte es la clase fuente datos http pero desde el disco?"
+
+**Uso:** obtener una guía de la sesión 9: clase base de fuentes con una fuente HTTP y una offline.
+
+### 2026-10-11 — Claude (Sonnet)
+
+**Prompt:** "[Fuentes.py con la clase base] quedaria asi?"
+
+**Uso:** revisar el refactor a clase base con fuentes HTTP y offline.
+
+### 2026-10-11 — Claude (Sonnet)
+
+**Prompt:** "[Fuentes.py con main] o sea pero yo tengo esto"
+
+**Uso:** aclarar qué quedaba por cambiar en Fuentes.py.
+
+### 2026-10-12 — Claude (Sonnet)
+
+**Prompt:** "ok hagamos sesion 10, me das una guia de como hacerla plis, sin codigo, tal vez como las sesionnes que hcimos antes?. Yo pensaba que se hiciera una precarga de las salas con las que esta conectada la sala actual, o sea las salas N S E O"
+
+**Uso:** obtener una guía de la sesión 10 (precarga) y evaluar mi idea de precargar las vecinas.
+
+### 2026-10-12 — Claude (Sonnet)
+
+**Prompt:** “ dame una guia de como empezar con el paso 1 teniedno el contexto, que decisiones tengo que tomar y asi"
+
+**Uso:** definir las decisiones del paso 1 de la sesión 10.
+
+### 2026-10-12 — Claude (Sonnet)
+
+**Prompt:** "suave estoy perdida que se supone que tengo que hacer en esta sesion en general"
+
+**Uso:** entender de forma general qué se hace en la sesión 10..
+
+### 2026-10-12 — Claude (Sonnet)
+
+**Prompt:** "ok que nos falta?  dos metodos en gestor de datos?"
+
+**Uso:** saber qué faltaba en GestorDatos para terminar la sesión 10.
+
+### 2026-10-12 — Claude (Sonnet)
+
+**Prompt:** "[ciclo del planificador] este metodo de aca no se puede hacer de una manera mas eficiente temoralmente hablando? ese ciclo anidado no lo hace ser O(n al 2)"
+
+**Uso:** analizar la complejidad del planificador de precarga.
+
+### 2026-10-12 — Claude (Sonnet)
+
+**Prompt:** “ Estoy intentando correr la prueba del gestor de datos para seguir pero dice que no existe ningun archivo llamado Gestor"
+
+**Uso:** corregir el error de importación del gestor y revisar mis carpetas.
+
+### 2026-10-12 — Claude (Sonnet)
+
+**Prompt:** "ok con los metodos de gestor de datos ya terminamos sesion 10? Si si es asi entonces dame una guia escrita de sesion 11"
+
+**Uso:** confirmar la sesión 10 y obtener una guía simple de la sesión 11 (bench y documento).
+
+### 2026-10-13 — Claude (Sonnet)
+
+**Prompt:** "[DTOs] ok mira hice unos cambios haciendo la prueba porque resulta que cada dto tenia quw tener un metodo a json tambien observa [...]"
+
+**Uso:** revisar los DTOs y obtener los métodos a_json que me faltaban.
+
+## Prompts Persona C
+
+### Entrega 1
+
+#### 2026-09-23 — Claude (Sonnet)
+
+**Prompt:** "mira tenemos este proyecto, es entre 4 personas A,B,C,D, ok primero
+quiero que lo analices, ya le preguntamos a otro chat a dividirlo y yo soy
+persona C, como lo ves y como que hay q hacer, cual es mi parte y como s
+acomoda, es con python se hara en pycharm" [adjunté el enunciado del proyecto
+y una captura de la tarjeta de Persona C]
+
+**Uso:** analizar el proyecto CRIPTA completo y entender el alcance de las
+tareas asignadas a Persona C (inventario, retroceso, ordenamiento).
+
+#### 2026-09-23 — Claude (Sonnet)
+
+**Prompt:** pegué una propuesta de agenda de reunión de "contratos" entre
+A/B/C/D generada por otra IA y pregunté "esto nos sugerio otra IA, q opinamos"
+
+**Uso:** evaluar y corregir la propuesta de reunión de contratos de otra IA
+(detectó una confusión de roles B/C en el texto).
+
+#### 2026-09-23 — Claude (Sonnet)
+
+**Prompt:** "pero es que las cosas ya estan divididas entre A,B,C,y D por algo
+es que cada una tiene sus cosas, ayer nos leímos el proyecto y ya entendemos
+q hace, yo soy la persona C y hago lo de l persona C q no te acuerdas?"
+
+**Uso:** reconfirmar el alcance específico de las tareas de Persona C
+(§4.5, §4.6, §4.9 del enunciado).
+
+#### 2026-09-23 — Claude (Sonnet)
+
+**Prompt:** "por cual me recomiendas empezar?"
+
+**Uso:** decidir el orden de implementación (inventario → ordenamiento →
+retroceso).
+
+#### 2026-09-23 — Claude (Sonnet)
+
+**Prompt:** pegué mi implementación de `NodoInventario`/`Inventario` con un
+`NameError: name 'Inventario' is not defined`
+
+**Uso:** depurar error de import faltante en el script de prueba.
+
+#### 2026-09-23 — Claude (Sonnet)
+
+**Prompt:** pegué traceback `ModuleNotFoundError: No module named 'inventario'`
+
+**Uso:** resolver la ubicación/nombre del archivo del módulo de inventario.
+
+#### 2026-09-23 — Claude (Sonnet)
+
+**Prompt:** pegué la salida de ejecución del inventario (recorrido, equipar,
+soltar) para confirmar el comportamiento
+
+**Uso:** verificar que el cursor y las operaciones O(1) del inventario
+funcionan correctamente tras equipar y soltar.
+
+#### 2026-09-23 — Claude (Sonnet)
+
+**Prompt:** adjunté captura de la sección 10.3 del enunciado (uso de LLM) y
+pregunté "como hago prompts"
+
+**Uso:** entender el formato requerido para la bitácora PROMPTS_LLM.md.
+
+#### 2026-09-23 — Claude (Sonnet)
+
+**Prompt:** "si, si sale lo q tenia q salir, podemos seguir con las vistas
+ordenas, ese q punto es? 4.9?"
+
+**Uso:** confirmar la sección del enunciado (§4.5/§4.9) y arrancar el diseño
+del módulo de ordenamiento.
+
+#### 2026-09-23 — Claude (Sonnet)
+
+**Prompt:** "pero tipo, el merge no es tanto para tamanos pequenios" / "el
+insertion me parece bien, pero digamos es que el mismo enunciado dice
+Consideren tamaños pequeños, datos casi ordenados y comparaciones costosas."
+
+**Uso:** discutir cuándo conviene insertion sort vs. merge sort, y ajustar
+la estrategia para incluir binary insertion sort por el eje de comparaciones
+costosas.
+
+#### 2026-09-23 — Claude (Sonnet)
+
+**Prompt:** "pero eso en que clase va o donde ponemos eso" / "osea,
+inventario, ordenamiento y retroceso van en el modelo" / "y en ordenamiento
+que va?"
+
+**Uso:** definir la estructura de archivos y confirmar que inventario,
+ordenamiento y retroceso pertenecen a la capa Modelo (arquitectura MVC, §6).
+
+#### 2026-09-23 — Claude (Sonnet)
+
+**Prompt:** "esto en donde va y que va en retroceso" [sobre la función
+vista_ordenada]
+
+**Uso:** ubicar vista_ordenada en inventario.py y diseñar el módulo
+retroceso.py (historial reversible del pergamino, §4.6/§2.11).
+
+#### 2026-09-23 — Claude (Sonnet)
+
+**Prompt:** "ok peri haciendo esto ya lo podemos probar?"
+
+**Uso:** armar una prueba de integración simulando cambios reversibles
+(daño y recolección) para validar HistorialRetroceso.
+
+#### 2026-09-23 — Claude (Sonnet)
+
+**Prompt:** pegué mi implementación de `Historial`/`Cambio` para revisión
+
+**Uso:** depurar dos bugs (abrir_intervalo no guardaba el intervalo en la
+lista general; deshacer_ultimo sacaba de la lista equivocada).
+
+#### 2026-09-23 — Claude (Sonnet)
+
+**Prompt:** "como queda la prueba?"
+
+**Uso:** ajustar el script de prueba a los nombres reales de la clase
+(Historial, parámetro description).
+
+#### 2026-09-23 — Claude (Sonnet)
+
+**Prompt:** adjunté captura del árbol de carpetas del proyecto (Modelo/,
+Controlador/, Vista/) junto con `ModuleNotFoundError: No module named
+'inventario'`
+
+**Uso:** resolver estructura de paquetes de Python (carpeta Modelo como
+paquete, necesidad de __init__.py, imports con prefijo Modelo.).
+
+#### 2026-09-23 — Claude (Sonnet)
+
+**Prompt:** "ya no da error pero no imprime nada, el init py va vacio?"
+
+**Uso:** confirmar que __init__.py debe quedar vacío y diagnosticar por qué
+no se ejecutaban los prints (archivo equivocado en ejecución).
+
+#### 2026-09-23 — Claude (Sonnet)
+
+**Prompt:** pegué el contenido completo de prueba_retroceso.py
+
+**Uso:** verificar que el script de prueba estaba correctamente escrito.
+
+#### 2026-09-23 — Claude (Sonnet)
+
+**Prompt:** pegué tracebacks sucesivos `ModuleNotFoundError: No module named
+'Modelo.inventario'` y luego `'ordenamiento'`
+
+**Uso:** resolver problema de mayúsculas/minúsculas en nombres de archivo
+(Inventario.py vs inventario) y corregir imports internos entre módulos del
+paquete Modelo a rutas absolutas (Modelo.ordenamiento).
+
+#### 2026-09-30 — Claude (Sonnet)
+
+**Prompt:** "Hola, sigamos trabajando en mi parte del proyecto, habiamos
+quedado en nuestra parte del inventario no?"
+
+**Uso:** retomar el trabajo y repasar el estado de avance de los tres
+módulos (inventario, ordenamiento, retroceso).
+
+#### 2026-09-30 — Claude (Sonnet)
+
+**Prompt:** "aun no podemos empezar con el pergamino? nos falta algo de eso
+para poder empezar?"
+
+**Uso:** evaluar qué faltaba para completar la funcionalidad del pergamino
+de retroceso (soltar_nodo, usar_pergamino, casos de prueba del Apéndice B).
+
+#### 2026-09-30 — Claude (Sonnet)
+
+**Prompt:** "ok en inventario tengo la clase suelta actual y suelta nodo,
+son clases muy parecidas, pero no son lo mismo, es correcto?"
+
+**Uso:** confirmar la diferencia entre suelta_actual (opera sobre el cursor)
+y soltar_nodo (opera sobre una referencia directa, necesaria para el
+retroceso confiable).
+
+#### 2026-09-30 — Claude (Sonnet)
+
+**Prompt:** "me parecia mas espacio si dejabamos las mismas lineas
+de codigos en dos metodos, una vez hecho esto puedo proseguir con el usar
+pergamino, esta va en la clase retroceso no?"
+
+**Uso:** decidir si reutilizar suelta_actual sobre soltar_nodo, y ubicar
+usar_pergamino dentro del módulo retroceso.
+
+#### 2026-09-30 — Claude (Sonnet)
+
+**Prompt:** "No seria mejor hacer una clase que se llame pergamino que
+llame todas las cosas, o si es mas recomendable hacerlo en retroceso?"
+
+**Uso:** evaluar si usar_pergamino debía ser una clase propia o una función
+suelta; se decidió por función para no comprometer una decisión de
+arquitectura que le corresponde a todo el equipo (polimorfismo de objetos
+usables).
+
+#### 2026-09-30 — Claude (Sonnet)
+
+**Prompt:** "si, pero este no va en la clase historial, correcto, va afuera
+como una funcion aparte"
+
+**Uso:** confirmar que usar_pergamino es una función a nivel de módulo, no
+un método de Historial, y armar el caso de prueba del Apéndice B (pergamino
+recogido dentro del intervalo revertido).
+
+#### 2026-09-30 — Claude (Sonnet)
+
+**Prompt:** "si, al final registra en el historial sobre el pergamino como lo tengo ahora no?"
+
+**Uso:** corregir recoger_con_historial para excluir objetos de clase
+pergamino_retroceso del registro de cambios reversibles (regla del §2.11
+y Apéndice B).
+
+#### 2026-09-30 — Claude (Sonnet)
+
+**Prompt:** pegué el texto del Apéndice B sobre pergaminos consecutivos
+("El jugador usa dos pergaminos seguidos...")
+
+**Uso:** validar que la estructura de pila del historial ya resuelve
+correctamente el caso de usar dos pergaminos seguidos sin lógica adicional,
+y armar la prueba correspondiente.
+
+#### 2026-09-30 — Claude (Sonnet)
+
+**Prompt:** "todo perfecto"
+
+**Uso:** cerrar la validación de los tres módulos de Persona C (inventario,
+ordenamiento, retroceso) con sus casos borde principales.
+
+#### 2026-09-30 — Claude (Sonnet)
+
+**Prompt:** "no entiendo muy bien eso del --bench, podrias explicarme un
+poco mas"
+
+**Uso:** entender qué es el modo --bench, por qué lo exige el enunciado
+(§5.3, §8) y cómo implementarlo para medir los algoritmos de ordenamiento.
+
+PS C:\Users\lucig\PycharmProjects\ProyectoDatos> python bench_personaC.py
+
+-Inventario-
+recoger 500 objetos: 0.000494s
+avanza 500 veces: 0.000092s
+soltar 500 objetos: 0.000323s
+
+-Ordenamiento-
+n =    10 insertion_sort         tiempo = 0.000020s comparaciones = 31
+n =    10 binary_insertion_sort  tiempo = 0.000028s comparaciones = 22
+n =    10 merge_sort             tiempo = 0.000056s comparaciones = 23
+n =   100 insertion_sort         tiempo = 0.000710s comparaciones = 2408
+n =   100 binary_insertion_sort  tiempo = 0.000394s comparaciones = 527
+n =   100 merge_sort             tiempo = 0.000484s comparaciones = 547
+n =  1000 insertion_sort         tiempo = 0.065587s comparaciones = 251189
+n =  1000 binary_insertion_sort  tiempo = 0.025370s comparaciones = 8624
+n =  1000 merge_sort             tiempo = 0.009786s comparaciones = 8714
+n = 10000 insertion_sort         tiempo = 4.450510s comparaciones = 24976844
+n = 10000 binary_insertion_sort  tiempo = 1.589818s comparaciones = 118933
+n = 10000 merge_sort             tiempo = 0.058013s comparaciones = 120463
+
+-Retroceso-
+registrar 250 cambios: 0.000129s
+deshacer 5 intervalos: 0.000081s
+PS C:\Users\lucig\PycharmProjects\ProyectoDatos>
+
+PS C:\Users\lucig\PycharmProjects\ProyectoDatos> python bench_personaC.py
+
+-Inventario-
+recoger 500 objetos: 0.000413s
+avanza 500 veces: 0.000051s
+soltar 500 objetos: 0.000159s
+
+-Ordenamiento-
+n =    10 insertion_sort         tiempo = 0.000016s comparaciones = 35
+n =    10 binary_insertion_sort  tiempo = 0.000023s comparaciones = 24
+n =    10 merge_sort             tiempo = 0.000028s comparaciones = 21
+n =    20 insertion_sort         tiempo = 0.000017s comparaciones = 108
+n =    20 binary_insertion_sort  tiempo = 0.000019s comparaciones = 61
+n =    20 merge_sort             tiempo = 0.000035s comparaciones = 59
+n =    30 insertion_sort         tiempo = 0.000032s comparaciones = 250
+n =    30 binary_insertion_sort  tiempo = 0.000031s comparaciones = 108
+n =    30 merge_sort             tiempo = 0.000052s comparaciones = 110
+n =    50 insertion_sort         tiempo = 0.000140s comparaciones = 744
+n =    50 binary_insertion_sort  tiempo = 0.000102s comparaciones = 216
+n =    50 merge_sort             tiempo = 0.000129s comparaciones = 223
+n =    75 insertion_sort         tiempo = 0.000326s comparaciones = 1424
+n =    75 binary_insertion_sort  tiempo = 0.000167s comparaciones = 364
+n =    75 merge_sort             tiempo = 0.000137s comparaciones = 372
+n =   100 insertion_sort         tiempo = 0.000352s comparaciones = 2677
+n =   100 binary_insertion_sort  tiempo = 0.000472s comparaciones = 529
+n =   100 merge_sort             tiempo = 0.000501s comparaciones = 536
+
+-Retroceso-
+registrar 250 cambios: 0.000165s
+deshacer 5 intervalos: 0.000068s
+
+#### 2026-09-30 — Claude (Sonnet)
+
+**Prompt:** pegué la lista "§2.3 + §2.4 + §2.5 + §2.6 + §2.8 + §2.9 + §2.10 +
+§2.12 + §4.1 + §4.7 alguno de esos es mio_"
+
+**Uso:** confirmar que esas secciones corresponden al motor de simulación
+(Persona A), no a mi parte.
+
+#### 2026-09-30 — Claude (Sonnet)
+
+**Prompt:** "cuales puntos son los mio y con q me tengo q compartir tambien"
+
+**Uso:** consolidar la lista definitiva de mis secciones (§4.5, §4.6, §4.9,
+parte de §2.7) y con quién coordinar cada contrato (A, B, D).
+
+#### 2026-09-30 — Claude (Sonnet)
+
+**Prompt:** "y que llevamos hecho"
+
+**Uso:** repasar el estado de avance de los tres módulos y pendientes.
+
+#### 2026-10-03 — Claude (Sonnet)
+
+**Prompt:** "me podrias explicar de nuevo lo del bench"
+
+**Uso:** reexplicar el concepto de --bench con ejemplos progresivos más
+simples.
+
+#### 2026-10-03 — Claude (Sonnet)
+
+**Prompt:** pegué el texto completo de §5.3 del enunciado y comenté que no
+lograba comprender cómo o dónde implementarlo
+
+**Uso:** aclarar que --bench se compone de funciones de medición separadas
+por persona/subsistema, y que cada quien implementa solo la suya.
+
+#### 2026-10-03 — Claude (Sonnet)
+
+**Prompt:** "pero entonces tengo que esperar que persona D haga el bench
+para yo poder excribir mi parte?"
+
+**Uso:** confirmar que el benchmark de mi parte es autocontenido y no
+depende de que D arme el main.py primero.
+
+#### 2026-10-03 — Claude (Sonnet)
+
+**Prompt:** "en que parte va el bench, del mvc?"
+
+**Uso:** determinar que --bench no pertenece a ninguna capa de MVC, va como
+herramienta de diagnóstico fuera de esa estructura.
+
+#### 2026-10-03 — Claude (Sonnet)
+
+**Prompt:** "pero al final, sin importar que algoritmos use, deberia llamar
+igual a los algoritmos no?"
+
+**Uso:** confirmar que los tres algoritmos comparten firma intercambiable,
+por diseño, para simplificar elegir_algoritmo y el bench.
+
+#### 2026-10-03 — Claude (Sonnet)
+
+**Prompt:** pegué traceback `AttributeError: 'Inventario' object has no
+attribute 'register'`
+
+**Uso:** corregir nombre de método incorrecto (register → recoge) en mi
+script de benchmark.
+
+#### 2026-10-03 — Claude (Sonnet)
+
+**Prompt:** pegué salida del benchmark con traceback
+`AttributeError: 'Historial' object has no attribute 'deshacer'`
+
+**Uso:** corregir nombre de método incorrecto (deshacer → deshacer_ultimo)
+en el benchmark de retroceso.
+
+#### 2026-10-03 — Claude (Sonnet)
+
+**Prompt:** pegué la salida completa y correcta del benchmark (inventario,
+ordenamiento, retroceso) y pregunté "que tal lo ves, funcionando
+correctamente?"
+
+**Uso:** validar e interpretar los resultados empíricos de los tres
+algoritmos de ordenamiento para el Documento de Decisiones.
+
+#### 2026-10-03 — Claude (Sonnet)
+
+**Prompt:** "sigamos con las cosas que faltan"
+
+**Uso:** priorizar pendientes: afinar umbral, guardar evidencia, revisar
+Git, bitácora, contratos.
+
+#### 2026-10-03 — Claude (Sonnet)
+
+**Prompt:** adjunté fragmento `tamanos_finos = [10, 20, 30, 50, 75, 100]`
+y pregunté "esto va en vez de tamano?"
+
+**Uso:** ajustar bench_ordenamiento para correr tamaños intermedios y
+afinar el umbral de cambio de algoritmo.
+
+#### 2026-10-03 — Claude (Sonnet)
+
+**Prompt:** "ok ya cambi[e el umbral,que prosigue?"
+
+**Uso:** repasar lista de pendientes tras ajustar UMBRAL_TAMANO.
+
+#### 2026-10-06 — Claude (Sonnet)
+
+**Prompt:** "quien de el equipo hace algo en la vista y en el controlador?"
+
+**Uso:** inferir qué persona del equipo (probablemente D) se encarga de Vista
+y Controlador, aclarando que es una suposición sin confirmación real del equipo.
+
+#### 2026-10-06 — Claude (Sonnet)
+
+**Prompt:** "ok, sigamos con mi parte, en donde habiamos quedado para saber
+masomenos en donde continuamos"
+
+**Uso:** repasar el estado completo de avance de los tres módulos y listar
+pendientes.
+
+#### 2026-10-06 — Claude (Sonnet)
+
+**Prompt:** pegué el punto 5 de la agenda de reunión ("Persona C presenta su
+contrato...") y pregunté "de esto, como ves que vamos a partir de todo lo que
+hemos hecho?"
+
+**Uso:** armar el borrador del contrato de Persona C hacia A (formato del
+delta) y hacia D (funciones expuestas).
+
+#### 2026-10-06 — Claude (Sonnet)
+
+**Prompt:** pegué la implementación de `suelta_nodo` para revisión
+
+**Uso:** confirmar que el método quedó correctamente integrado en
+Inventario.py.
+
+#### 2026-10-06 — Claude (Sonnet)
+
+**Prompt:** "en retroceso sale con el nombre bien, sigamos con el deshacer
+ultimo" / "me da la misma salida, por dicha" / "igual, me da el mismo
+resultado, divino"
+
+**Uso:** probar y validar los casos borde de deshacer_ultimo() sin nada que
+deshacer, y de inventario vacío (actual, avanza, retrocede, suelta_actual,
+equipar_actual).
+
+#### 2026-10-06 — Claude (Sonnet)
+
+**Prompt:** pegué el contenido completo de prueba.py con los tres bloques
+de prueba integrados y pregunté "esto es lo que tengo en prubea, ahi esta
+ya haciendose?"
+
+**Uso:** confirmar que las pruebas de pergaminos consecutivos, historial
+vacío e inventario vacío estaban bien integradas; agregar el caso faltante
+de inventario lleno.
+
+#### 2026-10-06 — Claude (Sonnet)
+
+**Prompt:** "ok, igual sirve perfecto"
+
+**Uso:** cerrar la validación de los tres casos borde pendientes del
+inventario y el historial.
+
+#### 2026-10-06 — Claude (Sonnet)
+
+**Prompt:** "sigamos con el documento de decisiones"
+
+**Uso:** redactar las tres secciones del Documento de Decisiones (§4.5,
+§4.6, §4.9) siguiendo la estructura del §8 del enunciado, con evidencia
+empírica real de las mediciones hechas.
+
+#### 2026-10-06 — Claude (Sonnet)
+
+**Prompt:** "ok listo, con esto quedaria hacer contratros.MD"
+
+**Uso:** armar el archivo CONTRATOS.md con la propuesta de interfaz de
+Persona C hacia A, B y D.
+
+#### 2026-10-06 — Claude (Sonnet)
+
+**Prompt:** "pero eso es una propuesta apenas o solo es lo de mi parte?"
+
+**Uso:** aclarar que el CONTRATOS.md generado cubre solo la parte de
+Persona C, no las cuatro partes del equipo.
+
+#### 2026-10-06 — Claude (Sonnet)
+
+**Prompt:** "sip, esto mismo es lo q podria darle a mi equipo para que vean?"
+
+**Uso:** confirmar que CONTRATOS.md es presentable al equipo como propuesta
+individual, señalando qué partes son asunciones pendientes de confirmar.
+
+#### 2026-10-06 — Claude (Sonnet)
+
+**Prompt:** "podemos hacer los prompts de hoy, 6/10"
+
+**Uso:** generar la bitácora de prompts del día.
+
+#### 2026-10-06 — Claude (Sonnet)
+
+**Prompt:** "ok y ahora que mas podemos hacer"
+
+**Uso:** repasar estado de avance y listar próximos pasos posibles.
+
+#### 2026-10-06 — Claude (Sonnet)
+
+**Prompt:** "podemos empezar la parte de unir con mis comapañeras, que necesitas
+ver de cada una para que puedas tener una idea al unir las cosas?"
+
+**Uso:** listar qué información/código necesitaba de Personas A, B y D para
+empezar a validar la integración.
+
+#### 2026-10-06 — Claude (Sonnet)
+
+**Prompt:** adjunté capturas del árbol de archivos de dos proyectos (Modelo/
+con Actor.py, MotorSimulacion.py, etc., y otro repo con DTOS/FichaCatalogo.py)
+y pregunté "esto es lo que hay, que clase deseas revisar para empezar"
+
+**Uso:** identificar qué archivos revisar primero (Actor.py, MotorSimulacion.py,
+FichaCatalogo.py) para validar la integración.
+
+#### 2026-10-06 — Claude (Sonnet)
+
+**Prompt:** pegué el código completo de MotorSimulacion.py, FichaCatalogo.py
+y Actor.py (con error de sintaxis en este último)
+
+**Uso:** revisar si el motor de A ya reportaba cambios al historial (no) y si
+FichaCatalogo.py de B calzaba con lo asumido en CONTRATOS.md.
+
+#### 2026-10-06 — Claude (Sonnet)
+
+**Prompt:** "esas comas la puse yo ahora sin querer, no tienen eso, entonces
+que tengo que cambiar yo o que tiene que poner mi companera en motorsimulacion
+para q sirve acorde?? y entones fichacatalogo va alineado bien?"
+
+**Uso:** separar qué debía corregir A en MotorSimulacion.py (llamadas a
+historial.registrar en atacar, cambiar_velocidad, mover_enemigo) de qué ya
+estaba bien alineado en FichaCatalogo.py de B.
+
+#### 2026-10-06 — Claude (Sonnet)
+
+**Prompt:** "si porfa dime que es cosas tienen que agregar mis companeras
+para coordinar con ellas"
+
+**Uso:** actualizar CONTRATOS.md con las correcciones (campo id en vez de
+tipo_id, instancia_id viene de /contenido) y los tres puntos de código
+sugeridos para A.
+
+#### 2026-10-06 — Claude (Sonnet)
+
+**Prompt:** "ok, ahora aparte de eso, que mas podemos hacer o no puedo hacer
+nada sin eso?"
+
+**Uso:** separar tareas autónomas (código, pruebas, documento) de las
+bloqueadas por el equipo.
+
+#### 2026-10-06 — Claude (Sonnet)
+
+**Prompt:** "ok empecemos por el punto 1"
+
+**Uso:** diseñar recoger_reversible, soltar_reversible y equipar_reversible
+en retroceso.py, más el método _reinsertar en Inventario.
+
+#### 2026-10-06 — Claude (Sonnet)
+
+**Prompt:** "y esos deshacer y description de donde salen?"
+
+**Uso:** explicar el origen de los parámetros deshacer (closure/lambda) y
+description (campo de la clase Cambio) en historial.registrar().
+
+#### 2026-10-06 — Claude (Sonnet)
+
+**Prompt:** pegué traceback `AttributeError: 'Inventario' object has no
+attribute 'soltar_nodo'. Did you mean: 'suelta_nodo'?`
+
+**Uso:** corregir nombre de método inconsistente (soltar_nodo → suelta_nodo)
+en las tres funciones reversibles nuevas.
+
+#### 2026-10-06 — Claude (Sonnet)
+
+**Prompt:** pegué traceback `AttributeError: 'Inventario' object has no
+attribute 'equipar_anterior'`
+
+**Uso:** corregir typo (equipar_anterior → equipar_actual) en
+equipar_reversible.
+
+#### 2026-10-06 — Claude (Sonnet)
+
+**Prompt:** "ok perfecto, si sirve"
+
+**Uso:** cerrar la validación de las tres funciones reversibles del inventario.
+
+#### 2026-10-06 — Claude (Sonnet)
+
+**Prompt:** pegué el fragmento "2. Revisar si equipar_actual() también
+necesita ser reversible..." y pregunté "esto podemos hacerlo, revisar el
+equipar actual"
+
+**Uso:** confirmar que equipar_reversible ya cubría ese caso, con evidencia
+de la prueba ya corrida.
+
+#### 2026-10-06 — Claude (Sonnet)
+
+**Prompt:** "ok si pero antes de actualizarlo, hay otra cosa que hacer?"
+
+**Uso:** detectar el hueco de diseño sobre sustitución de arma/armadura por
+tipo (§2.7), antes de actualizar CONTRATOS.md.
+
+#### 2026-10-06 — Claude (Sonnet)
+
+**Prompt:** "quiero resolverlo ya, entonces, realmente queda guardada en el
+inventario, solo que no se usa, solo se usa la que acaba de equipar?"
+
+**Uso:** diseñar la separación de _arma_equipada/_armadura_equipada en
+Inventario, y el ajuste correspondiente en equipar_reversible.
+
+#### 2026-10-06 — Claude (Sonnet)
+
+**Prompt:** pegué la implementación de equipar_reversible con las referencias
+separadas y pregunté "como lo ves"
+
+**Uso:** revisar y validar el código de equipar_reversible con soporte para
+arma/armadura simultáneas.
+
+#### 2026-10-06 — Claude (Sonnet)
+
+**Prompt:** pegué la salida de la prueba ("arma equipada: Daga / armadura
+equipada: None / ... / daga sigue en inventario: True")
+
+**Uso:** confirmar que arma y armadura equipadas conviven correctamente y que
+la sustitución por tipo funciona según §2.7.
+
+#### 2026-10-06 — Claude (Sonnet)
+
+**Prompt:** "hay otra cosa que podramos hacer, o alguna clase que desees
+revisar, que podamos cambiar"
+
+**Uso:** identificar qué otros archivos de A revisar (Jugador.py,
+AgendaEventos.py, Evento.py) para resolver el contrato de cambiar_velocidad.
+
+#### 2026-10-06 — Claude (Sonnet)
+
+**Prompt:** pegué el código de Jugador.py, AgendaEventos.py y Evento.py
+
+**Uso:** diseñar cambiar_velocidad_reversible aprovechando la cancelación
+perezosa de AgendaEventos, y confirmar que Jugador.py aún no tenía el método
+de procesar acciones del jugador.
+
+#### 2026-10-06 — Claude (Sonnet)
+
+**Prompt:** "no puedo seguir con eso, eso si entonces ahi tengo que esperar
+a A"
+
+**Uso:** separar lo bloqueado (ubicación de abrir_intervalo) de lo que sí se
+podía seguir avanzando.
+
+#### 2026-10-06 — Claude (Sonnet)
+
+**Prompt:** pegué el fragmento sobre validar inventario lleno con
+recoger_reversible y pregunté "esto que dijiste?"
+
+**Uso:** retomar y ejecutar la prueba de inventario lleno con la función
+reversible nueva.
+
+#### 2026-10-06 — Claude (Sonnet)
+
+**Prompt:** "en efecto, da eso"
+
+**Uso:** confirmar que recoger_reversible se comporta igual que la versión
+anterior ante inventario lleno.
+
+#### 2026-10-06 — Claude (Sonnet)
+
+**Prompt:** "si, actualiza contratos"
+
+**Uso:** actualizar CONTRATOS.md con las tres funciones reversibles,
+arma_equipada/armadura_equipada y la propuesta de cambiar_velocidad_reversible.
+
+#### 2026-10-06 — Claude (Sonnet)
+
+**Prompt:** "queda actualizar el documento de decisiones no?"
+
+**Uso:** actualizar el Documento de Decisiones (§4.5 y §4.6) con el diseño de
+equipo separado y las funciones reversibles.
+
+#### 2026-10-06 — Claude (Sonnet)
+
+**Prompt:** "ahora queda esperar a mi compañera A por que no puedo avanzar o
+que sigue?"
+
+**Uso:** repasar qué seguía bloqueado por A y qué tareas autónomas quedaban
+pendientes (organizar pruebas, notas de defensa).
+
+#### 2026-10-09 — Claude (Sonnet)
+
+**Prompt:** pegué el mensaje completo que me envió mi compañera A (Integración
+del inventario con MotorSimulacion.py, con sus 5 preguntas sobre identificación,
+bonificaciones, equipo actual, combate y retroceso) y agregué "Tenemos distintos problemas en unos métodos, ocupare de tu ayuda en cualquier cosa"
+
+**Uso:** redactar una respuesta a A confirmando el contrato real del inventario
+(arma_equipada/armadura_equipada, equipar_reversible) frente a sus preguntas
+de integración.
+
+#### 2026-10-09 — Claude (Sonnet)
+
+**Prompt:** adjunté captura de PyCharm con errores en rojo (Unresolved
+reference 'ataque_bonus', 'Self' object has no attribute 'ataque_bonus') y
+pregunté "sale en rojo, es normal por que no se usa o que"
+
+**Uso:** depurar parámetros faltantes en __init__ y nombres faltantes en
+__slots__ de NodoInventario.
+
+#### 2026-10-11 — Claude (Sonnet)
+
+**Prompt:** "ok perfecto, tengo otra consulta, cuando mi comapañera haga todo
+lo de ella y podamos empezar a juntar, es mucho lo que hay que hacer?"
+
+**Uso:** evaluar el esfuerzo esperado de integración entre los cuatro módulos
+del equipo, separando lo que ya estaba resuelto (contratos) de lo que faltaba
+probar end-to-end.
+
+#### 2026-10-11 — Claude (Sonnet)
+
+**Prompt:** "el contrato.md es un solo documento no?, y tiene que estar
+integrado en el pycharm?"
+
+**Uso:** aclarar que CONTRATOS.md debe ser un único archivo consolidado
+(no uno por persona) y que solo necesita vivir en la raíz del repositorio,
+sin integración especial.
+
+#### 2026-10-11 — Claude (Sonnet)
+
+**Prompt:** pegué una lista de errores "Unresolved reference" al abrir
+CONTRATOS.md en PyCharm
+
+**Uso:** diagnosticar que el archivo se estaba interpretando como código
+Python en vez de Markdown.
+
+#### 2026-10-11 — Claude (Sonnet)
+
+**Prompt:** "el readme se hace al final no?"
+
+**Uso:** aclarar que el README debe actualizarse en cada entrega (§10.1),
+no escribirse solo al final.
+
+#### 2026-10-11 — Claude (Sonnet)
+
+**Prompt:** "digamos o que cada una haga su parte del README y unirlo todo,
+o que necesitamos..." [pegó el texto de §10.1]
+
+**Uso:** explicar por qué el README no conviene dividirlo por persona (a
+diferencia de CONTRATOS.md), y proponer que D lo redacte con insumos de
+las demás.
+
+#### 2026-10-11 — Claude (Sonnet)
+
+**Prompt:** "pero lo de la documentacion, eso si puede ser cada una y se
+une todo?"
+
+**Uso:** confirmar que el Documento de Decisiones sí puede dividirse por
+persona (una sección por problema de §4), a diferencia del README.
+
+#### 2026-10-11 — Claude (Sonnet)
+
+**Prompt:** "bueno entonces de mi parte solo quedaria unir las cosas no?"
+
+**Uso:** repasar el estado completo de la parte individual y distinguir
+entre "unir documentación" (pasivo) y "unir código" (activo, con integración
+real pendiente).
+
+#### 2026-10-11 — Claude (Sonnet)
+
+**Prompt:** "tengo una duda a la hora de mi parte, por que digamos cuando
+se guarda, no se puede guardar el estado completo es verdad, se tiene que
+guardar distintos datos para que pueda entender el estado"
+
+**Uso:** distinguir la regla de "no copias completas" del pergamino (§2.11,
+propia) de la del guardado binario indexado (§4.10, de Persona D).
+
+#### 2026-10-11 — Claude (Sonnet)
+
+**Prompt:** "y consideras que la mejor opción para historial para esto sea una pila?"
+
+**Uso:** justificar la elección de pila frente a alternativas (cola, lista
+doblemente enlazada, deque) para el historial de retroceso.
+
+#### 2026-10-12 — Claude (Sonnet)
+
+**Prompt:** pegué los tres puntos que mi compañera A encontró al revisar la
+integración (bug en _reinsertar, enlace a sí mismo en equipar_actual,
+limpieza de referencias de equipo al soltar, y el caso del pergamino)
+
+**Uso:** diagnosticar y corregir los tres bugs reportados por A en una
+revisión cruzada de Inventario.py.
+
+#### 2026-10-12 — Claude (Sonnet)
+
+**Prompt:** pegué el código de _reinsertar, equipar_actual y suelta_nodo
+para revisión
+
+**Uso:** detectar que _reinsertar restaba en vez de sumar _cantidad, y que
+equipar_actual seguía generando enlace a sí mismo por un guard incompleto.
+
+#### 2026-10-12 — Claude (Sonnet)
+
+**Prompt:** pegué traceback "Cannot run program ... CreateProcess error=3"
+
+**Uso:** diagnosticar que el intérprete de Python configurado en PyCharm
+ya no existía, y guiar el cambio de intérprete.
+
+#### 2026-10-12 — Claude (Sonnet)
+
+**Prompt:** adjunté captura de Settings de PyCharm mostrando "Nothing to
+show" en Python Interpreter
+
+**Uso:** resolver la configuración rota del intérprete de Python del
+proyecto.
+
+#### 2026-10-12 — Claude (Sonnet)
+
+**Prompt:** "realmente en nothing to show lo muevo y no me sale nada..."
+
+**Uso:** proponer alternativas para reconfigurar el intérprete cuando el
+panel de Settings no respondía (reinicio de PyCharm, terminal directa).
+
+#### 2026-10-12 — Claude (Sonnet)
+
+**Prompt:** "ok listo pero sale este error al ejecutar..." [TypeError:
+NodoInventario.__init__() missing 2 required positional arguments]
+
+**Uso:** corregir falta de valores por defecto (=0) en ataque_bonus/
+defensa_bonus del __init__ de NodoInventario.
+
+#### 2026-10-12 — Claude (Sonnet)
+
+**Prompt:** "listo si, ahora me recomiendas actualizar contratos, al final
+eso es mas para mis companeras no? y eso cambia mucho en el documento de
+decisiones, que me falta para tener todo listo de mi parte?"
+
+**Uso:** repasar el estado completo de la parte individual tras los fixes
+y priorizar pendientes (Git, documento, organización de pruebas, defensa).
+
+#### 2026-10-12 — Claude (Sonnet)
+
+**Prompt:** pegué el contenido completo de prueba.py y pregunté si
+organizábamos las pruebas antes de subirlo
+
+**Uso:** dividir las pruebas en test_inventario.py y test_retroceso.py,
+separados por tema.
+
+#### 2026-10-12 — Claude (Sonnet)
+
+**Prompt:** pegué traceback "ModuleNotFoundError: No module named 'Modelo'"
+al correr desde tests/
+
+**Uso:** resolver el problema de import desde una subcarpeta nueva,
+proponiendo sys.path.append como solución robusta.
+
+#### 2026-10-12 — Claude (Sonnet)
+
+**Prompt:** adjunté captura del menú contextual de PyCharm sin opción
+"Mark Directory as"
+
+**Uso:** confirmar la solución alternativa vía sys.path.append en vez de
+depender de la configuración de Sources Root.
+
+#### 2026-10-12 — Claude (Sonnet)
+
+**Prompt:** adjunté captura del árbol de archivos mostrando que el
+repositorio se había fusionado con los de A, B y D
+
+**Uso:** confirmar que Modelo/ seguía intacto tras la fusión del repositorio
+completo del equipo.
+
+#### 2026-10-12 — Claude (Sonnet)
+
+**Prompt:** adjunté captura del contenido de la carpeta Modelo con todos
+los archivos de A y C juntos
+
+**Uso:** verificar que ningún archivo propio se perdió o fue sobrescrito
+en la fusión del repositorio.
+
+#### 2026-10-12 — Claude (Sonnet)
+
+**Prompt:** pegué la salida completa de test_inventario.py y
+test_retroceso.py ya corriendo desde la carpeta tests/
+
+**Uso:** confirmar que ambos archivos de prueba organizados funcionaban
+correctamente tras resolver el import.
+
+#### 2026-10-12 — Claude (Sonnet)
+
+**Prompt:** "1. listo, 2. mandame de texto lo que agregarias y en donde se
+agrega ese update 3.no precisa y 4, armemoslo"
+
+**Uso:** redactar el texto a agregar al Documento de Decisiones sobre los
+bugs encontrados en la revisión cruzada, y armar notas de defensa para la
+revisión del proyecto (§9).
+
+**se borraron algunos prompts debido a que Claude se confundio
+
+#### 2026-10-17 — Claude (Sonnet)
+
+**Prompt:** "hola, a la hora de pullear lo ultimo que hicieron me pide commitear las cosas [...] error: Your local changes to the following files would be overwritten by merge: resultados_bench_personaD.txt [...]"
+
+**Uso:** resolver un conflicto de `git pull` (archivos locales y carpetas `__pycache__` que impedían el merge) para poder sincronizar el repositorio del proyecto.
+
+#### 2026-10-17 — Claude (Sonnet)
+
+**Prompt:** "y si yo hago eso como se conecta con A?"
+
+**Uso:** decidir cómo se conecta `cambiar_velocidad_reversible` con el motor de Persona A, y redactar la nota de diseño que documenta que la integración real de `historial.registrar()` queda pendiente del lado de quien implemente el motor (Documento de Decisiones).
+
+#### 2026-10-17 — Claude (Sonnet)
+
+**Prompt:** "No se implementó detección dinámica de 'qué tan ordenados' están los datos (por ejemplo, contar inversiones), la decisión se basa solo en tamaño y en si la comparación es costosa, declarada de antemano. esto es verdad?"
+
+**Uso:** verificar contra el enunciado si hacía falta detección dinámica del orden de los datos, y decidir agregar `casi_ordenado()` / `UMBRAL_PROP_DESORDEN` a `elegir_algoritmo`.
+
+#### 2026-10-17 — Claude (Sonnet)
+
+**Prompt:** "```def cuenta_desorden(items, key): ... def elegir_algoritmo(n,comparacion_costosa=False, casi_ordenado=False): ... asi se llaman```"
+
+**Uso:** implementar y depurar `insertion_sort`, `binary_insertion_sort`, `merge_sort`, `elegir_algoritmo`, `casi_ordenado` y `cuenta_desorden`, y escribir/corregir las pruebas (`ordenamiento_test.py`) y el bench de ordenamiento correspondientes.
+
+#### 2026-10-17 — Claude (Sonnet)
+
+**Prompt:** "bueno y entonces como queda lo del doc en la parte 4.9"
+
+**Uso:** redactar la sección 4.9 del Documento de Decisiones con la justificación de los umbrales de ordenamiento (`UMBRAL_TAMANO`, `UMBRAL_PROP_DESORDEN`), apoyada en la evidencia empírica del bench.
+
+#### 2026-10-17 — Claude (Sonnet)
+
+**Prompt:** "to_dict() existe solo para la comparación de evidencia empírica; no tiene una contraparte from_dict() usada en el guardado real (el guardado real usa siempre to_bytes()/from_bytes()). esto de 4.10 si hicimos un from dict, te acuerdas?"
+
+**Uso:** confirmar y redactar la aclaración sobre `to_dict()`/`from_dict()` frente a `to_bytes()`/`from_bytes()` para la sección 4.10 del Documento de Decisiones.
+
+#### 2026-10-17 — Claude (Sonnet)
+
+**Prompt:** "Actualmente el archivo del bench actualmente están así 'resultados_bench_persona C.txt' pero tiene todo lo de persona C que seria un nimbre que no comtenga persona a b c o d solo como general de lo mío"
+
+**Uso:** decidir un nombre de archivo de resultados del bench que no incluyera "persona A/B/C/D", para evitar choques con los bench de las demás personas del equipo.
+
+#### 2026-10-17 — Claude (Sonnet)
+
+**Prompt:** "ahora, tengo el bench pero cuando se ejecuta se tiene que crear o regenerar un archivo txt, y si se cree uno pero cuando vuelvo a ejecutarlo no se regenera [...] solo los muestra en consola"
+
+**Uso:** depurar por qué `correr_bench()` no regeneraba el archivo de resultados en ejecuciones posteriores.
+
+#### 2026-10-17 — Claude (Sonnet)
+
+**Prompt:** "antes de hacer eso, estaba pulleando y me pasa lo mismo [...] error: Your local changes to the following files would be overwritten by merge: partida.log [...]"
+
+**Uso:** resolver un segundo conflicto de `git pull`, esta vez por el archivo `partida.log` sobrescrito localmente.
+
+#### 2026-10-17 — Claude (Sonnet)
+
+**Prompt:** "te acuerdas lo del bench de regenerar, mi amiga lo tiene asi [...] y el mio se ve asi, a lo q me diste como se adapata, solo ocupo que se regenere el txt"
+
+**Uso:** adaptar al bench propio el patrón de regeneración de archivo de resultados usado por Persona D, capturando la salida con `io.StringIO`/`contextlib.redirect_stdout` para escribirla siempre al archivo.
+
+#### 2026-10-17 — Claude (Sonnet)
+
+**Prompt:** "el enunciado del proyecto me deja usar ese import? no dice nada q no? para que se usa?" / "ocupo q se cree donde estan los demas txt, afuera, no en la carpeta donde esta el bench.py"
+
+**Uso:** confirmar que el enunciado no prohíbe usar `io`/`contextlib`, y corregir la ruta de `ARCHIVO_RESULTADOS` (usando `RAIZ` con `os.path.join`) para que el `.txt` se genere en la raíz del proyecto junto a los demás resultados, en vez de en la carpeta `tests/`.
+
+## Prompts Persona D
+
+### Semana 1 — Del 21 al 27 de septiembre
+
+**Etapa:** análisis de requisitos, comprensión de la arquitectura y planificación de responsabilidades
+
+#### 21/09/2026 — ChatGPT
+**Comprensión inicial del proyecto**
+
+**Prompt:** "Ayúdame a entender las instrucciones del proyecto de Cripta, cuáles son los requisitos principales y qué debo implementar como Persona D"
+
+**Uso:** Revisar las instrucciones y la distribución de tareas para delimitar el alcance individual. Identificar qué funcionalidades corresponden a persistencia, registro de acciones, reproducción de partidas, pruebas y evaluación del rendimiento.
+
+**Prompt:** "Explícame qué diferencia hay entre guardar una partida, guardar el historial de acciones y reproducir una partida, porque no quiero mezclar responsabilidades"
+
+**Uso:** Diferenciar la recuperación del estado de una partida de la reconstrucción de una secuencia de acciones. Establecer que el guardado binario y la bitácora son mecanismos complementarios, pero tienen objetivos distintos.
+
+**Prompt:** "Ayúdame a preparar un checklist de todo lo que le corresponde a Persona D, separado por módulos y pruebas, para no implementar cosas que pertenecen a mis compañeras"
+
+**Uso:** Crear una lista inicial de tareas y relacionarlas con los módulos del proyecto: Persistencia/, Bitacora/, pruebas automatizadas y benchmarks. Separar los elementos que dependen de la implementación de otras personas.
+
+**Prompt:** "Revisa la estructura actual del proyecto y explícame cómo debería encajar mi implementación con las clases que ya existen, sin proponer una arquitectura completamente nueva"
+
+**Uso:** Establecer como criterio de desarrollo la reutilización de la estructura existente, con cambios pequeños y compatibles con las convenciones del grupo.
+
+#### 22/09/2026 — ChatGPT
+**Análisis de la arquitectura existente**
+
+**Prompt:** "Explícame la responsabilidad de cada módulo existente y cuáles debería modificar directamente para implementar el guardado binario"
+
+**Uso:** Estudiar la separación entre Modelo, Gestor, Persistencia, API y los demás componentes. Determinar qué parte de la lógica debe mantenerse fuera de la capa encargada de escribir archivos.
+
+**Prompt:** "Ayúdame a definir qué información de una partida necesita persistirse y cuál debería reconstruirse a partir de los datos de la cripta"
+
+**Uso:** Comenzar a distinguir el estado mutable de la partida de los datos que pertenecen a la definición original de la cripta. Esta distinción sirve de base para el diseño posterior de los registros del jugador y las salas.
+
+**Prompt:** "Cómo puedo diseñar las clases de persistencia para que no dependan de la interfaz gráfica ni tengan que ejecutar las reglas del juego?"
+
+**Uso:** Mantener la persistencia como una capa responsable de convertir datos a bytes, escribirlos y recuperarlos, sin asumir responsabilidades del controlador o del motor de simulación.
+
+**Prompt:** "Hazme una lista de las decisiones de diseño que debería justificar después: formato de archivo, índice, complejidad, pruebas y rendimiento"
+
+**Uso:** Preparar la documentación técnica que acompañaría la implementación y relacionar las decisiones de diseño con la rúbrica y la evidencia que se necesitaría para defenderlas.
+
+#### 24/09/2026 — ChatGPT
+**Diseño preliminar del formato binario**
+
+**Prompt:** "Explícame cómo organizar un archivo binario para guardar el encabezado de una partida, el jugador y las salas sin perder la posibilidad de leer los datos después"
+
+**Uso:** Estudiar la estructura secuencial de un archivo binario y la necesidad de definir un formato consistente para guardar y recuperar sus componentes.
+
+**Prompt:** "Qué información debería incluir el encabezado de mi archivo para reconocer el formato, la versión y los datos necesarios para recuperar la partida?"
+
+**Uso:** Definir los campos de identificación y control del archivo: marca, versión del formato, identificadores y versiones de la cripta y el catálogo, semilla, reloj virtual, cantidad de salas y posición del índice.
+
+**Prompt:** "Explícame cómo funciona struct en Python y cómo puedo usarlo para empaquetar números y cadenas en un formato binario de tamaño definido"
+
+**Uso:** Comprender el empaquetado y desempaquetado de campos de tamaño conocido, incluyendo el orden de bytes y las validaciones necesarias al leer archivos.
+
+**Prompt:** "Ayúdame a decidir qué validaciones debería realizar al cargar un archivo binario incompleto, corrupto o creado con una versión diferente"
+
+**Uso:** Preparar el tratamiento de archivos inválidos, lecturas parciales y formatos incompatibles, evitando que una partida dañada se interprete como válida.
+
+#### 25/09/2026 — ChatGPT
+**Registros de jugador y salas**
+
+**Prompt:** "Ayúdame a identificar qué campos debería guardar en un registro de sala para recuperar su estado mutable sin duplicar toda la definición de la cripta"
+
+**Uso:** Delimitar la información de las salas que cambia durante la partida: estado de enemigos, objetos, trampas, puertas y datos de visita.
+
+**Prompt:** "Explícame cómo representar un registro de jugador con su salud, sala actual, estadísticas de partida, llave de salida e inventario"
+
+**Uso:** Organizar los datos del jugador en un bloque independiente procurando que el formato sea claro y que los campos puedan recuperarse de forma verificable.
+
+**Prompt:** "Cómo debería manejar las cadenas UTF-8 y los valores booleanos en el archivo binario para evitar aceptar datos inválidos?"
+
+**Uso:** Incorporar criterios de validación para texto, longitudes, valores booleanos y campos numéricos al diseñar los métodos de serialización y lectura.
+
+**Prompt:** "Revisa el diseño de mis registros y dime si estoy guardando información innecesaria o mezclando datos persistentes con lógica de negocio"
+
+**Uso:** Revisar la separación de responsabilidades y mantener las clases de persistencia enfocadas en representar y validar los datos que se almacenan.
+
+#### 27/09/2026 — ChatGPT
+**Primer checklist técnico**
+
+**Prompt:** "Organiza las tareas de Persona D en un checklist de implementación por orden de dependencia, desde el formato binario hasta las pruebas"
+
+**Uso:** Ordenar el trabajo para comenzar por el encabezado y los registros, continuar con el archivo completo y su índice, y terminar con bitácora, reproducción y evaluación.
+
+**Prompt:** "Qué casos de prueba debería contemplar antes de considerar terminado el guardado binario?"
+
+**Uso:** Planificar pruebas de ida y vuelta, archivos vacíos, registros truncados, identificadores duplicados, índices incorrectos, versiones incompatibles y búsqueda de salas inexistentes.
+
+### Semana 2 — Del 28 de septiembre al 4 de octubre
+
+**Etapa:** implementación progresiva, análisis de complejidad y coordinación inicial entre integrantes
+
+#### 28/09/2026 — ChatGPT
+**Implementación del encabezado binario**
+
+**Prompt:** "Ayúdame a implementar el encabezado binario usando el estilo de las clases existentes, con métodos para convertirlo a bytes y reconstruirlo desde bytes"
+
+**Uso:** Orientar la implementación de Persistencia/FormatoBinario.py, incluyendo la representación binaria del encabezado y los métodos de conversión y lectura.
+
+**Prompt:** "Explícame qué debería comprobar from_bytes() antes de construir un encabezado y qué excepción conviene usar cuando la versión no es compatible"
+
+**Uso:** Definir las validaciones de marca, longitud y versión. Mantener una excepción específica para comunicar que el archivo utiliza un formato no compatible.
+
+**Prompt:** "Revisa el tamaño del encabezado y explícame cómo comprobar que el archivo se lee sin consumir bytes de más"
+
+**Uso:** Verificar que el encabezado tenga un tamaño fijo y que pueda recuperarse sin leer el contenido completo de la partida.
+
+**Prompt:** "Ayúdame a crear pruebas para el encabezado: valores correctos, archivo incompleto, versión incompatible, semilla negativa y cadenas demasiado largas"
+
+**Uso:** Convertir los requisitos del formato en pruebas automatizadas que permitan detectar errores tempranamente.
+
+**Prompt:** "Qué datos debo guardar directamente en el archivo y cuáles puedo reconstruir desde la definición de la cripta? Quiero evitar duplicar datos estáticos y conservar correctamente el estado mutable de la partida"
+
+**Uso:** Distinguir entre la definición de una cripta y los cambios ocurridos durante una partida. Preparar los registros del jugador y de las salas para guardar solamente los datos necesarios para recuperar el estado.
+
+#### 29/09/2026 — ChatGPT
+**Estructura del archivo y acceso por sala**
+
+**Prompt:** "Explícame cómo guardar varios registros de salas en un único archivo y cómo recuperar sus posiciones para poder leer una sala sin cargar todas las demás"
+
+**Uso:** Diseñar la relación entre los bloques físicos de las salas y un índice que permita localizar cada registro por su identificador.
+
+**Prompt:** "Qué debería almacenar cada entrada del índice y por qué es importante mantenerlo ordenado por el identificador de la sala?"
+
+**Uso:** Definir las entradas del índice con identificador, desplazamiento y longitud. Utilizar el ordenamiento para habilitar la búsqueda binaria.
+
+**Prompt:** "Ayúdame a entender la complejidad de buscar una sala con búsqueda binaria y cómo distinguir el costo de buscarla del costo de leer su registro"
+
+**Uso:** Separar la complejidad de localización del índice, O(□log n), del costo de leer y deserializar el bloque encontrado, que depende de su tamaño.
+
+**Prompt:** "Dame una lista de pruebas para comprobar que el índice funciona incluso si los registros se reciben desordenados o existen identificadores repetidos"
+
+**Uso:** Preparar pruebas de ordenamiento, duplicados, búsquedas inexistentes y consistencia entre los identificadores del índice y los registros almacenados.
+
+#### 30/09/2026 — ChatGPT
+
+**Prompt:** "Cómo puedo evitar que un error durante el guardado deje el archivo anterior de una partida incompleto o destruido?"
+
+**Uso:** Analizar una estrategia de escritura temporal y sustitución del archivo de destino solo cuando la escritura termina correctamente.
+
+**Prompt:** "Explícame cómo usar os.replace() y por qué conviene crear el archivo temporal en el mismo directorio del archivo final"
+
+**Uso:** Incorporar un procedimiento de guardado más seguro que preserve el archivo anterior si ocurre un fallo antes de la sustitución.
+
+**Prompt:** "¿Cómo puedo demostrar mediante una prueba que buscar una sola sala no está leyendo todo el archivo binario?"
+
+**Uso:** Preparar pruebas que contabilicen los bytes leídos y el número de accesos al índice, demostrando el beneficio del acceso selectivo.
+
+**Prompt:** "Revisa los errores que debería detectar LectorPartida: índice truncado, bloques fuera de rango, bytes sobrantes y registros incompletos"
+
+**Uso:** Reforzar la integridad del formato y definir las condiciones para rechazar archivos que no respeten la distribución esperada de sus bloques.
+
+#### 01/10/2026 — ChatGPT
+**Coordinación de interfaces con Persona A**
+
+**Prompt:** "Ayúdame a visualizar qué clases son las necesarias para mi implementación"
+
+**Uso:** Identificar las clases necesarias para implementar las responsabilidades de Persona D y comprender las relaciones entre los componentes del proyecto, evitando duplicar las responsabilidades del motor de simulación.
+
+**Prompt:** "Ayúdame a definir qué responsabilidades debe tener la persistencia y cuáles deben quedar en el motor de simulación de Persona A"
+
+**Uso:** Establecer una separación clara: el motor ejecuta acciones y administra la simulación; la persistencia guarda y recupera el estado que recibe.
+
+**Prompt:** "Necesito coordinar con Persona A la interfaz que va a utilizar el reproductor. ¿Qué métodos y parámetros debemos acordar para no depender de una implementación provisional?"
+
+**Uso:** Identificar el contrato de integración necesario para que Reproductor cree un motor mediante una fábrica y le entregue las acciones en orden. Mantener provisionalmente un motor falso para las pruebas independientes.
+
+**Prompt:** "Ayúdame a definir un checklist de integración con Persona A, dejando separados los cambios que puedo terminar ahora de los que dependen del motor real"
+
+**Uso:** Evitar bloqueos en el trabajo de D y reservar las modificaciones que dependen de la interfaz definitiva del motor para la etapa de integración.
+
+#### 02/10/2026 —  ChatGPT
+**Comprensión de la simulación y los eventos**
+
+**Prompt:** "Ayúdame a entender cómo implementar el reloj virtual y la agenda de eventos, respetando el orden por tiempo y número de secuencia"
+
+**Uso:** Comprender el comportamiento temporal de la simulación y el orden determinista de los eventos, especialmente cuando varios comparten el mismo instante. Esta consulta ayuda a delimitar qué comportamiento pertenece al motor de Persona A y qué debe considerar D al guardar o reproducir una partida.
+
+**Prompt:** "Por qué la reproducción debe respetar exactamente el orden de las acciones registradas y no intentar ordenarlas por su cuenta?"
+
+**Uso:** Comprender que la bitácora representa una secuencia de decisiones, no una colección de eventos que D pueda reorganizar. El orden de ejecución corresponde al registro original y a la lógica del motor.
+
+**Prompt:** "Explícame qué puede garantizar una semilla en una simulación y qué condiciones adicionales se necesitan para reproducir una partida de forma determinista"
+
+**Uso:** Identificar la importancia de conservar la semilla, la versión de los datos y la compatibilidad de la lógica de simulación.
+
+**Prompt:** "Ayúdame a revisar qué debería incluir el encabezado de una bitácora para que el reproductor detecte una cripta o catálogo incompatible"
+
+**Uso:** Definir los metadatos que permitirán verificar la compatibilidad antes de ejecutar las acciones.
+
+#### 04/10/2026 — ChatGPT
+**Primera revisión de responsabilidades compartidas**
+
+**Prompt:** "Revisa las tareas de Persona A, B, C y D y ayúdame a identificar qué interfaces necesito acordar antes de terminar mi implementación"
+
+**Uso:** Actualizar la distribución de responsabilidades y evitar que D implemente adaptadores de datos o serializadores que pertenecen a otros integrantes.
+
+**Prompt:** "¿Qué puedo terminar de la persistencia sin esperar al motor definitivo y qué debería dejar preparado para la integración?"
+
+**Uso:** Priorizar la validación del archivo, el índice, los registros, las pruebas unitarias y la bitácora independiente del motor real.
+
+### Semana 3 — Del 5 al 11 de octubre
+
+**Etapa:** integración de registros, serialización compartida, bitácora, pruebas y primeros resultados de rendimiento.
+
+#### 05/10/2026 — Claude(Sonnet)
+**Serialización del inventario e historial**
+
+**Prompt:** "Persona C está implementando la serialización binaria del inventario y del historial. Ayúdame a determinar cómo debería consumir esos métodos desde Persistencia sin duplicar su trabajo"
+
+**Uso:** Delimitar la responsabilidad de D como consumidor de los métodos de serialización de C. Mantener el archivo de partida como una capa que organiza los bloques y delega la conversión de los componentes a sus clases correspondientes.
+
+**Prompt:** "Si mis clases y las de Persona C tienen métodos con nombres diferentes pero realizan lo mismo, ¿deberíamos unificarlos o basta con adaptar la llamada?"
+
+**Uso:** Evaluar la conveniencia de reutilizar métodos existentes y evitar duplicar algoritmos. La prioridad es que las interfaces sean compatibles y que cada clase mantenga una responsabilidad clara.
+
+**Prompt:** "Persona C me indicó que Persistencia debe solicitar bytes al guardar y devolverlos al cargar. Revisa si mi capa está limitada correctamente a esa responsabilidad"
+
+**Uso:** Verificar que D no reimplemente la serialización del inventario o historial, sino que coordine los bloques del archivo y use los métodos acordados.
+
+**Prompt:** "¿Qué debería pasar con el historial cuando se carga una partida si acordamos que no se conserva entre guardados?"
+
+**Uso:** Documentar la decisión de que el historial comienza vacío después de cargar una partida y que solo las acciones posteriores pueden deshacerse. Diferenciar este comportamiento del inventario, que sí se serializa.
+
+#### 06/10/2026 — Claude(Sonnet)
+**Ajustes en los registros y sus validaciones**
+
+**Prompt:** "Revisa mi RegistroJugador y dime si estoy guardando únicamente el estado mutable que necesita persistirse"
+
+**Uso:** Verificar la selección de campos persistentes, incluyendo sala actual, salud, contador de acciones, enemigos derrotados, uso de la llave de salida e inventario.
+
+**Prompt:** "Explícame cómo validar los tamaños de los campos y detectar valores fuera de rango al reconstruir un registro de sala"
+
+**Uso:** Reforzar las comprobaciones de integridad al leer registros binarios, evitando construir objetos con longitudes o valores inválidos.
+
+**Prompt:** "Ayúdame a revisar si la información de enemigos y objetos debe almacenarse como estado de cada instancia o como una definición completa del catálogo"
+
+**Uso:** Separar la identidad y el estado de las instancias de los datos estáticos de definición, en coordinación con las responsabilidades del catálogo.
+
+**Prompt:** "Revisa qué casos límite faltan en las pruebas de RegistroJugador y RegistroSala antes de probar el archivo completo"
+
+**Uso:** Completar la cobertura de registros vacíos, campos inválidos, texto Unicode, booleanos, longitudes incorrectas y conversiones de ida y vuelta.
+
+#### 07/10/2026 — Claude(Sonnet)
+**Desarrollo de la bitácora**
+
+**Prompt:** "Ayúdame a implementar una bitácora de texto sencilla que tenga encabezado y agregue una línea por cada acción aceptada"
+
+**Uso:** Orientar el diseño de BitacoraPartida.py con un formato legible, una marca de identificación, una versión y un separador entre encabezado y acciones.
+
+**Prompt:** "Cómo puedo abrir la bitácora en modo append para agregar acciones sin reescribir el encabezado cada vez?"
+
+**Uso:** Implementar el registro incremental de acciones y diferenciar la creación de una bitácora nueva de la continuación de una existente.
+
+**Prompt:** "Ayúdame a validar el nombre de las acciones y sus argumentos para impedir que un salto de línea altere la estructura del archivo"
+
+**Uso:** Incorporar validaciones de cadenas, nombres no vacíos y ausencia de saltos de línea, preservando el formato de una acción por línea.
+
+**Prompt:** "Explícame por qué conviene ejecutar flush después de registrar una acción y qué garantía ofrece realmente"
+
+**Uso:** Comprender el vaciado del búfer de escritura y documentar su diferencia frente a una garantía de persistencia física ante cualquier fallo.
+
+#### 08/10/2026 — Claude(Sonnet)
+**Desarrollo del reproductor**
+
+**Prompt:** "Ayúdame a diseñar Reproductor para leer la bitácora, crear el motor con una fábrica y ejecutar las acciones en orden sin depender de la interfaz gráfica"
+
+**Uso:** Definir la responsabilidad de Reproductor.py y mantener desacoplada la lectura de la bitácora de la implementación concreta del motor.
+
+**Prompt:** "¿Cómo debería comprobar las versiones de la cripta y el catálogo antes de crear el motor, y qué debería ocurrir si no coinciden?"
+
+**Uso:** Evitar reproducciones con datos incompatibles y detener el proceso antes de ejecutar acciones que podrían producir resultados incorrectos.
+
+**Prompt:** "Ayúdame a manejar el caso en que el motor rechaza una acción durante la reproducción. Debería seguir con las siguientes?"
+
+**Uso:** Establecer que una acción rechazada detiene la reproducción y genera un error explicativo, evitando que el sistema continúe desde un estado posiblemente inconsistente.
+
+**Prompt:** "Diseña pruebas para el reproductor con un motor falso que permita verificar el orden de acciones, la semilla y los errores de compatibilidad"
+
+**Uso:** Crear pruebas aisladas de la simulación real para verificar el comportamiento del reproductor sin depender de que Persona A haya terminado su motor.
+
+#### 09/10/2026 — Pruebas integrales y errores de compatibilidad
+
+**Prompt:** "Ayúdame a organizar las pruebas de persistencia para comprobar el archivo completo y no solamente los métodos de serialización individuales"
+
+**Uso:** Integrar las pruebas del encabezado, jugador, salas e índice para verificar que una partida pueda guardarse y recuperarse correctamente.
+
+**Prompt:** "Tengo pruebas que esperan un mensaje específico al detectar una versión incompatible. Ayúdame a distinguir si falla el comportamiento o solamente el texto de la excepción"
+
+**Uso:** Revisar los fallos de pruebas relacionados con los mensajes de error, sin confundir una discrepancia textual con un problema de lógica. La validación debe seguir siendo consistente con las excepciones esperadas.
+
+**Prompt:** "¿Cómo pruebo que un guardado fallido no destruya una partida anterior y que un índice truncado se detecte correctamente?"
+
+**Uso:** Verificar la seguridad de la escritura temporal y las validaciones de lectura de los datos del índice.
+
+**Prompt:** "Hazme una lista de los casos que deben pasar antes de considerar cerrada la persistencia binaria: archivo inválido, lectura parcial, duplicados, versiones y recuperación de salas"
+
+**Uso:** Consolidar los criterios de aceptación para el módulo de persistencia antes de realizar una revisión global.
+
+#### 10/10/2026 — Claude(Sonnet
+**Benchmarks y comparación binario frente a JSON**
+
+**Prompt:** "Necesito comparar el guardado binario con JSON. Ayúdame a definir qué operaciones medir para justificar las decisiones de Persona D"
+
+**Uso:** Diseñar una evaluación que contemple tamaño de archivo, tiempo de guardado, carga completa y lectura selectiva de una sala.
+
+**Prompt:** "Cómo puedo generar partidas sintéticas de distintos tamaños para medir el rendimiento de forma repetible sin depender de datos reales del juego?"
+
+**Uso:** Preparar conjuntos de prueba con diferentes cantidades de salas y utilizar varias repeticiones para reducir el efecto de mediciones aisladas.
+
+**Prompt:** "Explícame cómo interpretar las diferencias entre tamaño, tiempo de guardado, carga completa y lectura de una sola sala sin concluir que un formato es mejor en absolutamente todo"
+
+**Uso:** Aprender a interpretar los resultados con sus límites. El formato binario puede ocupar menos espacio y facilitar lecturas selectivas, aunque la carga completa no necesariamente sea más rápida.
+
+**Prompt:** "Ayúdame a preparar un archivo de resultados de benchmark que pueda incluir en la entrega y actualizar cada vez que vuelva a ejecutar las mediciones"
+
+**Uso:** Centralizar los resultados en resultados_bench_guardado.txt y conservar una evidencia reproducible para la justificación de diseño.
+
+#### 11/10/2026 — Claude(Sonnet)
+**Revisión del ZIP y pruebas de Persona D**
+
+**Prompt:** "Revisa el ZIP actualizado del proyecto y dime qué partes de Persona D están implementadas, qué pruebas pasan y qué queda pendiente"
+
+**Uso:** Comparar la implementación real con la lista de responsabilidades, revisar la organización de los módulos y detectar dependencias pendientes con los integrantes del equipo.
+
+**Prompt:** "Ya implementé los cambios independientes de Persona A. Ayúdame a separar lo terminado de lo que depende del motor real para no duplicar su trabajo"
+
+**Uso:** Mantener el alcance de D separado del motor de simulación y preparar una lista de integración para cuando Persona A entregue su interfaz definitiva.
+
+**Prompt:** "Cómo debería quedar Persistencia si Persona C ya tiene los métodos de serialización del inventario y el historial?"
+
+**Uso:** Confirmar que la capa de persistencia reutilice los métodos de C en lugar de duplicar la serialización y que el formato del archivo siga siendo responsabilidad de D.
+
+**Prompt:** "Revisa las pruebas y los pendientes del módulo de bitácora y reproducción. Quiero identificar los casos que todavía no están cubiertos"
+
+**Uso:** Preparar la revisión de errores, compatibilidad, orden de reproducción y comportamiento ante acciones rechazadas.
+
+### Semana 4 — Del 12 al 17 de octubre
+
+**Etapa:** integración final, revisión de responsabilidades, validación de pruebas y preparación de la documentación
+
+#### 12/10/2026 — Claude(Sonnet)
+Corrección de errores e integración de cambios y restauración del estado y preparación de la Vista
+
+**Prompt:** "Revisa la última versión del ZIP y confirma qué pruebas pasan después de integrar las validaciones nuevas de persistencia y bitácora"
+
+**Uso:** Verificar que los cambios recientes no rompan la implementación previa y distinguir los errores funcionales de los problemas de compatibilidad con las pruebas.
+
+**Prompt:** "Algunas pruebas de incompatibilidad fallaron porque el mensaje esperado no coincide. Ayúdame a revisar qué texto debería mantenerse y cómo evitar cambiar el comportamiento correcto"
+
+**Uso:** Revisar las excepciones y sus mensajes, manteniendo coherencia entre la implementación y las expectativas de las pruebas.
+
+**Prompt:** "Ayúdame a revisar las pruebas de lectura parcial y búsqueda de salas para asegurarme de que el índice realmente aporta una ventaja"
+
+**Uso:** Confirmar que la búsqueda binaria se aapoya en el índice ordenado y que la lectura de una sala no obliga a cargar todas las demás.
+
+**Prompt:** "Mira esta clase ControladorJuego.py que integra el Motor de Simulación (Persona A), la Caché/Inventario (Persona B) y el Cargador de Datos (Persona C). Tengo un problema al cargar una partida binaria: el inventario no restaura los bonus de ataque/defensa de los objetos equipados. Dónde debería estar esa responsabilidad?"
+
+**Uso:** Investigar la separación entre la persistencia del inventario y el cálculo de atributos derivados. Determinar si el problema está en la deserialización, en la reconstrucción del estado del Modelo o en la coordinación del Controlador, evitando introducir lógica de combate en la capa de archivos.
+
+**Prompt:** "Ayúdame a definir las responsabilidades de VistaConsola y ControladorJuego: la Vista debe mostrar el estado, las salas, los mensajes y las opciones; el Controlador debe recibir las elecciones del jugador y traducirlas en acciones para el motor"
+
+**Uso:** Preparar la interfaz interactiva sin mezclar lectura de teclado, presentación y reglas de simulación. Establecer un flujo que permita cambiar la forma de interacción sin modificar el Modelo.
+
+**Prompt:** "Necesito que la carga de una partida binaria actualice correctamente el estado que muestra la Vista cómo debería organizar el flujo de lectura, restauración del Modelo y actualización de la pantalla para evitar mostrar datos antiguos?"
+
+**Uso:** Definir el orden de integración entre persistencia, estado del juego y presentación. Evitar que la Vista mantenga una copia desactualizada de la información recuperada del archivo.
+
+#### 13/10/2026 — Claude(Sonnet)
+**Coordinación final con Personas A, B y C**
+
+**Prompt:** "Persona A me indicó que el motor se crea con MotorSimulacion(semilla, gestor_datos) y se inicia con iniciar_partida(...). Explícame cómo debo adaptar mi integración sin asumir la responsabilidad del motor"
+
+**Uso:** Preparar la conexión de D con el motor real, manteniendo la creación del motor y la ejecución de la simulación como responsabilidades de A.
+
+**Prompt:** "Ayúdame a identificar qué parámetros de iniciar_partida son importantes para la integración y cuáles necesito conservar para reproducir una partida"
+
+**Uso:** Analizar el identificador de la cripta, la semilla y los datos iniciales necesarios para reconstruir el contexto de la partida. Mantener el uso de las interfaces definitivas sujeto al contrato de A.
+
+**Prompt:** "Persona B se encargará de las fuentes de datos y del catálogo. Revisa qué llamadas debe consumir mi código y cuáles no debo implementar yo"
+
+**Uso:** Evitar duplicar la lógica de carga de datos y los adaptadores de HTTP, caché y modo offline. Mantener a D enfocado en persistencia, bitácora, reproducción y evaluación.
+
+**Prompt:** "Persona C ya terminó la serialización. Ayúdame a preparar una lista de comprobación para verificar que Persistencia utiliza correctamente sus métodos y que no hay dos implementaciones del mismo proceso"
+
+**Uso:** Revisar la integración de los métodos de serialización del inventario y el historial, documentar la política de persistencia del historial y evitar duplicaciones.
+
+**Prompt:** "Revisa los resultados de bench_personaD.py y ayúdame a interpretar por qué el archivo binario ocupa menos espacio y permite cargar una sala individual más rápido, pero no siempre carga todo más rápido"
+
+**Uso:** Explicar los resultados sin generalizaciones. Para 2.000 salas, el archivo binario ocupa 274.158 bytes frente a 407.417 bytes en JSON; la carga de una sala tarda 0,000195 s frente a 0,013105 s, mientras que la carga completa tarda más en binario en las mediciones disponibles.
+
+**Prompt:** "Ayúdame a documentar los límites de mis benchmarks para dejar claro qué se midió, qué depende del equipo y qué operaciones no fueron medidas"
+
+**Uso:** Aclarar que los datos sintéticos y el hardware afectan los resultados, que las mediciones son específicas de las operaciones probadas y que el rendimiento de una carga selectiva no demuestra superioridad en todas las operaciones.
+
+**Prompt:** "Revisa la justificación de la bitácora y el reproductor. Qué evidencia puedo afirmar que tengo y qué debería dejar como pendiente porque no lo medí directamente?"
+
+**Uso:** Separar la evidencia funcional de las mediciones de rendimiento. Registrar las pruebas aprobadas como evidencia de comportamiento y evitar afirmar que la reproducción cumple un límite temporal sin un benchmark específico.
+
+#### 14/10/2026 — Claude(Sonnet)
+**Inicio de la implementación jugable de Vista y Controlador**
+
+**Prompt:** "Ya tengo varias clases del Modelo, el motor de simulación y los componentes de persistencia, pero necesito conectarlos para poder jugar. Ayúdame a definir el flujo completo de main.py a ControladorJuego y VistaConsola, desde la selección del modo hasta el inicio de la partida"
+
+**Uso:** Diseñar la secuencia de inicialización del juego, identificando qué componentes deben construirse, qué datos necesita el motor y en qué momento se entrega el control a la interfaz interactiva.
+
+**Prompt:** "Quiero implementar el Controlador sin duplicar la lógica de MotorSimulacion. Cómo debería recibir un comando de movimiento, comprobar que la entrada tiene el formato esperado, invocar ejecutar_accion() y después actualizar la información que se muestra?"
+
+**Uso:** Separar la interpretación de comandos de la ejecución de las reglas. El Controlador coordina la operación, el motor decide el resultado de la acción y la Vista presenta el nuevo estado.
+
+**Prompt:** "Ayúdame a diseñar un ciclo de juego sencillo: mostrar el estado actual, presentar las acciones disponibles, leer la elección del jugador, ejecutar la acción y volver a mostrar el resultado. Quiero evitar un bucle con demasiados if y mantener el código fácil de seguir"
+
+**Uso:** Organizar el ciclo interactivo en pasos claros, evitando que la Vista ejecute directamente las reglas del juego o que el Controlador contenga la lógica interna de combate y movimiento
+
+**Prompt:** "Estoy integrando las clases existentes y quiero preparar un checklist para probar una partida completa: inicialización, entrada del jugador, movimiento entre salas, actualización del estado, derrota y condición de victoria. Qué debería verificar en cada paso?"
+
+**Uso:** Convertir la integración en escenarios observables y comprobar que el flujo jugable funcione más allá de las pruebas aisladas de persistencia y reproducción.
+
+#### 15/10/2026 — Claude(Sonnet)
+**Integración de la Vista, el Controlador y el modo offline**
+
+**Prompt:** "Revisa el flujo de ControladorJuego.py: necesito que el jugador pueda iniciar una partida, consultar el estado, seleccionar una acción y continuar jugando hasta ganar, perder o salir. Ayúdame a identificar qué métodos deben coordinarse y cuáles no deberían llamarse directamente desde la Vista."
+
+**Uso:** Revisar el flujo de juego y delimitar las llamadas entre Vista, Controlador y motor. Evitar que la interfaz tenga que conocer detalles internos de la simulación.
+
+**Prompt:** "Estoy conectando el modo --offline. Quiero que el Controlador seleccione la fuente local cuando se active la bandera y que el resto del juego siga utilizando el mismo contrato de acceso a datos. Cómo puedo hacerlo sin agregar comprobaciones if offline por todas las clases?"
+
+**Uso:** Aplicar la selección de dependencias en un único punto de la inicialización. Mantener la misma interfaz de acceso a datos para que el Modelo y el motor no necesiten distinguir si los datos proceden de HTTP o del almacenamiento local.
+
+**Prompt:** "Ayúdame a depurar un caso en el que el juego inicia, pero al entrar a una sala no se muestran correctamente sus enemigos u objetos en modo offline cómo puedo separar un problema de carga de datos de un problema del Controlador o de la Vista?"
+
+**Uso:** Establecer un procedimiento de depuración por capas: comprobar primero que la fuente entrega los datos esperados, después que el motor actualiza el estado y finalmente que la Vista representa ese estado correctamente.
+
+**Prompt:** "Necesito comprobar que el modo offline no dependa accidentalmente de una conexión de red. Cuales pruebas puedo realizar para verificar que la fuente local se selecciona correctamente y que un archivo inexistente genera un error claro?"
+
+**Uso:** Preparar pruebas de integración para comprobar la selección de la fuente local y el manejo de errores de datos faltantes, sin atribuir al Controlador las responsabilidades internas del adaptador.
+
+**Prompt:** "Ayúdame a revisar cómo debe comportarse main.py cuando recibe distintas combinaciones de banderas: ejecución normal, --offline, --replay y --bench. Quiero evitar que se inicie la Vista interactiva en modos que no la necesitan"
+
+**Uso:** Consolidar el despacho de modos desde el punto de entrada. Asegurar que el modo interactivo utilice la Vista, mientras que reproducción y benchmarks puedan ejecutarse sin solicitar entrada al jugador.
+
+**Prompt:** "Ayúdame a dejar una lista final de lo que está implementado, lo que se comprobó con pruebas, lo que se midió con benchmarks y las limitaciones que debo reconocer en la entrega de Persona D"
+
+**Uso:** Preparar el cierre técnico de la contribución individual, diferenciando funcionalidades implementadas, pruebas ejecutadas, resultados experimentales y dependencias de integración con el resto del equipo.
+
+#### 16/10/2026 — Claude(Sonnet)
+**Pruebas de integración y correcciones del flujo jugable**
+
+**Objetivos finales del día:** Validar el comportamiento de la aplicación completa, resolver errores de coordinación y comprobar que las diferentes formas de ejecución no interfieran entre sí.
+
+**Prompt:** "Ayúdame a preparar una prueba manual completa de la aplicación: iniciar el juego, entrar a una sala, ejecutar movimientos y acciones, consultar el estado y comprobar el final de la partida. Quiero registrar qué debería ocurrir en cada paso y cómo identificar la capa responsable si algo falla."
+
+**Uso:** Validar el flujo de usuario de extremo a extremo y distinguir fallos de interfaz, coordinación y simulación.
+
+**Prompt:** "Revisa los errores que aparecen al conectar la Vista con el motor. Si el motor acepta una acción, pero la pantalla sigue mostrando el estado anterior cómo debería organizar la actualización del estado y de los mensajes?"
+
+**Uso:** Investigar problemas de actualización de la interfaz y definir una secuencia coherente entre la ejecución de la acción y la consulta del nuevo estado.
+
+**Prompt:** "Ayúdame a comprobar que la opción --offline funciona desde el punto de entrada real del programa y no solamente cuando instancio directamente el adaptador local en una prueba"
+
+**Uso:** Validar el cableado de dependencias en el arranque de la aplicación, comprobando que la bandera CLI selecciona realmente la fuente local durante una ejecución normal.
+
+**Prompt:** "Quiero revisar la interacción entre el Controlador, el motor y la persistencia. Cómo puedo comprobar que guardar y volver a cargar una partida recupera el estado esperado sin que la Vista oculte un error de restauración?"
+
+**Uso:** Preparar una prueba integrada de guardado y carga, verificando el estado recuperado independientemente de su representación visual.
+
+**Prompt:** "Hazme un checklist de regresión para ejecutar después de los cambios de Vista y Controlador: inicio de partida, acciones, modo offline, guardado, carga, reproducción y benchmark. Indica cuáles necesitan interacción del usuario y cuáles deberían ejecutarse automáticamente."
+
+**Uso:** Consolidar las pruebas de regresión para comprobar que la incorporación de la interfaz no rompe las funciones ya desarrolladas.
+
+#### 17/10/2026 — Claude(Sonnet)
+**Cierre de integración y revisión final**
+
+**Objetivo del día:** Completar la revisión del flujo jugable, verificar las responsabilidades de cada capa y documentar qué se ha probado realmente
+
+**Prompt:** "Haz una revisión final del flujo MVC de ProyectoCripta. Quiero comprobar que main.py seleccione el modo correcto, el Controlador coordine la partida, la Vista solo gestione la interacción y el Modelo no dependa de la interfaz ni de los adaptadores de datos"
+
+**Uso:** Auditar la arquitectura y detectar dependencias que contradigan la separación de responsabilidades. Confirmar que el flujo interactivo y los modos automatizados utilicen los componentes apropiados.
+
+**Prompt:** "Revisa la integración de Persona D con los componentes de A, B y C. Necesito separar mis responsabilidades finales de las de los demás: motor de simulación, fuentes de datos, serialización compartida, persistencia, bitácora, reproducción, Vista y Controlador"
+
+**Uso:** Cerrar la distribución de responsabilidades y dejar documentados los puntos de integración. La propiedad de Vista, Controlador y modo offline debe coincidir con la distribución final acordada por el equipo.
+
+**Prompt:** "Ayúdame a revisar los resultados de rendimiento que ya tengo. Quiero explicar qué demuestra la comparación entre binario y JSON, qué mide el benchmark del ciclo de simulación y qué no puedo concluir sobre el tiempo de reproducción porque no tengo una medición específica"
+
+**Uso:** Distinguir la evidencia empírica disponible de las operaciones no medidas. Evitar presentar el benchmark del ciclo de simulación como si midiera directamente el rendimiento del reproductor.
+
+**Prompt:** "Ayúdame a organizar el cierre de Persona D en un checklist final: implementación, integración MVC, modo offline, pruebas automatizadas, benchmarks y documentación de decisiones. Quiero identificar qué está terminado y qué necesita evidencia adicional antes de entregar"
+
+**Uso:** Preparar la entrega final de la contribución individual, dejando claro el estado de implementación, las pruebas ejecutadas, los resultados medidos y las limitaciones conocidas.
+
+---
+
+*Fin de los prompts de la Parte 1.*
+
+---
+
+# Prompts Parte 2
+
 # PROMPTS_LLM.md
 
 Registro de los prompts usados con el agente de IA durante la Parte 2 (Principio XI de la constitución). Las fechas y horas son las de Costa Rica (UTC−6) y pueden diferir unos minutos de la hora real de envío; el texto de cada prompt es el enviado.
