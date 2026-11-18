@@ -332,7 +332,7 @@ Medido con `python main.py --bench` (`tests/bench_resolubilidad.py`) en un AMD R
 
 ![Figura](img_8.png)
 
-El caso resoluble tarda 1.226 ms de mediana y 1.361 ms de p95; el no resoluble con ciclo, 1.306 ms y 1.637 ms. Los dos cumplen con amplio margen: el p95 es aproximadamente unas 120 veces menor que el límite.
+El caso resoluble tarda 1.226 ms de mediana y 1.361 ms de p95; el no resoluble con ciclo, 1.306 ms y 1.637 ms. Los dos cumplen con amplio margen: el p95 es unas 122 veces menor que el límite (200 / 1.637).
 
 **Crecimiento al duplicar la cripta (M2 y M3, SC-005).** De S = 300 a S = 9600, duplicando salas, salidas y llaves:
 
@@ -359,12 +359,13 @@ Aquí, al duplicar la cripta el tiempo se multiplica entre 2.19 y 3.70 veces, en
 
 ### 6. Límites conocidos
 
-*Peor caso de las dependencias:* si las zonas de muchas llaves se solapan, el cálculo de dependencias crece como O(L·(S + E)) y deja de ser lineal (cocientes de hasta 3.82 en el bench). Solo ocurre en criptas no resolubles y con una forma muy particular. *HIPÓTESIS:* las criptas publicadas no tienen esa forma; no se midió con ellas.
-*Criptas sintéticas:* M1 usa una cripta sintética del tamaño de cripta-06, no la cripta-06 real. *HIPÓTESIS:* la real se comporta igual, porque el costo depende de S, E y K, no del contenido.
-*Ids de sala dispersos:* el vector de salas mide max_id + 1. Si los ids fueran muy dispersos (por ejemplo, max_id mayor que 4·S), la memoria sería O(max_id). No pasa en ninguna cripta publicada. Un id que no sea entero no negativo hace fallar la verificación con ! Error: ....
-*Variación del p95:* en las criptas grandes el p95 se separa de la mediana (por ejemplo, 18.983 ms de mediana y 59.423 ms de p95 con S = 2400). Por eso los criterios de crecimiento usan la mediana. *HIPÓTESIS:* se debe a la recolección de basura o a la carga del equipo; no se verificó por separado. Todas las mediciones son de un solo equipo.
-*Caché de llaves:* datos_locales/llaves_<id>.json lleva identificador y versión de formato (CRIPTA-LLAVES, 1), pero las cachés anteriores del esqueleto y del catálogo no; se dejaron así porque son contrato compartido.
-*El reporte no se mide aparte:* M3 mide la verificación completa del caso no resoluble; no hay una cifra separada de cuánto cuesta solo el reporte.
+- *Peor caso de las dependencias:* si las zonas de muchas llaves se solapan, el cálculo de dependencias crece como O(L·(S + E)) y deja de ser lineal (cocientes de hasta 3.70 en el bench). Solo ocurre en criptas no resolubles y con una forma muy particular. *HIPÓTESIS:* las criptas publicadas no tienen esa forma; no se midió con ellas.
+- *Criptas sintéticas:* M1 usa una cripta sintética del tamaño de cripta-06, no la cripta-06 real. *HIPÓTESIS:* la real se comporta igual, porque el costo depende de S, E y K, no del contenido.
+- *Ids de sala dispersos:* el vector de salas mide `max_id + 1`. Si los ids fueran muy dispersos (por ejemplo, `max_id` mayor que 4·S), la memoria sería O(max_id). No pasa en ninguna cripta publicada. Un id que no sea entero no negativo hace fallar la verificación con `! Error: ...`.
+- *Variación del p95:* en las criptas grandes el p95 se separa de la mediana (por ejemplo, 12.339 ms de mediana y 47.330 ms de p95 con S = 2400 en el caso no resoluble de M3). Por eso los criterios de crecimiento usan la mediana. *HIPÓTESIS:* se debe a la recolección de basura o a la carga del equipo; no se verificó por separado. Todas las mediciones son de un solo equipo.
+- *Caché de llaves:* `datos_locales/llaves_<id>.json` lleva identificador y versión de formato (`CRIPTA-LLAVES`, 1), pero las cachés anteriores del esqueleto y del catálogo no; se dejaron así porque son contrato compartido.
+- *El reporte no se mide aparte:* M3 mide la verificación completa del caso no resoluble; no hay una cifra separada de cuánto cuesta solo el reporte.
+
 *Secciones de Persona C*
 
 ## §4.5 – Inventario
