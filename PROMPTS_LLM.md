@@ -3059,3 +3059,1145 @@ ValueError: Must have exactly one of read or write mode
 ````text
 /speckit-implement Esta fue la ultima instruccion que te puse " Implementa solo las tareas T046 a T052 (Phase 8), en el orden de tasks.md. No hagas commits: al terminar cada tarea, dame un resumen corto de lo que hiciste, los archivos que cambiaste y un mensaje de commit sugerido (con el ID y sus FR), y espera a que te diga «sigue». Antes de T051, avísame para hacer git pull, porque toca main.py. En T052, si M1, M2 o M3 no cumplen, detente y muéstrame los números antes de cambiar código o spec" No empieces de nuevo, hay que retomar desde la tarea T049 y llegar hasta la T052
 ````
+
+# Persona D — capacidad 004 (línea de tiempo y persistencia)
+
+## 2026-11-09 · generar el borrador de specs/004-linea-de-tiempo/spec.md
+
+- *Fecha*: 2026-11-09 (hora no registrada)
+- *Modelo*: Sonnet 5.5 (Claude Code 2.1.319)
+- *Comando*: /speckit-specify
+- *Para qué se usó*: generar el borrador de specs/004-linea-de-tiempo/spec.md.
+
+*Prompt*
+
+````text
+/speckit-specify Crea la especificación con número 004 y nombre corto linea-de-tiempo (usa specs/004-linea-de-tiempo; no uses 003). Sigue el estilo de specs/001-niebla-mapa-ir-a/spec.md y respeta .specify/memory/constitution.md v3.0.1. Trabajamos sobre main; el campo "Feature Branch" debe decir main igual que la spec 002.
+
+Capacidad: LÍNEA DE TIEMPO (Cripta Parte II, §3.6, §5.5, §6.1) y su persistencia. Solo reglas del juego: NO menciones estructuras de datos, clases ni módulos.
+
+Reglas del enunciado:
+- El pergamino de retroceso sigue limitado a 5 acciones (P1 §2.11). La línea de tiempo es independiente: permite consultar, sin modificar la partida, el estado en cualquier instante desde el inicio.
+- Estado en el instante t: el estado después de ejecutar todos los eventos con tiempo menor o igual que t. Si a t le corresponde una decisión del jugador, es el estado justo antes de tomarla.
+- Comando en partida: "historia <t>" o "historia #k" (#k = estado justo antes de la acción número k del jugador). Muestra como mínimo: reloj, sala del jugador, vida y estadísticas, inventario, efectos activos, enemigos de esa sala con su vida, y el mapa conocido en ese momento. No consume tiempo virtual, no se registra como acción, no se anota en partida.log y no altera ningún estado ni el historial de retroceso.
+- Consulta sin interacción: "--replay partida.log --hasta <t>" reproduce hasta t e imprime el mismo resumen sin instanciar la vista.
+- Interacción con el retroceso: las acciones revertidas con un pergamino dejan de existir en la línea; la línea describe la historia tal como quedó. Consultar un instante posterior al reloj actual se rechaza.
+- Restricción de memoria: se permiten copias completas del estado (puntos de control) pero no más de una cada K acciones del jugador. K se configura con "--checkpoint-cada K"; el valor por defecto lo escoge el grupo y lo justifica con mediciones. Una consulta no puede requerir aplicar o deshacer cambios de más de K acciones del jugador.
+- Persistencia: guardar y cargar conserva la línea de tiempo completa. El formato binario cambia; un archivo de la primera parte debe detectarse como incompatible (P1 §4.10) o migrarse de forma explícita, nunca cargarse en silencio.
+- Rendimiento (§6.1): la consulta "historia" tarda menos de 50 ms en una partida de al menos 5 000 acciones del jugador con K por defecto. La memoria crece con la cantidad de cambios más un punto de control cada K acciones, no con "acciones por tamaño del estado".
+
+Casos que deben quedar como escenarios de aceptación (Apéndice B, "Línea de tiempo"):
+1. historia <t> con t mayor que el reloj actual: se rechaza.
+2. historia después de usar un pergamino: no muestra las acciones revertidas.
+3. Varios eventos en el mismo instante t: historia <t> muestra el estado después de todos ellos.
+4. historia no consume tiempo virtual, no se registra en partida.log y no modifica el historial de retroceso.
+5. --replay partida.log --hasta t con t posterior al final de la partida: muestra el estado final e indica que la partida terminó antes.
+6. Se carga un archivo de partida de la primera parte: se reporta la incompatibilidad de formato o se migra explícitamente; nunca se carga en silencio.
+
+Pide: historias de usuario priorizadas (P1..P3) e independientemente probables, escenarios Given/When/Then, casos borde, requisitos FR-001... numerados y estables, entidades clave sin implementación, criterios de éxito medibles y una sección "Fuera de alcance" (no incluye: niebla de guerra, "ir a", cazador, resolubilidad, costos de salida; solo se consume el mapa conocido como dato). Marca [NEEDS CLARIFICATION] solo lo que realmente sea ambiguo.
+````
+
+## 2026-11-09 · aplicar a spec.md las correcciones surgidas de la revisión
+
+- *Fecha*: 2026-11-09 (hora no registrada)
+- *Modelo*: Sonnet 5.5 (Claude Code 2.1.319)
+- *Comando*: (prompt libre, sin comando de spec-kit)
+- *Para qué se usó*: aplicar a spec.md las correcciones surgidas de la revisión.
+
+*Prompt*
+
+````text
+Revisa specs/004-linea-de-tiempo/spec.md y aplica estos cambios sin tocar lo demás ni añadir estructuras de datos, clases o módulos:
+
+1. User Story 2, escenario 1: corrige la contradicción con FR-004. Tras un pergamino que deshizo la acción 6, `historia #6` muestra el estado actual (justo antes de la próxima acción) y `historia #7` se rechaza.
+2. Añade un FR en «Interacción con el retroceso»: el recorte de la línea al usar un pergamino MUST costar en proporción a lo recortado, no al largo total de la partida (§5.5). Añade un SC medible para ello.
+3. SC-007: exige mediciones con al menos tres valores de K y la alternativa sin puntos de control (§5.5, §6.3).
+4. Edge case de partida terminada y suposición «historia disponible cuando la partida ya terminó»: cámbialos por «tras terminar la partida, el pasado se consulta con --replay --hasta, incluido el instante final». Elimina la promesa de uso interactivo.
+5. FR-024: generaliza a «cualquier versión de formato distinta de la vigente», no solo la de la primera parte.
+6. En «Comportamiento de la Parte I que se respeta», no atribuyas a la Parte I que los comandos de consulta no consumen tiempo ni que el historial de retroceso no se guarda: preséntalos como «comportamiento actual del programa» y cita la Constitución III.
+7. FR-011 y FR-013: --hasta conserva los rechazos del replay (versión incompatible, código 2), un error de uso termina con código 1, y --hasta sin --replay se rechaza. Añade el edge case.
+8. Añade un FR: el resumen de cualquier consulta MUST ser idéntico para cualquier valor de K. Amplía SC-003 con ello.
+9. FR-021: añade que fuera de los puntos de control solo se almacena la información necesaria para reconstruir los cambios.
+10. Elimina FR-026 (se cubre en el plan con la Constitución II).
+11. SC-006: reescribe la frase final como «duplicar las acciones duplica aproximadamente la memoria de la línea».
+12. En Clarifications deja sin cambios las dos respuestas, pero añade la nota «(propuesta pendiente de ratificar en /speckit-clarify)».
+
+No renumeres FR existentes: los nuevos van al final con identificadores nuevos. Muéstrame un resumen de qué cambió.
+````
+
+## 2026-11-09 · completar los retoques pendientes de la spec
+
+- *Fecha*: 2026-11-09 (hora no registrada)
+- *Modelo*: Sonnet 5.5 (Claude Code 2.1.319)
+- *Comando*: (prompt libre, sin comando de spec-kit)
+- *Para qué se usó*: completar los retoques pendientes de la spec (SC-008, escenario US5-5, SC-010 y dependencia de @cargar).
+
+*Prompt*
+
+````text
+En specs/004-linea-de-tiempo/spec.md: (1) SC-008: generalízalo a cualquier versión de formato distinta de la vigente, no solo la de la primera parte. (2) Añade el escenario US5-5: un archivo de partida con una versión de formato distinta de la vigente que no sea la de la primera parte (por ejemplo una versión intermedia o desconocida) se rechaza con «Versión incompatible» y código de salida 2, sin cargar nada; cita FR-024. Deja US5-3 sin cambios porque es el caso 6 del Apéndice B. (3) SC-010: elimina el factor 2 y reformúlalo como «el costo del recorte no crece con la longitud de la partida; el umbral numérico se fija con mediciones de --bench (Constitución VIII)». (4) En «Depende de» de Assumptions, añade la directiva @cargar de la bitácora (capacidad 001), de la que depende FR-025. No cambies nada más y no renumeres FR.
+````
+
+## 2026-11-09 · saber cómo responder en clarify y si el agente genera sus propias preguntas
+
+- *Fecha*: 2026-11-09 (hora no registrada)
+- *Modelo*: Sonnet 5.5 (Claude, chat)
+- *Para qué se usó*: saber cómo responder en clarify y si el agente genera sus propias preguntas.
+
+*Prompt*
+
+````text
+ejecuto el /speckit-clarify con preguntas especificas escribo funciona de igual forma si yo corro el /speckit-clarify sin las preguntas que me diste, el mismo claude las generara?
+````
+
+## 2026-11-09 · resolver las ambigüedades de la spec y registrarlas en Clarifications
+
+- *Fecha*: 2026-11-09 (hora no registrada)
+- *Modelo*: Sonnet 5.5 (Claude Code 2.1.319)
+- *Comando*: /speckit-clarify
+- *Para qué se usó*: resolver las ambigüedades de la spec y registrarlas en Clarifications (FR-029, FR-030, FR-031 y FR-012).
+- *Respuestas enviadas*: (1) "Los que había entonces"; (2) "Reloj global continuo"; (3) "Estado final del replay completo"; (4) "Archivo manda; combinar se rechaza"; (5) "Aplica regla de FR-004". Las preguntas 6 y 7 no entraron en el máximo de 5 por sesión.
+
+*Prompt*
+
+````text
+/speckit-clarify Preguntas sobre specs/004-linea-de-tiempo/spec.md, de a una y priorizadas por impacto en el comportamiento observable: (1) tras un pergamino, al consultar un instante anterior al retroceso, ¿cuántos pergaminos de retroceso muestra el inventario? (la reversión no restaura ni modifica su cantidad, P1 §2.11 y §4.6); (2) cómo se calcula el reloj de --hasta en partidas cargadas y continuadas con directiva @cargar; (3) qué se entiende por «final» de una bitácora para --hasta; (4) qué pasa con la línea de una partida guardada con un K distinto al de la nueva ejecución; (5) qué muestra historia justo después de un pergamino que revirtió 5 acciones; (6) ratificar si los archivos de la primera parte se rechazan o se migran; (7) ratificar que historia #k con k igual a acciones realizadas más uno es válido. No decidas estructuras de datos.
+````
+
+## 2026-11-09 · ratificar las decisiones 6 y 7 en la spec
+
+- *Fecha*: 2026-11-09 (hora no registrada)
+- *Modelo*: Sonnet 5.5 (Claude Code 2.1.319)
+- *Comando*: (prompt libre, sin comando de spec-kit)
+- *Para qué se usó*: ratificar las decisiones 6 y 7 en la spec.
+
+*Prompt*
+
+````text
+Ratifico las dos propuestas pendientes de Clarifications en specs/004-linea-de-tiempo/spec.md: (6) los archivos de la primera parte se rechazan, no se migran; (7) historia #k con k igual a acciones realizadas más uno es válido. Quita la nota «propuesta pendiente de ratificar en /speckit-clarify» de esas dos líneas y no cambies nada más.
+````
+
+## 2026-11-09 · completar la trazabilidad de requisitos a escenarios y corregir inconsistencias de la spec
+
+- *Fecha*: 2026-11-09 (hora no registrada)
+- *Modelo*: Sonnet 5.5 (Claude Code 2.1.319)
+- *Comando*: (prompt libre, sin comando de spec-kit)
+- *Para qué se usó*: completar la trazabilidad de requisitos a escenarios y corregir inconsistencias de la spec.
+
+*Prompt*
+
+````text
+En specs/004-linea-de-tiempo/spec.md aplica estos cambios sin tocar nada más ni renumerar FR:
+
+(1) Trazabilidad (Parte II §2.5): añade escenarios de aceptación Given/When/Then, cada uno citando su FR, para los requisitos que hoy no tienen: FR-010 (la ayuda del juego lista historia <t>, historia #k, --hasta y --checkpoint-cada) en US1; FR-014 (un sexto pergamino no revierte más allá de 5 acciones hacia atrás) y FR-027 (recortar la línea cuesta en proporción a lo recortado) y FR-029 (un instante anterior al retroceso muestra los pergaminos que había entonces) en US2; FR-025 (--replay produce la misma línea que la partida jugada, incluida una cargada y continuada) y FR-030 (--hasta <t> sobre una bitácora con @cargar usa el reloj global continuo) en US4; FR-023 (el archivo guardado declara una versión de formato distinta de la de la primera parte) y FR-031 (--checkpoint-cada junto con la carga se rechaza con código 1 y rige el K del archivo) en US5.
+
+(2) User Story 2, escenario 4: añade la excepción «salvo la cantidad de pergaminos de retroceso, que queda fuera de la reversión (FR-029, P1 §2.11 y §4.6)».
+
+(3) Añade un edge case: --checkpoint-cada es válido junto con --replay y solo afecta al costo (FR-028); si la bitácora contiene @cargar, rige el K del archivo cargado (FR-031).
+````
+
+## 2026-11-09 · Añadir a la User Story 6 un escenario que verifique FR-028: el resumen no depende de K
+
+- *Fecha*: 2026-11-09 (hora no registrada)
+- *Modelo*: Sonnet 5.5 (Claude Code 2.1.319)
+- *Comando*: (prompt libre, sin comando de spec-kit)
+- *Para qué se usó*: Añadir a la User Story 6 un escenario que verifique FR-028: el resumen no depende de K.
+
+*Prompt*
+
+````text
+En specs/004-linea-de-tiempo/spec.md, en User Story 6, añade el escenario: Given una misma partida y tres valores distintos de K (por ejemplo 1, 50 y 500), When se ejecuta historia o --replay --hasta con el mismo t en cada uno, Then los resúmenes son idénticos en contenido y solo cambia el costo. (FR-028). No cambies nada más.
+````
+
+## 2026-11-09 · generar plan.md, research.md, data-model.md, quickstart.md y contratos de la capacidad 004
+
+- *Fecha*: 2026-11-09 (hora no registrada)
+- *Modelo*: Sonnet 5.5 (Claude Code 2.1.319)
+- *Comando*: `/speckit-plan`
+- *Para qué se usó*: generar plan.md, research.md, data-model.md, quickstart.md y contratos de la capacidad 004.
+
+*Prompt*
+
+````text
+Contexto de equipo: Persona A = specs/003-terreno-cazador; Persona B = specs/002-resolubilidad; Persona C = specs/001-niebla-mapa-ir-a (y README, constitución, proceso spec-kit); Persona D (yo) = specs/004-linea-de-tiempo.
+
+Plan para specs/004-linea-de-tiempo/spec.md (spec y clarificaciones confirmadas en Git; el escenario de FR-028 ya está en US6). Lee primero .specify/memory/constitution.md y, como modelo de formato, specs/001-niebla-mapa-ir-a/plan.md y research.md. Lee también, sin modificarlo, lo que otras personas ya publicaron y toca tu capacidad: specs/001-niebla-mapa-ir-a/contracts/formato-partida.md y formato-bitacora.md (CRPT 3 con los bloques [conocimiento][línea de tiempo] antes de las salas, y la directiva @cargar), el plan 001 (P-07 y P-10) y sus tareas T066, T076, T084, T093, T094 y T119; specs/002-resolubilidad/contracts/cli-verificacion.md (prioridad de opciones de main.py: --bench > --mostrar-puntajes > --verificar > --replay > --cargar > --cripta); y specs/003-terreno-cazador/spec.md (FR-021 y FR-025: el cazador no consume azar y la reconstrucción debe reproducir sus decisiones). Incluye «Constitution Check» contra los principios I, II, III, V, VI, VII, VIII, IX, X y XI.
+
+Restricciones: la persona A registra lo suyo con el Historial existente (Modelo/retroceso.py) y su función de deshacer, sin cambiarlo. NO asumas que A ni C emitan aplicar/invertir ni ningún formato nuevo. La persona C ya registró T119 (copiar y serializar Conocimiento, con lotes aplicar/invertir) como pedido de esta capacidad: usa solo lo que tu plan necesite y di si aplicar/invertir deja de hacer falta. No modifiques archivos de otras personas; si un enganche mínimo es inevitable, anótalo como [PERSONAS: X] con el cambio exacto.
+
+Lee el código y en research.md anota «Hallazgos sobre el código actual», verificándolos: (a) MotorSimulacion guarda gestor_datos, restaurador, historial (con funciones de deshacer ligadas a objetos vivos), mensajes y campos transitorios como enemigos_al_entrar: ¿puede copiarse el estado sin copiar la fuente de datos ni arrastrar el historial?; (b) Historial: máximo 5 intervalos, solo funciones deshacer, se consume al deshacer, no se guarda; (c) el CRPT actual no guarda efectos, cierres automáticos pendientes ni agenda, así que un punto de control no puede reutilizar sus bloques como copia completa; (d) @cargar: el replay guarda el motor en un temporal y lo recarga (T094); define qué pasa con la línea y con el primer punto de control tras una carga; (e) cómo el Controlador anota la bitácora y qué acciones registra.
+
+Para cada decisión da alternativas, la elegida, complejidad temporal y de memoria y la medición que la respalda (HIPÓTESIS si no está medida): (1) cómo reconstruir: re-simular desde el punto de control más cercano con las acciones registradas, aplicar cambios hacia adelante, o invertir hacia atrás (evalúa explícitamente si invertir sirve con un Historial de deshacer ligado a objetos vivos y qué exige re-simular: determinismo y estado de random.Random en el punto de control); (2) qué es una copia completa del estado y cómo se obtiene (copia propia por campos, serialización, copy.deepcopy), con su costo; si usas una biblioteca estándar, justifica que no sustituye una estructura evaluada (Principio I); (3) qué se registra entre puntos de control, con sello (tiempo, secuencia), y su relación con la bitácora; (4) ubicar el punto de control más cercano por número de acción y por tiempo, con búsqueda binaria propia (prohibido bisect, sorted, sort, heapq, collections y dict o set como índice); (5) recorte al usar un pergamino con costo proporcional a lo recortado (FR-027) y si hace falta un punto de control tras el retroceso para que el estado reconstruido y el real coincidan; (6) cómo se obtiene la cantidad de pergaminos por instante (FR-029), dado que queda fuera de la reversión (P1 §2.11 y §4.6); (7) K por defecto, FR-031 (K guardado en el archivo) y su convivencia con --replay y @cargar (FR-030); (8) persistencia de la línea: acepta el orden [conocimiento][línea][salas][índice] de la persona C y define el campo de largo de la línea, su contenido, _inicio_salas y _validar_encabezado, manteniendo la lectura de una sala sin leer todo el archivo (P1 §4.10); compara guardar puntos de control completos frente a reconstruirlos al cargar por replay de la bitácora; (9) un resumen único para historia y para --replay --hasta, sin instanciar la vista; (10) reconstruir NO debe hacer solicitudes nuevas fuera del presupuesto (Principio VII): qué ocurre si la caché desalojó una sala; (11) cómo encajan --hasta y --checkpoint-cada en la tabla de prioridad de opciones de la capacidad 002, incluidas las combinaciones con --verificar, --forzar, --cargar y --replay; (12) revisión §5.6 del historial de retroceso de P1 §4.6 con la carga nueva.
+
+Contratos en contracts/ (los dos primeros son urgentes: la persona C los necesita antes del sábado 14): formato-partida.md (largo y bloque de la línea dentro de CRPT 3, con la fórmula de _inicio_salas), formato-bitacora.md (reloj de --hasta con @cargar, FR-030, para completar la condición (b) de P-07), comandos-historia.md (historia <t>, historia #k, --replay --hasta, --checkpoint-cada, combinaciones, mensajes y códigos de salida) e interfaz-linea.md (qué le pasa el Controlador a la línea: registrar acción, punto de control, recortar, estado en t). Incluye plan de mediciones para --bench: al menos tres valores de K, memoria y tiempo, la alternativa sin puntos de control y partidas de 5 000 acciones deterministas por semilla.
+
+Si descubres que la spec debe cambiar (por ejemplo, que «Cambio» o FR-021 hablen de acciones, o que FR-022 hable de reconstruir en vez de guardar puntos de control), NO la modifiques: déjalo en una sección «Cambios propuestos a la spec» de plan.md. No modifiques código de producción en esta fase.
+````
+
+## 2026-11-10 · corregir plan, research, data-model, quickstart y contratos de la 004
+
+- *Fecha*: 2026-11-10 (hora no registrada)
+- *Modelo*: Sonnet 5.5 (Claude Code 2.1.319)
+- *Comando*: prompt libre (sin comando)
+- *Para qué se usó*: corregir plan, research, data-model, quickstart y contratos de la 004 (estado del código, formato CRPT 3, choque con T015 de A, M10 por §5.6, carga sin datos locales, bitácora igual a `<guardado>.log`).
+
+*Prompt*
+
+````text
+Contexto de equipo: Persona A = specs/003-terreno-cazador; Persona B = specs/002-resolubilidad; Persona C = specs/001-niebla-mapa-ir-a (y README, constitución, proceso spec-kit); Persona D (yo) = specs/004-linea-de-tiempo.
+
+Corrige SOLO los documentos de specs/004-linea-de-tiempo (plan.md, research.md, data-model.md, quickstart.md y contracts/). No modifiques spec.md, tests ni código de producción, y no crees scripts ni carpetas nuevas. La carpeta exploracion/ ya fue eliminada por el usuario.
+
+1) Referencias a exploracion/: quítalas de plan.md (estructura del proyecto y fila del Principio IV) y de research.md (encabezado, HL2 y la tabla de experimentos E1 a E5). Conserva las cifras marcadas HIPÓTESIS, con la nota «exploración previa local, no versionada; la reemplazan M1 a M9».
+
+2) Estado del código. Relee Modelo/MotorSimulacion.py, Modelo/retroceso.py, Persistencia/FormatoBinario.py, Persistencia/ArchivoPartida.py, Bitacora/Reproductor.py, Controlador/ControladorPartida.py, Gestor/PreparadorPartida.py, DTOS/Salida.py, main.py y los tasks.md de 001 y 003. Re-verifica HL1, HL5, HL6, HL8 y HL10 contra el código de hoy y corrige lo que cambió. Hoy T076, T084, T092, T093, T094, T096 y T119 de 001 están hechas (ya están en main); T113 y T117 siguen pendientes. La firma real es Reproductor(..., recargar=None): al llegar a @cargar llama a recargar(motor), que recibe el motor actual y devuelve el nuevo. Ajusta el contrato del observador a esa firma. Elimina las menciones a «dobles» y actualiza «Orden sugerido», P-D02 y P-D03.
+
+3) Campo de largo de la línea. La persona C dice que el CRPT 3 ya escribe [largo línea de tiempo] con valor 0 y que mi bloque va opaco con su largo; su contract dice «dos campos de largo» en una línea y muestra tres en otra. Verifica en ArchivoPartida.py y FormatoBinario.py qué hay realmente. Si el campo ya existe: PR-10 solo llena el bloque, cierra la fórmula de _inicio_salas (TAMANO_ENCABEZADO + (4 + largo_jugador) + (4 + largo_conocimiento) + (4 + largo_línea)), ajusta _validar_encabezado (offset_indice ≥ TAMANO_ENCABEZADO + 12) y actualiza las pruebas de offsets de C [PERSONAS: C]. Si no existe: PR-10 lo agrega sin subir la versión (P-10: no se mantienen archivos v3 intermedios). Reescribe contracts/formato-partida.md y la fila de Enganches según el caso real, y quita el párrafo «quien escriba primero MUST escribir los tres».
+
+4) T119 ya está implementado: indica que esta capacidad no lo usa y que no debe retirarse.
+
+5) Persona A: la tarea T015 de 003 falla si aparece `.cerrada =` o `setattr(..., "cerrada", ...)` en Modelo/ fuera de su método único. Modelo/CopiaEstado.py restaura Salida.cerrada desde la foto. Documenta el choque y propón excluir CopiaEstado.py por nombre con el motivo escrito [PERSONAS: A]. Revisa que ciclo, version_puertas y EspacioBusqueda, que cuelgan del motor, queden consistentes en el clon. Confirma además si Salida.cerrada_en_esqueleto (DTOS/Salida.py, campo nuevo de C) se fija al crear la salida y no cambia después: si es constante, no va en CAMPOS_MUTABLES_SALIDA; si puede cambiar, sí. Agrega a contracts/interfaz-linea.md una sección «Lo que la línea ofrece a A» para sus tareas T058 y T059 (qué llamar y con qué motor).
+
+6) Enunciado Parte II (no está en el repo; cito el texto). §5.6: «Repitan las mediciones de la primera parte con la carga nueva. Si alguna decisión deja de ser adecuada, cámbienla y documenten el antes y el después; si sigue siendo adecuada, muéstrenlo con datos» (agenda P1 §4.1 e historial de retroceso P1 §4.6). §6.3: --bench debe incluir «las mediciones de la primera parte repetidas con la carga nueva (§5.6)». Cierra P-D01, corrige la Decisión 12 y R12, y agrega M10 a R15, PR-14 y quickstart: repetir la medición de P1 §4.6 (busca en tests/ el bench existente del Historial) con la línea registrando, con tabla antes y después para DECISIONES.md. La agenda (§4.1) no es de esta capacidad: anótala como [PERSONAS: grupo].
+
+7) Carga sin datos locales: reproducir el guion al cargar usa el gestor sin red. Define y documenta qué pasa si faltan datos locales (alternativas, elegida y motivo; recomienda error con código 1 y sin cargar nada). Refléjalo en R8, R10, comandos-historia.md y un escenario del quickstart.
+
+8) En «Cambios propuestos a la spec» agrega una columna «Texto del enunciado» con la cita de §3.6 y §5.5 para los cambios 1, 2 y 3, y una fila de riesgo «Interpretación del enunciado»: un corrector podría leer esos tres cambios como incumplimiento del texto literal. Como mitigación, escribe solo que se documentarán en DECISIONES.md con el enunciado citado, la alternativa descartada y las mediciones que respaldan la decisión (M1, M2, M4 y M6). No menciones consultas al profesor.
+
+9) quickstart.md: «escenarios 1 a 14».
+
+10) Bitácora igual a <guardado>.log. Si se sigue jugando entre guardar y cargar con --bitacora igual al .log del guardado, la bitácora conserva acciones posteriores al guardado y el replay no coincide con la línea (limitación señalada por la persona C). Propón en contracts/formato-bitacora.md que ese caso se RECHACE en el origen (error de uso, código 1), de modo que la regla 2 («lo jugado entre el guardado y la carga no existe en la línea») valga sin excepciones. Agrégalo como [PERSONAS: C] en Enganches y como un escenario del quickstart, y explica por qué documentarlo en vez de rechazarlo rompería FR-025 y FR-030.
+
+Al terminar, lista los archivos cambiados y lo que siga abierto. No ejecutes código.
+````
+
+## 2026-11-10 · poner en el plan las citas literales del enunciado y reubicar el riesgo en el cambio 3
+
+- *Fecha*: 2026-11-10 (hora no registrada)
+- *Modelo*: Sonnet 5.5 (Claude Code 2.1.319)
+- *Comando*: prompt libre (sin comando)
+- *Para qué se usó*: poner en el plan las citas literales del enunciado y reubicar el riesgo en el cambio 3.
+
+*Prompt*
+
+````text
+Corrige SOLO plan.md y research.md de specs/004-linea-de-tiempo. No toques spec.md, tests ni código.
+
+1) En plan.md, sección «Cambios propuestos a la spec», reescribe el párrafo que antecede a la tabla y la columna «Texto del enunciado» con estas citas LITERALES del enunciado de la Parte II (no las que atribuía «según la spec»; frases como «todos los cambios», «puntos de control vigentes» y «modificación atómica» son de nuestra spec, no del enunciado):
+- Cambio 1: §3.6 «Fuera de los puntos de control, solo se almacena la información necesaria para reconstruir los cambios. Pueden reconstruir hacia adelante desde un punto de control, re-simulando, o hacia atrás desde el estado actual, invirtiendo cambios. Si re-simulan, el punto de control debe incluir el estado del generador random.Random.» §5.5 «La memoria total debe crecer con la cantidad de cambios ocurridos, más un punto de control cada K acciones; nunca con "acciones por tamaño del estado".» Anota que el enunciado permite re-simular, así que guardar las acciones es la «información necesaria para reconstruir los cambios».
+- Cambio 2: §3.6 «Guardar y cargar la partida conserva la línea de tiempo completa. El formato binario cambia; un archivo de la primera parte debe detectarse como incompatible (P1 §4.10) o migrarse de forma explícita.» Anota que el enunciado no exige guardar los puntos de control; «puntos de control vigentes» es redacción de nuestra FR-022.
+- Cambio 3: §3.6 «Se permite guardar copias completas del estado, llamadas puntos de control, pero no más de una cada K acciones del jugador.» y «Una consulta no puede requerir aplicar o deshacer cambios de más de K acciones del jugador.» Anota que este es el único cambio que se aparta de la letra del enunciado.
+
+2) En plan.md, fila de riesgo «Interpretación del enunciado»: que diga que el riesgo principal es el cambio 3 (la letra de «no más de una cada K»), y que los cambios 1 y 2 están respaldados por el propio enunciado. Conserva la mitigación (DECISIONES.md con el enunciado citado, la alternativa descartada y M1, M2, M4 y M6). No menciones consultas al profesor.
+
+3) En research.md, fila HL2: quita la repetición «Exploración previa local, no versionada, HIPÓTESIS (exploración previa local, no versionada; ...)» y deja una sola vez la nota.
+
+Al terminar, lista los archivos cambiados. No ejecutes código.
+````
+
+## 2026-11-11 · aplicar a la spec 004 los 10 cambios aprobados del plan y dos edge cases nuevos
+
+- *Fecha*: 2026-11-11 (hora no registrada)
+- *Modelo*: Sonnet 5.5 (Claude Code 2.1.319)
+- *Comando*: prompt libre (sin comando)
+- *Para qué se usó*: aplicar a la spec 004 los 10 cambios aprobados del plan y dos edge cases nuevos.
+
+*Prompt*
+
+````text
+Aplica a specs/004-linea-de-tiempo/spec.md los 10 cambios de la tabla «Cambios propuestos a la spec» de specs/004-linea-de-tiempo/plan.md, tal como están escritos en la columna «Propuesta», y nada más. No renumeres ni reutilices ningún FR ni SC (no hay FR-026) y no agregues FR nuevos. Además agrega dos Edge Cases sin FR nuevo: (a) cargar una partida cuando faltan los datos locales necesarios para reproducir su historia: error con código 1, no se carga nada y la partida en curso queda intacta (atiende FR-022 y FR-025; ver plan R10); (b) --bitacora igual a <guardado>.log al guardar o cargar: error de uso con código 1 (atiende FR-025 y FR-030; ver contracts/formato-bitacora.md). Mantén el estilo de la spec. Si un cambio obliga a ajustar un escenario de aceptación, ajústalo y cita el FR. Actualiza checklists/requirements.md solo si un ítem cambia. No modifiques plan.md ni otros archivos. Al terminar, lista cada cambio con su FR o SC. No ejecutes código.
+````
+
+## 2026-11-11 · alinear en la spec los textos que quedaban en contradicción con los 10 cambios
+
+- *Fecha*: 2026-11-11 (hora no registrada)
+- *Modelo*: Sonnet 5.5 (Claude Code 2.1.319)
+- *Comando*: prompt libre (sin comando)
+- *Para qué se usó*: alinear en la spec los textos que quedaban en contradicción con los 10 cambios (punto de control, pergamino, US4, vocabulario «cambios»).
+
+*Prompt*
+
+````text
+Alinea en specs/004-linea-de-tiempo/spec.md solo estos puntos. No toques plan.md ni otros archivos, no agregues FR ni SC y no renumeres nada.
+
+1) Entidad «Punto de control»: donde dice «a lo sumo uno cada K acciones», agrega «salvo el punto de control posterior a un retroceso y el de una carga», igual que FR-017. Busca otras frases equivalentes («no más de uno cada K», «a lo sumo uno») y alinéalas igual.
+2) Clarification de la sesión 2026-11-09 sobre el pergamino: reemplaza «un pergamino que revirtió 5 acciones» por «cinco pergaminos seguidos que revirtieron 5 acciones (un pergamino revierte una acción)», sin cambiar el resto de la respuesta registrada.
+3) Introducción de US4: «reproduce la partida hasta t» pasa a «reproduce la bitácora completa e imprime el estado en t de la historia vigente», como FR-011.
+4) Vocabulario «cambios». Para cada aparición decide: si copia la redacción del enunciado §3.6 o §5.5 (FR-019, primera frase de FR-021, SC-006, US6.4), conservala; si describe lo que el recorte elimina o lo que la línea guarda (probablemente FR-027 y US2.7), cámbiala a «acciones recortadas» o «acciones registradas». En la entidad «Acción registrada» agrega: «En los requisitos que citan el enunciado, "cambios" designa lo que resulta de reproducir las acciones registradas».
+5) Revisa US5.1 y SC-005, que la tabla del plan citaba en el cambio 2: si hablan de guardar puntos de control en vez del guion, ajústalos; si ya son coherentes con FR-022, no los cambies y dilo.
+
+Al terminar, lista cada edición con su línea y cada aparición de «cambios» con su decisión (conservada o cambiada). No ejecutes código.
+````
+
+## 2026-11-11 · generar `specs/004-linea-de-tiempo/tasks.md`
+
+- *Fecha*: 2026-11-11 (hora no registrada)
+- *Modelo*: Sonnet 5.5 (Claude Code 2.1.319)
+- *Comando*: /speckit-tasks
+- *Para qué se usó*: generar `specs/004-linea-de-tiempo/tasks.md`.
+
+*Prompt*
+
+````text
+Genera specs/004-linea-de-tiempo/tasks.md con el mismo formato y marcas que specs/001-niebla-mapa-ir-a/tasks.md ([P], [US#], [PERSONAS: ...], «Atiende: FR-...», «Archivo: ruta»). Fuentes: spec.md (seis historias, FR-001 a FR-031 sin FR-026, SC-001 a SC-010), plan.md (PR-01 a PR-15, «Orden sugerido» y «Enganches»), research.md, data-model.md, quickstart.md (16 escenarios) y contracts/.
+
+1) Organización: línea base de pruebas (registra cuántas pasan hoy), fundamentos (PR-01 a PR-03), una fase por historia en el orden de prioridad de la spec, persistencia, mediciones y documentación. Marca el MVP y propón un corte mínimo por si falta tiempo (fecha interna: viernes 13; entrega: miércoles 18) sin diferir nada que el enunciado exige: historia <t> y #k, --replay --hasta, --checkpoint-cada, guardar y cargar la línea, bench con al menos tres valores de K y la alternativa sin puntos de control, y M10.
+2) Pruebas con unittest y sin red: cada escenario de aceptación de las seis historias, cada edge case y cada escenario 1 a 16 del quickstart tiene una tarea de prueba que cita su FR. Incluye una tabla de cobertura escenario → tarea → archivo de prueba. Todo FR y SC vigente tiene al menos una tarea y ninguna tarea queda sin FR o SC.
+3) Lo que la línea necesita de la persona C ya está en main (T076, T084, T092 a T094, T096 y T119): no hay tareas de espera ni dobles. Cambios en archivos de C, con quién los implementa ya acordado: (a) rechazo de --bitacora igual a <guardado>.log: lo implementa C como error de uso, código 1, antes de jugar [PERSONAS: C]; mi tarea es solo la prueba de aceptación (escenario 16); (b) ArchivoPartida y guardar_motor: yo lleno el bloque de la línea (parámetro linea=None, _inicio_linea y _largo_linea, leer_linea y pruebas de offsets con la línea no vacía), en un commit pequeño y separado que C revisa [PERSONAS: C]; (c) observador del Reproductor y entrada en memoria: yo envío a C el cambio exacto de «Enganches» y lo implementa C [PERSONAS: C]; mis tareas son enviarlo y las pruebas de PR-12, que no bloquean el resto; (d) ControladorPartida, main.py, VistaConsola, ExportadorJSON y README: [PERSONAS: C] con el cambio exacto de «Enganches», con quién implementa aún por decidir. Todas con su prueba, en commits pequeños y separados, sin bloquear el núcleo. Agrega una tarea final «avisar a C y pedir su revisión» y la tarea T117 (mi revisión de Bitacora/, Persistencia/ y main.py).
+4) [PERSONAS: A]: tareas de coordinación, sin tocar su código (exclusión de CopiaEstado.py en T015; registro de decisiones de los cazadores colgado del motor; T058 y T059). Si el cazador de A aún no está en main, las pruebas con cazadores usan un doble mínimo en tests/utiles_linea.py, marcado para repetir con el real.
+5) Mediciones: una tarea por M1 a M10 (al menos tres valores de K, la alternativa sin puntos de control, memoria y tiempo, partidas de 5 000 acciones deterministas por semilla), la justificación del K por defecto y M10 con tabla antes y después.
+6) Documentación: sección de DECISIONES.md con los cambios 1, 2 y 3 (enunciado citado, alternativa descartada y mediciones M1, M2, M4 y M6), README (coordinado con C, está en UTF-16) y PROMPTS_LLM.md (solo prompts reales).
+7) Restricciones en producción: ningún dict ni set como índice y sin bisect, sorted, sort, heapq ni collections. No crees scripts de exploración ni carpetas fuera de la estructura del plan.
+8) Las pruebas no dependen de partida.cripta, partida.cripta.log ni partida.log (se retirarán del repositorio, T098): fabrican sus propios archivos, incluido el de la primera parte para US5.3 (por ejemplo, un encabezado con versión 1 o 2).
+No modifiques spec.md ni plan.md. Si detectas contradicciones entre documentos, lístalas al final.
+````
+
+## 2026-11-11 · analizar consistencia de la spec 004 antes de implementar
+
+- *Fecha*: 2026-11-11 (hora no registrada)
+- *Modelo*: Sonnet 5.5 (Claude Code 2.1.319)
+- *Comando*: /speckit-analyze
+- *Para qué se usó*: analizar consistencia de la spec 004 antes de implementar. (Los puntos 5 y 6 se reconstruyeron desde la versión enviada en el chat; si pegaste otra redacción, registra la tuya.)
+
+*Prompt*
+
+````text
+/speckit-analyze
+Analiza specs/004-linea-de-tiempo (spec.md, plan.md, research.md, data-model.md, contracts/, quickstart.md, tasks.md) contra la constitución vigente. No modifiques ningún archivo y no ejecutes código. Verifica:
+1) Cobertura: los 30 FR vigentes (FR-001 a FR-031, sin FR-026) y los 10 SC tienen tarea; los 17 Edge Cases y los 16 escenarios del quickstart tienen tarea de prueba. Toda tarea cita FR o SC, salvo T116 (Principio XI).
+2) Consistencia entre documentos: nombres de funciones, archivos y contratos coinciden en spec, plan, data-model, contracts y tasks. Las 10 contradicciones listadas al final de tasks.md ya son conocidas: no las repitas, solo marca si alguna sigue sin resolver o si encuentras otra.
+3) Constitución: ningún dict ni set como índice o caché en las estructuras del plan; sin heapq, bisect, collections, sorted ni sort en lo evaluado; K = 50 marcado como HIPÓTESIS; sin red en la reconstrucción (Principio VII); decisiones de spec antes del código (Principio IX); IDs de FR estables (Principio X).
+4) Referencias cruzadas: 001-T098, 001-T117, 003-T015, 003-T058, 003-T059 y 003-T076 existen y su contenido coincide con lo que tasks.md dice de ellas. Marcas de persona: C en T061 y T087; D en T084; el resto «por decidir».
+Estado actual de main: C ya implementó (a) el rechazo de --bitacora igual a <guardado>.log (b6f9f52) y (b) el observador del Reproductor: Reproductor(fabrica_motor, version_cripta, version_catalogo, recargar=None, observador=None), reproducir_acciones(encabezado, acciones) -> motor, reproducir(ruta) -> motor, con al_crear_motor, despues_de_accion(motor, nombre, argumento) y despues_de_carga(motor). Contrato en specs/001-niebla-mapa-ir-a/contracts/formato-bitacora.md, sección «Observador y reproducción en memoria». T061 y T087 no están pendientes. Compara esos nombres y el orden de avisos con lo que escriben plan.md, research.md (HL6), contracts/ y tasks.md (T004, T005, T061, T083). Si algún documento usa otro nombre o describe el observador como pendiente, repórtalo como hallazgo. Verifica además que se diga que el sello previo de cada acción se toma del fin del aviso anterior. Haz git log -5 y compara con el encabezado de tasks.md.
+5) Dependencias y archivos prohibidos: orden de dependencias, tareas con trabajo oculto o demasiado grandes, y pruebas que dependan de partida.cripta, partida.cripta.log o partida.log.
+6) Opciones del CLI (--replay, --hasta, --checkpoint-cada, --cargar, --bitacora): sin conflicto de precedencia entre T059, T060, T080 y T095 ni con el CLI de las otras specs.
+Entrega una tabla de hallazgos con severidad (CRÍTICO, ALTO, MEDIO, BAJO), el archivo y la línea, y la corrección sugerida. Al final, dime si se puede pasar a /speckit-implement.
+````
+
+## 2026-11-11 · guardar el informe de `/speckit-analyze` para revisarlo
+
+- *Fecha*: 2026-11-11 (hora no registrada)
+- *Modelo*: Sonnet 5.5 (Claude Code 2.1.319)
+- *Comando*: prompt libre
+- *Para qué se usó*: guardar el informe de `/speckit-analyze` para revisarlo (archivo temporal, no se sube).
+
+*Prompt*
+
+````text
+Guarda el informe completo del análisis que acabas de entregar, sin resumirlo, en informe_analyze_004.md en la raíz del repositorio. No lo agregues a git ni modifiques ningún otro archivo.
+````
+
+## 2026-11-11 · aplicar a plan, research, data-model, contratos y tasks los hallazgos del análisis
+
+- *Fecha*: 2026-11-11 (hora no registrada)
+- *Modelo*: Sonnet 5.5 (Claude Code 2.1.319)
+- *Comando*: prompt libre
+- *Para qué se usó*: aplicar a plan, research, data-model, contratos y tasks los hallazgos del análisis.
+
+*Prompt*
+
+````text
+Aplica estas correcciones, que salen del informe de /speckit-analyze. No modifiques spec.md. No cambies el contenido de FR ni de SC, no renumeres ninguna tarea ni ningún FR (para dividir una tarea usa sufijos a y b) y no ejecutes código. Solo toca plan.md, research.md, data-model.md, contracts/ y tasks.md. Antes de editar, lee Bitacora/Reproductor.py, main.py (ejecutar_replay y ejecutar_replay_desde), ControladorPartida.py y ArchivoPartida.py para que lo que escribas coincida con el código real.
+
+EN tasks.md:
+1) D1: agrega una sección «Orden del README» siguiendo la de specs/001-niebla-mapa-ir-a/tasks.md. Haz que T036 (comando historia), T063b (opciones --replay --hasta y --checkpoint-cada), T085 (CRPT con línea) y el valor de K por defecto incluyan cada una su párrafo del README. T115 queda como revisión final de coherencia del README.
+2) A1: marca T004 y T061 como hechas (001-T123 y 001-T124, commit b1b57d7) y T087 como hecha (b6f9f52, 001-T121). Quita el skipUnless de T054. Deja la contradicción 3 pendiente por ahora y retira las 1 y 2 a una sección «Resueltas». Anota que 001-T125 (aviso a D) está cumplida por mensaje de C.
+3) A2: T063 solo pasa observador= al Reproductor en la recarga de ejecutar_replay. Borra la frase que pide avisar a despues_de_carga desde allí, porque el Reproductor ya lo hace.
+4) A4: reordena para que retroceder no rompa el juego real tras conectar el controlador. Mueve T046 y T047 (registrar el retroceso) a la Fase 2, justo antes de T035, si T047 no depende de otras tareas de la Fase 3. Si depende, no cambies nada y dime de cuáles.
+5) A5: reescribe T080 con el comportamiento real: «guardar» rechaza el comando y la partida sigue; solo «--cargar F --bitacora F.log» sale con código 1. Usa el texto real del error. Limita T080 a lo que 001-T120 y 001-T121 no prueban, que es el replay con una bitácora distinta.
+6) A6: T062 y T063b deben consultar dentro del try de ejecutar_replay (callback), antes de que cierre restauradores y borre la carpeta temporal. Agrega una prueba con @cargar y t igual al reloj final.
+7) M1: actualiza T001 y el encabezado con la línea base nueva: 426 pruebas, OK, skipped=10, medida el 11-11 después del pull. Cita el commit de HEAD que veas con git log -1.
+8) M4: divide T063 en T063a (parseo, validación y reglas de combinación, que bloquea T059, T060, T077 y T095) y T063b (rama --replay --hasta). Ajusta las dependencias.
+9) M5: mueve T098 a la Fase 8 después de T101. T076 pasa a la Fase 9 o queda con skip hasta T115. Precisa T100.
+10) M6: agrega T123 (al final) para enviar a Persona B la nota sobre --hasta y --checkpoint-cada en contracts/cli-verificacion.md (FR-013, FR-018).
+11) M7: limita T065 a línea no vacía, leer_linea y bytes_leidos.
+12) M8: partida_linea usa una ruta temporal para --bitacora. T120 comprueba que no se crea partida.log. T070 reutiliza esa misma carpeta de datos locales.
+13) M9: T084 es «implementa D, revisa C».
+14) B1: T116 lleva «Atiende: Principio XI, sin FR».
+15) B3: T059 valida solo --hasta y las combinaciones; T095 valida los casos de K (0, negativo, no entero, K = 1).
+16) B6: T079 activa el registro de decisiones de A en el motor antes de clonar.
+
+EN plan.md, research.md, data-model.md y contracts/:
+17) A1: donde se describa el observador como pendiente, ponlo como hecho, con la firma real y el orden de avisos.
+18) A2: borra la frase que pide avisar a despues_de_carga desde la recarga de ejecutar_replay.
+19) A3: escribe en interfaz-linea.md, data-model.md y research.md (R3) la regla: el sello (reloj, secuencia) previo de la acción k se toma al terminar el aviso anterior (al_crear_motor, la acción anterior, el retroceso o despues_de_carga), porque despues_de_accion llega con el motor ya avanzado.
+20) A5: alinea formato-bitacora.md, quickstart.md y comandos-historia.md con el comportamiento y el mensaje reales del rechazo.
+21) M3: despues_de_carga(motor) no trae la ruta. Propón de dónde sale (probablemente motor.restaurador.ruta) y qué pasa si es None. Márcalo como decisión pendiente de aprobación, no lo des por definitivo.
+22) B2: marca K = 50 como HIPÓTESIS en interfaz-linea.md.
+
+No hagas B4, B5 ni dividas T017, T033 ni T085. Al terminar, lista cada cambio con archivo y línea, y dime cuáles de los 22 puntos no pudiste aplicar y por qué.
+````
+
+## 2026-11-11 · consultar el estado de las correcciones
+
+- *Fecha*: 2026-11-11 (hora no registrada)
+- *Modelo*: Sonnet 5.5 (Claude Code 2.1.319)
+- *Comando*: prompt libre
+- *Para qué se usó*: consultar el estado de las correcciones (la sesión no recordaba su reporte final).
+
+*Prompt*
+
+````text
+No edites nada. Responde solo esto:
+1) Punto 4 (A4, retroceder tras conectar el controlador): ¿lo aplicaste? Si no, dime de qué tareas de la Fase 3 depende T047 y qué opción menos invasiva propones.
+2) De los 22 puntos del prompt anterior, lista cuáles no pudiste aplicar o aplicaste a medias, con el motivo.
+3) Lista los archivos que modificaste, y si tocaste spec.md o checklists/.
+````
+
+## 2026-11-11 · resolver A4 con una dependencia explícita
+
+- *Fecha*: 2026-11-11 (hora no registrada)
+- *Modelo*: Sonnet 5.5 (Claude Code 2.1.319)
+- *Comando*: prompt libre
+- *Para qué se usó*: resolver A4 con una dependencia explícita (sin reordenar tareas).
+
+*Prompt*
+
+````text
+Edita solo specs/004-linea-de-tiempo/tasks.md; no toques otros archivos ni renumeres. Aplica A4 así:
+1) T035 y T036: agrega «Depende de T047: el commit se hace en local y no sube a main antes que T047, para que retroceder no rompa el juego real».
+2) En «Dependencias», agrega T047 ─ T035 y T036 (no suben antes).
+3) En el calendario, en el jueves 12, aclara que T035 y T036 se hacen en local y suben con T047 (viernes 13); T034 y el modelo sí suben.
+4) En «Entrega incremental», agrega que ningún commit que conecte el controlador a la línea (T035, T036) sube a main sin T047.
+Al terminar, muéstrame solo git diff -U0 de tasks.md. No ejecutes código.
+````
+
+## 2026-11-11 · revisar el estado de main tras los cambios de las compañeras y hacer la primera revisión de T003 por lectura
+
+- *Fecha*: 2026-11-11 (hora no registrada)
+- *Modelo*: Sonnet 5.5 (Claude Code 2.1.319)
+- *Comando*: prompt libre
+- *Para qué se usó*: revisar el estado de main tras los cambios de las compañeras y hacer la primera revisión de T003 por lectura (no ejecutó deepcopy).
+
+*Prompt*
+
+````text
+No modifiques ningún archivo y no ejecutes código, salvo git log y git diff. Guarda el informe completo, sin resumirlo, en informe_estado_004.md en la raíz del repositorio (no lo agregues a git).
+
+PARTE A. Estado de main frente a lo que supone specs/004-linea-de-tiempo.
+1) git log --oneline 3d306e8..HEAD y git diff --stat 3d306e8..HEAD: lista qué archivos de código y pruebas cambiaron y de quién parece cada cambio.
+2) Para cada punto, dime si sigue siendo cierto y, si no, qué cambió (archivo y línea). Reporta solo las discrepancias y los puntos dudosos:
+ - MotorSimulacion: atributos gestor_datos, restaurador, historial, salas, reloj, secuencia, acciones_jugador, agenda, eco, jugador, inventario; ejecutar_accion devuelve bool; obtener_estado_resumen() y mapa_conocido().
+ - Historial (retroceso.py): máximo 5, basado en cierres, se consume al deshacer.
+ - Sala y Salida: campos mutables (rastro, cerrada, _origen, _destino); si hay campos mutables nuevos.
+ - AgendaEventos.siguiente().
+ - ArchivoPartida: guardar_partida, LectorPartida, _leer_largos, TAMANO_ENCABEZADO, VERSION_FORMATO = 3, bloque de línea con largo 0.
+ - ControladorPartida: _accion, nueva_partida, cargar, guardar_motor, _cerrar, _rechazar_bitacora_del_guardado.
+ - main.py: ejecutar_replay y la recarga del replay; opciones de CLI actuales y su orden de prioridad.
+ - Bitacora/Reproductor.py: observador, reproducir_acciones, reproducir.
+ - GestorDatos y la interfaz de fuente; tests/bench_personaC.py (bench_retroceso).
+ - Capacidad 003 (A): ¿existen ya Cazador, GrafoCripta, version_puertas, ciclo, EspacioBusqueda o el registro de decisiones? ¿En qué commit?
+3) En Modelo/ y Persistencia/: ¿hay usos nuevos de heapq, bisect, collections, sorted, sort, o de dict o set como índice o caché?
+4) Corre la suite y dime «Ran N tests», resultado y omitidas.
+
+PARTE B. T003 de specs/004-linea-de-tiempo/tasks.md (revisión de deepcopy y su memo). Entrega una tabla: objeto, campo, si es mutable, qué hace deepcopy con él (copiar, compartir por memo, poner en None) y si puede dejar el clon ligado al motor vivo (cierres, archivos, referencias cruzadas). Cierra con una lista de riesgos para T015.
+
+Al final, di en una línea si hay algo que obligue a cambiar plan.md, tasks.md o los contratos, sin editarlos.
+````
+
+## 2026-11-12 · medir de verdad copy.deepcopy del motor con el memo de T015
+
+- *Fecha*: 2026-11-12 (hora no registrada)
+- *Modelo*: Sonnet 5.5 (Claude Code 2.1.319)
+- *Comando*: prompt libre
+- *Para qué se usó*: medir de verdad copy.deepcopy del motor con el memo de T015 (tiempo, memoria, independencia, inventario grande, CERRAR_PUERTA, eco, azar).
+
+*Prompt*
+
+````text
+Ejecuta T003 de specs/004-linea-de-tiempo/tasks.md midiendo de verdad, sin modificar nada del repositorio. Reglas: no edites ni crees ningún archivo dentro del repositorio, salvo informe_t003_deepcopy.md en la raíz (sin agregarlo a git). Escribe los scripts en una carpeta temporal fuera del repositorio (por ejemplo $env:TEMP\t003), pon el repositorio en sys.path desde el script, y bórrala al terminar. Compara git status --short antes y después: debe ser idéntico. Reutiliza los ayudantes de tests/ para armar un motor real (crear_paquete_niebla o equivalente) y un generador de acciones determinista con random.Random(5) propio (atacar, esperar, mover; vida alta).
+
+Usa el memo de T015: gestor_datos → None, restaurador → None, historial → Historial() nuevo, y cada Sala y Salida → ella misma. Mide con N = 20, 200 y 2 000 salas, tras unas 300 acciones:
+1) ¿copy.deepcopy(motor, memo) termina sin RecursionError ni TypeError? Tiempo (mediana de 20 repeticiones, perf_counter) y memoria aproximada (tracemalloc). Compáralos con las cifras de data-model.md (1.1 ms / 26 KiB con N=20; 2.2 ms / 43 KiB con N=200; 11.7 ms / 285 KiB con N=2 000).
+2) Independencia: ejecuta 50 acciones en el clon y compara el motor vivo antes y después con obtener_estado_resumen() ampliado con conocimiento, mensajes y rastros. Lista exactamente qué campos del vivo cambiaron (esperado: Sala.rastro y Salida.cerrada, por ser compartidas) y confirma que nada más cambia.
+3) retroceder en el clon (con Historial() vacío): ¿se rechaza y deja intacto el vivo?
+4) Inventario grande: repite con inventario_max de 50, 100, 200 y 400 nodos llenos. ¿Con cuántos nodos aparece RecursionError? Si aparece, ¿qué límite de recursión usa el intérprete?
+5) Evento CERRAR_PUERTA pendiente en la agenda (cripta con cierre_automatico, o fabrícalo): ejecuta eventos en el clon y dime si cambia Salida.cerrada del motor vivo.
+6) eco=True se copia al clon: confirma.
+7) azar: las consultas en el clon no cambian azar.getstate() del vivo.
+8) Identidad _indice_origen is salas se conserva en el clon.
+9) Un mensaje de error real por cada fallo, no una paráfrasis.
+
+Guarda en informe_t003_deepcopy.md una tabla por prueba con resultado medido (no estimado) y, al final, la lista de riesgos de T015 actualizada con lo medido. Si algo no se pudo medir, dilo.
+````
+
+## 2026-11-12 · registrar el resultado medido de T003 y la línea base en research, data-model, contratos y tasks
+
+- *Fecha*: 2026-11-12 (hora no registrada)
+- *Modelo*: Sonnet 5.5 (Claude Code 2.1.319)
+- *Comando*: prompt libre
+- *Para qué se usó*: registrar el resultado medido de T003 y la línea base en research, data-model, contratos y tasks.
+
+*Prompt*
+
+````text
+Edita solo specs/004-linea-de-tiempo/ (research.md, data-model.md, contracts/interfaz-linea.md y tasks.md). No toques spec.md ni plan.md, no cambies FR ni SC y no renumeres tareas. Fuentes (no están en git; copia de ellas lo que se necesite): informe_estado_004.md e informe_t003_deepcopy.md, en la raíz. No ejecutes código. Si ya aplicaste una versión anterior de este pedido, corrígela para que quede como lo de abajo.
+
+1) research.md: sección «T003: revisión de deepcopy y memo (2026-11-12)». Método: lectura del código y medición real de deepcopy(motor, memo) (Python 3.14.2 y 3.12.10; N = 20, 200 y 2 000; 300 acciones; 20 repeticiones). Incluye: la tabla de campos mutables de Sala y Salida (mutables: rastro, cerrada; inmutables: _ordinal, _direccion, _origen, _destino, cerrada_en_esqueleto, costo; una sala no visitada no tiene el atributo rastro); las pruebas 1 a 9 con su resultado medido; los controles de omisión del memo (RecursionError sin Sala y Salida, TypeError sin restaurador, retroceder del clon que modifica el vivo sin Historial); y los 12 riesgos, cada uno con la tarea que lo prueba o la decisión. Lo que el informe dice que no pudo medir (fuente HTTP y FuenteSinRed, materializar, AgendaConCorte, dos clones sobre el mismo gestor, inventario_max real, eventos distintos de CERRAR_PUERTA, acciones que consuman azar) queda como «no medido» y como HIPÓTESIS.
+
+2) data-model.md:
+ - En los campos mutables de Sala y Salida, lista _ordinal, _direccion y costo (inmutables). Aclara que el inventario es motor.jugador.inventario.
+ - En el párrafo «Medido (E2 y E4)»: aclara que esas cifras eran de otro método. Lo medido en T003 con deepcopy(motor, memo) es: tiempo mediano 0.7 a 1.4 ms (N = 20), 2.7 a 4.4 ms (N = 200), 17.8 a 30.0 ms (N = 2 000); memoria neta 20, 62 y 407 KiB (pico con memo 53, 226 y 1 429 KiB). Es hasta 2.6 veces más lento y +43 % de memoria para N >= 200. M3 se vuelve a medir y mientras tanto sigue HIPÓTESIS. Anota el riesgo para FR-020 en N altas y que T098 sigue siendo el plan B.
+ - foto_rastros usa un centinela para «sala sin atributo rastro», y materializar no crea el atributo donde no existía.
+ - punto.estado nunca se ejecuta directamente: sus eventos CERRAR_PUERTA apuntan a la Salida viva (medido: el clon cierra la puerta del vivo). Solo se ejecuta un clon materializado, cuyo memo re-liga también Evento.actor.
+ - Por el costo de las salidas, reloj ya no crece linealmente con las acciones; el sello (reloj, secuencia) sigue siendo válido.
+ - El clon sin gestor no puede jugar (medido): RuntimeError al entrar en una sala con trampa y rechazo «El contenido de esa sala aún no está disponible.». materializar le asigna gestor_historico, que sirve obtener_ficha y asegurar_sala desde el almacenamiento en disco; si falta un dato local, SinDatosParaHistoria. Con un GestorDatos iniciado el clon rehace 50 acciones y queda idéntico al vivo.
+ - Regla de un solo clon vivo por gestor_historico (GestorDatos.estado_juego es único).
+
+3) contracts/interfaz-linea.md: las reglas del punto anterior sobre gestor_historico y un solo clon vivo, que materializar fija eco=False, y que ninguna consulta llama siguiente() ni esta_vacia() sobre el motor vivo (consultar_accion(acciones + 1) lo devuelve).
+
+4) tasks.md:
+ - T003: déjala sin marcar. Agrega «medición hecha el 2026-11-12 (sección de research.md); pendiente la revisión del grupo».
+ - T001 y el encabezado: línea base 466 pruebas, 456 pasan, 10 omitidas, medida el 11-11 sobre eb92322; SC-009 pide al menos 456 pasadas.
+ - T012 (oráculo de la copia): el oráculo incluye estados con eventos pendientes (REARMAR_TRAMPA, VENENO, FIN_VELOCIDAD, APAGAR_ANTORCHA) y una acción que consuma azar si existe alguna. Si no, déjalo escrito.
+ - T015 (copiar): copia el inventario con un bucle, sin recursión, y agrega una prueba con 200 y 400 nodos (medido: RecursionError desde 165 nodos). Anota que falta conocer el inventario_max real de las criptas.
+ - T016 (materializar): agrega pruebas de (a) un clon sobre una sala con trampa con gestor_historico; (b) una sala sin contenido cargado, resuelta desde el disco; (c) un CERRAR_PUERTA pendiente que no cierra la puerta del vivo; (d) eco=False; (e) un solo clon vivo a la vez; (f) foto_rastros con sala sin atributo rastro.
+ - La tarea que prueba la re-simulación desde un punto: la reconstrucción nunca ejecuta retroceder dentro de un clon (medido: con Historial vacío se rechaza).
+ - T022: consultar_accion(acciones + 1) devuelve el motor vivo y ninguna consulta llama siguiente() ni esta_vacia() sobre él.
+ - T035: la prueba incluye el caso de ejecutar_accion que lanza RuntimeError con el motor ya avanzado: la línea no queda desfasada en silencio.
+ - M3 (T103): anota que se vuelve a medir y que las cifras de T003 son la referencia.
+Al terminar, lista cada cambio con archivo y línea. No hagas nada más.
+````
+
+## 2026-11-12 · cerrar el hueco del inventario en materializar y corregir dos referencias cruzadas
+
+- *Fecha*: 2026-11-12 (hora no registrada)
+- *Modelo*: Sonnet 5.5 (Claude Code 2.1.319)
+- *Comando*: prompt libre
+- *Para qué se usó*: cerrar el hueco del inventario en materializar y corregir dos referencias cruzadas.
+
+*Prompt*
+
+````text
+Edita solo specs/004-linea-de-tiempo/ (tasks.md, data-model.md, research.md, contracts/interfaz-linea.md). No renumeres tareas ni toques spec.md ni plan.md. No ejecutes código.
+1) T016: materializar también hace deepcopy(punto.estado, memo) y el inventario (motor.jugador.inventario) vuelve a recorrerse por recursión (T003 midió RecursionError desde 165 nodos). Agrega que materializar copia el inventario con un bucle, sin recursión, igual que T015, y la prueba (g): inventarios de 200 y 400 nodos materializan sin RecursionError y el clon tiene sus propios nodos.
+2) data-model.md (fila «estado» de PuntoControl): donde dice «se copia con un bucle, sin recursión (T015)», cámbialo a «(T015 y T016)». research.md, riesgo 3: que diga «T015 y T016 copian el inventario con un bucle».
+3) research.md, riesgo 1: la prueba es T012 (5); quita «y la de T016 (c)», que corresponde al riesgo 5.
+4) Verifica que T029 existe y que su contenido corresponde a «clon sobre sala con trampa / sin red», como dice la fila del riesgo 4 de research.md. Si no corresponde, corrige la referencia y dime cuál es la correcta.
+5) Verifica la numeración «6. a 10.» de «Reglas del clon y del gestor histórico» en interfaz-linea.md: debe continuar una lista que llega a 5; si no, renumera.
+Lista cada cambio con archivo y línea, y responde los puntos 4 y 5.
+````
+
+## 2026-11-12 · cerrar T002, T003 y T005 en `tasks.md`, `plan.md` y `research.md` con las respuestas de las compañeras y del profesor
+
+- *Fecha*: 2026-11-12 (hora no registrada)
+- *Modelo*: Sonnet 5.5 (Claude Code 2.1.319)
+- *Comando*: prompt libre
+- *Para qué se usó*: cerrar T002, T003 y T005 en `tasks.md`, `plan.md` y `research.md` con las respuestas de las compañeras y del profesor (el punto 1 con la aceptación explícita de C).
+
+*Prompt*
+
+````text
+Edita solo specs/004-linea-de-tiempo/ (tasks.md, plan.md y research.md). No toques spec.md, no cambies FR ni SC, no renumeres tareas y no ejecutes código.
+
+1) T002: márcala [X] con fecha 2026-11-12. Aceptan A (de acuerdo con los cuatro cambios; la re-simulación le sirve porque el cazador es determinista y no consume azar), B (de acuerdo; lo de la línea de comandos lo refleja en el README, su T055) y C (aceptación explícita: acepta los cambios 1 a 10 de la spec, los incluidos en 3d306e8). Condición de C: el cambio 3, que se aparta de la letra del enunciado, debe quedar justificado en DECISIONES.md con la cita del enunciado y las mediciones.
+1b) T114 (DECISIONES.md): agrega esa condición. La sección del cambio 3 cita literalmente el enunciado (§3.6, «Restricción de memoria»: «Se permite guardar copias completas del estado, llamadas puntos de control, pero no más de una cada K acciones del jugador») y las mediciones que lo respaldan (M4 y M6; M7 respalda SC-003). Anota también que el punto de control incluye el estado de random.Random, como exige el enunciado si se re-simula.
+2) T003: márcala [X]. Revisión: el profesor respondió el 2026-11-12: «Para este proyecto sí pueden usar el dict como caché. No hay problema». Autoriza copy.deepcopy con memo; T098 queda solo como opción de rendimiento. Alcance: se usa solo para el memo; el resto de las estructuras de esta capacidad sigue sin dict ni set como índice mientras no se aclare el alcance por escrito. En research.md (sección T003) reemplaza «La revisión del grupo que pide T003 sigue pendiente» por esta decisión. En plan.md (Complexity Tracking) y en T015, reemplaza «excepción documentada» por «autorizado por el profesor el 2026-11-12 (ver T003)».
+3) T005: márcala [X]. Decisión de C del 2026-11-12: implementa D: T035, T036, T063a, T063b, T085, T086, T088, T066 y T111 (esta última por confirmar con C); C es dueña de ControladorPartida.py y main.py (revisa cada commit y resuelve el merge) y coordina T115 (D redacta los párrafos que su tarea hace visibles). Reglas: un turno a la vez; antes de tocar ControladorPartida.py, main.py o el README se avisa al grupo; git pull --no-edit y subir el mismo día. Orden: C sube 001-T062 a T065 («ir a») esta semana; luego T035 y T036 en local hasta T047; luego T063a y T063b (con B); luego T085 y T086, tras T084; al final T088, T066, T111 y T115. C avisa los cambios de su bench antes de tocar main.py. T063b queda como está escrito; no se extrae un recargar compartido. Actualiza las marcas [PERSONAS] y «por decidir» de esas tareas, la tabla «Tareas que dependen de otras personas», el diagrama de dependencias, la entrada P-D07 de plan.md (ciérrala) y la contradicción correspondiente en «Resueltas».
+4) Nombres de A: ciclo y version_puertas están en el motor; el método único que escribe Salida.cerrada lo nombra A en su T016; no hay clase Cazador: es Enemigo.comportamiento == "cazador", decidido en el motor (003-T046 y T048); GrafoCripta sube el 2026-11-12; 003-T015 a T017 (ciclo, version_puertas) esa noche; el cazador real (003-T045 a T048) el viernes 13. Actualiza T010, T079, T118 y cualquier mención de una clase Cazador: ahora es un enemigo con comportamiento «cazador»; T118 sigue bloqueada hasta 003-T048.
+5) Calendario (hoy jueves 12): Vie 13: Fases 1 y 2 (T009 a T034, T046 y T047); Sáb 14: Fases 3 y 4, y T035 y T036 suben tras T047; Dom 15: Fase 5 (T054 a T063b, con B); Lun 16: Fases 6 y 7; Mar 17: Fases 8 y 9 (bench, DECISIONES.md, T117, T122); Mié 18: entrega. El corte mínimo no cambia.
+Al terminar, lista cada cambio con archivo y línea.
+````
+
+## 2026-11-12 · corregir la fila dañada de `plan.md`, la aceptación de C en T002, la condición en T114 y el calendario
+
+- *Fecha*: 2026-11-12 (hora no registrada)
+- *Modelo*: Sonnet 5.5 (Claude Code 2.1.319)
+- *Comando*: prompt libre
+- *Para qué se usó*: corregir la fila dañada de `plan.md`, la aceptación de C en T002, la condición en T114 y el calendario.
+
+*Prompt*
+
+````text
+Edita solo specs/004-linea-de-tiempo/ (plan.md y tasks.md). No toques spec.md ni research.md, no cambies FR ni SC, no renumeres tareas y no ejecutes código.
+1) plan.md, fila «I. Estructuras propias» de la tabla del gate: el texto quedó dañado («...propia (sinutorizados por el profesor...»). Restáuralo tomando esa fila de git show HEAD:specs/004-linea-de-tiempo/plan.md y aplica solo el cambio previsto: donde decía «Ningún dict ni set como índice» agrega «salvo el memo de deepcopy», y donde decía «Dos usos de la biblioteca estándar que el grupo debe revisar» pon «Dos usos de la biblioteca estándar autorizados por el profesor el 2026-11-12 (ver T003)»; conserva el resto (sin bisect, sorted, sort, heapq, collections; elegir_algoritmo; las referencias a R2 y a Complexity Tracking). Quita los espacios sobrantes al final de la fila. Revisa que no haya otro texto cortado en plan.md, research.md o tasks.md.
+2) T002: C aceptó explícitamente el 2026-11-12 los cambios 1 a 10 de la spec, los incluidos en 3d306e8. Reemplaza «C no tiene reparos (acordó T005 y T063b ...)» por esa aceptación explícita y agrega la condición de C: el cambio 3, que se aparta de la letra del enunciado, debe quedar justificado en DECISIONES.md con la cita del enunciado y las mediciones.
+3) T114 (DECISIONES.md): agrega esa condición. La sección del cambio 3 cita literalmente el enunciado (§3.6, «Restricción de memoria»: «Se permite guardar copias completas del estado, llamadas puntos de control, pero no más de una cada K acciones del jugador») y las mediciones que lo respaldan (M4 y M6; M7 respalda SC-003). Anota también que el punto de control incluye el estado de random.Random, como exige el enunciado si se re-simula, y que el memo de deepcopy está autorizado por el profesor el 2026-11-12 (cita literal).
+4) Calendario: T047 depende de T046, T042 y casi toda la Fase 3, así que no puede estar el viernes con las Fases 1 y 2. Viernes 13: Fases 1 y 2 (T009 a T034). Sábado 14: Fases 3 y 4 (incluye T046 y T047); T035 y T036 suben tras T047. Lo demás igual.
+Al terminar, lista cada cambio con archivo y línea.
+````
+
+## 2026-11-13 · implementar T009 a T017
+
+- *Fecha*: 2026-11-13 (hora no registrada)
+- *Modelo*: Sonnet 5.5 (Claude Code 2.1.319)
+- *Comando*: `/speckit-implement`
+- *Para qué se usó*: implementar T009 a T017 (modelo de la línea, puntos de control, `copiar` y `materializar`) sin commits ni push de Claude Code. Se ejecutó dos veces: la primera se detuvo en el paso previo por 4 errores preexistentes de la suite.
+
+*Prompt*
+
+````text
+/speckit-implement Ejecuta solo T009 a T017 de specs/004-linea-de-tiempo/tasks.md.
+
+Antes de empezar:
+- git pull --no-edit. Corre la suite completa y anota "Ran N tests / OK / skipped" (la línea base ya no es 466/456: A, B y C subieron pruebas). Ese número no puede bajar.
+- Lee el código real de MotorSimulacion (ciclo, version_puertas, avanzar_hasta_jugador, _escribir_cerrada, iniciar_partida, grafo_cripta, espacio_busqueda) antes de T015 y T016.
+
+Reglas:
+- No toques Controlador/ControladorPartida.py, main.py, README.md, spec.md ni plan.md.
+- Salida.cerrada solo se escribe dentro de Modelo/CopiaEstado.py (excluido por nombre en la prueba de código fuente de A); en cualquier otro lugar se usa motor._escribir_cerrada(salida, cerrada, descripcion, registrar).
+- ciclo y version_puertas son enteros que solo crecen: no se guardan, no entran en la bitácora y deshacer no los baja. Viajan dentro del punto de control; el oráculo de T012 NO los compara entre el motor vivo y el clon.
+- grafo_cripta y espacio_busqueda: no los compartas ni los copies a ciegas. Lee qué guardan en caché. Si dependen de version_puertas, el clon debe reconstruirlos con la misma función que usa iniciar_partida. Si no puedes decidirlo leyendo el código, usa la opción segura (reconstruir) y anótalo como pregunta para A en el informe.
+- Al restaurar cerrada desde la foto, mantén coherente version_puertas (usa _escribir_cerrada con registrar=False si es posible desde CopiaEstado; si no, explica por qué).
+- dict solo como memo de copy.deepcopy. Nada de heapq, bisect, collections, networkx.
+- Doble del cazador: Enemigo con comportamiento "cazador"; si el cazador real de A ya está en main, úsalo.
+- Pruebas que inicien partidas por ControladorPartida.nueva_partida: cripta resoluble, o forzar=True con un comentario que cite el FR-021 de la spec 002.
+
+NO hagas git add, git commit ni git push: los commits los hago yo. Trabaja tarea por tarea y deja los cambios en el árbol de trabajo. Marca [X] las tareas terminadas en tasks.md (sin hash). Si la suite falla o baja el número de pruebas, para y repórtalo.
+
+Informe final (en la respuesta, sin crear archivos):
+1. Resumen de la suite antes y después.
+2. Por cada tarea (o grupo de tareas que comparten archivos): los archivos exactos que tocó, el comando `git add <rutas>` y un mensaje de commit propuesto "feat(004): T0xx <resumen>". Ninguna ruta debe repetirse en dos commits; si dos tareas comparten un archivo, agrúpalas.
+3. Decisiones tomadas y preguntas abiertas para A.
+No hagas nada más.
+````
+
+## 2026-11-13 · decidir que la Fase 1 siguiera con los 4 errores preexistentes de B como línea base
+
+- *Fecha*: 2026-11-13 (hora no registrada)
+- *Modelo*: Sonnet 5.5 (Claude Code 2.1.319)
+- *Comando*: prompt libre
+- *Para qué se usó*: decidir que la Fase 1 siguiera con los 4 errores preexistentes de B como línea base.
+
+*Prompt*
+
+````text
+Decisión: opción 2. Continúa con T009 a T017 usando como línea base "Ran 554 tests, FAILED (errors=4)", con estos 4 errores preexistentes de tests/test_verificacion_cli.py (PruebasVerificacionNoCambiaPartida): test_sc007_fr023_azar_y_conocimiento_iguales_al_iniciar, test_sc007_fr023_la_verificacion_no_aparece_en_la_bitacora, test_sc007_fr023_la_verificacion_se_ejecuta_al_iniciar, test_sc007_fr023_misma_bitacora_y_mismo_estado_final. Criterio de parada: aparece cualquier fallo o error distinto de esos 4, o el total baja de 554. No toques esas pruebas, ControladorPartida.py ni BitacoraPartida.py. Si mis cambios hacen que alguno de esos 4 cambie de error, repórtalo. Mismas reglas y mismo informe final de antes (sin git add, commit ni push).
+````
+
+## 2026-11-13 · implementar T018 a T034
+
+- *Fecha*: 2026-11-13 (hora no registrada)
+- *Modelo*: Sonnet 5.5 (Claude Code 2.1.319)
+- *Comando*: `/speckit-implement`
+- *Para qué se usó*: implementar T018 a T034 (resúmenes, consultas, gestor histórico, observador) y medir `copiar()` con el grafo incluido.
+
+*Prompt*
+
+````text
+/speckit-implement Ejecuta solo T018 a T034 de specs/004-linea-de-tiempo/tasks.md (no T035 ni T036). Haz git pull --no-edit al inicio y verifica que la suite no baje. Mismas reglas que en T009 a T017, incluidos "NO hagas git add, git commit ni git push" y marcar [X] sin hash, y mismo informe final (suite antes y después, archivos por tarea con su `git add` y mensaje de commit propuesto sin repetir rutas, decisiones y preguntas abiertas). No hagas nada más.
+
+Antes de T018: mide una sola vez el tiempo mediano y la memoria neta de copiar(motor) con grafo_cripta y espacio_busqueda incluidos, para N = 20, 200 y 2000 (como en T003, 20 repeticiones), y compáralo con las cifras de T003 (0.7–1.4 / 2.7–4.4 / 17.8–30.0 ms; 20 / 62 / 407 KiB). No cambies código por esto; solo repórtalo en el informe, con el tamaño aproximado de espacio_busqueda en el momento de copiar.
+````
+
+## 2026-11-13 · recuperar los puntos 1 y 2 del informe de la Fase 2, que no habían llegado completos
+
+- *Fecha*: 2026-11-13 (hora no registrada)
+- *Modelo*: Sonnet 5.5 (Claude Code 2.1.319)
+- *Comando*: prompt libre
+- *Para qué se usó*: recuperar los puntos 1 y 2 del informe de la Fase 2, que no habían llegado completos.
+
+*Prompt*
+
+````text
+Repite solo los puntos 1 y 2 de tu informe de la Fase 2: el resumen de la suite (Ran N tests, OK/FAILED, skipped), los grupos de archivos con su `git add` y el mensaje de commit propuesto, y la medición de copiar(motor) con grafo_cripta y espacio_busqueda para N = 20, 200 y 2000 comparada con T003. No cambies nada.
+````
+
+## 2026-11-13 · documentar la medición de `copiar()` con el grafo, la firma real de `materializar`, el gestor histórico y la decisión M3
+
+- *Fecha*: 2026-11-13 (hora no registrada)
+- *Modelo*: Sonnet 5.5 (Claude Code 2.1.319)
+- *Comando*: prompt libre
+- *Para qué se usó*: documentar la medición de `copiar()` con el grafo, la firma real de `materializar`, el gestor histórico y la decisión M3.
+
+*Prompt*
+
+````text
+Edita solo specs/004-linea-de-tiempo/ (research.md, data-model.md, contracts/interfaz-linea.md y tasks.md). No toques spec.md ni plan.md, no cambies FR ni SC y no renumeres tareas. No ejecutes código. Si ya aplicaste algo de esto, corrígelo para que quede como abajo.
+
+1) research.md, R2: corrige la cifra de «200 salas». Medido en T012 (2) con la topología real de main: deepcopy completo del motor falla con RecursionError desde unas 400 salas; la copia estructurada funciona con 200 y con 600. La cifra de 200 venía de otra topología.
+
+2) research.md: sección «T018: medición de copiar con grafo_cripta y espacio_busqueda (2026-11-13)». Método: mediana de 20 repeticiones, memoria neta con tracemalloc, motor tras 10 acciones (T003 usó 300, así que la comparación es orientativa). Tabla: N = 20: 0.81 ms (0.75–1.01), 15 KiB, espacio_busqueda ~1 KB; N = 200: 3.87 ms (3.42–5.83), 74 KiB, ~6.7 KB; N = 2000: 42.5 ms (33.6–49.7), 664 KiB, ~64 KB. Conclusión: N = 2000 queda 42 % por encima del máximo de T003 en tiempo y 63 % por encima en memoria; espacio_busqueda es ~10 % de la copia; el resto es el grafo (_entrantes y tuplas) y el estado del motor. Marca como HIPÓTESIS el efecto sobre los SC; T103 (M3) vuelve a medir con partidas reales y T098 sigue siendo el plan B. Optimización posible no aplicada: compartir la estructura inmutable del grafo.
+
+3) data-model.md y contracts/interfaz-linea.md: firma real materializar(punto, gestor_historico, abrir_copia=None, ruta_copia=None); grafo_cripta y espacio_busqueda se copian con deepcopy y el memo los re-liga a las salas y al motor del clon (el grafo no depende de version_puertas: lee cerrada en vivo); ciclo y version_puertas viajan en el estado y el oráculo no los compara entre el motor vivo y el clon; materializar escribe cerrada directamente sobre las copias del esqueleto, dentro de Modelo/CopiaEstado.py (excluido por nombre en la prueba de código fuente de A).
+
+4) contracts/interfaz-linea.md: GestorHistorico.desde_gestor(gestor, id_cripta) comparte el almacenamiento_disco del vivo y no comparte contadores ni caché; tras cada consulta la línea desconecta el gestor (conectar_estado_juego(None)); SinDatosParaHistoria llega por FuenteSinRed.tomar_falta() y LineaTiempo la relanza tras cada acción rehecha mirando al gestor por nombre de método; los mensajes de ReferenciaInvalida son los del contrato; formatos: «Inventario (0): ninguno», «velocidad +10 (hasta 300)», «antorcha encendida» (sin hora); resultado solo se llena en las referencias «actual» y «final»; pergaminos de ResumenHistorico es None hasta T048.
+
+5) tasks.md:
+ - T029: agrega el cambio de GestorHistorico del punto 4.
+ - T016: la firma real.
+ - T023 y T024: «Depende de T036; se hacen junto con T036 o después».
+ - T033: nota «la parte de que el clon rechaza una acción queda cubierta por las pruebas de T013 y T022».
+ - T082 y T085 (M3): «Decisión confirmada por lectura del código el 2026-11-13: PreparadorPartida.py:133 asigna motor.restaurador al cargar y .ruta es público (lo usa guardar_motor). La copia privada se hace al cargar, antes de cualquier guardar, porque guardar_motor pone el restaurador en None y lo reasigna. En una partida nueva no hay restaurador y la época se abre sin copia privada.»
+ - T079 y T118: «repetir con el cazador real de A y el registro de decisiones de 003-T076 si cuelga del motor».
+ - T021: «el motor no tiene acciones de costo 0 hoy; volver a comprobarlo cuando llegue el cazador real».
+ - T103 (M3): las cifras de la sección T018 son la referencia nueva.
+Al terminar, lista cada cambio con archivo y línea. No hagas nada más.
+````
+
+## 2026-11-13 · implementar la Fase 3
+
+- *Fecha*: 2026-11-13 (hora no registrada)
+- *Modelo*: Sonnet 5.5 (Claude Code 2.1.319)
+- *Comando*: `/speckit-implement`
+- *Para qué se usó*: implementar la Fase 3 (retroceso, serie de pergaminos, T037 a T048) sin tocar los archivos de C.
+
+*Prompt*
+
+````text
+/speckit-implement Ejecuta las tareas de la Fase 3 de specs/004-linea-de-tiempo/tasks.md, de la primera a la última, sin T035 ni T036 y sin T023 ni T024 (dependen de T036). Antes de empezar, git pull --no-edit, lista las tareas que vas a hacer y avisa si alguna depende de T035, T036 o de archivos de C; no las hagas. Línea base: la que mida el pull al inicio ("Ran N tests"); no puede bajar y no se admiten fallos nuevos. Mismas reglas que en las Fases 1 y 2, incluidos "NO hagas git add, git commit ni git push", marcar [X] sin hash (con nota si una tarea queda parcial) y el mismo informe final (suite antes y después, archivos por tarea con su `git add` y mensaje propuesto sin repetir rutas, decisiones y preguntas abiertas, e incluyendo siempre los puntos 1 y 2 completos). No hagas nada más.
+````
+
+## 2026-11-13 · implementar la Fase 4
+
+- *Fecha*: 2026-11-13 (hora no registrada)
+- *Modelo*: Sonnet 5.5 (Claude Code 2.1.319)
+- *Comando*: `/speckit-implement`
+- *Para qué se usó*: implementar la Fase 4 (historia en el mismo instante, T049 a T053) y fijar el nombre del pergamino en el resumen.
+
+*Prompt*
+
+````text
+/speckit-implement Ejecuta las tareas de la Fase 4 de specs/004-linea-de-tiempo/tasks.md, de la primera a la última, sin T035, T036, T023 ni T024. Antes de empezar, git pull --no-edit, lista las tareas que vas a hacer y avisa si alguna depende de T035, T036, de main.py, ControladorPartida.py o README.md (archivos de C); no las hagas. Línea base: la que mida el pull al inicio; no puede bajar y no se admiten fallos nuevos.
+
+Paso previo (pequeño y separado): el nombre del pergamino en el resumen sale hoy del catálogo («Pergamino») o de la constante «Pergamino de retroceso» según el clon. Averigua cómo muestra el juego el pergamino en el inventario vivo y haz que Vista/TextoResumen.py use siempre ese mismo texto. Actualiza el formato en specs/004-linea-de-tiempo/contracts/interfaz-linea.md. Reporta este cambio aparte de las tareas de la fase, con sus propios archivos y mensaje de commit.
+
+Mismas reglas que en las Fases 1 a 3: NO hagas git add, git commit ni git push; marcar [X] sin hash (con nota si una tarea queda parcial); no toques spec.md ni plan.md; dict solo como memo de deepcopy. Informe final con suite antes y después, archivos por tarea con su `git add` y mensaje propuesto sin repetir rutas, decisiones y preguntas abiertas (incluye siempre los puntos 1 y 2 completos). No hagas nada más.
+````
+
+## 2026-11-13 · comprobar por mutación que las pruebas de T050 a T052 detectan un corte mal hecho
+
+- *Fecha*: 2026-11-13 (hora no registrada)
+- *Modelo*: Sonnet 5.5 (Claude Code 2.1.319)
+- *Comando*: prompt libre
+- *Para qué se usó*: comprobar por mutación que las pruebas de T050 a T052 detectan un corte mal hecho.
+
+*Prompt*
+
+````text
+Comprobación de mutación, sin dejar cambios en el repositorio. 1) En Modelo/AgendaConCorte.py altera temporalmente el corte para que ignore la secuencia y compare solo el tiempo (el evento con tiempo t y secuencia posterior a la decisión pasaría a reflejarse). 2) Corre python -m unittest tests.test_linea_mismo_instante y dime qué pruebas fallan. 3) Repite alterando el corte para que incluya los eventos de tiempo t + 1. 4) Restaura el archivo con git restore Modelo/AgendaConCorte.py y comprueba con git status --short que no queda cambio en ese archivo. Informa: qué prueba detectó cada alteración, y si alguna alteración NO hizo fallar ninguna prueba. No cambies nada más.
+````
+
+## 2026-11-13 · comprobar que T052 protege el caso en que `t` coincide con una decisión
+
+- *Fecha*: 2026-11-13 (hora no registrada)
+- *Modelo*: Sonnet 5.5 (Claude Code 2.1.319)
+- *Comando*: prompt libre
+- *Para qué se usó*: comprobar que T052 protege el caso en que `t` coincide con una decisión.
+
+*Prompt*
+
+````text
+Comprobación de mutación, sin dejar cambios en el repositorio. En Modelo/LineaTiempo.py, en consultar_instante, altera temporalmente la rama en que t coincide con una decisión (vig_reloj[k] == t) para que devuelva el estado DESPUÉS de ejecutar esa acción en lugar del clon previo a decidir. Corre python -m unittest tests.test_linea_mismo_instante y dime qué pruebas fallan. Después restaura con git restore Modelo/LineaTiempo.py y comprueba con git status --short que no queda cambio en ese archivo. Informa si alguna prueba detectó la alteración y cuál. No cambies nada más.
+````
+
+## 2026-11-13 · enganchar el observador y el comando `historia` al controlador
+
+- *Fecha*: 2026-11-13 (hora no registrada)
+- *Modelo*: Sonnet 5.5 (Claude Code 2.1.319)
+- *Comando*: `/speckit-implement`
+- *Para qué se usó*: enganchar el observador y el comando `historia` al controlador (T035, T036) y sus pruebas (T023, T024), en la rama `d/historia-controlador`.
+
+*Prompt*
+
+````text
+/speckit-implement Ejecuta solo T035 y T036 de specs/004-linea-de-tiempo/tasks.md (T046 y T047 ya están hechas). Ya estás en la rama d/historia-controlador, creada desde main actualizado: comprueba con git branch --show-current que es esa y trabaja solo en ella. No cambies de rama ni crees otra. Controlador/ControladorPartida.py es de C: toca únicamente lo que T035 y T036 piden, con el mínimo de líneas, y tu párrafo del README solo si T036 lo pide. No toques main.py. Incluye en la prueba de T035 el caso de ejecutar_accion que lanza RuntimeError con el motor ya avanzado (la línea no queda desfasada en silencio). Cuando T035 y T036 estén listas, haz también T023 y T024 (dependen de T036) en esta misma rama. Línea base: la que mida el pull; no puede bajar. NO hagas git add, git commit ni git push, y no cambies de rama. Informe final: suite antes y después, archivos con su `git add` y mensaje propuesto (T023 y T024 como un commit aparte), decisiones y preguntas abiertas. No hagas nada más.
+````
+
+## 2026-11-16 · informe del estado de la capacidad 004 tras los cambios de A, B y C
+
+- *Fecha*: 2026-11-16 (hora no registrada)
+- *Modelo*: Sonnet 5.5 (Claude Code 2.1.319)
+- *Comando*: prompt libre (solo lectura)
+- *Para qué se usó*: informe del estado de la capacidad 004 tras los cambios de A, B y C (informe_estado_004_2.md).
+
+*Prompt*
+
+````text
+Informe de estado de la capacidad 004, solo lectura. No modifiques ningún archivo versionado, no hagas commits ni push. Primero git fetch; si estás en main y el árbol está limpio salvo .idea, git pull --no-edit. Escribe el informe en informe_estado_004_2.md en la raíz (sin versionar) y resume en la respuesta.
+1) Git: rama actual, git log --oneline -30, git status --short, si d/historia-controlador ya está fusionada en main, y los commits de A, B y C desde el 2026-11-13.
+2) Suite completa: "Ran N tests", OK/FAILED y skipped.
+3) tasks.md: por fase, cuántas tareas están [X] y cuáles siguen [ ]. Para cada una pendiente: número, fase, dependencias cumplidas o no, archivos que toca, si toca ControladorPartida.py, main.py o README.md (archivos de C), y si está bloqueada por otra persona. Marca las que tienen código ya en el repositorio pero no están marcadas.
+4) Formato CRPT v3 en el repositorio: dónde está el bloque de la línea de tiempo (largo 0), qué funciones de Persistencia/ lo leen y lo escriben, la fórmula de _inicio_salas, y qué falta para que yo escriba el bloque con datos (T070 a T085).
+5) Cambios de A: ¿MotorSimulacion tiene ciclo, version_puertas, grafo_cripta, espacio_busqueda, campo_distancias y estrategia_cazador? Revisa si copiar() y materializar() de Modelo/CopiaEstado.py los copian bien por deepcopy con el memo (referencias a salas o al motor que el memo no cubra, cierres, claves por id). ¿Existe ya el registro de decisiones de 003-T076?
+6) Bench: qué archivos tests/bench_*.py existen, qué hace main.py con --bench y qué falta para T099 a T111.
+7) Desfases entre tasks.md, contracts/ y el código (firmas, nombres, notas desactualizadas), en una lista.
+Al terminar, lista las tareas pendientes en el orden en que se pueden hacer hoy sin esperar a nadie.
+````
+
+## 2026-11-16 · revisión T117 de los cambios de C en Modelo/, Persistencia/, Bitacora/ y main.py
+
+- *Fecha*: 2026-11-16 (hora no registrada)
+- *Modelo*: Sonnet 5.5 (Claude Code 2.1.319)
+- *Comando*: prompt libre (solo lectura)
+- *Para qué se usó*: revisión T117 de los cambios de C en Modelo/, Persistencia/, Bitacora/ y main.py (informe_t117.md).
+
+*Prompt*
+
+````text
+Revisión T117, solo lectura: no modifiques archivos versionados, no hagas pull, commits ni push. Escribe el resultado en informe_t117.md en la raíz (sin versionar) y resume en la respuesta. Revisa los cambios de la capacidad 001 de C en Modelo/, Persistencia/, Bitacora/ y main.py, apoyándote en specs/001-niebla-mapa-ir-a/trazabilidad.md. Foco: (1) formato CRPT v3 con el bloque de la línea de tiempo en largo 0: compatibilidad con los formatos anteriores, fórmula de _inicio_salas, qué pasa al leer un archivo v3 con largo 0 y qué rompería si mi T070 a T085 lo llena con datos; (2) Bitacora/Reproductor.py: firma, observador, reproducir_acciones y cómo encajan mi --hasta (T063b) y --checkpoint-cada; (3) rechazo de --bitacora igual a <guardado>.log: comando guardar, --cargar con --bitacora, código de salida 1, abspath y normcase; (4) prioridad de opciones de main.py; (5) pruebas que cubren cada punto y las que faltan; (6) principios I, II y X de la constitución. Entrega hallazgos ordenados por gravedad, cada uno con archivo y línea, riesgo y propuesta de arreglo. Separa lo que bloquea la entrega del miércoles de lo que es mejora. No propongas cambios de estilo.
+````
+
+## 2026-11-16 · reglas que se pegaron al final de cada prompt de implementación
+
+- *Fecha*: 2026-11-16 (hora no registrada)
+- *Modelo*: Sonnet 5.5 (Claude Code 2.1.319)
+- *Comando*: REGLAS COMUNES (versión de la Sesión 1; línea base 819)
+- *Para qué se usó*: reglas que se pegaron al final de cada prompt de implementación.
+
+*Prompt*
+
+````text
+REGLAS COMUNES: git pull --no-edit al inicio; corre la suite y anota "Ran N tests"; la línea base hoy es 819, OK, y no puede bajar ni aparecer fallos. NO hagas git add, git commit ni git push. Marca [X] en tasks.md las tareas terminadas, sin hash y con nota si quedan parciales. No toques spec.md, plan.md ni README.md. dict solo como memo de copy.deepcopy; nada de heapq, bisect, collections, sorted, .sort(), set() ni networkx. Modelo/ no importa red, archivos ni consola. Escribe las pruebas primero cuando la tarea lo diga. Si una tarea depende de algo que no está en main, déjala sin hacer y dilo. Al final busca en los archivos que tocaste las construcciones prohibidas de arriba y repórtalo (debe salir vacío). Informe final en la respuesta: 1) suite antes y después, 2) por cada tarea o grupo que comparte archivos: los archivos exactos, el comando `git add <rutas>` y un mensaje de commit propuesto sin repetir rutas, 3) decisiones y preguntas abiertas. No hagas nada más.
+````
+
+## 2026-11-16 · T064, T068, T081 a T083, T067, T069, T096, T091 a T094, T090 y copia con el cazador real de A
+
+- *Fecha*: 2026-11-16 (hora no registrada)
+- *Modelo*: Sonnet 5.5 (Claude Code 2.1.319)
+- *Comando*: /speckit-implement (Sesión 1)
+- *Para qué se usó*: T064, T068, T081 a T083, T067, T069, T096, T091 a T094, T090 y copia con el cazador real de A.
+
+*Prompt*
+
+````text
+/speckit-implement Ejecuta solo estas tareas de specs/004-linea-de-tiempo/tasks.md, en este orden y respetando dependencias: T064, T068, T081, T082, T067, T069, T083, y luego T096, T091, T092, T093, T090, T094.
+Antes: comprueba que T006 (la exclusión de CopiaEstado.py ya está en tests/test_invalidacion_puertas.py:36-42), T008 (partida.cripta, .cripta.log y partida.log ya no están versionados) y T123 (B ya agregó la nota en specs/002-resolubilidad/contracts/cli-verificacion.md) están cumplidas, y márcalas [X] con esa nota. Compara T054 con tests/test_bitacora.py:362 y, si todo lo que pide está cubierto, márcala [X] con la nota; si falta algo, dilo y no la marques.
+Añade a tests/test_linea_copia.py una prueba de copiar y materializar con el cazador real de A (Enemigo.comportamiento == "cazador") y estrategia_cazador = "compartida", con campo_distancias ya poblado y espacio_busqueda usado: el clon no comparte nada con el vivo y reproduce las mismas decisiones.
+Contexto: ObservadorLinea.despues_de_carga ya llama a linea.registrar_carga(...): T082 debe respetar esa firma. No toques ControladorPartida.py, main.py, ArchivoPartida.py ni ExportadorJSON.py.
+REGLAS COMUNES: git pull --no-edit al inicio; corre la suite y anota "Ran N tests"; la línea base hoy es 819, OK, y no puede bajar ni aparecer fallos. NO hagas git add, git commit ni git push. Marca [X] en tasks.md las tareas terminadas, sin hash y con nota si quedan parciales. No toques spec.md, plan.md ni README.md. dict solo como memo de copy.deepcopy; nada de heapq, bisect, collections, sorted, .sort(), set() ni networkx. Modelo/ no importa red, archivos ni consola. Escribe las pruebas primero cuando la tarea lo diga. Si una tarea depende de algo que no está en main, déjala sin hacer y dilo. Al final busca en los archivos que tocaste las construcciones prohibidas de arriba y repórtalo (debe salir vacío). Informe final en la respuesta: 1) suite antes y después, 2) por cada tarea o grupo que comparte archivos: los archivos exactos, el comando git add <rutas> y un mensaje de commit propuesto sin repetir rutas, 3) decisiones y preguntas abiertas. No hagas nada más.
+````
+
+## 2026-11-16 · T055 a T058, T062, T119, T120 y T097
+
+- *Fecha*: 2026-11-16 (hora no registrada)
+- *Modelo*: Sonnet 5.5 (Claude Code 2.1.319)
+- *Comando*: /speckit-implement (Sesión 2)
+- *Para qué se usó*: T055 a T058, T062, T119, T120 y T097 (ConsultaHistoria y pruebas de restricciones). Las viñetas finales se añadieron al prompt tras el informe parcial de T055.
+
+*Prompt*
+
+````text
+/speckit-implement Ejecuta solo T055, T056, T057, T058, T062, T119, T120 y T097 de specs/004-linea-de-tiempo/tasks.md (T062 crea Controlador/ConsultaHistoria.py, que no es de C). T119 y T120 se escriben sobre los archivos existentes. Si una prueba necesita la opción --hasta de main.py (T063a), déjala para la sesión de main.py y dilo. No toques ControladorPartida.py, main.py, ArchivoPartida.py ni ExportadorJSON.py.
+REGLAS COMUNES: git pull --no-edit al inicio; corre la suite y anota "Ran N tests"; la línea base hoy es 819, OK, y no puede bajar ni aparecer fallos. NO hagas git add, git commit ni git push. Marca [X] en tasks.md las tareas terminadas, sin hash y con nota si quedan parciales. No toques spec.md, plan.md ni README.md. dict solo como memo de copy.deepcopy; nada de heapq, bisect, collections, sorted, .sort(), set() ni networkx. Modelo/ no importa red, archivos ni consola. Escribe las pruebas primero cuando la tarea lo diga. Si una tarea depende de algo que no está en main, déjala sin hacer y dilo. Al final busca en los archivos que tocaste las construcciones prohibidas de arriba y repórtalo (debe salir vacío). Informe final en la respuesta: 1) suite antes y después, 2) por cada tarea o grupo que comparte archivos: los archivos exactos, el comando git add <rutas> y un mensaje de commit propuesto sin repetir rutas, 3) decisiones y preguntas abiertas. No hagas nada más.
+````
+
+## 2026-11-16 · T065, T084 y T085: persistencia de la línea, cargar atómico
+
+- *Fecha*: 2026-11-16 (hora no registrada)
+- *Modelo*: Sonnet 5.5 (Claude Code 2.1.319)
+- *Comando*: /speckit-implement (Sesión 3a)
+- *Para qué se usó*: T065, T084 y T085: persistencia de la línea, cargar atómico (H1) y guardar con la línea.
+
+*Prompt*
+
+````text
+/speckit-implement Ejecuta solo T065, T084 y T085 de specs/004-linea-de-tiempo/tasks.md, en commits pequeños y separados: primero Persistencia/ (T065 y la parte de ArchivoPartida.py de T084), después ControladorPartida.py.
+- C ya arregló H2 en f592da4: el git pull --no-edit lo trae. No toques _misma_ruta ni _rechazar_bitacora_del_guardado.
+- LectorPartida guarda _inicio_linea y _largo_linea y expone leer_linea(); RestauradorPartida (Persistencia/ConversorPartida.py) expone leer_linea; guardar_partida y guardar_motor llevan linea=None por omisión (ejecutar_replay.recargar en main.py llama a guardar_motor con tres argumentos); actualiza los comentarios «bloque opaco, por ahora largo 0».
+- T065 incluye una prueba que lea salas reales (buscar_sala, leer_todas_salas, cargar_partida) con un bloque de línea no vacío y otra con un bloque que invade las salas (código 2).
+- T085: ReconstructorLinea.reconstruir(registro, motor_cargado=...) ya deja el punto del motor cargado, la época y su copia privada: NO llames a registrar_carga aparte. guardar pasa linea=linea.a_registro(). H1: cargar debe ser atómico: llama a reconstruir() antes de reemplazar self.motor y self.bitacora; arma todo en variables locales, asigna a self y cierra lo anterior solo al final; si algo falla, cierra solo lo nuevo (motor.restaurador.cerrar(), bitacora.cerrar()). Pruebas: un fallo posterior a cargar_partida (copia de bitácora dañada), SinDatosParaHistoria y ErrorReconstruccion dejan motor, bitacora y linea como estaban. nueva_partida y _cerrar borran las copias privadas.
+- No toques main.py ni README.md.
+REGLAS COMUNES: git pull --no-edit al inicio; corre la suite y anota "Ran N tests"; la línea base hoy es 819, OK, y no puede bajar ni aparecer fallos. NO hagas git add, git commit ni git push. Marca [X] en tasks.md las tareas terminadas, sin hash y con nota si quedan parciales. No toques spec.md, plan.md ni README.md. dict solo como memo de copy.deepcopy; nada de heapq, bisect, collections, sorted, .sort(), set() ni networkx. Modelo/ no importa red, archivos ni consola. Escribe las pruebas primero cuando la tarea lo diga. Si una tarea depende de algo que no está en main, déjala sin hacer y dilo. Al final busca en los archivos que tocaste las construcciones prohibidas de arriba y repórtalo (debe salir vacío). Informe final en la respuesta: 1) suite antes y después, 2) por cada tarea o grupo que comparte archivos: los archivos exactos, el comando git add <rutas> y un mensaje de commit propuesto sin repetir rutas, 3) decisiones y preguntas abiertas. No hagas nada más.
+````
+
+## 2026-11-17 · main.py: T063a, T086, T063b, T055 a T060, T094, T095 y T120
+
+- *Fecha*: 2026-11-17 (hora no registrada)
+- *Modelo*: Sonnet 5.5 (Claude Code 2.1.319)
+- *Comando*: /speckit-implement (Sesión 3b)
+- *Para qué se usó*: main.py: T063a, T086, T063b, T055 a T060, T094, T095 y T120.
+
+*Prompt*
+
+````text
+/speckit-implement Ejecuta solo T063a, T086, T063b, T055, T056, T057, T058, T059, T060, T095 y T120 (solo su ampliación) de specs/004-linea-de-tiempo/tasks.md, en commits pequeños y separados para main.py. Lee antes los cambios recientes de C en main.py (29c6945 y 376a53a) y no los pises.
+- T063a: --hasta y --checkpoint-cada se validan a mano después del bloque --bench y antes de abrir la fuente del replay; el error de uso es código 1, no 2.
+- T086: main.py atrapa ErrorReconstruccion, ReferenciaInvalida y SinDatosParaHistoria con código 1; la línea que no coincide con la partida, código 2, como dice la tarea. --cargar con --checkpoint-cada falla. Añade pruebas de main para los códigos 1 y 2 de --cargar.
+- T063b: la consulta de --hasta ocurre dentro del try de ejecutar_replay (el finally cierra los restauradores y borra la carpeta temporal). El camino --hasta usa ConsultaHistoria.reproducir() (con preparar, al_terminar y cerrar si hace falta); no refactorices la recarga que ya tiene ejecutar_replay, que es de C. No edites el README.
+- T055: completa la parte de main --hasta (código de salida 0, la vista que falla al crearse, la ausencia de «Reproducción finalizada.») y márcala [X] si pasa.
+- T056, T057 y T058: repítelas por main con --replay --hasta, además de la prueba de ConsultaHistoria que ya existe.
+- T094: completa la parte pendiente con la opción real --replay --hasta y márcala [X] si pasa.
+- T120: amplía la prueba de main con --replay --hasta y --checkpoint-cada, y añade tests/test_cli_historia.py a su búsqueda.
+- No toques ControladorPartida.py salvo lo mínimo que pida alguna tarea.
+REGLAS COMUNES: git pull --no-edit al inicio; corre la suite y anota "Ran N tests"; la línea base hoy es 819, OK, y no puede bajar ni aparecer fallos. NO hagas git add, git commit ni git push. Marca [X] en tasks.md las tareas terminadas, sin hash y con nota si quedan parciales. No toques spec.md, plan.md ni README.md. dict solo como memo de copy.deepcopy; nada de heapq, bisect, collections, sorted, .sort(), set() ni networkx. Modelo/ no importa red, archivos ni consola. Escribe las pruebas primero cuando la tarea lo diga. Si una tarea depende de algo que no está en main, déjala sin hacer y dilo. Al final busca en los archivos que tocaste las construcciones prohibidas de arriba y repórtalo (debe salir vacío). Informe final en la respuesta: 1) suite antes y después, 2) por cada tarea o grupo que comparte archivos: los archivos exactos, el comando git add <rutas> y un mensaje de commit propuesto sin repetir rutas, 3) decisiones y preguntas abiertas. No hagas nada más.
+````
+
+## 2026-11-17 · pruebas de persistencia de la línea
+
+- *Fecha*: 2026-11-17 (hora no registrada)
+- *Modelo*: Sonnet 5.5 (Claude Code 2.1.319)
+- *Comando*: /speckit-implement (Sesión 3c)
+- *Para qué se usó*: pruebas de persistencia de la línea (T070 a T080), clave «linea» del JSON (T088, T066).
+
+*Prompt*
+
+````text
+/speckit-implement Ejecuta solo T070, T071, T072, T073, T074, T075, T077, T078, T079, T080, T088 y T066 de specs/004-linea-de-tiempo/tasks.md.
+- Usa SesionLinea y no partida_con_linea: el segundo mete pergaminos fuera del guion y la reproducción desde cero no los recupera.
+- T076 déjala con skipUnless hasta que el README documente el CRPT 3 con el bloque de la línea.
+- T077: --cargar con --checkpoint-cada falla solo cuando --cargar es el modo que manda (ya implementado en T063a y T086).
+- T078: incluye el caso «paquete borrado» con --cargar (copia_sin_datos(partida, "paquete")). Ejecuta el escenario de --cargar sin el paquete pero con los datos locales, averigua qué código de salida devuelve y por qué, y sustituye la aserción débil «0 o 1» de las pruebas de main por ese valor exacto; repórtalo. No dupliques las 14 pruebas de main --cargar que ya existen: reutilízalas.
+- T079: con los cazadores reales de A (Enemigo.comportamiento == "cazador"), compara sala, activo, tiempo_siguiente y vida de cada enemigo turno por turno, entre la partida real y la reconstruida tras guardar, cargar y retroceder (tras un retroceso compara solo lo posterior). El registro de decisiones 003-T076 no existe todavía: eso queda para T118.
+- T080 prueba también la regla nueva de C (f592da4): se rechaza --bitacora igual al propio guardado, y se compara con samefile.
+- T088 añade la clave «linea» a Persistencia/ExportadorJSON.py con el cambio mínimo; T066 va con ella (tests/test_json.py).
+- No ejecutes el bench completo ni modifiques ningún resultados_bench_*.
+REGLAS COMUNES: git pull --no-edit al inicio; corre la suite y anota "Ran N tests"; la línea base hoy es 819, OK, y no puede bajar ni aparecer fallos. NO hagas git add, git commit ni git push. Marca [X] en tasks.md las tareas terminadas, sin hash y con nota si quedan parciales. No toques spec.md, plan.md ni README.md. dict solo como memo de copy.deepcopy; nada de heapq, bisect, collections, sorted, .sort(), set() ni networkx. Modelo/ no importa red, archivos ni consola. Escribe las pruebas primero cuando la tarea lo diga. Si una tarea depende de algo que no está en main, déjala sin hacer y dilo. Al final busca en los archivos que tocaste las construcciones prohibidas de arriba y repórtalo (debe salir vacío). Informe final en la respuesta: 1) suite antes y después, 2) por cada tarea o grupo que comparte archivos: los archivos exactos, el comando git add <rutas> y un mensaje de commit propuesto sin repetir rutas, 3) decisiones y preguntas abiertas. No hagas nada más.
+````
+
+## 2026-11-17 · bench de la línea M1 a M10
+
+- *Fecha*: 2026-11-17 (hora no registrada)
+- *Modelo*: Sonnet 5.5 (Claude Code 2.1.319)
+- *Comando*: /speckit-implement (Sesión 4, bench)
+- *Para qué se usó*: bench de la línea M1 a M10 (T099 a T112) y K por omisión (T113).
+
+*Prompt*
+
+````text
+/speckit-implement Ejecuta solo T099 a T112 de specs/004-linea-de-tiempo/tasks.md, más T113. T106 (tras T085) y T108 (tras T062) ya están desbloqueadas.
+- Reutiliza mediana, medir_ms, encabezado y escribir_resultados de tests/bench_niebla.py y tests/mapas_sinteticos.py.
+- Mide cada operación con el recolector de basura detenido (gc.disable() con try/finally y gc.enable()), como hace tests/test_linea_rendimiento.py: una pausa del recolector no es el costo de la operación.
+- T100 (tests/test_bench_linea.py) debe correr en pocos segundos: tamaños pequeños; la suite ya tarda unos 100 s.
+- T111: engancha el correr_bench de la línea en main.py después de los que ya existen (incluido bench_cazador de A) y actualiza el texto de la ayuda de --bench. La prueba de main --bench que ya existe reemplaza las mediciones por dobles: actualízala para que reemplace también la de la línea, sin ejecutar ninguna medición real.
+- T112: corre solo el bench de la línea (python -m tests.bench_linea) y escribe resultados_bench_linea.txt. No ejecutes el bench completo ni modifiques ningún otro resultados_bench_*.
+- T098 solo si T101 o T090 no cumplen 50 ms; si hace falta, hazla y repórtalo.
+- T113: fija el K por omisión con los datos; lo no medido queda marcado como HIPÓTESIS. No toques el README ni crees DECISIONES.md (el archivo real está en Decisiones/DECISIONES.md y se escribe en la pasada de documentación).
+REGLAS COMUNES: git pull --no-edit al inicio; corre la suite y anota "Ran N tests"; la línea base hoy es 819, OK, y no puede bajar ni aparecer fallos. NO hagas git add, git commit ni git push. Marca [X] en tasks.md las tareas terminadas, sin hash y con nota si quedan parciales. No toques spec.md, plan.md ni README.md. dict solo como memo de copy.deepcopy; nada de heapq, bisect, collections, sorted, .sort(), set() ni networkx. Modelo/ no importa red, archivos ni consola. Escribe las pruebas primero cuando la tarea lo diga. Si una tarea depende de algo que no está en main, déjala sin hacer y dilo. Al final busca en los archivos que tocaste las construcciones prohibidas de arriba y repórtalo (debe salir vacío). Informe final en la respuesta: 1) suite antes y después, 2) por cada tarea o grupo que comparte archivos: los archivos exactos, el comando git add <rutas> y un mensaje de commit propuesto sin repetir rutas, 3) decisiones y preguntas abiertas. No hagas nada más.
+````
+
+## 2026-11-17 · corregir las cifras de materializar de la línea T113 HIPÓTESIS
+
+- *Fecha*: 2026-11-17 (hora no registrada)
+- *Modelo*: Sonnet 5.5 (Claude Code 2.1.319)
+- *Comando*: prompt libre
+- *Para qué se usó*: corregir las cifras de materializar de la línea T113 HIPÓTESIS (salen de M3).
+
+*Prompt*
+
+````text
+En tests/bench_linea.py, la línea T113 HIPÓTESIS escribe a mano las cifras de materializar (1 ms con N=20, 12 ms con N=200, 87 ms con N=2000) y no coinciden con las de M3. Haz que se calculen con las mediciones de M3 de la misma corrida. NO ejecutes el bench. En resultados_bench_linea.txt corrige solo esa línea con las cifras de M3 que ya están en el archivo (2.7 ms, 7.7 ms y 119.8 ms), sin tocar ninguna otra. No toques ningún otro resultados_bench_*, ni el README. No hagas git add, commit ni push. Informa qué archivos cambiaste.
+````
+
+## 2026-11-17 · alinear specs/004 con el código: prefijos, T068, T083, T079, contratos y regla de --bitacora
+
+- *Fecha*: 2026-11-17 (hora no registrada)
+- *Modelo*: Sonnet 5.5 (Claude Code 2.1.319)
+- *Comando*: prompt libre (pasada de documentación D1)
+- *Para qué se usó*: alinear specs/004 con el código: prefijos, T068, T083, T079, contratos y regla de --bitacora.
+
+*Prompt*
+
+````text
+Edita solo documentación de specs/004-linea-de-tiempo/ (tasks.md, research.md, data-model.md, quickstart.md y contracts/). No toques spec.md, plan.md ni README.md, no cambies FR ni SC, no renumeres tareas, no ejecutes el bench ni modifiques código ni pruebas. NO hagas git add, git commit ni git push. Haz git pull --no-edit al inicio y corre la suite al principio y al final: debe dar la misma cantidad de pruebas y OK.
+
+Regla para todos los puntos: antes de escribir cada uno, compruébalo contra el código real (Modelo/LineaTiempo.py, Controlador/, Persistencia/, main.py). Escribe lo que el código hace. Si algo de lo que digo aquí no coincide con el código, no lo escribas y dímelo al final.
+
+1) tasks.md
+- T068: quita la frase «reemplaza un punto regular» (registrar_carga siempre agrega un punto extra; el retroceso sí reemplaza el de nuevo_n).
+- T083: ReconstructorLinea.reconstruir ya agrega la carga (no se llama a registrar_carga aparte).
+- T079: el registro de decisiones 003-T076 existe en el motor de A y está apagado por defecto; se activa antes de linea.iniciar. T118 repite la prueba con el registro encendido e incluye pruebas de retroceso.
+- Pon el prefijo «001-» en toda referencia a tareas de C que no lo tenga (por ejemplo T111 a T115 de C) y «003-» en las de A.
+- T046: la firma real es plegar(nuevo_n, cantidad_actual).
+- T043: el umbral lo fijó M4 en 8 ms por recorte (resultados_bench_linea.txt).
+- T052: protege por ruta el método consultar_instante.
+- T003 y T114: cita la constitución v3.0.3 (fcebe15), que recoge la excepción del memo de copy.deepcopy.
+- Confirmación de C: yo (D) implemento T111; C coordina 001-T115 y se avisa a B antes de tocar main.py. T036 (README): lo añade C.
+- Rutas: DECISIONES.md es Decisiones/DECISIONES.md (T113 y T114 dicen la raíz).
+- T114: añade que el texto debe incluir la limitación conocida de los pergaminos tras retroceder (FR-029: en la posición a la que se retrocedió rige el presente), las mediciones M1, M2, M4, M6 y M10, el K por omisión (50) con su regla, y la condición de C sobre el cambio 3 con la cita del §3.6.
+- T121 y T122: déjalas como están; solo corrige referencias si cambió algún nombre.
+
+2) Reglas de --bitacora
+Donde specs/004 repite la regla vieja, sustitúyela por la vigente (001, f592da4): se rechaza --bitacora igual a <guardado>.log y también igual al propio archivo de guardado, en cargar (código 1, sin tocar G ni G.log) y en guardar (sigue la partida); la comparación usa normcase + abspath y samefile.
+
+3) contracts/comandos-historia.md
+- «faltan datos locales» solo ocurre con la carpeta de datos borrada. Con el paquete borrado, el error viene de la fuente al pedir la versión de la cripta: código 1.
+- «0 llamadas» significa que la reconstrucción no agrega ninguna llamada.
+- --replay con @cargar no usa el bloque de línea del guardado (reproduce la bitácora con el gestor normal): no falla sin datos locales.
+- --checkpoint-cada con --cargar falla solo cuando --cargar es el modo que manda.
+- Códigos: ErrorReconstruccion, ReferenciaInvalida y SinDatosParaHistoria dan 1; una línea que no coincide con la partida da 2.
+
+4) contracts/interfaz-linea.md
+- El punto 21 está desactualizado: los pergaminos quedan en None hasta T048.
+- El contrato de RETROCESO: documenta guion_reloj y el ValueError tal como están en el código.
+- Documenta sincronizada como método nuevo y la serie de pergaminos con su limitación (FR-029).
+- Documenta que guardar descarta una línea desfasada (aviso y largo 0), que abrir no valida el bloque de línea (lo hace leer_linea) y que, si copyfile falla tras cerrar lo anterior, queda como limitación conocida.
+
+5) research.md y data-model.md
+- Los cambios no pedidos de la Sesión 1: el clon cierra su restaurador y ObservadorLinea tiene el método público copiar_archivo_cargado.
+- Añade la nota de que las pruebas con relojes reales (sin doble) tienen sus límites y cuáles son.
+- Sustituye en la sección de T113 las cifras de materializar por las de M3 de resultados_bench_linea.txt.
+
+Informe final: 1) suite antes y después; 2) por archivo: git add <rutas> y un mensaje de commit propuesto sin repetir rutas; 3) los puntos que no coincidieron con el código y las preguntas abiertas. No hagas nada más.
+````
+
+## 2026-11-17 · completar §5.5 de Decisiones/DECISIONES.md y verificar --replay --hasta con @cargar sin datos locales
+
+- *Fecha*: 2026-11-17 (hora no registrada)
+- *Modelo*: Sonnet 5.5 (Claude Code 2.1.319)
+- *Comando*: prompt libre (pasada de documentación D2)
+- *Para qué se usó*: completar §5.5 de Decisiones/DECISIONES.md y verificar --replay --hasta con @cargar sin datos locales.
+
+*Prompt*
+
+````text
+Edita solo Decisiones/DECISIONES.md (la sección «§5.5 — Línea de tiempo y puntos de control», hoy vacía) y, para el punto 1, los archivos de specs/004-linea-de-tiempo/ que digan lo que se indica. No toques spec.md, plan.md ni README.md, no modifiques código ni pruebas, no ejecutes el bench y NO hagas git add, git commit ni git push. Haz git pull --no-edit al inicio y corre la suite al principio y al final: debe dar la misma cantidad y OK. No toques las demás secciones de DECISIONES.md.
+ 
+Todas las cifras salen de resultados_bench_linea.txt; no inventes ninguna ni redondees a otra cosa. Cita la sección (M1, M2, M4, M6, M7, M10, T113). Lo no medido va marcado como HIPÓTESIS, igual que en ese archivo.
+ 
+1) Verifica y corrige antes de escribir
+a) Sin modificar código: comprueba qué devuelve main.py con --replay ARCHIVO --hasta T cuando el archivo es una partida con @cargar y la carpeta de datos locales está borrada (usa los auxiliares de tests/utiles_linea.py en una carpeta temporal, sin dejar archivos nuevos en el repositorio). Anota el código de salida y el mensaje. Ajusta contracts/comandos-historia.md para que diga lo que ocurre de verdad: con --replay sin --hasta no se usa el bloque de línea; con --hasta, qué pasa.
+b) En specs/004-linea-de-tiempo/, quita de los títulos y textos la palabra «Sesión 1» (es vocabulario del chat) y deja «cambios no previstos en la implementación de la línea».
+ 
+2) Completa §5.5 con estas subsecciones (breves, con la cita del enunciado donde corresponda)
+- Re-simulación desde puntos de control en vez de guardar copias completas por acción (cambios 1 a 3 de spec.md: léelos allí). Cita literal del enunciado, §3.6 «Restricción de memoria»: «Se permite guardar copias completas del estado, llamadas puntos de control, pero no más de una cada K acciones del jugador». El punto de control incluye el estado de random.Random. Respaldo: M4 (recorte), M6 (cargar) y M7 (SC-003: mismos resúmenes con K = 1, 50 y 500). Condición de C (aceptación del 2026-11-12): el cambio 3 se aparta de la letra del enunciado y por eso se justifica aquí.
+- copy.deepcopy con memo: el profesor respondió el 2026-11-12: «Para este proyecto sí pueden usar el dict como caché. No hay problema». Alcance acotado al memo de Modelo/CopiaEstado.py; constitución v3.0.3 (fcebe15). Resultado de M3: deepcopy a secas falla con RecursionError con N = 2 000; la copia estructurada no.
+- K por omisión = 50. Incluye la tabla de T113 (K = 1, 10, 50, 100, 500 y sin puntos: p95 y máximo de la consulta, memoria con n = 5 000, p95 de registrar y tiempo de reconstruir), la regla (todas las consultas < 50 ms y p95 × 2,5 < 50 ms; se conserva el K vigente mientras cumpla) y por qué el margen va sobre el p95 y no sobre el máximo. El margen 2,5 es elección del grupo: HIPÓTESIS.
+- Antes y después de la línea (M10): retroceder cuesta 0.0539 ms con solo el Historial y 2.7017 ms con la línea (n = 5 000); el retroceso entero, 3.929 ms como máximo; el Historial sigue siendo adecuado y no se cambia. Umbral de SC-010: 8 ms (M4).
+- Costo de K = 1: --replay --hasta con --checkpoint-cada 1 tarda unas 22 veces más (M8: 2339.7 ms con 1 000 acciones frente a 106.6 ms del replay normal); el contrato permite K = 1 y la decisión es de quien lo pide.
+- Limitaciones conocidas (no defectos): la serie de pergaminos tras retroceder (FR-029: en la posición a la que se retrocedió rige el presente); si copyfile falla tras cerrar lo anterior; guardar descarta una línea desfasada (aviso, largo 0).
+- Lo no medido: M2 con K = 1 y n > 2 500, M3 con N > 2 000, M4 con n > 50 000 y la agenda (P1 §4.1, del grupo).
+ 
+Informe final: 1) suite antes y después; 2) archivos exactos, git add <rutas> y mensaje de commit propuesto sin repetir rutas; 3) el resultado de la comprobación 1a (código y mensaje) y los puntos que no coincidieron con el código.
+````
+
+## 2026-11-17 19:11 · reestructurar §5.5 en seis partes, añadir enlaces y coincidencia con el plan, y escribir la parte del historial en §5.6
+
+- *Fecha*: 2026-11-17 19:11
+- *Modelo*: Sonnet 5.5 (Claude Code 2.1.319)
+- *Comando*: prompt libre (pasada de documentación D3)
+- *Para qué se usó*: reestructurar §5.5 en seis partes, añadir enlaces y coincidencia con el plan, y escribir la parte del historial en §5.6.
+
+*Prompt*
+
+````text
+Edita solo Decisiones/DECISIONES.md: la sección «§5.5 — Línea de tiempo y puntos de control» y la sección «§5.6 — Revisión de decisiones de la primera parte», que hoy está vacía. No toques ninguna otra sección, ni README.md, ni spec.md, ni plan.md, ni código ni pruebas. NO hagas git add, git commit ni git push. Haz git pull --no-edit al inicio; corre la suite al principio y al final (debe dar lo mismo y OK).
+
+Conserva todas las cifras actuales de §5.5 tal como están (vienen de resultados_bench_linea.txt); no inventes ninguna ni las cambies.
+
+1) Reestructura §5.5 con las seis partes del enunciado (§7.1 de la Parte II), en este orden, con estos títulos: 1. Problema, 2. Alternativas consideradas, 3. Decisión, 4. Análisis de complejidad, 5. Evidencia empírica, 6. Límites conocidos. Reparte el contenido actual así: el problema y la cita del enunciado §3.6 en 1; las alternativas descartadas (invertir cambios, guardar puntos completos en el archivo, reemplazar el punto previo, deepcopy a secas) en 2; los cambios 1 a 3, el uso de copy.deepcopy con memo (con la autorización del profesor y la constitución v3.0.3) y el K por omisión = 50 con su regla en 3; las cifras de M1 a M10, la tabla de K, M10 antes y después, el costo de K = 1 y el umbral de SC-010 en 5; las limitaciones y lo no medido (HIPÓTESIS) en 6.
+2) Añade al principio de §5.5 (antes de «1. Problema»): enlaces a specs/004-linea-de-tiempo/spec.md y a specs/004-linea-de-tiempo/plan.md, y una frase que diga si la decisión final coincide con la de plan.md original. Compruébalo leyendo plan.md: para el diseño (re-simulación, deepcopy con memo, K = 50) di que coincide y que las mediciones M1 y M2 confirmaron K = 50, que el plan marcaba HIPÓTESIS; lo que cambió respecto del plan va con la medición que lo motivó (por ejemplo la corrección de las cifras de materializar con M3).
+3) «4. Análisis de complejidad»: copia en una tabla las complejidades de data-model.md y de contracts/interfaz-linea.md (consulta historia, registrar, recorte, copiar y materializar, búsqueda binaria, serie de pergaminos, guardar y cargar). Verifica cada una contra los docstrings de Modelo/LineaTiempo.py, Modelo/BusquedaBinaria.py y Modelo/CopiaEstado.py; si alguna no coincide, escribe la del código y dímelo en el informe. No inventes ninguna.
+4) «§5.6 — Revisión de decisiones de la primera parte»: escribe solo lo que me corresponde, con el mismo formato de seis partes pero breve, y deja la agenda como una subsección marcada «[PENDIENTE: persona A, agenda de eventos P1 §4.1]» sin cifras. Subsección del historial de retroceso (P1 §4.6): la medición de la Parte I (5 intervalos × 50 cambios) se repitió con la línea registrando (M10); antes: registrar 250 cambios 0.0940 ms y deshacer 0.0240 ms (solo Historial); después: retroceder cuesta 0.0539 ms con solo el Historial y 2.7017 ms con la línea (n = 5 000), el retroceso entero tarda a lo sumo 3.929 ms (por debajo de 20 ms); decisión: el Historial sigue siendo adecuado y no se cambia. Remite a la §5.5 y a §4.6.
+Si el punto 3 o el 4 necesitan un dato que no está en resultados_bench_linea.txt ni en data-model.md, déjalo marcado como HIPÓTESIS o PENDIENTE y dímelo.
+
+Informe final: 1) suite antes y después; 2) git add Decisiones/DECISIONES.md y un mensaje de commit propuesto; 3) las complejidades que no coincidieron con el código y las preguntas abiertas. No hagas nada más.
+````
+
+## 2026-11-17 19:39 · alinear la complejidad de tiempo y de memoria entre docstrings, data-model, contrato y §5.5, y completar el antes y el después de M5 en §5.6
+
+- *Fecha*: 2026-11-17 19:39
+- *Modelo*: Sonnet 5.5 (Claude Code 2.1.319)
+- *Comando*: prompt libre (pasada de documentación D4)
+- *Para qué se usó*: alinear la complejidad de tiempo y de memoria entre docstrings, data-model, contrato y §5.5, y completar el antes y el después de M5 en §5.6.
+
+*Prompt*
+
+````text
+Edita solo documentación: Decisiones/DECISIONES.md (§5.5 y §5.6), specs/004-linea-de-tiempo/data-model.md y specs/004-linea-de-tiempo/contracts/interfaz-linea.md, y solo los docstrings (nada de lógica) de Modelo/CopiaEstado.py y Modelo/PuntoControl.py si hace falta. No toques spec.md, plan.md, README.md, pruebas ni el resto de Modelo/. NO hagas git add, git commit ni git push. Haz git pull --no-edit al inicio; corre la suite al principio y al final (debe dar la misma cantidad y OK).
+
+1) Complejidad de tiempo: en data-model.md y en contracts/interfaz-linea.md corrige registrar_accion (O(S + N + E) cada K), registrar_retroceso (O(V + S + N + E)), registrar_carga e iniciar (O(S + N + E)) para que digan lo que hace el código. Comprueba cada una en el código antes de escribirla.
+2) Complejidad de memoria de copiar y materializar: lee el código y cómo define S el docstring, y compara con las mediciones M3 de resultados_bench_linea.txt (memoria de copiar con N = 20, 60, 200 y 2 000: 18.0, 31.4, 76.5 y 666.4 KiB). Si la memoria crece con N y E, la complejidad correcta es O(S) + O(N + E) y hay que corregir el docstring (solo texto) y mantener data-model.md; si el código demuestra otra cosa, corrige data-model.md y explícalo. Haz que data-model.md, interfaz-linea.md, los docstrings y la tabla de §5.5 «4. Análisis de complejidad» digan lo mismo.
+3) En §5.5 «4. Análisis de complejidad»: deja una sola versión (la del código ya alineada), sin la columna ni las frases «la spec dice». Mantén a_registro como O(n_guion), y agrega desde_registro y la foto de rastros y de cerradas si el código las tiene.
+4) En §5.6 (historial de retroceso), reemplaza el «-» de «registrar» con el antes y el después del costo de una acción, tomado de M5 de resultados_bench_linea.txt (n = 5 000): sin línea, acción mediana 0.0512 ms, p95 0.0949 ms; con línea y K = 50, acción + registrar mediana 0.0661 ms, p95 0.1420 ms, máximo 6.7263 ms; con K = 1, mediana 2.2336 ms, p95 4.1361 ms. Deja claro que el costo del retroceso (M10) sigue siendo el de la fila ya escrita. No cambies la subsección de la agenda: sigue «[PENDIENTE: persona A, agenda de eventos P1 §4.1]».
+Informe final: 1) suite antes y después; 2) por grupo de archivos, git add <rutas> y un mensaje de commit propuesto sin repetir rutas y sin líneas de coautor; 3) la complejidad de memoria que resultó correcta y por qué, y las preguntas abiertas. No hagas nada más.
+````
+
+## 2026-11-17 19:49 · corregir la complejidad de memoria de las consultas y de iniciar y registrar_* en los docstrings de LineaTiempo.py y en los documentos
+
+- *Fecha*: 2026-11-17 19:49
+- *Modelo*: Sonnet 5.5 (Claude Code 2.1.319)
+- *Comando*: prompt libre (pasada de documentación D5)
+- *Para qué se usó*: corregir la complejidad de memoria de las consultas y de iniciar y registrar_* en los docstrings de LineaTiempo.py y en los documentos.
+
+*Prompt*
+
+````text
+Edita solo docstrings (nada de lógica) de Modelo/LineaTiempo.py, y los textos de specs/004-linea-de-tiempo/data-model.md, specs/004-linea-de-tiempo/contracts/interfaz-linea.md y Decisiones/DECISIONES.md (§5.5 punto 4) que repitan esas complejidades. No toques spec.md, plan.md, README.md, pruebas ni otros archivos de Modelo/. NO hagas git add, git commit ni git push. Haz git pull --no-edit al inicio; corre la suite al principio y al final (debe dar la misma cantidad y OK).
+1) Memoria de las consultas (consultar_* y las que materializan): materializar es O(S + N + E) temporal, así que la memoria temporal de la consulta es O(S + N + E), no O(S). Corrígelo en el docstring de LineaTiempo.py, en el contrato y en data-model.md.
+2) Memoria de iniciar, registrar_accion, registrar_retroceso y registrar_carga: cada punto de control que agregan pesa O(S) + O(N + E) (las fotos de rastros y de cerradas); la memoria total de la línea es O(C · (S + N + E)) con C puntos (coherente con PuntoControl.py). Comprueba en el código qué se guarda por punto antes de escribirlo, y corrígelo donde diga O(S).
+3) Deja la misma versión en LineaTiempo.py, data-model.md, interfaz-linea.md y la tabla de §5.5 «4. Análisis de complejidad».
+Informe final: 1) suite antes y después; 2) los archivos cambiados; 3) cualquier otra complejidad que no coincida con el código. No hagas nada más y no propongas commits: los agrupo yo.
+````
+
+## 2026-11-17 19:58 · pruebas de cazadores reales con el registro de decisiones de A encendido, y orden de carga y límite del orden de enemigos en la documentación
+
+- *Fecha*: 2026-11-17 19:58
+- *Modelo*: Sonnet 5.5 (Claude Code 2.1.319)
+- *Comando*: /speckit-implement (T089 y T118 con documentación)
+- *Para qué se usó*: pruebas de cazadores reales con el registro de decisiones de A encendido, y orden de carga y límite del orden de enemigos en la documentación.
+
+*Prompt*
+
+````text
+/speckit-implement Ejecuta solo T089 y T118 de specs/004-linea-de-tiempo/tasks.md. Lee antes su texto y el de 003-T058, 003-T059 y 003-T076 en specs/003-*/tasks.md.
+- El registro de decisiones de A está apagado por defecto (motor.registro_decisiones es None); se enciende con motor.activar_registro_decisiones() ANTES de linea.iniciar. Cada entrada lleva ciclo, reloj, id del cazador, acción, sala de destino, dirección y costo base.
+- Compara el resto de cada entrada y NO el ciclo (deshacer no lo baja). Al deshacer, el registro vivo solo conserva las acciones vigentes, en orden: no hace falta filtrar por reloj.
+- T118 repite sus escenarios con el registro encendido: guardar, cargar, reconstruir con clon_antes_de y retroceder (tras un retroceso compara solo lo posterior). Incluye un escenario donde, tras cargar, haya cazadores activos en salas ya visitadas donde el jugador ya no está (A lo arregló en la carga). Usa SesionLinea, no partida_con_linea.
+- Si alguna prueba falla por el orden de enemigos con el mismo instante tras cargar (CRPT 3 guarda el instante de cada enemigo pero no su secuencia; la carga restaura primero la sala del jugador y luego las demás por id), no lo ocultes: repórtalo con el caso.
+- Documentación (solo estos archivos): en specs/004-linea-de-tiempo/data-model.md añade al orden de carga el paso nuevo (tras restaurar al jugador, se restauran las salas con enemigos activos en orden de id ascendente; para saberlo, la carga lee todos los bloques de sala guardados); y en specs/004-linea-de-tiempo/contracts/interfaz-linea.md y Decisiones/DECISIONES.md (§5.5, «6. Límites conocidos») añade el límite: tras cargar, dos enemigos de salas distintas con el mismo instante pueden ejecutarse en otro orden, porque el archivo no guarda la secuencia de los enemigos; no cambia las decisiones, solo su orden, y la historia posterior a la carga se reconstruye desde la partida cargada. Comprueba en el código que esa descripción de la carga es cierta antes de escribirla.
+- No toques Modelo/, Persistencia/, Gestor/, ControladorPartida.py, main.py, README.md, spec.md ni plan.md. No ejecutes el bench ni modifiques ningún resultados_bench_*.
+REGLAS COMUNES: git pull --no-edit al inicio; corre la suite y anota "Ran N tests"; la línea base hoy es 819, OK, y no puede bajar ni aparecer fallos. NO hagas git add, git commit ni git push. Marca [X] en tasks.md las tareas terminadas, sin hash y con nota si quedan parciales. No toques spec.md, plan.md ni README.md. dict solo como memo de copy.deepcopy; nada de heapq, bisect, collections, sorted, .sort(), set() ni networkx. Modelo/ no importa red, archivos ni consola. Escribe las pruebas primero cuando la tarea lo diga. Si una tarea depende de algo que no está en main, déjala sin hacer y dilo. Al final busca en los archivos que tocaste las construcciones prohibidas de arriba y repórtalo (debe salir vacío). Informe final en la respuesta: 1) suite antes y después, 2) por cada tarea o grupo que comparte archivos: los archivos exactos, el comando git add <rutas> y un mensaje de commit propuesto sin repetir rutas, 3) decisiones y preguntas abiertas. No hagas nada más.
+````
+
+## 2026-11-17 20:44 · recorrer los escenarios 1 a 16 del quickstart y la prueba de humo, y marcar T007, T076, T114, T115 y T117 si se cumplen
+
+- *Fecha*: 2026-11-17 20:44
+- *Modelo*: Sonnet 5.5 (Claude Code 2.1.319)
+- *Comando*: /speckit-implement (T121 y marcas)
+- *Para qué se usó*: recorrer los escenarios 1 a 16 del quickstart y la prueba de humo, y marcar T007, T076, T114, T115 y T117 si se cumplen.
+
+*Prompt*
+
+````text
+/speckit-implement Ejecuta solo T121 de specs/004-linea-de-tiempo/tasks.md, y marca [X] con su nota T007, T076, T114, T115 y T117 SOLO si se cumplen estas comprobaciones (si alguna no se cumple, no la marques y dime por qué):
+- T076: corre la prueba de T076 (busca con grep «T076» en tests/) y comprueba que ya no sale omitida (skipped) porque el README documenta «largo línea» y `_inicio_salas`. Anota la cantidad de omitidas de la suite completa (debe ser 0).
+- T114: Decisiones/DECISIONES.md §5.5 está completa (seis partes) y subida.
+- T115: el README (aa54936 y posteriores) contiene mis textos de --hasta, --checkpoint-cada, historia, cargar con datos locales y el bench de la línea; nota con el hash.
+- T117: mi revisión de Bitacora/, Persistencia/ y main.py está hecha (informe_t117.md) y respondida a C.
+- T007: los requisitos de la tabla «Qué le pide la línea a los demás» se enviaron a A por chat y ella los confirmó (cita su respuesta de 003-T058 y 003-T076).
+T121: recorre los escenarios 1 a 16 del quickstart y la verificación manual de humo que describe la propia tarea, con los comandos reales de main.py y la evidencia que la tarea pide (un archivo de evidencia en specs/004-linea-de-tiempo/ si la tarea lo indica; si no, la nota en la tarea). Reglas:
+- Usa carpetas temporales para el paquete offline (--offline) y para --datos-locales, y bórralas al terminar: NO uses ni modifiques paquete/ ni datos_locales/ del repositorio (están versionados y se reescriben).
+- Cada escenario: comando o prueba que lo cubre, resultado esperado y resultado obtenido. Si un escenario ya lo cubre una prueba de la suite, cita la prueba y córrela.
+- No modifiques código ni pruebas, no ejecutes el bench ni toques ningún resultados_bench_*, README.md, spec.md ni plan.md. NO hagas git add, git commit ni git push.
+[pega aquí las REGLAS COMUNES]
+````
+
+## 2026-11-18 · Endurecí la prueba intermitente T090
+
+- *Fecha*: 2026-11-18 (hora no registrada)
+- *Modelo*: no registrado (Claude Code)
+- *Comando*: (prompt libre en la sesión de la capacidad D)
+- *Para qué se usó*: Endurecí la prueba intermitente T090 (FR-020/SC-002) para que una pausa puntual del sistema no la haga fallar. Resultado: 5 corridas OK y suite de 1183 pruebas OK. Commit: «test(004): FR-020/SC-002 repite hasta 3 veces la consulta que pasa de 50 ms y toma el mínimo».
+
+*Prompt*
+
+````text
+Edita solo tests/test_linea_rendimiento.py (la prueba de FR-020 y SC-002 que exige que todas las consultas de la muestra tarden menos de 50 ms). No toques Modelo/, otras pruebas, el límite de 50 ms ni el tamaño de la muestra. NO hagas git add, git commit ni git push.
+Cambio: cuando una consulta tarda 50 ms o más, repítela hasta 3 veces más (con el recolector de basura detenido, como ya está) y toma el MÍNIMO de las medidas; la prueba falla solo si ese mínimo sigue siendo 50 ms o más. Escribe en un comentario el motivo: una pausa del sistema operativo, no el costo de la consulta, puede ensanchar una sola medida (M1 mide un máximo de 15.6 ms con K = 50); una consulta realmente lenta lo sería también al repetirse. Mantén el mensaje de fallo con la consulta más lenta.
+Corre esa prueba 5 veces seguidas y la suite completa una vez. Informe final: resultado de cada corrida, git add <ruta> y un mensaje de commit propuesto sin líneas de coautor. No hagas nada más.
+````
+
+## 2026-11-18 · Verifiqué que la carga con bloque de línea funciona según el quickstart y dejé la evidencia en specs/004-linea-de-tiempo/evidencia_quickstart.md
+
+- *Fecha*: 2026-11-18 (hora no registrada)
+- *Modelo*: no registrado (Claude Code)
+- *Comando*: (prompt libre en la sesión D6)
+- *Para qué se usó*: Verifiqué que la carga con bloque de línea funciona según el quickstart y dejé la evidencia en specs/004-linea-de-tiempo/evidencia_quickstart.md (T121).
+
+*Prompt*
+
+````text
+Edita solo Decisiones/DECISIONES.md (§5.5) y crea specs/004-linea-de-tiempo/evidencia_quickstart.md. No toques código, pruebas, README.md, spec.md, plan.md ni resultados_bench_*. NO hagas git add, git commit ni git push. Corre la suite al principio y al final (debe dar lo mismo y OK).
+1) Antes de escribir, comprueba con el main.py real (con --offline y --datos-locales en carpetas temporales que borras al terminar; no uses paquete/ ni datos_locales/ del repositorio) qué pasa al cargar con --cargar: (a) una partida guardada con línea y la carpeta de datos locales vacía, (b) la misma con la carpeta borrada, (c) una partida guardada con largo de línea 0 (archivo v3 sin línea) y la carpeta de datos vacía. Anota código de salida y mensaje de cada caso.
+2) En §5.5, «2. Alternativas consideradas»: añade la alternativa descartada «permitir que la carga vuelva a pedir datos a la fuente cuando faltan los datos locales» y por qué se descartó (la reconstrucción gastaría presupuesto de solicitudes: Principio VII). En «6. Límites conocidos»: añade «Cargar una partida con línea de tiempo necesita los datos locales de la partida (la carpeta de datos con el esqueleto y las salas guardadas al jugar); si faltan, la carga se rechaza con código 1 y no se carga nada», con los resultados de (a), (b) y (c) del punto 1. Si (c) cambia el límite, escríbelo tal como resultó.
+3) Crea specs/004-linea-de-tiempo/evidencia_quickstart.md con una tabla de los escenarios 1 a 16 del quickstart (prueba o comando que lo cubre, resultado esperado, resultado obtenido) y la prueba de humo, tomados de la nota de T121 en tasks.md; corre los módulos de la suite que los cubren para confirmar que siguen pasando. No inventes nada que no esté en la nota. Cambia la nota de T121 para que apunte al archivo de evidencia.
+Informe final: 1) suite antes y después; 2) resultados de (a), (b) y (c); 3) git add <rutas> y mensaje de commit propuesto sin líneas de coautor. No hagas nada más.
+````
+
+## 2026-11-18 · Actualicé las notas desfasadas de tasks.md señaladas en la revisión final
+
+- *Fecha*: 2026-11-18 (hora no registrada)
+- *Modelo*: no registrado (Claude Code)
+- *Comando*: (prompt libre en la sesión de la capacidad D)
+- *Para qué se usó*: Actualicé las notas desfasadas de tasks.md señaladas en la revisión final (líneas ~200 y ~241 sobre el párrafo del README, y la nota de T121 sobre informe_t117.md). Resultado: [completar con el informe de Claude Code].
+
+*Prompt*
+
+````text
+Edita solo specs/004-linea-de-tiempo/tasks.md. No toques código, pruebas, README ni DECISIONES. NO hagas git add, git commit ni git push.
+1) Líneas ~200 y ~241: las notas «Falta el párrafo del README» ya no son ciertas (el README ya incluye --hasta, --checkpoint-cada, historia, el párrafo de datos locales y el bench). Reescríbelas como hechas, sin inventar nada que no esté en el README actual (comprueba con Select-String antes).
+2) Nota de T121: dice que informe_t117.md no existe, pero está versionado. Corrígela para que diga dónde está realmente (verifica la ruta con git ls-files).
+3) No marques T116 ni T122: siguen pendientes.
+Informe final: las líneas cambiadas antes y después, git add <ruta> y un mensaje de commit propuesto sin líneas de coautor.
+````
