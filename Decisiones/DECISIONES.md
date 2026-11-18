@@ -1380,7 +1380,7 @@ Lo no medido (**HIPÓTESIS**):
 
 ## §5.6 — Revisión de decisiones de la primera parte
 
-Enunciado de la Parte II, §5.6: repetir las mediciones de la primera parte con la carga nueva; si una decisión deja de ser adecuada se cambia y se documenta el antes y el después, y si sigue siéndolo se muestra con datos. Aquí solo se revisa lo que corresponde al historial de retroceso (P1 §4.6). Cifras: `resultados_bench_linea.txt` (M10), ver §5.5.
+Enunciado de la Parte II, §5.6: repetir las mediciones de la primera parte con la carga nueva; si una decisión deja de ser adecuada se cambia y se documenta el antes y el después, y si sigue siéndolo se muestra con datos. Aquí se revisan el historial de retroceso (P1 §4.6) y la agenda de eventos (P1 §4.1). Cifras: `resultados_bench_linea.txt` (M10), ver §5.5, y `resultados_bench_agenda_despues.txt` (agenda).
 
 ### Agenda de eventos (P1 §4.1)
 
