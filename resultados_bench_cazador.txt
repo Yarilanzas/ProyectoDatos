@@ -1,5 +1,5 @@
 -Cazador: decisión, campo compartido y ciclo con 50 cazadores (spec 003, US5, M1 a M7)-
-equipo: Windows-11-10.0.26100-SP0 | Intel64 Family 6 Model 142 Stepping 9, GenuineIntel | Python 3.13.13
+equipo: Windows-11-10.0.26200-SP0 | AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD | Python 3.14.6
 modo: completo; sin red ni vista; tiempos con time.perf_counter; p95 = posición int(0,95·n) de las muestras
 criptas sintéticas de tests/utiles_terreno.py (semilla 7, costo 100 por salida); la cripta de referencia publicada aún no existe: se usa una sintética de 300 salas (PROVISIONAL)
 
@@ -7,19 +7,19 @@ criptas sintéticas de tests/utiles_terreno.py (semilla 7, costo 100 por salida)
 cripta sintética de 300 salas (semilla 7), rango 2000, cazadores en salas al azar a distancia ≤ rango, estrategia individual, 40 muestras
   Cazadores que deciden    Mediana        p95   Por cazador (mediana)
   ─────────────────────   ────────   ────────   ─────────────────────
-  1                       447.0 µs   597.3 µs                447.0 µs
-  50                      32.30 ms   40.49 ms                645.9 µs
-cociente 50 / 1 = 72.2
-las 50 decisiones (sin el resto del ciclo) < 20 ms en p95: NO cumple
+  1                       125.5 µs   145.2 µs                125.5 µs
+  50                       8.72 ms    9.29 ms                174.3 µs
+cociente 50 / 1 = 69.5
+las 50 decisiones (sin el resto del ciclo) < 20 ms en p95: cumple
 
 -M2: ColaPrioridad frente a agenda y búsqueda lineal del mínimo (FR-033)-
 insertar n entradas (distancia al azar, semilla n) y extraer todas en orden; mediana y p95 de 7 (5 con 10000; lineal: 3 con 10000) repeticiones
-  Salas n   Cola med    Cola p95   Agenda med   Agenda p95    Lineal med    Lineal p95   Agenda/Cola   Lineal/Cola
-  ───────   ────────   ─────────   ──────────   ──────────   ───────────   ───────────   ───────────   ───────────
-  10         24.6 µs    100.2 µs      70.5 µs     250.5 µs       14.0 µs       38.3 µs          2.87           0.6
-  100       360.9 µs    410.0 µs     943.1 µs      2.26 ms      755.3 µs      875.2 µs          2.61           2.1
-  1000       6.23 ms     8.47 ms     15.27 ms     23.41 ms      92.14 ms      96.90 ms          2.45          14.8
-  10000     96.50 ms   116.02 ms    260.88 ms    267.66 ms   10045.28 ms   10053.00 ms          2.70         104.1
+  Salas n   Cola med   Cola p95   Agenda med   Agenda p95   Lineal med   Lineal p95   Agenda/Cola   Lineal/Cola
+  ───────   ────────   ────────   ──────────   ──────────   ──────────   ──────────   ───────────   ───────────
+  10          7.8 µs    22.1 µs      17.9 µs      37.8 µs       4.3 µs      19.1 µs          2.29           0.6
+  100       119.0 µs   144.1 µs     319.4 µs     350.5 µs     226.8 µs     369.9 µs          2.68           1.9
+  1000       1.71 ms    1.83 ms      4.93 ms      4.99 ms     21.77 ms     21.87 ms          2.89          12.8
+  10000     23.09 ms   23.60 ms     68.69 ms     69.21 ms   2292.60 ms   2307.93 ms          2.98          99.3
 
 -M3: campo compartido frente a individual (FR-030, FR-032)-
 cripta sintética de 300 salas, cazadores activados en salas al azar a distancia ≤ rango; una muestra = decidir los k cazadores una vez (compartida: un ciclo nuevo, así que recalcula el campo una vez); 40 muestras intercaladas por estrategia
@@ -27,33 +27,33 @@ cripta sintética de 300 salas, cazadores activados en salas al azar a distancia
 rango pequeño = 500  (|R| = 48 salas)
   k    Individual med   Individual p95   Compartida med   Compartida p95   Ind/Comp   Más rápida
   ──   ──────────────   ──────────────   ──────────────   ──────────────   ────────   ──────────
-  1          289.2 µs         886.7 µs         358.0 µs         617.4 µs       0.81   individual
-  2          362.1 µs         944.9 µs         367.1 µs         872.8 µs       0.99   individual
-  5          835.5 µs          1.79 ms         397.2 µs         822.9 µs       2.10   compartida
-  10          1.28 ms          2.23 ms         429.5 µs         881.9 µs       2.99   compartida
-  25          3.15 ms          7.27 ms         567.0 µs          1.78 ms       5.56   compartida
-  50          6.74 ms         10.02 ms         742.9 µs          1.55 ms       9.08   compartida
+  1           97.3 µs         116.1 µs         112.8 µs         142.3 µs       0.86   individual
+  2          115.9 µs         139.7 µs         118.2 µs         129.8 µs       0.98   individual
+  5          249.8 µs         260.9 µs         126.0 µs         133.0 µs       1.98   compartida
+  10         399.7 µs         419.8 µs         142.7 µs         166.5 µs       2.80   compartida
+  25         961.7 µs         991.3 µs         182.0 µs         199.8 µs       5.28   compartida
+  50          1.97 ms          2.25 ms         241.2 µs         255.6 µs       8.18   compartida
 k* medido (rango pequeño) = 5
 
 rango grande = 2000  (|R| = 296 salas)
   k    Individual med   Individual p95   Compartida med   Compartida p95   Ind/Comp   Más rápida
   ──   ──────────────   ──────────────   ──────────────   ──────────────   ────────   ──────────
-  1          758.9 µs          1.50 ms          1.94 ms          3.93 ms       0.39   individual
-  2           1.11 ms          2.47 ms          1.95 ms          3.42 ms       0.57   individual
-  5           3.56 ms          5.94 ms          1.99 ms          3.11 ms       1.79   compartida
-  10          6.35 ms          9.86 ms          2.09 ms          3.46 ms       3.03   compartida
-  25         17.75 ms         23.01 ms          2.18 ms          4.06 ms       8.13   compartida
-  50         31.63 ms         39.03 ms          2.40 ms          4.25 ms      13.16   compartida
+  1          245.2 µs         270.6 µs         604.0 µs         654.5 µs       0.41   individual
+  2          357.9 µs         370.2 µs         603.3 µs         636.1 µs       0.59   individual
+  5           1.03 ms          1.07 ms         611.4 µs         696.4 µs       1.68   compartida
+  10          1.88 ms          1.94 ms         624.7 µs         657.6 µs       3.02   compartida
+  25          4.89 ms          5.02 ms         665.6 µs         710.6 µs       7.35   compartida
+  50          8.89 ms          8.98 ms         726.4 µs         766.2 µs      12.24   compartida
 k* medido (rango grande) = 5
 
 -M4: 50 cazadores, puertas estables, cambiantes y recalcular siempre (FR-030, FR-031, FR-032)-
 cripta sintética de 300 salas, 50 cazadores de rango 2000 en salas al azar de la cripta, activados antes de medir; 100 ciclos (ejecutar_accion('esperar') hasta la siguiente decisión del jugador); las puertas de (b) se cambian con motor._escribir_cerrada entre ciclos
 cumple = p95 < 20 ms (criterio de bench_ciclo.py); búsquedas contadas en una pasada idéntica aparte
-  Escenario                                       Mediana        p95   Búsquedas   primer_paso   campo_hacia   Por ciclo   version_puertas            
-  ─────────────────────────────────────────────   ───────   ────────   ─────────   ───────────   ───────────   ─────────   ───────────────   ─────────
-  (a) puertas estables, compartida                3.95 ms    6.87 ms         100             0           100         1.0                 0      cumple
-  (b) puertas cambian (2 por ciclo), compartida   3.82 ms    5.72 ms         100             0           100         1.0               398      cumple
-  (c) recalcular siempre desde cero, individual   2.56 ms   29.48 ms         603           603             0         6.0                 0   NO cumple
+  Escenario                                        Mediana       p95   Búsquedas   primer_paso   campo_hacia   Por ciclo   version_puertas         
+  ─────────────────────────────────────────────   ────────   ───────   ─────────   ───────────   ───────────   ─────────   ───────────────   ──────
+  (a) puertas estables, compartida                 1.10 ms   1.32 ms         100             0           100         1.0                 0   cumple
+  (b) puertas cambian (2 por ciclo), compartida    1.10 ms   1.26 ms         100             0           100         1.0               398   cumple
+  (c) recalcular siempre desde cero, individual   680.7 µs   8.11 ms         603           603             0         6.0                 0   cumple
 
 -M5: decisión del cazador en criptas de tamaño creciente (FR-033, SC-007)-
 criptas sintéticas (semilla 7) por cripta_terreno y armar_motor; jugador en el centro de la cuadrícula, cazador 3 salas a su derecha en la misma fila, rango 600, estrategia individual; antes de cronometrar cada tamaño, 500 llamadas a decidir() sin medir; cada dato es la mediana de 40 muestras de 50 llamadas; 5 repeticiones de todos los tamaños
@@ -61,40 +61,38 @@ criptas sintéticas (semilla 7) por cripta_terreno y armar_motor; jugador en el 
 decidir(): mediana por tamaño y repetición, y cociente de la repetición
   Repetición         100 salas   1000 salas   10000 salas   100000 salas   tiempo(100000) / tiempo(100)
   ────────────────   ─────────   ──────────   ───────────   ────────────   ────────────────────────────
-  1                    84.7 µs      70.8 µs       49.5 µs        78.7 µs                           0.93
-  2                    78.9 µs      68.0 µs       42.2 µs        62.5 µs                           0.79
-  3                    80.8 µs      69.2 µs       44.6 µs        78.1 µs                           0.97
-  4                    83.6 µs      56.8 µs       41.9 µs        87.6 µs                           1.05
-  5                    82.2 µs      40.4 µs       41.9 µs        79.7 µs                           0.97
-  mediana de las 5     82.2 µs      68.0 µs       42.2 µs        78.7 µs                           0.96
-cociente final (mediana de las 5 repeticiones) tiempo(100000) / tiempo(100) = 0.96  (máximo 1.5): cumple
+  1                    25.4 µs      21.6 µs       13.5 µs        24.2 µs                           0.95
+  2                    25.7 µs      21.6 µs       13.5 µs        24.1 µs                           0.94
+  3                    26.1 µs      21.7 µs       13.1 µs        24.4 µs                           0.94
+  4                    26.1 µs      21.4 µs       13.4 µs        24.6 µs                           0.94
+  5                    25.7 µs      21.8 µs       13.6 µs        24.2 µs                           0.94
+  mediana de las 5     25.7 µs      21.6 µs       13.5 µs        24.2 µs                           0.94
+cociente final (mediana de las 5 repeticiones) tiempo(100000) / tiempo(100) = 0.94  (máximo 1.5): cumple
 
 control: Preparación = generar la cripta y armar el motor (no se mide en la decisión); Reutiliza/Espacio nuevo = primer_paso de Modelo.BusquedaRuta con el EspacioBusqueda del motor o con espacio=None (listas nuevas en cada llamada)
   Salas    Preparación   |R|   Decisión   Reutiliza med   Reutiliza p95   Espacio nuevo med   Espacio nuevo p95   Nuevo/Reutiliza
   ──────   ───────────   ───   ────────   ─────────────   ─────────────   ─────────────────   ─────────────────   ───────────────
-  100           0.01 s    40      MOVER         69.7 µs        125.4 µs             71.4 µs            134.7 µs               1.0
-  1000          0.04 s    22      MOVER         43.0 µs         70.4 µs             73.1 µs            118.2 µs               1.7
-  10000         0.37 s    38      MOVER         39.3 µs        103.4 µs             92.9 µs            142.3 µs               2.4
-  100000        5.37 s    40      MOVER         43.4 µs         81.8 µs             2.32 ms             3.78 ms              53.5
-(medición actualizada sola con python -m tests.bench_cazador M5, 33.1 s; el resto del archivo es de la última corrida completa)
+  100           0.00 s    40      MOVER         25.2 µs         32.8 µs             25.8 µs             27.3 µs               1.0
+  1000          0.01 s    22      MOVER         20.7 µs         21.9 µs             24.6 µs             25.6 µs               1.2
+  10000         0.14 s    38      MOVER         12.4 µs         12.8 µs             44.7 µs             46.2 µs               3.6
+  100000        2.47 s    40      MOVER         24.2 µs         24.9 µs            617.6 µs            840.7 µs              25.5
 
 -M6: rango pequeño frente a grande en la misma cripta (FR-033)-
 cripta sintética de 300 salas, un cazador, estrategia individual; «cerca» y «lejos» son las salas con distancia hacia el jugador más próxima a 300 y a 1200; |R| = salas a distancia ≤ rango; 40 muestras de 50 llamadas
   Posición   Distancia   Rango   |R|   Decisión    Mediana        p95
   ────────   ─────────   ─────   ───   ────────   ────────   ────────
-  cerca            300     500    48      MOVER   160.6 µs   209.0 µs
-  cerca            300    2000   296      MOVER   148.4 µs   214.7 µs
-  lejos           1200     500    48    ESPERAR   256.3 µs   360.0 µs
-  lejos           1200    2000   296      MOVER   909.9 µs    1.10 ms
-cerca: grande / pequeño = 0.92
-lejos: grande / pequeño = 3.55
+  cerca            300     500    48      MOVER    41.0 µs    45.5 µs
+  cerca            300    2000   296      MOVER    42.1 µs    43.0 µs
+  lejos           1200     500    48    ESPERAR    68.1 µs    69.2 µs
+  lejos           1200    2000   296      MOVER   248.9 µs   251.5 µs
+cerca: grande / pequeño = 1.03
+lejos: grande / pequeño = 3.65
 
 -M7: ciclo completo con 50 cazadores activos (FR-030, SC-004)-
 cripta sintética de 300 salas (PROVISIONAL: la de referencia aún no está publicada), 50 cazadores activados con rangos al azar en (500, 1000, 2000) en salas al azar, estrategia del motor por defecto = 'compartida'; 100 ciclos como bench_motor.bench_ciclo_real
   Cazadores activos   Mediana       p95         
   ─────────────────   ───────   ───────   ──────
-  50                  2.01 ms   3.39 ms   cumple
+  50                  1.13 ms   1.34 ms   cumple
 cumple = p95 < 20 ms (criterio de bench_ciclo.py)
-(medición actualizada sola con python -m tests.bench_cazador M7, 0.3 s; el resto del archivo es de la última corrida completa)
 
-duración de la corrida: 99.3 s
+duración de la corrida: 29.4 s

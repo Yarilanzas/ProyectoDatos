@@ -1,75 +1,75 @@
 -Línea de tiempo: consultar, registrar, recortar, guardar y cargar (spec 004, M1 a M10)-
-equipo: Windows-10-10.0.19045-SP0 | AMD64 Family 23 Model 17 Stepping 0, AuthenticAMD | Python 3.12.10
+equipo: Windows-11-10.0.26200-SP0 | AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD | Python 3.14.6
 partidas deterministas por semilla sobre una cripta sintética de 20 salas, sin red ni vista, con el recolector de basura detenido al medir; mediana, p95 y máximo de las muestras indicadas
 K por omisión del programa: 50 (constante K_POR_OMISION de Modelo/LineaTiempo.py)
 
 -M1: tiempo de `historia` (#k y por instante) según K (T101; FR-018, FR-020, SC-002)-
-M1 K=1         n=5000 consultas=200 puntos=5001  rehecho<=1     mediana     2.502 ms p95     4.471 ms máx     7.441 ms < 50 ms: 100 %
-M1 K=10        n=5000 consultas=200 puntos=501   rehecho<=10    mediana     1.994 ms p95     4.417 ms máx     7.139 ms < 50 ms: 100 %
-M1 K=50        n=5000 consultas=200 puntos=101   rehecho<=50    mediana     3.085 ms p95     6.365 ms máx    15.557 ms < 50 ms: 100 %   cumple SC-002 (100 % < 50 ms)
-M1 K=100       n=5000 consultas=200 puntos=51    rehecho<=100   mediana     5.771 ms p95    11.321 ms máx    19.739 ms < 50 ms: 100 %
-M1 K=500       n=5000 consultas=200 puntos=11    rehecho<=497   mediana    17.007 ms p95    39.363 ms máx    53.578 ms < 50 ms:  99 %
-M1 sin puntos  n=5000 consultas=20  puntos=1     rehecho<=4500  mediana   142.607 ms p95   296.326 ms máx   341.586 ms < 50 ms:  15 %
+M1 K=1         n=5000 consultas=200 puntos=5001  rehecho<=1     mediana     0.823 ms p95     0.896 ms máx     7.935 ms < 50 ms: 100 %
+M1 K=10        n=5000 consultas=200 puntos=501   rehecho<=10    mediana     0.805 ms p95     1.018 ms máx     2.907 ms < 50 ms: 100 %
+M1 K=50        n=5000 consultas=200 puntos=101   rehecho<=50    mediana     0.832 ms p95     1.765 ms máx     5.734 ms < 50 ms: 100 %   cumple SC-002 (100 % < 50 ms)
+M1 K=100       n=5000 consultas=200 puntos=51    rehecho<=100   mediana     1.774 ms p95     2.715 ms máx     5.590 ms < 50 ms: 100 %
+M1 K=500       n=5000 consultas=200 puntos=11    rehecho<=497   mediana     6.063 ms p95    10.897 ms máx    13.929 ms < 50 ms: 100 %
+M1 sin puntos  n=5000 consultas=20  puntos=1     rehecho<=4500  mediana    51.166 ms p95    98.707 ms máx    99.227 ms < 50 ms:  50 %
 
 -M2: memoria de la línea (tracemalloc) y bytes por punto (T102; FR-021, SC-006)-
-M2 K=1         n=2500   línea    69528.2 KiB puntos=2501  (cota 2501: cumple)     27.7 KiB/punto
-M2 K=10        n=2500   línea     7332.6 KiB puntos=251   (cota 251: cumple)     27.7 KiB/punto
-M2 K=50        n=2500   línea     1799.7 KiB puntos=51    (cota 51: cumple)     27.9 KiB/punto
-M2 K=100       n=2500   línea     1108.1 KiB puntos=26    (cota 26: cumple)     28.2 KiB/punto
-M2 K=500       n=2500   línea      550.2 KiB puntos=6     (cota 6: cumple)     29.5 KiB/punto
-M2 sin puntos  n=2500   línea      402.7 KiB puntos=1     (cota 1: cumple)
-M2 K=10        n=5000   línea    14726.9 KiB puntos=501   (cota 501: cumple)     27.9 KiB/punto x2.01 al duplicar n (cumple)
-M2 K=50        n=5000   línea     3599.2 KiB puntos=101   (cota 101: cumple)     28.0 KiB/punto x2.00 al duplicar n (cumple)
-M2 K=100       n=5000   línea     2207.4 KiB puntos=51    (cota 51: cumple)     28.2 KiB/punto x1.99 al duplicar n (cumple)
-M2 K=500       n=5000   línea     1089.7 KiB puntos=11    (cota 11: cumple)     29.5 KiB/punto x1.98 al duplicar n (cumple)
-M2 sin puntos  n=5000   línea      794.9 KiB puntos=1     (cota 1: cumple) x1.97 al duplicar n (cumple)
-M2 K=10        n=10000  línea    29511.4 KiB puntos=1001  (cota 1001: cumple)     27.9 KiB/punto x2.00 al duplicar n (cumple)
-M2 K=50        n=10000  línea     7197.2 KiB puntos=201   (cota 201: cumple)     28.1 KiB/punto x2.00 al duplicar n (cumple)
-M2 K=100       n=10000  línea     4405.5 KiB puntos=101   (cota 101: cumple)     28.2 KiB/punto x2.00 al duplicar n (cumple)
-M2 K=500       n=10000  línea     2168.7 KiB puntos=21    (cota 21: cumple)     29.3 KiB/punto x1.99 al duplicar n (cumple)
-M2 sin puntos  n=10000  línea     1582.1 KiB puntos=1     (cota 1: cumple) x1.99 al duplicar n (cumple)
+M2 K=1         n=2500   línea    64988.1 KiB puntos=2501  (cota 2501: cumple)     25.8 KiB/punto
+M2 K=10        n=2500   línea     6885.2 KiB puntos=251   (cota 251: cumple)     25.9 KiB/punto
+M2 K=50        n=2500   línea     1716.9 KiB puntos=51    (cota 51: cumple)     26.1 KiB/punto
+M2 K=100       n=2500   línea     1070.3 KiB puntos=26    (cota 26: cumple)     26.4 KiB/punto
+M2 K=500       n=2500   línea      549.2 KiB puntos=6     (cota 6: cumple)     27.7 KiB/punto
+M2 sin puntos  n=2500   línea      411.0 KiB puntos=1     (cota 1: cumple)
+M2 K=10        n=5000   línea    13826.5 KiB puntos=501   (cota 501: cumple)     26.0 KiB/punto x2.01 al duplicar n (cumple)
+M2 K=50        n=5000   línea     3433.6 KiB puntos=101   (cota 101: cumple)     26.2 KiB/punto x2.00 al duplicar n (cumple)
+M2 K=100       n=5000   línea     2133.5 KiB puntos=51    (cota 51: cumple)     26.4 KiB/punto x1.99 al duplicar n (cumple)
+M2 K=500       n=5000   línea     1089.1 KiB puntos=11    (cota 11: cumple)     27.6 KiB/punto x1.98 al duplicar n (cumple)
+M2 sin puntos  n=5000   línea      812.6 KiB puntos=1     (cota 1: cumple) x1.98 al duplicar n (cumple)
+M2 K=10        n=10000  línea    27707.1 KiB puntos=1001  (cota 1001: cumple)     26.1 KiB/punto x2.00 al duplicar n (cumple)
+M2 K=50        n=10000  línea     6866.2 KiB puntos=201   (cota 201: cumple)     26.2 KiB/punto x2.00 al duplicar n (cumple)
+M2 K=100       n=10000  línea     4258.9 KiB puntos=101   (cota 101: cumple)     26.4 KiB/punto x2.00 al duplicar n (cumple)
+M2 K=500       n=10000  línea     2169.1 KiB puntos=21    (cota 21: cumple)     27.5 KiB/punto x1.99 al duplicar n (cumple)
+M2 sin puntos  n=10000  línea     1619.1 KiB puntos=1     (cota 1: cumple) x1.99 al duplicar n (cumple)
 M2 K=1 solo se midió con n = 2 500; con n = 5 000 y 10 000 queda sin medir (HIPÓTESIS: crece como n · bytes por punto)
 
 -M3: costo de una copia y de materializar, frente a deepcopy a secas (T103; FR-017, FR-020)-
-M3 N=20    copiar     2.055 ms     18.0 KiB | materializar     2.711 ms | deepcopy a secas     5.037 ms | T018: 0.81 ms y 15 KiB
-M3 N=60    copiar     3.196 ms     31.4 KiB | materializar     5.489 ms | deepcopy a secas     8.305 ms | sin referencia en T018
-M3 N=200   copiar     4.695 ms     76.5 KiB | materializar     7.720 ms | deepcopy a secas    32.219 ms | T018: 3.87 ms y 74 KiB
-M3 N=2000  copiar    66.938 ms    666.4 KiB | materializar   119.817 ms | deepcopy a secas RecursionError (no sirve) | T018: 42.5 ms y 664 KiB
+M3 N=20    copiar     0.313 ms     20.7 KiB | materializar     0.467 ms | deepcopy a secas     0.863 ms | T018: 0.81 ms y 15 KiB
+M3 N=60    copiar     0.614 ms     34.1 KiB | materializar     1.097 ms | deepcopy a secas     1.899 ms | sin referencia en T018
+M3 N=200   copiar     1.684 ms     79.2 KiB | materializar     3.285 ms | deepcopy a secas     5.910 ms | T018: 3.87 ms y 74 KiB
+M3 N=2000  copiar    17.807 ms    669.1 KiB | materializar    33.333 ms | deepcopy a secas RecursionError (no sirve) | T018: 42.5 ms y 664 KiB
 M3 la referencia T018 mide 20 repeticiones con el motor tras 10 acciones; aquí 7 repeticiones, motor tras 10 acciones
 
 -M4: costo del recorte de la línea (`retroceder`) según las acciones de la partida (T104; FR-027, SC-010)-
-M4 n=500    muestras=15  recorte de la línea: mediana     1.984 ms p95     3.445 ms máx     3.445 ms
-M4 n=5000   muestras=15  recorte de la línea: mediana     2.641 ms p95     3.601 ms máx     3.601 ms
-M4 n=50000  muestras=15  recorte de la línea: mediana     2.722 ms p95     3.868 ms máx     3.868 ms
-M4 tiempo casi constante: mediana con n=50000 / mediana con n=500 = 1.37 (< 3: cumple)
-M4 umbral numérico de SC-010 fijado con estos datos: 8 ms por recorte (dos veces el mayor máximo medido, redondeado hacia arriba a ms; a revisar si cambia la medición)
+M4 n=500    muestras=15  recorte de la línea: mediana     0.535 ms p95     0.725 ms máx     0.725 ms
+M4 n=5000   muestras=15  recorte de la línea: mediana     0.531 ms p95     0.624 ms máx     0.624 ms
+M4 n=50000  muestras=15  recorte de la línea: mediana     0.555 ms p95     0.700 ms máx     0.700 ms
+M4 tiempo casi constante: mediana con n=50000 / mediana con n=500 = 1.04 (< 3: cumple)
+M4 umbral numérico de SC-010 fijado con estos datos: 2 ms por recorte (dos veces el mayor máximo medido, redondeado hacia arriba a ms; a revisar si cambia la medición)
 
 -M5: sobrecosto de registrar cada acción (T105; FR-017, FR-021; p95 < 20 ms de §5.2)-
-M5 sin línea      n=5000 acción: mediana   0.0512 ms p95   0.0949 ms máx   6.2632 ms
-M5 con línea K=1     n=5000 registrar: mediana   2.0887 ms p95   3.9141 ms máx  21.6297 ms | acción + registrar: mediana   2.2336 ms p95   4.1361 ms máx  21.8619 ms   cumple (p95 de registrar < 20 ms)
-M5 con línea K=10    n=5000 registrar: mediana   0.0053 ms p95   1.8949 ms máx   5.7795 ms | acción + registrar: mediana   0.0769 ms p95   1.9594 ms máx   9.2661 ms   cumple (p95 de registrar < 20 ms)
-M5 con línea K=50    n=5000 registrar: mediana   0.0049 ms p95   0.0096 ms máx   3.6510 ms | acción + registrar: mediana   0.0661 ms p95   0.1420 ms máx   6.7263 ms   cumple (p95 de registrar < 20 ms)
-M5 con línea K=500   n=5000 registrar: mediana   0.0063 ms p95   0.0084 ms máx   2.9980 ms | acción + registrar: mediana   0.0864 ms p95   0.1241 ms máx   7.6212 ms   cumple (p95 de registrar < 20 ms)
+M5 sin línea      n=5000 acción: mediana   0.0206 ms p95   0.0268 ms máx   2.3965 ms
+M5 con línea K=1     n=5000 registrar: mediana   0.5265 ms p95   0.5571 ms máx   1.0410 ms | acción + registrar: mediana   0.5552 ms p95   0.5913 ms máx   2.7571 ms   cumple (p95 de registrar < 20 ms)
+M5 con línea K=10    n=5000 registrar: mediana   0.0018 ms p95   0.5242 ms máx   0.7646 ms | acción + registrar: mediana   0.0252 ms p95   0.5464 ms máx   2.6195 ms   cumple (p95 de registrar < 20 ms)
+M5 con línea K=50    n=5000 registrar: mediana   0.0017 ms p95   0.0023 ms máx   0.5673 ms | acción + registrar: mediana   0.0239 ms p95   0.0345 ms máx   2.6268 ms   cumple (p95 de registrar < 20 ms)
+M5 con línea K=500   n=5000 registrar: mediana   0.0017 ms p95   0.0021 ms máx   0.6043 ms | acción + registrar: mediana   0.0243 ms p95   0.0306 ms máx   2.0423 ms   cumple (p95 de registrar < 20 ms)
 
 -M6: cargar: tiempo de reconstruir y tamaño del bloque (T106; FR-022, FR-031)-
-M6 n=1000   K=10    sin @cargar reconstruir      364.6 ms bloque     26.6 KiB ( 27.3 B/acción) | pickle de UN punto     13.1 KiB (unos      1.3 MiB con 101 puntos)
-M6 n=1000   K=10    con @cargar reconstruir      385.0 ms bloque     26.7 KiB ( 27.3 B/acción) | pickle de UN punto     12.8 KiB (unos      1.3 MiB con 101 puntos)
-M6 n=1000   K=50    sin @cargar reconstruir      143.6 ms bloque     26.6 KiB ( 27.3 B/acción) | pickle de UN punto     13.1 KiB (unos      0.3 MiB con 21 puntos)
-M6 n=1000   K=50    con @cargar reconstruir      150.6 ms bloque     26.7 KiB ( 27.3 B/acción) | pickle de UN punto     12.8 KiB (unos      0.3 MiB con 21 puntos)
-M6 n=1000   K=500   sin @cargar reconstruir       97.7 ms bloque     26.6 KiB ( 27.3 B/acción) | pickle de UN punto     13.1 KiB (unos      0.0 MiB con 3 puntos)
-M6 n=1000   K=500   con @cargar reconstruir      156.9 ms bloque     26.7 KiB ( 27.3 B/acción) | pickle de UN punto     12.8 KiB (unos      0.0 MiB con 3 puntos)
-M6 n=5000   K=10    sin @cargar reconstruir     1764.7 ms bloque    133.0 KiB ( 27.2 B/acción) | pickle de UN punto     13.1 KiB (unos      6.4 MiB con 501 puntos)
-M6 n=5000   K=10    con @cargar reconstruir     1610.2 ms bloque    133.1 KiB ( 27.3 B/acción) | pickle de UN punto     12.8 KiB (unos      6.3 MiB con 501 puntos)
-M6 n=5000   K=50    sin @cargar reconstruir      670.1 ms bloque    133.0 KiB ( 27.2 B/acción) | pickle de UN punto     13.1 KiB (unos      1.3 MiB con 101 puntos)
-M6 n=5000   K=50    con @cargar reconstruir      584.0 ms bloque    133.1 KiB ( 27.3 B/acción) | pickle de UN punto     12.8 KiB (unos      1.3 MiB con 101 puntos)
-M6 n=5000   K=500   sin @cargar reconstruir      415.0 ms bloque    133.0 KiB ( 27.2 B/acción) | pickle de UN punto     13.1 KiB (unos      0.1 MiB con 11 puntos)
-M6 n=5000   K=500   con @cargar reconstruir      518.3 ms bloque    133.1 KiB ( 27.3 B/acción) | pickle de UN punto     12.8 KiB (unos      0.1 MiB con 11 puntos)
-M6 n=20000  K=10    sin @cargar reconstruir     5902.3 ms bloque    532.3 KiB ( 27.3 B/acción) | pickle de UN punto     13.1 KiB (unos     25.6 MiB con 2001 puntos)
-M6 n=20000  K=10    con @cargar reconstruir     5532.2 ms bloque    532.3 KiB ( 27.3 B/acción) | pickle de UN punto     12.8 KiB (unos     25.1 MiB con 2001 puntos)
-M6 n=20000  K=50    sin @cargar reconstruir     2627.6 ms bloque    532.3 KiB ( 27.3 B/acción) | pickle de UN punto     13.1 KiB (unos      5.1 MiB con 401 puntos)
-M6 n=20000  K=50    con @cargar reconstruir     2797.8 ms bloque    532.3 KiB ( 27.3 B/acción) | pickle de UN punto     12.8 KiB (unos      5.0 MiB con 401 puntos)
-M6 n=20000  K=500   sin @cargar reconstruir     1851.8 ms bloque    532.3 KiB ( 27.3 B/acción) | pickle de UN punto     13.1 KiB (unos      0.5 MiB con 41 puntos)
-M6 n=20000  K=500   con @cargar reconstruir     1830.2 ms bloque    532.3 KiB ( 27.3 B/acción) | pickle de UN punto     12.8 KiB (unos      0.5 MiB con 41 puntos)
+M6 n=1000   K=10    sin @cargar reconstruir       86.4 ms bloque     26.6 KiB ( 27.3 B/acción) | pickle de UN punto     13.1 KiB (unos      1.3 MiB con 101 puntos)
+M6 n=1000   K=10    con @cargar reconstruir       92.2 ms bloque     26.7 KiB ( 27.3 B/acción) | pickle de UN punto     12.8 KiB (unos      1.3 MiB con 101 puntos)
+M6 n=1000   K=50    sin @cargar reconstruir       44.7 ms bloque     26.6 KiB ( 27.3 B/acción) | pickle de UN punto     13.1 KiB (unos      0.3 MiB con 21 puntos)
+M6 n=1000   K=50    con @cargar reconstruir       49.9 ms bloque     26.7 KiB ( 27.3 B/acción) | pickle de UN punto     12.8 KiB (unos      0.3 MiB con 21 puntos)
+M6 n=1000   K=500   sin @cargar reconstruir       33.4 ms bloque     26.6 KiB ( 27.3 B/acción) | pickle de UN punto     13.1 KiB (unos      0.0 MiB con 3 puntos)
+M6 n=1000   K=500   con @cargar reconstruir       39.3 ms bloque     26.7 KiB ( 27.3 B/acción) | pickle de UN punto     12.8 KiB (unos      0.0 MiB con 3 puntos)
+M6 n=5000   K=10    sin @cargar reconstruir      403.1 ms bloque    133.0 KiB ( 27.2 B/acción) | pickle de UN punto     13.1 KiB (unos      6.4 MiB con 501 puntos)
+M6 n=5000   K=10    con @cargar reconstruir      413.3 ms bloque    133.1 KiB ( 27.3 B/acción) | pickle de UN punto     12.8 KiB (unos      6.3 MiB con 501 puntos)
+M6 n=5000   K=50    sin @cargar reconstruir      192.9 ms bloque    133.0 KiB ( 27.2 B/acción) | pickle de UN punto     13.1 KiB (unos      1.3 MiB con 101 puntos)
+M6 n=5000   K=50    con @cargar reconstruir      200.3 ms bloque    133.1 KiB ( 27.3 B/acción) | pickle de UN punto     12.8 KiB (unos      1.3 MiB con 101 puntos)
+M6 n=5000   K=500   sin @cargar reconstruir      143.1 ms bloque    133.0 KiB ( 27.2 B/acción) | pickle de UN punto     13.1 KiB (unos      0.1 MiB con 11 puntos)
+M6 n=5000   K=500   con @cargar reconstruir      148.8 ms bloque    133.1 KiB ( 27.3 B/acción) | pickle de UN punto     12.8 KiB (unos      0.1 MiB con 11 puntos)
+M6 n=20000  K=10    sin @cargar reconstruir     1606.4 ms bloque    532.3 KiB ( 27.3 B/acción) | pickle de UN punto     13.1 KiB (unos     25.6 MiB con 2001 puntos)
+M6 n=20000  K=10    con @cargar reconstruir     1629.1 ms bloque    532.3 KiB ( 27.3 B/acción) | pickle de UN punto     12.8 KiB (unos     25.1 MiB con 2001 puntos)
+M6 n=20000  K=50    sin @cargar reconstruir      802.2 ms bloque    532.3 KiB ( 27.3 B/acción) | pickle de UN punto     13.1 KiB (unos      5.1 MiB con 401 puntos)
+M6 n=20000  K=50    con @cargar reconstruir      756.5 ms bloque    532.3 KiB ( 27.3 B/acción) | pickle de UN punto     12.8 KiB (unos      5.0 MiB con 401 puntos)
+M6 n=20000  K=500   sin @cargar reconstruir      561.1 ms bloque    532.3 KiB ( 27.3 B/acción) | pickle de UN punto     13.1 KiB (unos      0.5 MiB con 41 puntos)
+M6 n=20000  K=500   con @cargar reconstruir      556.0 ms bloque    532.3 KiB ( 27.3 B/acción) | pickle de UN punto     12.8 KiB (unos      0.5 MiB con 41 puntos)
 M6 cada tiempo es la mediana de 3 reconstrucciones (n <= 5 000) o 1 (n = 20 000); el pickle es solo una cota de referencia de guardar puntos completos (decisión 2: se guarda el guion)
 
 -M7: los mismos 100 instantes con K distintos dan los mismos resúmenes (T107; FR-028, SC-003)-
@@ -78,40 +78,40 @@ M7 semilla=2 acciones=150 instantes=100 K=1/50/500: resúmenes idénticos (cumpl
 M7 semilla=3 acciones=150 instantes=100 K=1/50/500: resúmenes idénticos (cumple FR-028, SC-003)
 
 -M8: `--replay --hasta` de principio a fin, con y sin --checkpoint-cada (T108; FR-011, FR-028)-
-M8 acciones=1000  --replay (sin --hasta)                  106.6 ms (x1.00 del replay normal) código 0, 3 líneas
-M8 acciones=1000  --hasta                                 191.6 ms (x1.80 del replay normal) código 0, 88 líneas
-M8 acciones=1000  --hasta --checkpoint-cada 1            2339.7 ms (x21.95 del replay normal) código 0, 88 líneas
-M8 acciones=1000  --hasta --checkpoint-cada 10            204.9 ms (x1.92 del replay normal) código 0, 88 líneas
-M8 acciones=1000  --hasta --checkpoint-cada 500           144.9 ms (x1.36 del replay normal) código 0, 88 líneas
+M8 acciones=1000  --replay (sin --hasta)                   27.6 ms (x1.00 del replay normal) código 0, 3 líneas
+M8 acciones=1000  --hasta                                  45.6 ms (x1.65 del replay normal) código 0, 88 líneas
+M8 acciones=1000  --hasta --checkpoint-cada 1             556.8 ms (x20.17 del replay normal) código 0, 88 líneas
+M8 acciones=1000  --hasta --checkpoint-cada 10             85.9 ms (x3.11 del replay normal) código 0, 88 líneas
+M8 acciones=1000  --hasta --checkpoint-cada 500            46.7 ms (x1.69 del replay normal) código 0, 88 líneas
 M8 informa: el costo de `--hasta` es el de reproducir toda la bitácora más una consulta; K solo cambia los puntos que se guardan
 
 -M9: oráculo de la copia: estructurada frente a deepcopy completo, N <= 60 (T109; FR-017, FR-021)-
-M9 N=20  resúmenes iguales (antes y tras 20 acciones más: cumple) | copiar+materializar    3.486 ms | deepcopy completo    5.063 ms
-M9 N=60  resúmenes iguales (antes y tras 20 acciones más: cumple) | copiar+materializar    5.826 ms | deepcopy completo    5.879 ms
+M9 N=20  resúmenes iguales (antes y tras 20 acciones más: cumple) | copiar+materializar    0.801 ms | deepcopy completo    0.874 ms
+M9 N=60  resúmenes iguales (antes y tras 20 acciones más: cumple) | copiar+materializar    1.700 ms | deepcopy completo    1.940 ms
 
 -M10: retroceso antes y después de la línea de tiempo (T110; FR-014, FR-027, SC-010; repite P1 §4.6)-
-M10 P1 §4.6 (bench_personaC, sintético: 5 intervalos x 50 cambios, solo Historial): registrar 250 cambios   0.0940 ms, deshacer 5 intervalos   0.0240 ms (mediana de 7)
-M10 n=500    partidas=3 retrocesos=15  antes (solo Historial)   0.0430 ms | después (Historial + línea)   2.0266 ms | la línea agrega   1.9836 ms
-M10 n=5000   partidas=3 retrocesos=15  antes (solo Historial)   0.0539 ms | después (Historial + línea)   2.7017 ms | la línea agrega   2.6478 ms
-M10 n=50000  partidas=3 retrocesos=15  antes (solo Historial)   0.0579 ms | después (Historial + línea)   2.7731 ms | la línea agrega   2.7152 ms
-M10 la línea multiplica a lo sumo por 50.1 la mediana de retroceder; el retroceso entero (Historial + línea) tarda a lo sumo 3.929 ms (por debajo de 20 ms): el `Historial` sigue siendo adecuado (no se cambia)
+M10 P1 §4.6 (bench_personaC, sintético: 5 intervalos x 50 cambios, solo Historial): registrar 250 cambios   0.0463 ms, deshacer 5 intervalos   0.0172 ms (mediana de 7)
+M10 n=500    partidas=3 retrocesos=15  antes (solo Historial)   0.0152 ms | después (Historial + línea)   0.5522 ms | la línea agrega   0.5370 ms
+M10 n=5000   partidas=3 retrocesos=15  antes (solo Historial)   0.0142 ms | después (Historial + línea)   0.5486 ms | la línea agrega   0.5344 ms
+M10 n=50000  partidas=3 retrocesos=15  antes (solo Historial)   0.0164 ms | después (Historial + línea)   0.5731 ms | la línea agrega   0.5567 ms
+M10 la línea multiplica a lo sumo por 38.6 la mediana de retroceder; el retroceso entero (Historial + línea) tarda a lo sumo 0.744 ms (por debajo de 20 ms): el `Historial` sigue siendo adecuado (no se cambia)
 M10 la agenda (P1 §4.1) no se mide aquí [PERSONAS: grupo]
 
 -T113: justificación del K por omisión (FR-018, SC-002, SC-007)-
 T113 regla: cumple el K con todas las consultas < 50 ms y p95 x 2.5 < 50 ms; se conserva el K vigente mientras cumpla, y si no, el mayor K que cumpla
 T113 memoria con n = 5000; reconstruir con n = 5000 (sin @cargar)
-T113 K=1      consulta: p95    4.47 ms (margen x 11.2) máx    7.44 ms (margen x 6.7) | memoria       - KiB | registrar p95   3.914 ms | reconstruir       - ms   cumple
-T113 K=10     consulta: p95    4.42 ms (margen x 11.3) máx    7.14 ms (margen x 7.0) | memoria   14726.9 KiB | registrar p95   1.895 ms | reconstruir   1764.7 ms   cumple
-T113 K=50     consulta: p95    6.37 ms (margen x  7.9) máx   15.56 ms (margen x 3.2) | memoria    3599.2 KiB | registrar p95   0.010 ms | reconstruir    670.1 ms   cumple
-T113 K=100    consulta: p95   11.32 ms (margen x  4.4) máx   19.74 ms (margen x 2.5) | memoria    2207.4 KiB | registrar p95       - ms | reconstruir       - ms   cumple
-T113 K=500    consulta: p95   39.36 ms (margen x  1.3) máx   53.58 ms (margen x 0.9) | memoria    1089.7 KiB | registrar p95   0.008 ms | reconstruir    415.0 ms   NO cumple
-T113 sin puntos de control: consulta p95  296.33 ms máx  341.59 ms (margen x0.15): NO cumple; memoria     794.9 KiB
-T113 también cumplen: 1, 10, 50, 100; los datos no distinguen entre ellos en el peor caso (el máximo lo fija un valor atípico): más K ahorra memoria, menos K da consultas más cortas
+T113 K=1      consulta: p95    0.90 ms (margen x 55.8) máx    7.93 ms (margen x 6.3) | memoria       - KiB | registrar p95   0.557 ms | reconstruir       - ms   cumple
+T113 K=10     consulta: p95    1.02 ms (margen x 49.1) máx    2.91 ms (margen x17.2) | memoria   13826.5 KiB | registrar p95   0.524 ms | reconstruir    403.1 ms   cumple
+T113 K=50     consulta: p95    1.77 ms (margen x 28.3) máx    5.73 ms (margen x 8.7) | memoria    3433.6 KiB | registrar p95   0.002 ms | reconstruir    192.9 ms   cumple
+T113 K=100    consulta: p95    2.72 ms (margen x 18.4) máx    5.59 ms (margen x 8.9) | memoria    2133.5 KiB | registrar p95       - ms | reconstruir       - ms   cumple
+T113 K=500    consulta: p95   10.90 ms (margen x  4.6) máx   13.93 ms (margen x 3.6) | memoria    1089.1 KiB | registrar p95   0.002 ms | reconstruir    143.1 ms   cumple
+T113 sin puntos de control: consulta p95   98.71 ms máx   99.23 ms (margen x0.50): NO cumple; memoria     812.6 KiB
+T113 también cumplen: 1, 10, 50, 100, 500; los datos no distinguen entre ellos en el peor caso (el máximo lo fija un valor atípico): más K ahorra memoria, menos K da consultas más cortas
 T113 K por omisión: 50 (se conserva el vigente porque cumple); K_POR_OMISION vale 50: sin cambios
-T113 HIPÓTESIS (no medido): el margen de 2.5x es una elección del grupo, no una medición; las medidas son de esta máquina y de una cripta sintética de 20 salas; con criptas mayores el costo de cada punto crece (M3: materializar pasa de 2.7 ms con N = 20 a 7.7 ms con N = 200 y a 119.8 ms con N = 2 000), lo que pesa en contra de un K grande
+T113 HIPÓTESIS (no medido): el margen de 2.5x es una elección del grupo, no una medición; las medidas son de esta máquina y de una cripta sintética de 20 salas; con criptas mayores el costo de cada punto crece (M3: materializar pasa de 0.5 ms con N = 20 a 3.3 ms con N = 200 y a 33.3 ms con N = 2 000), lo que pesa en contra de un K grande
 
 -Lo que no se midió-
 no medido (HIPÓTESIS): costo de la agenda (P1 §4.1), que esta capacidad no mide [PERSONAS: grupo]
 no medido (HIPÓTESIS): M2 con K = 1 y n > 2 500; M3 con N > 2 000; M4 con n > 50 000
 
-duración de la corrida: 373.7 s
+duración de la corrida: 93.8 s
