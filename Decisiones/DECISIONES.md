@@ -1284,40 +1284,71 @@ Dieron el mismo primer paso que la versión actual en 2800 casos (grilla y caden
 
 ## §5.5 — Línea de tiempo y puntos de control
 
+Documentos de la capacidad: [`specs/004-linea-de-tiempo/spec.md`](../specs/004-linea-de-tiempo/spec.md) y [`specs/004-linea-de-tiempo/plan.md`](../specs/004-linea-de-tiempo/plan.md). **La decisión final coincide con la de `plan.md` original** en el diseño (re-simulación desde puntos de control, `copy.deepcopy` con `memo`, K = 50): las mediciones M1 y M2 confirmaron K = 50, que el plan marcaba **HIPÓTESIS**. Lo que cambió respecto del plan va con la medición que lo motivó: las cifras de copiar y materializar con N grande del plan (consulta de ~69 ms con 2 000 salas, de una exploración previa local, no versionada) se corrigieron con M3 (con N = 2 000, `copiar` 66.938 ms y `materializar` 119.817 ms; ver 5).
+
 Fuente de todas las cifras: `resultados_bench_linea.txt` (corrida completa de `tests/bench_linea.py`, Windows 10, Python 3.12.10, cripta sintética de 20 salas, sin red ni vista). Se cita el bloque (M1 a M10, T113). Las cifras son de esa máquina. Lo no medido está marcado como **HIPÓTESIS**, igual que en ese archivo. Los cambios 1 a 3 que se justifican aquí son los de la tabla «Cambios propuestos a la spec» de `specs/004-linea-de-tiempo/plan.md`.
 
-### 1. Re-simulación desde puntos de control, en vez de guardar copias completas por acción
+### 1. Problema
 
-**Problema.** Consultar el pasado (`historia <t>`, `historia #k`, `--replay --hasta`) exige reconstruir el estado de un instante sin alterar el presente.
+Consultar el pasado (`historia <t>`, `historia #k`, `--replay --hasta`) exige reconstruir el estado de un instante sin alterar el presente.
 
-**Enunciado (§3.6, «Restricción de memoria»).** «Se permite guardar copias completas del estado, llamadas puntos de control, pero no más de una cada K acciones del jugador.» Además: «Fuera de los puntos de control, solo se almacena la información necesaria para reconstruir los cambios. Pueden reconstruir hacia adelante desde un punto de control, re-simulando, o hacia atrás desde el estado actual, invirtiendo cambios. Si re-simulan, el punto de control debe incluir el estado del generador random.Random.» (§5.5: la memoria crece con los cambios más un punto cada K acciones, nunca con «acciones por tamaño del estado»).
+**Enunciado (§3.6, «Restricción de memoria»).** «Se permite guardar copias completas del estado, llamadas puntos de control, pero no más de una cada K acciones del jugador.» Además: «Fuera de los puntos de control, solo se almacena la información necesaria para reconstruir los cambios. Pueden reconstruir hacia adelante desde un punto de control, re-simulando, o hacia atrás desde el estado actual, invirtiendo cambios. Si re-simulan, el punto de control debe incluir el estado del generador random.Random.» (§5.5: la memoria crece con los cambios más un punto cada K acciones, nunca con «acciones por tamaño del estado».)
 
-**Decisión (cambios 1 a 3).**
+### 2. Alternativas consideradas
+
+- **Invertir cambios hacia atrás:** descartada. El motor no emite cambios aplicables y el `Historial` no sirve para ir hacia atrás.
+- **Guardar los puntos completos en el archivo:** descartada. Exige un segundo serializador de todo el estado.
+- **Reemplazar el punto previo en lugar de agregar uno:** descartada. Sin el punto posterior a un retroceso o a una carga la reconstrucción no es exacta.
+- **`copy.deepcopy` a secas del motor:** descartada. Con N = 2 000 salas falla con `RecursionError` y con N = 200 es más lento que la copia estructurada (cifras en 5, M3).
+
+### 3. Decisión
+
+**Cambios 1 a 3.**
 1. Lo que se guarda entre puntos de control es la **acción registrada** (el comando aceptado con su sello `(reloj, secuencia)`), no una diferencia de estado. Se reconstruye hacia adelante re-simulando; el punto de control incluye el estado de `random.Random` (`motor.azar`).
 2. Se guarda en la partida el **guion** (acciones, retrocesos y cargas) y K; los puntos de control **se reconstruyen al cargar**.
 3. Además de un punto cada K acciones, hay un punto extra tras cada retroceso y tras cada carga: la cota es ⌈n/K⌉ + 1 + cargas + usos del pergamino.
 
-**Alternativas descartadas.** Invertir cambios hacia atrás: el motor no emite cambios aplicables y el `Historial` no sirve para ir hacia atrás. Guardar los puntos completos en el archivo: exige un segundo serializador de todo el estado. Reemplazar el punto previo en lugar de agregar uno: sin el punto posterior a un retroceso o a una carga la reconstrucción no es exacta.
+**Condición de C (aceptación del 2026-11-12).** Los cambios 1 y 2 están respaldados por el propio enunciado. El cambio 3 es el único que **se aparta de la letra** de «no más de una cada K» y por eso se justifica aquí: cada retroceso y cada carga agregan un punto, que no son «una cada K».
 
-**Condición de C (aceptación del 2026-11-12).** Los cambios 1 y 2 están respaldados por el propio enunciado. El cambio 3 es el único que **se aparta de la letra** de «no más de una cada K acciones» y por eso se justifica aquí: cada retroceso y cada carga agregan un punto, que no son «una cada K».
+**`copy.deepcopy` con `memo`.** El profesor respondió el 2026-11-12: «Para este proyecto sí pueden usar el dict como caché. No hay problema». La autorización se limita al `memo` de `copy.deepcopy` en `Modelo/CopiaEstado.py`; el resto de las estructuras de la capacidad sigue sin `dict` ni `set` como índice. Está recogida en la constitución v3.0.3 (`fcebe15`, Principio I).
 
-**Evidencia.**
+**K por omisión = 50.** Regla (T113): un K cumple si todas las consultas tardan menos de 50 ms (SC-002) y su p95 × 2.5 sigue por debajo de 50 ms. Se conserva el K vigente mientras cumpla; si deja de cumplir, el mayor K que cumpla. El margen va sobre el **p95** y no sobre el máximo porque el máximo de las 200 consultas lo fija un solo valor atípico (T113: «los datos no distinguen entre ellos en el peor caso»). El margen de 2.5 es una elección del grupo, no una medición: **HIPÓTESIS**. Se conserva 50 porque cumple (`K_POR_OMISION` no cambia).
+
+### 4. Análisis de complejidad
+
+`n` acciones vigentes, `K`, `C` puntos de control, `S` tamaño del estado vivo, `N`/`E` salas y salidas, `a` costo de una acción, `V` acciones recortadas, `L` cargas, `P` usos del pergamino. Las mismas complejidades están en `data-model.md`, `contracts/interfaz-linea.md` y los docstrings de `Modelo/LineaTiempo.py`, `Modelo/BusquedaBinaria.py` y `Modelo/CopiaEstado.py`. La memoria de un punto crece con N y E por las fotos de `rastro` y `cerrada`: M3 midió 18.0, 31.4, 76.5 y 666.4 KiB de `copiar` con N = 20, 60, 200 y 2 000.
+
+| Operación | Tiempo | Memoria |
+|-----------|--------|---------|
+| consulta de la historia (`consultar_instante`) | O(log n + log C + S + K·a) | O(S + N + E) temporal |
+| consulta de la historia (`consultar_accion`) | O(log C + S + K·a) | O(S + N + E) temporal |
+| iniciar (`iniciar`) | O(S + N + E) | O(S) + O(N + E) |
+| registrar una acción (`registrar_accion`) | O(1), más O(S + N + E) cada K | O(1), más O(S) + O(N + E) cada K |
+| recorte (`registrar_retroceso`) | O(V + S + N + E); no depende de n (FR-027) | O(S) + O(N + E) |
+| registrar carga (`registrar_carga`) | O(S + N + E) | O(S) + O(N + E), más la copia privada |
+| copiar (punto) | O(S + N + E) | O(S) + O(N + E) |
+| materializar | O(S + N + E) | O(S + N + E) temporal |
+| foto de rastros (`foto_rastros`) | O(N) | O(N) |
+| foto de salidas cerradas (`foto_cerradas`) | O(N + E) | O(E) |
+| búsqueda binaria (`ultimo_menor_o_igual`) | O(log n) por llamada; caso vacío o valor menor O(1) | O(1) |
+| serie de pergaminos: registrar | O(capacidad del inventario) | O(1) |
+| serie de pergaminos: plegar | O(registros sacados) | O(1) |
+| serie de pergaminos: en | O(log longitud) | O(1) |
+| guardar (`a_registro`) | O(n_guion) | O(n_guion) |
+| cargar (`desde_registro`) | O(n_guion) | O(n_guion) |
+| memoria total | - | M(n) = n·b_guion + (P + L)·b_guion + C·(S + N + E) + serie, con C ≤ ⌈n/K⌉ + 1 + L + P; para K fijo crece como n/K |
+
+### 5. Evidencia empírica
+
+**Cambios 1 a 3.**
 - M4 (recorte): `retroceder` cuesta, con la línea, una mediana de 1.984 ms (n = 500), 2.641 ms (n = 5 000) y 2.722 ms (n = 50 000); la mediana con n = 50 000 es 1.37 veces la de n = 500 (casi constante). Máximo: 3.868 ms.
 - M6 (cargar): reconstruir 5 000 acciones con K = 50 tarda 670.1 ms sin `@cargar` y 584.0 ms con `@cargar`; el bloque pesa 133.0 KiB (27.2 B por acción). Un solo punto completo serializado con pickle pesa 13.1 KiB: guardar los 101 puntos serían unos 1.3 MiB frente a 133.0 KiB del guion.
 - M7 (SC-003): los mismos 100 instantes con K = 1, 50 y 500 dan resúmenes idénticos con las semillas 1, 2 y 3 (150 acciones).
 - M2 (memoria, K = 50): 1799.7 KiB con n = 2 500, 3599.2 KiB con n = 5 000 y 7197.2 KiB con n = 10 000; crece x2.00 al duplicar n y cumple la cota de puntos en todos los K.
 
-### 2. `copy.deepcopy` con `memo`
+**`copy.deepcopy` con `memo` (M3).** Con N = 2 000 salas `deepcopy` a secas falla con `RecursionError` («no sirve»); la copia estructurada termina: `copiar` 66.938 ms y 666.4 KiB, `materializar` 119.817 ms. Con N = 200, `deepcopy` a secas tarda 32.219 ms y `copiar` 4.695 ms. Con N = 20, 5.037 ms frente a 2.055 ms.
 
-El profesor respondió el 2026-11-12: «Para este proyecto sí pueden usar el dict como caché. No hay problema». La autorización se limita al `memo` de `copy.deepcopy` en `Modelo/CopiaEstado.py`; el resto de las estructuras de la capacidad sigue sin `dict` ni `set` como índice. Está recogida en la constitución v3.0.3 (`fcebe15`, Principio I).
-
-Evidencia (M3): con N = 2 000 salas `deepcopy` a secas falla con `RecursionError` («no sirve»); la copia estructurada termina: `copiar` 66.938 ms y 666.4 KiB, `materializar` 119.817 ms. Con N = 200, `deepcopy` a secas tarda 32.219 ms y `copiar` 4.695 ms. Con N = 20, 5.037 ms frente a 2.055 ms.
-
-### 3. K por omisión = 50
-
-**Regla (T113).** Un K cumple si todas las consultas tardan menos de 50 ms (SC-002) y su p95 × 2.5 sigue por debajo de 50 ms. Se conserva el K vigente mientras cumpla; si deja de cumplir, el mayor K que cumpla. El margen va sobre el **p95** y no sobre el máximo porque el máximo de las 200 consultas lo fija un solo valor atípico (T113: «los datos no distinguen entre ellos en el peor caso»). El margen de 2.5 es una elección del grupo, no una medición: **HIPÓTESIS**.
-
-**Tabla (T113; n = 5 000; «-» = no medido en esa celda).**
+**K por omisión (T113; n = 5 000; «-» = no medido en esa celda).**
 
 | K | p95 consulta (ms) | máx consulta (ms) | memoria (KiB) | registrar p95 (ms) | reconstruir (ms) | resultado |
 |---|------|------|------|------|------|-----------|
@@ -1328,24 +1359,20 @@ Evidencia (M3): con N = 2 000 salas `deepcopy` a secas falla con `RecursionError
 | 500 | 39.36 | 53.58 | 1089.7 | 0.008 | 415.0 | NO cumple |
 | sin puntos | 296.33 | 341.59 | 794.9 | - | - | NO cumple |
 
-Con K = 1 la memoria solo se midió con n = 2 500 (M2: 69528.2 KiB). Cumplen K = 1, 10, 50 y 100; más K ahorra memoria y menos K da consultas más cortas. **Se conserva 50** porque cumple (`K_POR_OMISION` no cambia). M1 con K = 50: mediana 3.085 ms, p95 6.365 ms, máximo 15.557 ms, 100 % por debajo de 50 ms. M5: registrar una acción con K = 50 tiene p95 de 0.0096 ms (máximo 3.6510 ms), por debajo de 20 ms (§5.2).
+Con K = 1 la memoria solo se midió con n = 2 500 (M2: 69528.2 KiB). Cumplen K = 1, 10, 50 y 100; más K ahorra memoria y menos K da consultas más cortas. M1 con K = 50: mediana 3.085 ms, p95 6.365 ms, máximo 15.557 ms, 100 % por debajo de 50 ms. M5: registrar una acción con K = 50 tiene p95 de 0.0096 ms (máximo 3.6510 ms), por debajo de 20 ms (§5.2).
 
-### 4. Antes y después de la línea (M10)
+**M10, antes y después de la línea.** `retroceder` cuesta 0.0539 ms con solo el `Historial` y 2.7017 ms con el `Historial` y la línea (n = 5 000; n = 500: 0.0430 y 2.0266 ms; n = 50 000: 0.0579 y 2.7731 ms). El retroceso entero (`Historial` más línea) tarda a lo sumo 3.929 ms, por debajo de 20 ms. El bench de la Parte I (5 intervalos × 50 cambios, solo `Historial`) registra 250 cambios en 0.0940 ms y deshace en 0.0240 ms. **El `Historial` sigue siendo adecuado y no se cambia.** Umbral de SC-010: **8 ms por recorte** (M4: dos veces el mayor máximo medido, redondeado hacia arriba; a revisar si cambia la medición).
 
-`retroceder` cuesta 0.0539 ms con solo el `Historial` y 2.7017 ms con el `Historial` y la línea (n = 5 000; n = 500: 0.0430 y 2.0266 ms; n = 50 000: 0.0579 y 2.7731 ms). El retroceso entero (`Historial` más línea) tarda a lo sumo 3.929 ms, por debajo de 20 ms. El bench de la Parte I (5 intervalos × 50 cambios, solo `Historial`) registra 250 cambios en 0.0940 ms y deshace en 0.0240 ms. **El `Historial` sigue siendo adecuado y no se cambia.** Umbral de SC-010: **8 ms por recorte** (M4: dos veces el mayor máximo medido, redondeado hacia arriba; a revisar si cambia la medición).
+**Costo de K = 1.** `--replay --hasta` con `--checkpoint-cada 1` tarda unas 22 veces más (M8, 1 000 acciones): 2339.7 ms (x21.95) frente a 106.6 ms del replay normal; con K = 10, 204.9 ms; con K = 500, 144.9 ms; sin `--checkpoint-cada`, 191.6 ms. El contrato permite K = 1 y la decisión es de quien lo pide.
 
-### 5. Costo de K = 1
+### 6. Límites conocidos
 
-`--replay --hasta` con `--checkpoint-cada 1` tarda unas 22 veces más (M8, 1 000 acciones): 2339.7 ms (x21.95) frente a 106.6 ms del replay normal; con K = 10, 204.9 ms; con K = 500, 144.9 ms; sin `--checkpoint-cada`, 191.6 ms. El contrato permite K = 1 y la decisión es de quien lo pide.
-
-### 6. Limitaciones conocidas (no son defectos)
-
+Limitaciones (no son defectos):
 - **Pergaminos tras retroceder (FR-029).** La serie guarda un valor por posición: en la posición a la que se retrocedió rige la última ocurrencia (el presente); antes de ella, lo que el jugador tenía entonces.
 - **`copyfile` al cargar.** `cargar` es atómico hasta reconstruir la línea; después cierra lo anterior, y si `shutil.copyfile` de la copia de bitácora falla (`OSError`), la partida ya quedó cargada, sin bitácora, y se muestra un aviso.
 - **Guardar descarta una línea desfasada.** Si el motor avanzó sin avisar a la línea (por ejemplo una acción que lanzó `RuntimeError` a medias), `guardar` avisa, descarta la línea y escribe el archivo con largo de línea 0.
 
-### 7. Lo no medido (**HIPÓTESIS**)
-
+Lo no medido (**HIPÓTESIS**):
 - M2 con K = 1 y n > 2 500 (HIPÓTESIS: crece como n · bytes por punto).
 - M3 con N > 2 000.
 - M4 con n > 50 000.
@@ -1353,3 +1380,52 @@ Con K = 1 la memoria solo se midió con n = 2 500 (M2: 69528.2 KiB). Cumplen K =
 - El margen de 2.5 y el efecto de criptas mayores sobre el costo de cada punto (T113; M3: materializar pasa de 2.7 ms con N = 20 a 7.7 ms con N = 200 y a 119.8 ms con N = 2 000).
 
 ## §5.6 — Revisión de decisiones de la primera parte
+
+Enunciado de la Parte II, §5.6: repetir las mediciones de la primera parte con la carga nueva; si una decisión deja de ser adecuada se cambia y se documenta el antes y el después, y si sigue siéndolo se muestra con datos. Aquí solo se revisa lo que corresponde al historial de retroceso (P1 §4.6). Cifras: `resultados_bench_linea.txt` (M10), ver §5.5.
+
+### Agenda de eventos (P1 §4.1)
+
+[PENDIENTE: persona A, agenda de eventos P1 §4.1]
+
+### Historial de retroceso (P1 §4.6)
+
+#### 1. Problema
+
+La Parte I eligió el `Historial` (§4.6) para el pergamino de retroceso. La línea de tiempo (§5.5) registra ahora cada acción y recorta al retroceder, y hay que ver si esa carga nueva deja de hacer adecuada la decisión.
+
+#### 2. Alternativas consideradas
+
+Cambiar el `Historial` o reemplazarlo por la línea. No se evaluó otra estructura: M10 muestra que la actual sigue cumpliendo (ver 5).
+
+#### 3. Decisión
+
+El `Historial` se conserva sin cambios. El retroceso hace dos trabajos: el `Historial` deshace los cambios y la línea recorta (§5.5).
+
+#### 4. Análisis de complejidad
+
+El retroceso con la línea cuesta O(V + S + N + E) para el recorte (§5.5, 4), además de lo que ya costaba deshacer en el `Historial` (§4.6); no depende de n.
+
+#### 5. Evidencia empírica
+
+La medición de la Parte I (5 intervalos × 50 cambios) se repitió con la línea registrando (M10).
+
+| | Antes (solo `Historial`) | Después (`Historial` y línea) |
+|---|---|---|
+| registrar 250 cambios | 0.0940 ms | ver el costo de una acción, abajo |
+| deshacer / retroceder | 0.0240 ms (deshacer) | 0.0539 ms con solo el `Historial` y 2.7017 ms con la línea (n = 5 000) |
+
+El retroceso entero tarda a lo sumo 3.929 ms, por debajo de 20 ms. Detalle de M10 en §5.5, 5.
+
+Costo de una acción (M5, n = 5 000), antes y después de la línea:
+
+| | Mediana | p95 | Máximo |
+|---|---|---|---|
+| sin línea (acción) | 0.0512 ms | 0.0949 ms | 6.2632 ms |
+| con línea, K = 50 (acción + registrar) | 0.0661 ms | 0.1420 ms | 6.7263 ms |
+| con línea, K = 1 (acción + registrar) | 2.2336 ms | 4.1361 ms | 21.8619 ms |
+
+El costo del retroceso (M10) sigue siendo el de la fila «deshacer / retroceder» de la tabla anterior: la línea lo sube de 0.0539 ms a 2.7017 ms y sigue por debajo de 20 ms. Con K = 50 (el valor por omisión) el costo de una acción apenas cambia; la decisión del `Historial` no cambia.
+
+#### 6. Límites conocidos
+
+Las cifras son de la máquina y la cripta sintética de 20 salas de `resultados_bench_linea.txt`. El costo de la línea al retroceder depende de lo recortado y del tamaño del estado, no de n: ver §5.5, 6. Detalle de la decisión original: §4.6.
