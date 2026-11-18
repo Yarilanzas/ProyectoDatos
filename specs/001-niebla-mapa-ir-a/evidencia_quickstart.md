@@ -804,9 +804,11 @@ M4 cadena/paso      V=2500 pasos=1 espacio=por llamada     2.7580 ms   PROVISION
 las pantallas de la vista.
 
 - Este archivo de la corrida de T116 **no** reemplaza al `resultados_bench_niebla.txt` del repositorio, que es el de
-  la corrida de T110 (commit `70ecfdc`) y el que citan DECISIONES.md §5.3 y la matriz.
+  la medición de T110 (commits `70ecfdc` y `c29aebd`, hoy sobre `cripta-06`) y el que citan DECISIONES.md §5.3 y la
+  matriz.
 - En esta corrida M4 solo tenía filas sintéticas, PROVISIONAL: la grilla de 2500 no cumple, como en T109. §6.1 quedó
-  para T110, que después lo dio por cumplido sobre `cripta-02` ([DECISIONES.md, §5.3](../../Decisiones/DECISIONES.md)).
+  para T110, que después lo dio por cumplido sobre la cripta sustituta: primero `cripta-02` y ahora `cripta-06`
+  ([DECISIONES.md, §5.3](../../Decisiones/DECISIONES.md)).
 
 Respaldo automático:
 
