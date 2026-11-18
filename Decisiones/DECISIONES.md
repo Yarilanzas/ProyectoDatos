@@ -343,20 +343,18 @@ En el caso resoluble, el cociente de medianas en cada duplicación está entre 2
 
 **Versión elegida frente a las alternativas (M4).**
 
-![Figura](img_10.png)
-
-- **A1, recorrer todo por cada llave:** es la comparación que exige el enunciado (§6.3): recorrido incremental frente a recorrido repetido por llave. Con S = 1200, la ventaja de la versión elegida crece con K: 1.23 veces con 4 llaves, 1.94 con 16, 4.04 con 64 y 11.45 con 256 (9.581 ms frente a 109.701 ms). En las duplicaciones de M2 llega a 7.26 veces con 9600 salas (66.622 ms frente a 483.917 ms). Es la alternativa que más se aleja, porque su costo crece con K·S.
-- **A2, zona de cada llave por separado:** entre 1.09 y 1.16 veces más lenta en el caso no resoluble. La diferencia es pequeña con estas criptas porque sus zonas no se solapan.
-- **A3, búsqueda lineal del id:** con pocas llaves casi empata, y en las criptas chicas de M2 fue incluso un poco más rápida (0.93 con S = 300 y 0.87 con S = 600). La búsqueda binaria se justifica por la escala: con 256 llaves la lineal es 1.51 veces más lenta en el caso resoluble y 1.58 en el no resoluble.
-
-**Conteos del índice (M5).** Las comparaciones de `merge_sort` al construir el índice se mantienen en una proporción casi constante de M·log₂ M (entre 0.580 y 0.622, de M = 26 a M = 2340), lo que respalda el O(M log M). En la búsqueda binaria, el máximo de pasos es exactamente floor(log₂ K) + 1 en todos los casos (3 pasos con K = 4, 9 con K = 256), lo que respalda el O(log K).
-
-**Peor caso de las dependencias (P-11, informativo, sin límite).** Con zonas que se solapan y casi todas las llaves en salas distintas de una región no alcanzable:
-
 ![Figura](img_11.png)
 
-Los cocientes al duplicar suben de 2.06 a 3.82, y con 9600 salas y 129 llaves la mediana es 547.925 ms. Esto confirma el O(L·(S + E)) del análisis: es el único caso que no crece de forma lineal, y por eso queda documentado como excepción.
+- **A1, recorrer todo por cada llave:** es la comparación que exige el enunciado (§6.3): recorrido incremental frente a recorrido repetido por llave. Con S = 1200, la ventaja de la versión elegida crece con K: 1.27 veces con 4 llaves, 1.82 con 16, 3.99 con 64 y 11.28 con 256 (9.719 ms frente a 109.644 ms). En las duplicaciones de M2 llega a 5.52 veces con 9600 salas (81.628 ms frente a 450.318 ms). Es la alternativa que más se aleja, porque su costo crece con K·S.
+- **A2, zona de cada llave por separado:** entre 1.07 y 1.15 veces más lenta en el caso no resoluble. La diferencia es pequeña con estas criptas porque sus zonas no se solapan.
+- **A3, búsqueda lineal del id:** con pocas llaves empata con la búsqueda binaria (entre 0.97 y 1.04 hasta 64 llaves, y 1.00 en las criptas de 300 y 600 salas de M2). La búsqueda binaria se justifica por la escala: con 256 llaves la lineal es 1.31 veces más lenta en el caso resoluble y 1.51 en el no resoluble. En la duplicación de 4800 salas A3 salió más rápida (0.61); **HIPÓTESIS:** es ruido de esa medición, porque la elegida tardó ahí más de lo que sigue la tendencia (48.501 ms, frente a unos 40 ms en M2).
 
+**Conteos del índice (M5).** Para respaldar la complejidad sin depender del reloj, se contaron operaciones. Al ordenar las M menciones de llaves con `merge_sort`, las comparaciones crecen como M log M: al dividir las comparaciones entre M·log₂ M, el resultado se mantiene casi igual (entre 0.580 y 0.622) aunque M pase de 26 a 2340. En la búsqueda binaria del índice, cada vez que se duplica la cantidad de llaves, el máximo de pasos sube solo en uno: 3 pasos con 4 llaves, 4 con 8, 5 con 16 y así hasta 9 pasos con 256 llaves. Eso es lo que se espera de una búsqueda O(log K), que parte la lista a la mitad en cada paso.
+**Peor caso de las dependencias (P-11, informativo, sin límite).** Con zonas que se solapan y casi todas las llaves en salas distintas de una región no alcanzable:
+
+![Figura](img_12.png)
+
+Aquí, al duplicar la cripta el tiempo se multiplica entre 2.24 y 3.71 veces, en vez de cerca de 2 como en M2 y M3. Desde 600 salas pasa siempre del límite de 2.5. Con 9600 salas y 129 llaves tarda 511.600 ms de mediana. La razón es que cada llave revisa toda la región bloqueada: si se duplican a la vez las llaves y el tamaño de la cripta, el trabajo crece por los dos lados, que es lo que dice el O(L·(S + E)) del análisis. Es el único caso que no crece de forma lineal, y por eso queda documentado como excepción. Solo ocurre en criptas no resolubles con muchas llaves dentro de una misma región bloqueada.
 ### 6. Límites conocidos
 
 - **Peor caso de las dependencias:** si las zonas de muchas llaves se solapan, el cálculo de dependencias crece como O(L·(S + E)) y deja de ser lineal (cocientes de hasta 3.82 en el bench). Solo ocurre en criptas no resolubles y con una forma muy particular. **HIPÓTESIS:** las criptas publicadas no tienen esa forma; no se midió con ellas.
