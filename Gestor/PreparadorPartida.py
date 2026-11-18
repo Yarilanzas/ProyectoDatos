@@ -7,7 +7,7 @@ from Modelo.Conocimiento import EXPLORADA
 from Modelo.Jugador import Jugador
 from Modelo.MotorSimulacion import MotorSimulacion
 from Persistencia.ConversorPartida import (RestauradorPartida, aplicar_puertas_reales, restaurar_conocimiento,
-                                           restaurar_jugador)
+                                           restaurar_jugador, validar_registros)
 from Persistencia.FormatoBinario import VersionIncompatible
 
 ID_JUGADOR = "jugador"
@@ -111,7 +111,13 @@ def cargar_partida(ruta, gestor):
         if registro_conocimiento is None:
             raise VersionIncompatible("El archivo no tiene el bloque de conocimiento")
 
+        # las demas salas con enemigos activos se leen ya (no al entrar), en orden de id ascendente
+        salas_activas = restaurador.leer_salas_con_enemigos_activos(excluir=registro_jugador.sala_id)
+
         motor = _crear_motor(encabezado.cripta_id, encabezado.semilla, gestor)
+
+        # sus fichas se piden antes de cambiar el motor: si el gestor no las tiene, no se carga nada
+        validar_registros(motor, salas_activas)
 
         # corrige las puertas de todas las salas sin leer sus bloques (H2), y despues el conocimiento,
         # sin historial (FR-015); las avistadas se recalculan (FR-004)
@@ -134,6 +140,9 @@ def cargar_partida(ruta, gestor):
         sala = motor.jugador.sala
         motor.preparar_sala(sala)
         motor.activar_enemigos_de_sala(sala)
+
+        # y por el mismo camino, las salas leidas arriba: sus enemigos activos siguen con su instante guardado
+        restaurador.restaurar_salas(motor, salas_activas)
         return motor
 
     except Exception:

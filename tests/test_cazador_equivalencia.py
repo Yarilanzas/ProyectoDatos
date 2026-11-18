@@ -232,5 +232,317 @@ class TestEquivalenciaDesdeCero(unittest.TestCase):
         self.assertGreaterEqual(total["cambios_de_sala"], 100)
 
 
+# ───────────────────────── T058 y T059: guardado, retroceso, --replay y línea de tiempo (capacidad 004) ─────────────────────────
+#
+# Dos criptas de ESCENARIOS (una con un rango pequeño frente a costos de 40 a 160, otra con costos uniformes y empates de
+# ruta) se convierten en un paquete offline y se juegan con SesionLinea de tests/utiles_linea.py: partida real de
+# ControladorPartida.nueva_partida, LineaTiempo propia, guardado CRPT 3 con guardar_motor y carga con cargar_partida y un
+# gestor nuevo. Los cazadores son enemigos reales del paquete (una ficha «cazador» por rango); el registro de decisiones
+# (T076) se enciende en cada motor antes de su primera acción.
+#
+# Una partida de referencia, jugada de corrido sin guardar ni retroceder, fija el guion (acciones del jugador, con un
+# random.Random propio; nunca entra a la sala de salida) y las entradas del registro que produce cada acción. Las demás
+# partidas juegan ese mismo guion y comparan, acción por acción, las entradas que produjo cada una.
+#
+# Lo que se compara de cada entrada es la decisión: (reloj, id del cazador, acción, sala de destino, dirección, costo
+# base), sin el ciclo. El ciclo es un contador del motor que no se guarda en el CRPT 3 (vuelve a 0 al cargar) ni se
+# revierte con el historial (solo crece): no es parte de la decisión.
+
+from unittest import mock
+
+import main
+from Gestor import PreparadorPartida
+from Modelo.DecisionCazador import DecisionCazador
+from tests.utiles_linea import JUGADOR_RESISTENTE, SesionLinea, escribir_bitacora
+from tests.utiles_niebla import CATALOGO_NIEBLA, LLAVE, PERGAMINO
+
+ESCENARIOS_004 = ("8 salas", "25 salas, costos uniformes")
+ACCIONES_004 = 40            # acciones del guion, además de recoger el pergamino
+SEMILLA_004 = 5
+PREFIJO_FICHA_004 = "ent_cazador_r"
+
+
+def escenario(nombre):
+    for fila in ESCENARIOS:
+        if fila[0] == nombre:
+            return fila
+    raise KeyError(nombre)
+
+
+def opciones_de_paquete(nombre):
+    """Opciones de SesionLinea para la cripta del escenario `nombre`: sus salas (con la llave de la salida cambiada por
+    la del catálogo de niebla), un cazador por rango y un pergamino de retroceso en la sala inicial. La mitad de los
+    cazadores empieza en la sala inicial (activos desde el primer turno); los demás, en salas intermedias, se activan
+    cuando el jugador entra."""
+    _nombre, semilla_cripta, salas, ida, vuelta, variacion, rangos, _acciones = escenario(nombre)
+    cripta = cripta_terreno(semilla_cripta, salas, costo_ida=ida, costo_vuelta=vuelta, variacion=variacion)
+    detalles = cripta.detalles_json
+    llave = detalles["llave_salida"]
+    salas_json = []
+    for sala in cripta.salas_json:
+        salidas = {}
+        for direccion in sala["salidas"]:
+            datos = dict(sala["salidas"][direccion])
+            if datos.get("llave") == llave:
+                datos["llave"] = LLAVE
+            salidas[direccion] = datos
+        salas_json.append({"id": sala["id"], "nombre": sala["nombre"], "salidas": salidas})
+
+    inicial, salida = detalles["sala_inicial"], detalles["sala_salida"]
+    por_sala = {inicial: []}
+    fichas = []
+    for indice in range(len(rangos)):
+        rango = rangos[indice]
+        tipo = f"{PREFIJO_FICHA_004}{rango}"
+        if all(ficha["id"] != tipo for ficha in fichas):
+            fichas.append({"id": tipo, "clase": "enemigo", "nombre": "Cazador", "vida_max": 8, "ataque": 3,
+                           "defensa": 0, "velocidad": 100, "comportamiento": "cazador", "rango": rango})
+        sala = inicial if indice % 2 == 0 else 2 + (indice * 7) % (salas - 2)
+        por_sala.setdefault(sala, []).append({"instancia": f"caz-{indice + 1}", "tipo": tipo})
+    contenido = []
+    for sala in por_sala:
+        contenido.append({"sala": sala, "enemigos": por_sala[sala], "trampas": [],
+                          "objetos": [PERGAMINO] if sala == inicial else []})
+    return {
+        "salas": salas_json, "contenido": contenido, "catalogo_extra": fichas, "jugador": JUGADOR_RESISTENTE,
+        "sala_inicial": inicial, "sala_salida": salida, "llave_salida": LLAVE,
+        "llaves": [{"id": LLAVE, "sala": ubicacion["sala"]} for ubicacion in cripta.llaves_json],
+    }
+
+
+def decision(entrada):
+    """La decisión de una entrada del registro: todo menos el ciclo."""
+    return entrada[1:]
+
+
+def decisiones(entradas):
+    return [decision(entrada) for entrada in entradas]
+
+
+def aplanar(por_accion):
+    return [entrada for entradas in por_accion for entrada in entradas]
+
+
+class PartidaGuardable:
+    """SesionLinea sobre el paquete de un escenario, con el registro de decisiones encendido y las entradas que produjo
+    cada acción vigente (`por_accion[i]` es la acción i + 1 de la línea; la primera es recoger el pergamino)."""
+
+    def __init__(self, prueba, nombre):
+        self.prueba = prueba
+        self.sesion = SesionLinea(k=3, semilla=SEMILLA_004, huellas=False, **opciones_de_paquete(nombre))
+        prueba.addCleanup(self.sesion.cerrar)
+        self.sesion.motor.activar_registro_decisiones()
+        self.por_accion = []
+        motor = self.sesion.motor
+        pergamino = motor.obtener_objetos_suelo(motor.jugador.sala)[0]
+        self.recoger = ("recoger", pergamino.instancia_id)
+        self.hacer([self.recoger])
+
+    @property
+    def motor(self):
+        return self.sesion.motor
+
+    def hacer(self, acciones):
+        for accion in acciones:
+            motor = self.motor
+            antes = len(motor.registro_decisiones)
+            self.prueba.assertEqual(self.sesion.hacer([accion]), 1, f"el motor rechazó {accion}")
+            self.por_accion.append(motor.registro_decisiones[antes:])
+
+    def guardar_y_cargar(self):
+        """Guarda, carga con un gestor nuevo y enciende el registro en el motor cargado (no viaja en el CRPT 3)."""
+        self.sesion.guardar_y_cargar()
+        self.prueba.assertIsNone(self.motor.registro_decisiones, "el registro no forma parte del guardado")
+        self.motor.activar_registro_decisiones()
+
+    def retroceder(self):
+        """Retrocede una acción con el pergamino. Devuelve las entradas del registro tal como quedaron."""
+        motor = self.motor
+        acciones = self.sesion.linea.acciones
+        self.prueba.assertTrue(self.sesion.retroceder(), "el motor rechazó retroceder")
+        self.prueba.assertEqual(self.sesion.linea.acciones, acciones - 1)
+        del self.por_accion[self.sesion.linea.acciones:]
+        return list(motor.registro_decisiones)
+
+
+def generar_guion(motor, cantidad, semilla):
+    """Acciones del jugador para la partida de referencia: mover por una salida abierta que no lleve a la sala de salida
+    (65 %) o esperar. random.Random propio, nunca motor.azar. Se ejecutan en `motor` a medida que se eligen."""
+    azar = random.Random(semilla)
+    guion = []
+    for _ in range(cantidad):
+        sala = motor.jugador.sala
+        abiertas = [d for d in sorted(sala.salidas) if not sala.salidas[d].cerrada
+                    and sala.salidas[d].sala_destino != motor.sala_salida]
+        if abiertas and azar.random() < 0.65:
+            guion.append(("mover", azar.choice(abiertas)))
+        else:
+            guion.append(("esperar", ""))
+        yield guion[-1]
+
+
+class BaseGuardadoYLinea(unittest.TestCase):
+    """Una partida de referencia por escenario: el guion y las entradas de cada acción."""
+
+    def referencia(self, nombre):
+        partida = PartidaGuardable(self, nombre)
+        guion = []
+        for accion in generar_guion(partida.motor, ACCIONES_004, SEMILLA_004):
+            partida.hacer([accion])
+            guion.append(accion)
+        self.assertTrue(partida.motor.jugador.esta_vivo())
+        self.assertFalse(partida.motor.victoria)
+        # cobertura: la prueba no pasa vacía
+        acciones = [entrada[3] for entrada in aplanar(partida.por_accion)]
+        self.assertGreater(acciones.count(DecisionCazador.MOVER), 0, f"[{nombre}] ningún MOVER en la referencia")
+        self.assertGreater(acciones.count(DecisionCazador.ATACAR), 0, f"[{nombre}] ningún ATACAR en la referencia")
+        return partida, guion
+
+    def comparar_por_accion(self, nombre, obtenidas, esperadas, desde=0):
+        """Cada acción produjo las mismas decisiones. `desde` es el índice de la primera acción de `obtenidas`."""
+        self.assertEqual(len(obtenidas), len(esperadas) - desde)
+        for indice in range(len(obtenidas)):
+            self.assertEqual(decisiones(obtenidas[indice]), decisiones(esperadas[desde + indice]),
+                             f"[{nombre}] acción {desde + indice + 1} de la línea")
+
+    def contar(self, entradas, cuenta):
+        for entrada in entradas:
+            cuenta[entrada[3]] = cuenta.get(entrada[3], 0) + 1
+
+    def exigir_cobertura(self, cuenta):
+        self.assertGreater(cuenta.get(DecisionCazador.MOVER, 0), 0, "ningún MOVER comparado")
+        self.assertGreater(cuenta.get(DecisionCazador.ATACAR, 0), 0, "ningún ATACAR comparado")
+
+
+class TestGuardadoRetrocesoReplay(BaseGuardadoYLinea):
+
+    def test_fr024_fr025_sc005_guardada_cargada_y_continuada_decide_igual(self):
+        """T058 (a) (FR-024, FR-025, SC-005): la partida jugada hasta la mitad del guion, guardada (CRPT 3), cargada con
+        un gestor nuevo y continuada con las mismas acciones produce, acción por acción, las mismas decisiones de los
+        cazadores que la partida de referencia sin guardar (100 % de los turnos)."""
+        cuenta = {}
+        for nombre in ESCENARIOS_004:
+            with self.subTest(escenario=nombre):
+                referencia, guion = self.referencia(nombre)
+                mitad = len(guion) // 2
+                partida = PartidaGuardable(self, nombre)
+                partida.hacer(guion[:mitad])
+                partida.guardar_y_cargar()
+                partida.hacer(guion[mitad:])
+                self.assertEqual(partida.sesion.cargas, 1)
+                self.comparar_por_accion(nombre, partida.por_accion, referencia.por_accion)
+                self.assertGreater(len(aplanar(partida.por_accion[mitad + 1:])), 0,
+                                   f"[{nombre}] ninguna decisión después de cargar")
+                self.contar(aplanar(partida.por_accion), cuenta)
+        self.exigir_cobertura(cuenta)
+
+    def test_fr024_fr025_sc005_retrocedida_con_pergamino_y_vuelta_a_jugar_decide_igual(self):
+        """T058 (b) (FR-024, FR-025, SC-005): la partida retrocedida una acción con el pergamino deja el registro igual
+        al de la referencia hasta la acción anterior, y vuelta a jugar con las mismas acciones produce, acción por
+        acción, las mismas decisiones."""
+        cuenta = {}
+        for nombre in ESCENARIOS_004:
+            with self.subTest(escenario=nombre):
+                referencia, guion = self.referencia(nombre)
+                corte = len(guion) * 3 // 4
+                partida = PartidaGuardable(self, nombre)
+                partida.hacer(guion[:corte])
+                tras_retroceder = partida.retroceder()
+                # quedan recoger + guion[:corte - 1]: el registro es el de la referencia hasta ahí, entrada por entrada
+                self.assertEqual(tras_retroceder, aplanar(referencia.por_accion[:corte]))
+                self.assertGreater(len(aplanar(referencia.por_accion[corte:corte + 1])), 0,
+                                   f"[{nombre}] la acción revertida no anotó decisiones: el retroceso no se prueba")
+                partida.hacer(guion[corte - 1:])
+                self.comparar_por_accion(nombre, partida.por_accion, referencia.por_accion)
+                self.assertEqual(decisiones(partida.motor.registro_decisiones),
+                                 decisiones(aplanar(referencia.por_accion)))
+                self.contar(aplanar(partida.por_accion), cuenta)
+        self.exigir_cobertura(cuenta)
+
+    def test_fr024_fr025_sc005_replay_decide_igual(self):
+        """T058 (c) (FR-024, FR-025, SC-005): la bitácora de la partida guardada y cargada (con @cargar) y la de la
+        partida retrocedida, reproducidas con main.ejecutar_replay y un gestor nuevo, dan las mismas decisiones que la
+        referencia. El registro se enciende en cada motor que crea el replay (el de la partida nueva y el de cada
+        recarga), envolviendo preparar_partida y cargar_partida tal como los llama main."""
+        cuenta = {}
+        for nombre in ESCENARIOS_004:
+            referencia, guion = self.referencia(nombre)
+            esperadas = decisiones(aplanar(referencia.por_accion))
+            mitad, corte = len(guion) // 2, len(guion) * 3 // 4
+
+            guardada = PartidaGuardable(self, nombre)
+            guardada.hacer(guion[:mitad])
+            guardada.guardar_y_cargar()
+            guardada.hacer(guion[mitad:])
+
+            retrocedida = PartidaGuardable(self, nombre)
+            retrocedida.hacer(guion[:corte])
+            retrocedida.retroceder()
+            retrocedida.hacer(guion[corte - 1:])
+
+            for variante, partida, motores_esperados in (("guardada y cargada", guardada, 2),
+                                                          ("retrocedida", retrocedida, 1)):
+                with self.subTest(escenario=nombre, variante=variante):
+                    sesion = partida.sesion
+                    ruta = escribir_bitacora(sesion, os.path.join(sesion.partida.carpeta.name, "replay.log"))
+                    motores = []
+
+                    def encender(original):
+                        def envoltura(*args, **kwargs):
+                            motor = original(*args, **kwargs)
+                            motor.activar_registro_decisiones()
+                            motores.append(motor)
+                            return motor
+                        return envoltura
+
+                    with mock.patch.object(main, "preparar_partida", encender(PreparadorPartida.preparar_partida)), \
+                            mock.patch.object(main, "cargar_partida", encender(PreparadorPartida.cargar_partida)):
+                        final = main.ejecutar_replay(ruta, sesion.partida.nuevo_gestor(iniciado=False))
+
+                    self.assertEqual(len(motores), motores_esperados)
+                    self.assertIs(final, motores[-1])
+                    obtenidas = aplanar(motor.registro_decisiones for motor in motores)
+                    self.assertEqual(decisiones(obtenidas), esperadas)
+                    self.contar(obtenidas, cuenta)
+        self.exigir_cobertura(cuenta)
+
+
+class TestReconstruccionLinea(BaseGuardadoYLinea):
+
+    def test_fr025_clon_antes_de_k_decide_igual_que_la_partida_desde_k(self):
+        """T059 (FR-025): para cada acción k de la línea, el estado reconstruido con linea.clon_antes_de(k, motor),
+        con el registro encendido y avanzado con las acciones vigentes k, k + 1, ..., produce, acción por acción, las
+        mismas decisiones de los cazadores que la partida jugada desde k. La línea es la de una partida guardada y
+        cargada a la mitad y retrocedida una vez después de cargar: los clones salen de las dos épocas y de la historia
+        vigente tras el retroceso."""
+        cuenta = {}
+        for nombre in ESCENARIOS_004:
+            with self.subTest(escenario=nombre):
+                referencia, guion = self.referencia(nombre)
+                mitad, corte = len(guion) // 2, len(guion) * 3 // 4
+                partida = PartidaGuardable(self, nombre)
+                partida.hacer(guion[:mitad])
+                partida.guardar_y_cargar()
+                partida.hacer(guion[mitad:corte])
+                partida.retroceder()
+                partida.hacer(guion[corte - 1:])
+                linea = partida.sesion.linea
+                vigentes = [partida.recoger] + guion
+                self.assertEqual(linea.acciones, len(vigentes))
+
+                for k in range(1, linea.acciones + 1):
+                    clon = linea.clon_antes_de(k, partida.motor)
+                    clon.activar_registro_decisiones()
+                    obtenidas = []
+                    for accion in vigentes[k - 1:]:
+                        antes = len(clon.registro_decisiones)
+                        self.assertTrue(clon.ejecutar_accion(*accion), f"[{nombre}] el clon {k} rechazó {accion}")
+                        obtenidas.append(clon.registro_decisiones[antes:])
+                    self.comparar_por_accion(f"{nombre}, clon antes de {k}", obtenidas, referencia.por_accion,
+                                             desde=k - 1)
+                    self.contar(aplanar(obtenidas), cuenta)
+        self.exigir_cobertura(cuenta)
+
+
 if __name__ == "__main__":
     unittest.main()

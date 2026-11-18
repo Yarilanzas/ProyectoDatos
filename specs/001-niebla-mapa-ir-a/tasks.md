@@ -300,7 +300,8 @@ T084, T085, T091 a T094, T096, T097, T121, T124 y T126 hechas; suite completa en
 
 **Datos**: mapas sintéticos en `tests/`. **El límite de 5 ms de §6.1 se define para la cripta de referencia**, así que
 el resultado con mapas sintéticos es provisional y debe decirlo en el archivo. La fila de la cripta sustituta
-(`cripta-02`, la mayor de las copias locales, mientras no se publique la de referencia) la agregó T110.
+(`cripta-06`, la mayor de las copias locales y la mayor publicada, mientras no se publique la de referencia; la
+medición previa fue con `cripta-02`) la agregó T110.
 
 - [X] T099 [P] Crear generadores de mapas sintéticos sin datos de ninguna cripta real: cadena y grilla con V = 25, 100, 400, 2500, y salas hasta n = 20000, con costos variados y simétricos. Atiende: SC-006, PR-15. Archivo: tests/mapas_sinteticos.py.
 - [X] T100 Crear la medición con mediana de varias repeticiones, escritura de `resultados_bench_niebla.txt` con equipo y versión de Python, y **una sola constante** `LIMITE_PASO_IR_A_MS = 5`, con comentario que cita §6.1 y que el valor puede cambiar por enmienda. Ningún otro lugar escribe ese número. Depende de T099. Atiende: PR-15, Principio VIII, sin FR. Archivo: tests/bench_niebla.py.
@@ -313,11 +314,11 @@ el resultado con mapas sintéticos es provisional y debe decirlo en el archivo. 
 - [X] T107 Agregar la medición a la rama `--bench`, sin red y sin vista. Depende de T101 a T106. Atiende: PR-15, Principio VIII, sin FR. Archivo: main.py.
 - [X] T108 [P] Agregar una prueba rápida con tamaños mínimos: M1 a M6 corren sin red, sin `VistaConsola`, y M4 compara contra la constante, sin afirmar tiempos. Depende de T107. Atiende: SC-006, PR-15. Archivo: tests/test_bench_niebla.py.
 - [X] T109 Correr M4 con `primer_paso` real y guardar el resultado, marcado como provisional. Medir con y sin un `EspacioBusqueda` reutilizado por viaje (parámetro `espacio` de `primer_paso`). Ya no está bloqueada: Persona A subió `Modelo/BusquedaRuta.py`. Si no cumple, corregir el diseño o el documento (R9). Depende de T062 y T107. Atiende: FR-024, PR-15. Archivo: resultados_bench_niebla.txt.
-- [X] T110 [PERSONAS: curso, publicación de la cripta de referencia] Agregar a M4 el mapa conocido completo de la cripta de referencia y dar el veredicto definitivo de §6.1. Sus datos se obtienen de la fuente o quedan en `tests/` (Principio IV). Depende de T109. Hecho. Medición: commit 70ecfdc, sobre la cripta sustituta `cripta-02`, la mayor de las copias locales (la cripta de referencia del enunciado aún no está publicada; el veredicto definitivo depende de su publicación); veredicto en DECISIONES.md §5.3, apartado «"ir a" y el límite de §6.1». Atiende: FR-024, PR-15. Archivo: tests/bench_niebla.py.
+- [X] T110 [PERSONAS: curso, publicación de la cripta de referencia] Agregar a M4 el mapa conocido completo de la cripta de referencia y dar el veredicto definitivo de §6.1. Sus datos se obtienen de la fuente o quedan en `tests/` (Principio IV). Depende de T109. Hecho. Medición: commits 70ecfdc y c29aebd, sobre la cripta sustituta `cripta-06` (300 salas), la mayor de las copias locales y la mayor publicada; medición previa con `cripta-02` (la cripta de referencia del enunciado aún no está publicada; el veredicto definitivo depende de su publicación); veredicto en DECISIONES.md §5.3, apartado «"ir a" y el límite de §6.1». Atiende: FR-024, PR-15. Archivo: tests/bench_niebla.py.
 
 **Punto de control 6**: `python main.py --bench` genera `resultados_bench_niebla.txt` con M1 a M6 medidas. M4 trae
-filas sintéticas (pruebas de estrés, PROVISIONAL) y la fila «referencia/paso» de `cripta-02` (sustituta: la mayor
-de las copias locales), que da el veredicto de §6.1 sobre la sustituta: cumple; el definitivo depende de la
+filas sintéticas (pruebas de estrés, PROVISIONAL) y la fila «referencia/paso» de `cripta-06` (sustituta: la mayor
+de las copias locales y la mayor publicada; medición previa con `cripta-02`), que da el veredicto de §6.1 sobre la sustituta: cumple; el definitivo depende de la
 publicación de la cripta de referencia (ver DECISIONES.md §5.3).
 
 ---
@@ -348,10 +349,10 @@ pedido, pero T111, T112 y T113 **suben junto con su fase** si esa fase llega a `
 
 ### Documentos
 
-- [ ] T114 [PERSONAS: revisión del grupo] Agregar al Documento de Decisiones las decisiones 1 a 6 del plan, con alternativas y datos de `resultados_bench_niebla.txt`, marcando como hipótesis lo no medido. Incluir la resolución de D-PEND-01 (opción A: búsqueda compartida con el cazador en `Modelo/BusquedaRuta.py`, de Persona A). Es `Decisiones/DECISIONES.md`, en Markdown (convertido desde `Proyecto Cripta.docx`); la sección de esta capacidad es «§5.3 — El mapa conocido». Depende de T107. Atiende: PR-16, Principio VIII, sin FR. Archivo: Decisiones/DECISIONES.md.
+- [X] T114 [PERSONAS: revisión del grupo] Agregar al Documento de Decisiones las decisiones 1 a 6 del plan, con alternativas y datos de `resultados_bench_niebla.txt`, marcando como hipótesis lo no medido. Incluir la resolución de D-PEND-01 (opción A: búsqueda compartida con el cazador en `Modelo/BusquedaRuta.py`, de Persona A). Es `Decisiones/DECISIONES.md`, en Markdown (convertido desde `Proyecto Cripta.docx`); la sección de esta capacidad es «§5.3 — El mapa conocido». Depende de T107. Hecho: revisada por Persona A, Persona B y Persona D (confirmado el 2026-11-17). Atiende: PR-16, Principio VIII, sin FR. Archivo: Decisiones/DECISIONES.md.
 - [X] T115 Crear la matriz de trazabilidad: una fila por cada uno de los 31 FR y los 7 SC, con PR, tareas, prueba o `partida.log` de evidencia y estado (hecho, bloqueado o pendiente), más los 9 casos de SC-001. Las filas de FR-005 y FR-024 deben indicar que dependen de T010 (capacidad de terreno y costos) para probarse con costos reales: hasta entonces solo se prueban con costos puestos a mano en la salida o con grafos de prueba. Atiende: SC-001, FR-001 a FR-031, PR-16. Archivo: specs/001-niebla-mapa-ir-a/trazabilidad.md.
 - [X] T116 Recorrer los escenarios 1 a 8 de quickstart y correr la suite completa. Anotar el resultado en la matriz, incluido lo que siga bloqueado. Depende de T115. Atiende: SC-001, SC-002, SC-003, SC-004, SC-005, SC-006, PR-16. Archivo: specs/001-niebla-mapa-ir-a/trazabilidad.md.
-- [ ] T117 [PERSONAS: otra persona del grupo; Persona D] Revisar los cambios en `Modelo/`, `Persistencia/`, `Bitacora/` y `main.py` (Flujo de desarrollo). Quien revisa los cambios en `Bitacora/`, `Persistencia/` y `main.py` es Persona D. Atiende: PR-16, sin FR. Archivo: Modelo/, Persistencia/, Bitacora/, main.py (revisión).
+- [X] T117 [PERSONAS: otra persona del grupo; Persona D] Revisar los cambios en `Modelo/`, `Persistencia/`, `Bitacora/` y `main.py` (Flujo de desarrollo). Quien revisa los cambios en `Bitacora/`, `Persistencia/` y `main.py` es Persona D. Hecho: revisión de Persona D de `Modelo/`, `Persistencia/`, `Bitacora/` y `main.py`, con el README ya en main (confirmado el 2026-11-17). Atiende: PR-16, sin FR. Archivo: Modelo/, Persistencia/, Bitacora/, main.py (revisión).
 - [ ] T004 [PERSONAS: grupo] Al final, armar `PROMPTS_LLM.md` en la raíz del repositorio a partir de las notas de cada persona, con fecha, modelo, prompt textual y para qué se usó. Atiende: Principio XI, sin FR. Archivo: PROMPTS_LLM.md.
 
 **Punto de control 7**: matriz completa, ninguna afirmación de rendimiento sin medición, suite en verde. La capacidad se
@@ -388,9 +389,9 @@ T074 (exportar/restaurar) ─ T119 (copia, serialización y lotes reversibles, p
 | T062 a T065, T109 | Persona A | ✅ **Resuelta**: Persona A subió `Modelo/ColaPrioridad.py` y `Modelo/BusquedaRuta.py` (D-PEND-01 resuelta con la opción A) | Nada: T062 a T065 y T109 están hechas |
 | T076 | Persona D | Fórmula final de `_inicio_salas` y contenido de la línea de tiempo, en su plan (spec 004). El orden ya está acordado (P-10) | La línea de tiempo se trata como bloque opaco con su largo |
 | T098 | Personas A y D | Destino de los archivos versionados (Persona B está de acuerdo en retirarlos) | Quedan archivos obsoletos en el repositorio |
-| T110 | Curso | ✅ **Resuelta**: se usó como sustituta la mayor de las copias locales, `cripta-02` (HIPÓTESIS: la cripta de referencia del enunciado aún no está publicada; DECISIONES.md §5.3) | T110 está hecha y §6.1 cumple sobre la sustituta; el veredicto definitivo depende de la publicación de la cripta de referencia |
+| T110 | Curso | ✅ **Resuelta**: se usó como sustituta la mayor de las copias locales, `cripta-06` (300 salas, también la mayor publicada; medición previa con `cripta-02`) (HIPÓTESIS: la cripta de referencia del enunciado aún no está publicada; DECISIONES.md §5.3) | T110 está hecha y §6.1 cumple sobre la sustituta; el veredicto definitivo depende de la publicación de la cripta de referencia |
 | T111 a T113 | Grupo | Aviso antes de editar el README | No se sube la fase correspondiente |
-| T114, T117 | Grupo; Persona D revisa `Bitacora/`, `Persistencia/` y `main.py` | Revisión | Sin cierre de la capacidad |
+| T114, T117 | Grupo; Persona D revisa `Bitacora/`, `Persistencia/` y `main.py` | ✅ **Resuelta**: T114 revisada por Personas A, B y D; T117, revisión de Persona D con el README ya en main (confirmado el 2026-11-17) | Nada: T114 y T117 están hechas |
 
 ## Paralelismo
 

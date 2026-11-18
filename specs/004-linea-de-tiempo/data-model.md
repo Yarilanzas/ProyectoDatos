@@ -49,8 +49,9 @@ sigue creciendo estrictamente.
 
 ### Operaciones y complejidad
 
-Ver la tabla de [interfaz-linea.md](contracts/interfaz-linea.md). Resumen: registrar `O(1)` + copia `O(S)` cada K; recortar `O(V + S)`;
-consultar `O(log n + log C + S + K·a)`; memoria `O(n) + O(C·S)`.
+Ver la tabla de [interfaz-linea.md](contracts/interfaz-linea.md). Resumen: iniciar `O(S + N + E)`; registrar `O(1)` + copia `O(S + N + E)` cada K; recortar `O(V + S + N + E)`; cargar `O(S + N + E)`;
+consultar `O(log n + log C + S + K·a)`; memoria temporal de una consulta `O(S + N + E)`; memoria total `O(n) + O(C·(S + N + E))` (cada punto pesa `O(S) + O(N + E)`:
+el estado copiado y las fotos de rastros y de cerradas).
 
 ### Transiciones de estado
 
@@ -148,6 +149,15 @@ y 3.12.10; 300 acciones; mediana de 20 repeticiones; incluye armar el `memo`):
 Es **hasta 2.6 veces más lento y +43 % de memoria para N ≥ 200** que las cifras de E2 y E4. M3 (T103) se vuelve a medir con estas
 cifras como referencia y, mientras tanto, las de esta sección siguen siendo **HIPÓTESIS**. Riesgo para FR-020 en N altas: la copia de
 cada punto y la materialización pesan más de lo anotado; T098 sigue siendo el plan B (copia a mano por campos del estado vivo).
+
+### Orden de carga (lo que la línea ve al cargar)
+
+`cargar_partida` (`Gestor/PreparadorPartida.py`) restaura en este orden: jugador y conocimiento, motor, puertas reales, conocimiento,
+jugador y reloj, y la sala actual con sus enemigos activos. **Paso nuevo**: tras restaurar al jugador (su sala y los enemigos activos
+de ella), se restauran las salas con enemigos activos (tiempo >= 0) en **orden de id ascendente**. Para saber cuáles son, la carga lee
+todos los bloques de sala guardados (`leer_salas_con_enemigos_activos`), así que los eventos de esos
+enemigos reciben su secuencia en ese orden y no en el de la partida guardada. Es el límite que recoge
+[interfaz-linea.md](contracts/interfaz-linea.md#guardar-cargar-y-sus-límites-conocidos): el archivo no guarda la secuencia de los enemigos.
 
 ## Época
 

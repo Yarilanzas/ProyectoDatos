@@ -28,8 +28,8 @@ class PuntoControl:
     ``ciclo`` y ``version_puertas`` (enteros del motor que solo crecen) viajan dentro de ``estado``: no se guardan aparte.
 
     Complejidad (S tamaño del estado vivo, N salas, E salidas): crear un punto (``CopiaEstado.copiar``) cuesta O(S + N + E) de
-    tiempo y ocupa O(S) de memoria (más O(N + E) de fotos); leer sus campos es O(1). Una línea guarda C puntos, con
-    C <= ceil(n / K) + 1 + L + P: O(C · S) de memoria en total.
+    tiempo y ocupa O(S) + O(N + E) de memoria (el estado más las fotos); leer sus campos es O(1). Una línea guarda C puntos, con
+    C <= ceil(n / K) + 1 + L + P: O(C · (S + N + E)) de memoria en total.
     """
 
     __slots__ = ("estado", "foto_rastros", "foto_cerradas", "accion", "reloj", "secuencia", "epoca")

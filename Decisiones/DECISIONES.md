@@ -970,7 +970,7 @@ M4 (`resultados_bench_cazador.txt`): 50 cazadores de rango 2000 en una cripta si
 >
 > • Las mediciones usan una cripta sintética provisional y un solo equipo.
 >
-> • Un cazador activo que está en una sala que el jugador ya visitó, pero donde ya no está, no sobrevive a guardar y cargar: el guardado restaura solo la sala del jugador y las demás se leen perezosas, así que ese cazador no existe ni actúa hasta que el jugador vuelve a esa sala. Se detectó con la prueba de equivalencia de guardado y carga (T058).
+> • Corregido por Persona A (commit 57fce83), detectado con T058: antes, un cazador activo en una sala ya visitada, donde el jugador ya no estaba, no sobrevivía a guardar y cargar. Ahora la carga restaura también las salas guardadas con enemigos activos, y las demás se leen cuando el motor las necesita. Queda un límite conocido: tras guardar y cargar, dos enemigos de salas distintas que actúan en el mismo instante pueden ejecutarse en otro orden que en la partida guardada (primero la sala del jugador, luego las demás por id), porque el formato CRPT 3 guarda el instante de cada enemigo pero no su secuencia. Resolverlo exigiría un formato nuevo.
 
 ## §5.3 — El mapa conocido
 
@@ -1200,22 +1200,29 @@ Todas las filas quedan con el p95 por debajo de 20 ms (§5.2), con y sin conocim
 | Consulta `historia` | 50 ms | con una partida de al menos 5000 acciones y K por defecto | No |
 | Paso de «ir a» | 5 ms | con el mapa conocido completo de la cripta de referencia | **Sí: es el único del que se ocupa esta capacidad** |
 
-**Veredicto de §6.1 (T110): CUMPLE sobre la cripta sustituta (`cripta-02`, la mayor de las copias locales). El veredicto definitivo sobre la cripta de referencia del enunciado queda pendiente de su publicación.** M4 mide con la `primer_paso` real (la de Persona A), nunca un buscador de prueba, el peor paso de «ir a» en el mapa conocido completo de la cripta sustituta, con un par (origen, destino más lejano) por cada origen (ver «Método»). Es la fila `M4 referencia/paso` de `resultados_bench_niebla.txt` (`tests/bench_niebla.py::medir_m4_referencia`, commit `70ecfdc`).
+**Veredicto de §6.1 (T110): CUMPLE sobre la cripta sustituta `cripta-06` (la mayor de las copias locales y la mayor publicada, 300 salas). El veredicto definitivo sobre la cripta de referencia del enunciado sigue pendiente de su publicación.** M4 mide con la `primer_paso` real (la de Persona A), nunca un buscador de prueba, el peor paso de «ir a» en el mapa conocido completo de la cripta sustituta, con cribado de todos los pares alcanzables y confirmación de los más lentos (ver «Método»). Es la fila `M4 referencia/paso` de `resultados_bench_niebla.txt` (`tests/bench_niebla.py::medir_m4_referencia`, commits `70ecfdc` y `c29aebd`).
 
 | Dato | Valor |
 |---|---|
-| Cripta | `cripta-02`, 20 salas, leída al correr de `datos_locales/esqueleto_cripta-02.json` |
-| Pares medidos | 20: uno por origen alcanzable, hacia su destino más lejano (con el método anterior eran 325, todos los alcanzables de 380 posibles) |
-| Peor paso, en cuatro corridas | entre 0.02 y 0.09 ms, por llamada y reutilizado |
+| Cripta | `cripta-06`, 300 salas, leída al correr de `datos_locales/esqueleto_cripta-06.json` |
+| Pares medidos | 22 052 alcanzables, todos en el cribado (1 repetición); 50 confirmados con la mediana de 7 |
+| Peor paso, en cuatro corridas | entre 0.15 y 0.43 ms, por llamada y reutilizado (el peor registrado, 0.4320 ms, en la corrida de `resultados_bench_niebla.txt`) |
 | Límite | 5 ms (`LIMITE_PASO_IR_A_MS`) |
-| Veredicto | **cumple**, con un margen de al menos 50 veces |
+| Veredicto | **cumple**, con un margen de al menos 11 veces (5 / 0.4320 ≈ 11.6) |
 
-- **Qué cripta se mide (HIPÓTESIS).** La cripta de referencia del enunciado (§6.1) todavía no está publicada. No es la «cripta publicada más grande»: esa es la de la verificación de resolubilidad, no la de «ir a». Como sustituta se usa `cripta-02`, con 20 salas, porque es la mayor de las copias locales de `datos_locales/` (las otras son `cripta-01`, con 6, y `cripta-test`, con 5). La mayor publicada es `cripta-06`, con 300 salas y 760 salidas (según `specs/002-resolubilidad/research.md`). No hay copia local de ella y está **SIN MEDIR**. Por las filas sintéticas de 400 salas (grilla: de 1.0 a 1.7 ms por paso, hasta 3.8 ms con el equipo cargado) se espera que con 300 salas también cumpla, pero es una **HIPÓTESIS**, no una medición.
-- **Método.** Antes se medían todos los pares (origen, destino) alcanzables; con una cripta de 300 salas serían unos 90 000, demasiados para `--bench` y para la suite. Ahora, por cada origen con algún destino alcanzable, se mide un solo paso: hacia el destino alcanzable de **mayor costo acumulado** desde ese origen (en empate, el de menor id; `tests/bench_niebla.py::destinos_mas_lejanos`). Los orígenes sin ningún destino alcanzable se omiten. Las distancias se calculan en el bench con un Dijkstra completo desde cada origen, sobre las listas y la cola de un `EspacioBusqueda`, sin tocar `Modelo/BusquedaRuta.py`. En `cripta-02` los pares medidos pasan de 325 a 20 (los 20 orígenes alcanzan algún destino).
-  - **SUPOSICIÓN sobre el peor caso.** `primer_paso` es un Dijkstra que corta al sacar el destino de la cola, y saca las salas en orden de distancia. Así, el trabajo hasta el destino no decrece con su distancia, y el más lejano es el peor caso de ese origen. Los empates de distancia pueden alterar el orden en que salen las salas, así que es una suposición, no una garantía.
-  - Cada par se mide como un paso de las filas sintéticas: `medir_ms` de `primer_paso`, mediana de 7 repeticiones. La fila da el máximo, el par que lo produce con su costo acumulado («peor», «costo») y cuántos orígenes y pares se midieron («origenes», «pares», iguales), en dos variantes: un `EspacioBusqueda` nuevo en cada llamada y uno reutilizado en todos los pares medidos. Equipo: Windows 11, Intel, Python 3.12.10, con la carga normal de PyCharm y otros programas abiertos, así que las cifras varían entre corridas (también cambia el par que da el peor caso).
-- **Mapa conocido completo.** Se entra sin antorcha a cada sala, como en las filas sintéticas: todas quedan exploradas y cada puerta queda recordada con su estado real. Hay 2 salidas cerradas con llave (5→19 y 17→18) que el jugador recuerda cerradas, así que no entran al grafo. El grafo es dirigido: desde la sala 1 solo se alcanzan 17 de las 20 salas, y los 55 pares restantes no tienen ruta.
-- **Enemigos (confirmado por Persona B el 2026-11-17).** En las salas conocidas de `cripta-02` (1 a 8, 19 y 20) hay 1 enemigo, `ent_rata_gigante` (rastreador), en la sala 7, y 0 cazadores. Las salas 9 a 18 nunca se descargaron, así que no hay garantía para toda la cripta. No cambia la medición, porque el costo de una salida no depende de los enemigos: `MotorSimulacion.costo_salida` (`Modelo/MotorSimulacion.py`) solo lee `salida.costo`, o `COSTO_MOVER` si no lo trae, y `GrafoConocido.aristas` (`Modelo/Conocimiento.py`) solo mira el estado de las salas, el recuerdo de la puerta y ese costo.
+Medición previa: `cripta-02` (20 salas), 325 pares alcanzables, peor paso entre 0.02 y 0.09 ms: cumple.
+
+- **Qué cripta se mide (HIPÓTESIS).** La cripta de referencia del enunciado (§6.1) todavía no está publicada. La «cripta publicada más grande» de FR-029 (spec 002) es la de la verificación de resolubilidad, no la de «ir a». Como sustituta se usa `cripta-06`, con 300 salas y 760 salidas: es la mayor de las copias locales de `datos_locales/` y también la mayor publicada (según `specs/002-resolubilidad/research.md`). Tiene copia local desde que Persona B subió su esqueleto (`datos_locales/esqueleto_cripta-06.json`, versión `f9ed9afa683d`). Las otras copias son `cripta-02`, con 20 salas, `cripta-01`, con 6, y `cripta-test`, con 5. `cripta-02` fue la sustituta de la primera medición. Que `cripta-06` represente a la cripta de referencia es una **HIPÓTESIS**.
+- **Método: cribado y confirmación.** Cada paso se mide como en las filas sintéticas: `medir_ms` de `primer_paso`.
+  1. **Cribado.** Se miden TODOS los pares (origen, destino) alcanzables con 1 repetición cada uno. Los pares se enumeran con las distancias de un Dijkstra completo por origen (`tests/bench_niebla.py::pares_alcanzables`, sobre las listas y la cola de un `EspacioBusqueda`, sin tocar `Modelo/BusquedaRuta.py`), no con un `primer_paso` por par. Los orígenes sin ningún destino alcanzable no aportan pares.
+  2. **Confirmación.** Los K pares más lentos del cribado (`CONFIRMADOS_M4_REFERENCIA = 50`) se vuelven a medir con la mediana de 7 repeticiones. Si hay menos de K pares, se confirman todos.
+  3. **Fila.** Da el máximo de esas medianas; el veredicto es `veredicto_paso` de ese máximo. Reporta cuántos orígenes aportan pares («origenes»), cuántos pares hay («pares»), cuántos se confirmaron («confirmados») y el par del máximo con su costo acumulado («peor», «costo»).
+  - **Por qué no un par por origen (hallazgo).** Se probó medir un solo paso por origen, hacia su destino alcanzable de mayor costo acumulado, con la suposición de que ese era el peor caso del origen. En `cripta-06` no se cumplió. Medidos todos los pares con 1 repetición, el máximo dio 0.89, 0.99 y 1.02 ms en tres corridas, contra 0.15 y 0.17 ms de la fila por origen. En ninguna corrida el peor par era el destino más lejano de su origen. Medir todos los pares es barato (de 1.5 a 2.4 s con 1 repetición para los 22 052 pares de `cripta-06`), así que se mide todo y se confirma con la mediana. En `cripta-02` los pares medidos vuelven a ser los 325 alcanzables.
+  - Las dos variantes de la fila: un `EspacioBusqueda` nuevo en cada llamada y uno reutilizado en todos los pares medidos. Equipo: Windows 11, Intel, Python 3.12.10, con la carga normal de PyCharm y otros programas abiertos, así que las cifras varían entre corridas (también cambia el par que da el peor caso).
+- **Mapa conocido completo.** Se entra sin antorcha a cada sala, como en las filas sintéticas: todas quedan exploradas y cada puerta queda recordada con su estado real. Las salidas cerradas con llave quedan recordadas cerradas y no entran al grafo, que es dirigido.
+  - `cripta-06`: entran al grafo 704 de las 760 salidas (las abiertas, todas con destino existente); las 56 cerradas con llave no entran. 299 de las 300 salas tienen aristas. La sala 160, «Puerta de la superficie», queda aislada: su única salida (O → 159) y su única entrada (159 E → 160) están cerradas. Hay 22 052 pares alcanzables.
+  - `cripta-02` (medición previa): 2 salidas cerradas con llave (5→19 y 17→18). Desde la sala 1 solo se alcanzan 17 de las 20 salas; hay 325 pares alcanzables y los 55 restantes no tienen ruta.
+- **Enemigos.** Lo confirmado por Persona B el 2026-11-17 es de `cripta-02`; de `cripta-06` no se revisaron enemigos. En las salas conocidas de `cripta-02` (1 a 8, 19 y 20) hay 1 enemigo, `ent_rata_gigante` (rastreador), en la sala 7, y 0 cazadores. Las salas 9 a 18 nunca se descargaron, así que no hay garantía para toda la cripta. No cambia la medición, porque el costo de una salida no depende de los enemigos: `MotorSimulacion.costo_salida` (`Modelo/MotorSimulacion.py`) solo lee `salida.costo`, o `COSTO_MOVER` si no lo trae, y `GrafoConocido.aristas` (`Modelo/Conocimiento.py`) solo mira el estado de las salas, el recuerdo de la puerta y ese costo.
 
 **Filas sintéticas: pruebas de estrés (PROVISIONAL).** Miden la misma `primer_paso` sobre el mapa conocido completo de cada mapa sintético. No son el criterio de §6.1: muestran cómo crece el paso con el tamaño del mapa.
 
@@ -1226,12 +1233,12 @@ Todas las filas quedan con el p95 por debajo de 20 ms (§5.2), con y sin conocim
 Resultados por paso:
 
 - Hasta 400 salas, cumple. La grilla de 400 da de 1.0 a 1.2 ms por paso en condiciones normales, y hasta 3.8 ms con el equipo cargado.
-- La cadena de 2500 cumple: de 2.5 a 3.4 ms por paso en condiciones normales. En una corrida con el equipo cargado llegó a 7.4 ms por paso («no cumple» en esa corrida), así que es un caso en el límite que depende de la carga.
+- La cadena de 2500 cumple: de 2.5 a 3.4 ms por paso en condiciones normales. Con el equipo cargado llegó hasta 11.7 ms por paso (corrida de T110 del 2026-11-17, «no cumple» en esa corrida), así que sigue siendo un caso en el límite que depende de la carga.
 - La grilla de 2500 **no cumple**: de 8 a 26 ms por paso. Es un Dijkstra sin heurística con el destino lejano; A* queda fuera de alcance (confirmación de Persona A, abajo).
 
 Las cifras de la última corrida están en `resultados_bench_niebla.txt`.
 
-**Nota metodológica: orden de las filas.** Medir la cripta sustituta (`cripta-02`) entre los dos bloques sintéticos («por llamada» y «reutilizado») empeoraba las filas que venían después: la cadena de 2500 reutilizada subió de ≈2.9 a 4.4–7.9 ms por paso. Por eso las filas de la cripta sustituta van al final de M4 (`tests/test_bench_niebla.py::test_sc007_pr15_t110_las_filas_de_referencia_van_despues_de_todas_las_sinteticas`). La causa no se investigó.
+**Nota metodológica: orden de las filas.** Medir la cripta sustituta (entonces `cripta-02`) entre los dos bloques sintéticos («por llamada» y «reutilizado») empeoraba las filas que venían después: la cadena de 2500 reutilizada subió de ≈2.9 a 4.4–7.9 ms por paso. Por eso las filas de la cripta sustituta van al final de M4 (`tests/test_bench_niebla.py::test_sc007_pr15_t110_las_filas_de_referencia_van_despues_de_todas_las_sinteticas`). La causa no se investigó.
 
 **Diagnóstico (medición puntual del 2026-11-16, fuera de `--bench`).** Se perfiló con `cProfile` una búsqueda de la sala 1 a la 2500 de la grilla de 2500, en el mismo equipo. Son mediciones puntuales y ruidosas: el mismo paso dio una mediana de 8.6 ms en una corrida y de 20 a 24 ms en otra.
 
@@ -1245,9 +1252,9 @@ Las cifras de la última corrida están en `resultados_bench_niebla.txt`.
 
 Dieron el mismo primer paso que la versión actual en 2800 casos (grilla y cadena de V = 400, con costos variados y con todos los costos en 1 para forzar empates). Ganaron entre 0 % y 9 %, dentro del ruido. **HIPÓTESIS**: que alguna de ellas mejore de forma consistente. Bajar de verdad exigiría cambiar el algoritmo, con búsqueda bidireccional o A* con una estimación de distancia. Queda como trabajo futuro y corresponde a Persona A, responsable de `Modelo/BusquedaRuta.py`.
 
-**Espacio reutilizado.** Reutilizar el `EspacioBusqueda` no dio una mejora consistente. En la corrida de `resultados_bench_niebla.txt`, el paso de la grilla de 2500 tarda 9.2726 ms por llamada y 21.9315 ms reutilizado, y el de la cadena de 2500, 3.0830 y 8.5576 ms. **HIPÓTESIS no concluyente**.
+**Espacio reutilizado.** Reutilizar el `EspacioBusqueda` no dio una mejora consistente. En la corrida de `resultados_bench_niebla.txt`, el paso de la grilla de 2500 tarda 27.4635 ms por llamada y 22.5135 ms reutilizado, y el de la cadena de 2500, 10.1897 y 11.6780 ms (corrida con el equipo cargado). **HIPÓTESIS no concluyente**.
 
-**Confirmación de Persona A (2026-11-16), responsable de `Modelo/BusquedaRuta.py`.** La búsqueda ya corta al sacar el destino de la cola (`if ordinal == ordinal_destino:` devuelve el paso), así que no hay ahorro por ahí. El costo de la grilla de 2500 es el de un Dijkstra sin heurística con el destino lejano. Un A* lo reduciría, pero cambia el algoritmo y obliga a repetir las pruebas de desempate; por eso no entra antes de la entrega y la grilla de 2500 queda como prueba de estrés documentada, con su veredicto «no cumple». El criterio de §6.1 se mide en la cripta de referencia; según A, si la cripta real tiene 400 salas o menos, debería quedar dentro de los 5 ms. Esa fue la lectura de A antes de T110; la medición de T110 con la cripta sustituta (`cripta-02`, de 20 salas) cumple (arriba).
+**Confirmación de Persona A (2026-11-16), responsable de `Modelo/BusquedaRuta.py`.** La búsqueda ya corta al sacar el destino de la cola (`if ordinal == ordinal_destino:` devuelve el paso), así que no hay ahorro por ahí. El costo de la grilla de 2500 es el de un Dijkstra sin heurística con el destino lejano. Un A* lo reduciría, pero cambia el algoritmo y obliga a repetir las pruebas de desempate; por eso no entra antes de la entrega y la grilla de 2500 queda como prueba de estrés documentada, con su veredicto «no cumple». El criterio de §6.1 se mide en la cripta de referencia; según A, si la cripta real tiene 400 salas o menos, debería quedar dentro de los 5 ms. Esa fue la lectura de A antes de T110; la medición de T110 con la cripta sustituta (`cripta-06`, de 300 salas) cumple (arriba).
 
 ### Veneno no jugable (límite conocido)
 
@@ -1269,46 +1276,77 @@ Dieron el mismo primer paso que la versión actual en 2800 casos (grilla y caden
 - Costo de `@cargar` en el replay y su efecto en el presupuesto con red (decisión 3).
 - Tiempos de `mapa` y de resolver el destino de `ir a` (decisión 4).
 - Que las mejoras pequeñas de la búsqueda ganen de forma consistente, y que reutilizar el `EspacioBusqueda` mejore (M4).
-- Que el veredicto de §6.1 sobre la cripta sustituta (`cripta-02`, 20 salas, la mayor de las copias locales) se mantenga con la cripta de referencia del enunciado, que aún no está publicada. La mayor publicada, `cripta-06` (300 salas, 760 salidas), no tiene copia local y está SIN MEDIR; se espera que cumpla por las sintéticas de 400 salas, pero no se ha medido.
+- Que el veredicto de §6.1 sobre la cripta sustituta (`cripta-06`, 300 salas, medida: peor paso entre 0.15 y 0.43 ms) se mantenga con la cripta de referencia del enunciado, que aún no está publicada.
 
 ## §5.4 — Resolubilidad
 
 ## §5.5 — Línea de tiempo y puntos de control
 
+Documentos de la capacidad: [`specs/004-linea-de-tiempo/spec.md`](../specs/004-linea-de-tiempo/spec.md) y [`specs/004-linea-de-tiempo/plan.md`](../specs/004-linea-de-tiempo/plan.md). **La decisión final coincide con la de `plan.md` original** en el diseño (re-simulación desde puntos de control, `copy.deepcopy` con `memo`, K = 50): las mediciones M1 y M2 confirmaron K = 50, que el plan marcaba **HIPÓTESIS**. Lo que cambió respecto del plan va con la medición que lo motivó: las cifras de copiar y materializar con N grande del plan (consulta de ~69 ms con 2 000 salas, de una exploración previa local, no versionada) se corrigieron con M3 (con N = 2 000, `copiar` 66.938 ms y `materializar` 119.817 ms; ver 5).
+
 Fuente de todas las cifras: `resultados_bench_linea.txt` (corrida completa de `tests/bench_linea.py`, Windows 10, Python 3.12.10, cripta sintética de 20 salas, sin red ni vista). Se cita el bloque (M1 a M10, T113). Las cifras son de esa máquina. Lo no medido está marcado como **HIPÓTESIS**, igual que en ese archivo. Los cambios 1 a 3 que se justifican aquí son los de la tabla «Cambios propuestos a la spec» de `specs/004-linea-de-tiempo/plan.md`.
 
-### 1. Re-simulación desde puntos de control, en vez de guardar copias completas por acción
+### 1. Problema
 
-**Problema.** Consultar el pasado (`historia <t>`, `historia #k`, `--replay --hasta`) exige reconstruir el estado de un instante sin alterar el presente.
+Consultar el pasado (`historia <t>`, `historia #k`, `--replay --hasta`) exige reconstruir el estado de un instante sin alterar el presente.
 
-**Enunciado (§3.6, «Restricción de memoria»).** «Se permite guardar copias completas del estado, llamadas puntos de control, pero no más de una cada K acciones del jugador.» Además: «Fuera de los puntos de control, solo se almacena la información necesaria para reconstruir los cambios. Pueden reconstruir hacia adelante desde un punto de control, re-simulando, o hacia atrás desde el estado actual, invirtiendo cambios. Si re-simulan, el punto de control debe incluir el estado del generador random.Random.» (§5.5: la memoria crece con los cambios más un punto cada K acciones, nunca con «acciones por tamaño del estado»).
+**Enunciado (§3.6, «Restricción de memoria»).** «Se permite guardar copias completas del estado, llamadas puntos de control, pero no más de una cada K acciones del jugador.» Además: «Fuera de los puntos de control, solo se almacena la información necesaria para reconstruir los cambios. Pueden reconstruir hacia adelante desde un punto de control, re-simulando, o hacia atrás desde el estado actual, invirtiendo cambios. Si re-simulan, el punto de control debe incluir el estado del generador random.Random.» (§5.5: la memoria crece con los cambios más un punto cada K acciones, nunca con «acciones por tamaño del estado».)
 
-**Decisión (cambios 1 a 3).**
+### 2. Alternativas consideradas
+
+- **Invertir cambios hacia atrás:** descartada. El motor no emite cambios aplicables y el `Historial` no sirve para ir hacia atrás.
+- **Guardar los puntos completos en el archivo:** descartada. Exige un segundo serializador de todo el estado.
+- **Reemplazar el punto previo en lugar de agregar uno:** descartada. Sin el punto posterior a un retroceso o a una carga la reconstrucción no es exacta.
+- **`copy.deepcopy` a secas del motor:** descartada. Con N = 2 000 salas falla con `RecursionError` y con N = 200 es más lento que la copia estructurada (cifras en 5, M3).
+
+### 3. Decisión
+
+**Cambios 1 a 3.**
 1. Lo que se guarda entre puntos de control es la **acción registrada** (el comando aceptado con su sello `(reloj, secuencia)`), no una diferencia de estado. Se reconstruye hacia adelante re-simulando; el punto de control incluye el estado de `random.Random` (`motor.azar`).
 2. Se guarda en la partida el **guion** (acciones, retrocesos y cargas) y K; los puntos de control **se reconstruyen al cargar**.
 3. Además de un punto cada K acciones, hay un punto extra tras cada retroceso y tras cada carga: la cota es ⌈n/K⌉ + 1 + cargas + usos del pergamino.
 
-**Alternativas descartadas.** Invertir cambios hacia atrás: el motor no emite cambios aplicables y el `Historial` no sirve para ir hacia atrás. Guardar los puntos completos en el archivo: exige un segundo serializador de todo el estado. Reemplazar el punto previo en lugar de agregar uno: sin el punto posterior a un retroceso o a una carga la reconstrucción no es exacta.
+**Condición de C (aceptación del 2026-11-12).** Los cambios 1 y 2 están respaldados por el propio enunciado. El cambio 3 es el único que **se aparta de la letra** de «no más de una cada K» y por eso se justifica aquí: cada retroceso y cada carga agregan un punto, que no son «una cada K».
 
-**Condición de C (aceptación del 2026-11-12).** Los cambios 1 y 2 están respaldados por el propio enunciado. El cambio 3 es el único que **se aparta de la letra** de «no más de una cada K acciones» y por eso se justifica aquí: cada retroceso y cada carga agregan un punto, que no son «una cada K».
+**`copy.deepcopy` con `memo`.** El profesor respondió el 2026-11-12: «Para este proyecto sí pueden usar el dict como caché. No hay problema». La autorización se limita al `memo` de `copy.deepcopy` en `Modelo/CopiaEstado.py`; el resto de las estructuras de la capacidad sigue sin `dict` ni `set` como índice. Está recogida en la constitución v3.0.3 (`fcebe15`, Principio I).
 
-**Evidencia.**
+**K por omisión = 50.** Regla (T113): un K cumple si todas las consultas tardan menos de 50 ms (SC-002) y su p95 × 2.5 sigue por debajo de 50 ms. Se conserva el K vigente mientras cumpla; si deja de cumplir, el mayor K que cumpla. El margen va sobre el **p95** y no sobre el máximo porque el máximo de las 200 consultas lo fija un solo valor atípico (T113: «los datos no distinguen entre ellos en el peor caso»). El margen de 2.5 es una elección del grupo, no una medición: **HIPÓTESIS**. Se conserva 50 porque cumple (`K_POR_OMISION` no cambia).
+
+### 4. Análisis de complejidad
+
+`n` acciones vigentes, `K`, `C` puntos de control, `S` tamaño del estado vivo, `N`/`E` salas y salidas, `a` costo de una acción, `V` acciones recortadas, `L` cargas, `P` usos del pergamino. Las mismas complejidades están en `data-model.md`, `contracts/interfaz-linea.md` y los docstrings de `Modelo/LineaTiempo.py`, `Modelo/BusquedaBinaria.py` y `Modelo/CopiaEstado.py`. La memoria de un punto crece con N y E por las fotos de `rastro` y `cerrada`: M3 midió 18.0, 31.4, 76.5 y 666.4 KiB de `copiar` con N = 20, 60, 200 y 2 000.
+
+| Operación | Tiempo | Memoria |
+|-----------|--------|---------|
+| consulta de la historia (`consultar_instante`) | O(log n + log C + S + K·a) | O(S + N + E) temporal |
+| consulta de la historia (`consultar_accion`) | O(log C + S + K·a) | O(S + N + E) temporal |
+| iniciar (`iniciar`) | O(S + N + E) | O(S) + O(N + E) |
+| registrar una acción (`registrar_accion`) | O(1), más O(S + N + E) cada K | O(1), más O(S) + O(N + E) cada K |
+| recorte (`registrar_retroceso`) | O(V + S + N + E); no depende de n (FR-027) | O(S) + O(N + E) |
+| registrar carga (`registrar_carga`) | O(S + N + E) | O(S) + O(N + E), más la copia privada |
+| copiar (punto) | O(S + N + E) | O(S) + O(N + E) |
+| materializar | O(S + N + E) | O(S + N + E) temporal |
+| foto de rastros (`foto_rastros`) | O(N) | O(N) |
+| foto de salidas cerradas (`foto_cerradas`) | O(N + E) | O(E) |
+| búsqueda binaria (`ultimo_menor_o_igual`) | O(log n) por llamada; caso vacío o valor menor O(1) | O(1) |
+| serie de pergaminos: registrar | O(capacidad del inventario) | O(1) |
+| serie de pergaminos: plegar | O(registros sacados) | O(1) |
+| serie de pergaminos: en | O(log longitud) | O(1) |
+| guardar (`a_registro`) | O(n_guion) | O(n_guion) |
+| cargar (`desde_registro`) | O(n_guion) | O(n_guion) |
+| memoria total | - | M(n) = n·b_guion + (P + L)·b_guion + C·(S + N + E) + serie, con C ≤ ⌈n/K⌉ + 1 + L + P; para K fijo crece como n/K |
+
+### 5. Evidencia empírica
+
+**Cambios 1 a 3.**
 - M4 (recorte): `retroceder` cuesta, con la línea, una mediana de 1.984 ms (n = 500), 2.641 ms (n = 5 000) y 2.722 ms (n = 50 000); la mediana con n = 50 000 es 1.37 veces la de n = 500 (casi constante). Máximo: 3.868 ms.
 - M6 (cargar): reconstruir 5 000 acciones con K = 50 tarda 670.1 ms sin `@cargar` y 584.0 ms con `@cargar`; el bloque pesa 133.0 KiB (27.2 B por acción). Un solo punto completo serializado con pickle pesa 13.1 KiB: guardar los 101 puntos serían unos 1.3 MiB frente a 133.0 KiB del guion.
 - M7 (SC-003): los mismos 100 instantes con K = 1, 50 y 500 dan resúmenes idénticos con las semillas 1, 2 y 3 (150 acciones).
 - M2 (memoria, K = 50): 1799.7 KiB con n = 2 500, 3599.2 KiB con n = 5 000 y 7197.2 KiB con n = 10 000; crece x2.00 al duplicar n y cumple la cota de puntos en todos los K.
 
-### 2. `copy.deepcopy` con `memo`
+**`copy.deepcopy` con `memo` (M3).** Con N = 2 000 salas `deepcopy` a secas falla con `RecursionError` («no sirve»); la copia estructurada termina: `copiar` 66.938 ms y 666.4 KiB, `materializar` 119.817 ms. Con N = 200, `deepcopy` a secas tarda 32.219 ms y `copiar` 4.695 ms. Con N = 20, 5.037 ms frente a 2.055 ms.
 
-El profesor respondió el 2026-11-12: «Para este proyecto sí pueden usar el dict como caché. No hay problema». La autorización se limita al `memo` de `copy.deepcopy` en `Modelo/CopiaEstado.py`; el resto de las estructuras de la capacidad sigue sin `dict` ni `set` como índice. Está recogida en la constitución v3.0.3 (`fcebe15`, Principio I).
-
-Evidencia (M3): con N = 2 000 salas `deepcopy` a secas falla con `RecursionError` («no sirve»); la copia estructurada termina: `copiar` 66.938 ms y 666.4 KiB, `materializar` 119.817 ms. Con N = 200, `deepcopy` a secas tarda 32.219 ms y `copiar` 4.695 ms. Con N = 20, 5.037 ms frente a 2.055 ms.
-
-### 3. K por omisión = 50
-
-**Regla (T113).** Un K cumple si todas las consultas tardan menos de 50 ms (SC-002) y su p95 × 2.5 sigue por debajo de 50 ms. Se conserva el K vigente mientras cumpla; si deja de cumplir, el mayor K que cumpla. El margen va sobre el **p95** y no sobre el máximo porque el máximo de las 200 consultas lo fija un solo valor atípico (T113: «los datos no distinguen entre ellos en el peor caso»). El margen de 2.5 es una elección del grupo, no una medición: **HIPÓTESIS**.
-
-**Tabla (T113; n = 5 000; «-» = no medido en esa celda).**
+**K por omisión (T113; n = 5 000; «-» = no medido en esa celda).**
 
 | K | p95 consulta (ms) | máx consulta (ms) | memoria (KiB) | registrar p95 (ms) | reconstruir (ms) | resultado |
 |---|------|------|------|------|------|-----------|
@@ -1319,24 +1357,21 @@ Evidencia (M3): con N = 2 000 salas `deepcopy` a secas falla con `RecursionError
 | 500 | 39.36 | 53.58 | 1089.7 | 0.008 | 415.0 | NO cumple |
 | sin puntos | 296.33 | 341.59 | 794.9 | - | - | NO cumple |
 
-Con K = 1 la memoria solo se midió con n = 2 500 (M2: 69528.2 KiB). Cumplen K = 1, 10, 50 y 100; más K ahorra memoria y menos K da consultas más cortas. **Se conserva 50** porque cumple (`K_POR_OMISION` no cambia). M1 con K = 50: mediana 3.085 ms, p95 6.365 ms, máximo 15.557 ms, 100 % por debajo de 50 ms. M5: registrar una acción con K = 50 tiene p95 de 0.0096 ms (máximo 3.6510 ms), por debajo de 20 ms (§5.2).
+Con K = 1 la memoria solo se midió con n = 2 500 (M2: 69528.2 KiB). Cumplen K = 1, 10, 50 y 100; más K ahorra memoria y menos K da consultas más cortas. M1 con K = 50: mediana 3.085 ms, p95 6.365 ms, máximo 15.557 ms, 100 % por debajo de 50 ms. M5: registrar una acción con K = 50 tiene p95 de 0.0096 ms (máximo 3.6510 ms), por debajo de 20 ms (§5.2).
 
-### 4. Antes y después de la línea (M10)
+**M10, antes y después de la línea.** `retroceder` cuesta 0.0539 ms con solo el `Historial` y 2.7017 ms con el `Historial` y la línea (n = 5 000; n = 500: 0.0430 y 2.0266 ms; n = 50 000: 0.0579 y 2.7731 ms). El retroceso entero (`Historial` más línea) tarda a lo sumo 3.929 ms, por debajo de 20 ms. El bench de la Parte I (5 intervalos × 50 cambios, solo `Historial`) registra 250 cambios en 0.0940 ms y deshace en 0.0240 ms. **El `Historial` sigue siendo adecuado y no se cambia.** Umbral de SC-010: **8 ms por recorte** (M4: dos veces el mayor máximo medido, redondeado hacia arriba; a revisar si cambia la medición).
 
-`retroceder` cuesta 0.0539 ms con solo el `Historial` y 2.7017 ms con el `Historial` y la línea (n = 5 000; n = 500: 0.0430 y 2.0266 ms; n = 50 000: 0.0579 y 2.7731 ms). El retroceso entero (`Historial` más línea) tarda a lo sumo 3.929 ms, por debajo de 20 ms. El bench de la Parte I (5 intervalos × 50 cambios, solo `Historial`) registra 250 cambios en 0.0940 ms y deshace en 0.0240 ms. **El `Historial` sigue siendo adecuado y no se cambia.** Umbral de SC-010: **8 ms por recorte** (M4: dos veces el mayor máximo medido, redondeado hacia arriba; a revisar si cambia la medición).
+**Costo de K = 1.** `--replay --hasta` con `--checkpoint-cada 1` tarda unas 22 veces más (M8, 1 000 acciones): 2339.7 ms (x21.95) frente a 106.6 ms del replay normal; con K = 10, 204.9 ms; con K = 500, 144.9 ms; sin `--checkpoint-cada`, 191.6 ms. El contrato permite K = 1 y la decisión es de quien lo pide.
 
-### 5. Costo de K = 1
+### 6. Límites conocidos
 
-`--replay --hasta` con `--checkpoint-cada 1` tarda unas 22 veces más (M8, 1 000 acciones): 2339.7 ms (x21.95) frente a 106.6 ms del replay normal; con K = 10, 204.9 ms; con K = 500, 144.9 ms; sin `--checkpoint-cada`, 191.6 ms. El contrato permite K = 1 y la decisión es de quien lo pide.
-
-### 6. Limitaciones conocidas (no son defectos)
-
+Limitaciones (no son defectos):
 - **Pergaminos tras retroceder (FR-029).** La serie guarda un valor por posición: en la posición a la que se retrocedió rige la última ocurrencia (el presente); antes de ella, lo que el jugador tenía entonces.
 - **`copyfile` al cargar.** `cargar` es atómico hasta reconstruir la línea; después cierra lo anterior, y si `shutil.copyfile` de la copia de bitácora falla (`OSError`), la partida ya quedó cargada, sin bitácora, y se muestra un aviso.
+- **Orden de enemigos con el mismo instante tras cargar.** Tras cargar, dos enemigos de salas distintas con el mismo instante pueden ejecutarse en otro orden, porque el archivo no guarda la secuencia de los enemigos (el CRPT 3 guarda el instante de cada enemigo, no su secuencia): no cambia las decisiones, solo su orden, y la historia posterior a la carga se reconstruye desde la partida cargada.
 - **Guardar descarta una línea desfasada.** Si el motor avanzó sin avisar a la línea (por ejemplo una acción que lanzó `RuntimeError` a medias), `guardar` avisa, descarta la línea y escribe el archivo con largo de línea 0.
 
-### 7. Lo no medido (**HIPÓTESIS**)
-
+Lo no medido (**HIPÓTESIS**):
 - M2 con K = 1 y n > 2 500 (HIPÓTESIS: crece como n · bytes por punto).
 - M3 con N > 2 000.
 - M4 con n > 50 000.
@@ -1344,3 +1379,89 @@ Con K = 1 la memoria solo se midió con n = 2 500 (M2: 69528.2 KiB). Cumplen K =
 - El margen de 2.5 y el efecto de criptas mayores sobre el costo de cada punto (T113; M3: materializar pasa de 2.7 ms con N = 20 a 7.7 ms con N = 200 y a 119.8 ms con N = 2 000).
 
 ## §5.6 — Revisión de decisiones de la primera parte
+
+Enunciado de la Parte II, §5.6: repetir las mediciones de la primera parte con la carga nueva; si una decisión deja de ser adecuada se cambia y se documenta el antes y el después, y si sigue siéndolo se muestra con datos. Aquí solo se revisa lo que corresponde al historial de retroceso (P1 §4.6). Cifras: `resultados_bench_linea.txt` (M10), ver §5.5.
+
+### Agenda de eventos (P1 §4.1)
+
+#### 1. Problema
+
+La Parte I eligió un montículo binario propio para la agenda de eventos (§4.1). La carga nueva de la Parte II cambia lo que se programa: los tiempos ya no son consecutivos sino reloj + intervalo según el costo de la salida y la velocidad del actor (`calcu_inter`), hay más actores con su propio reloj y entran los cazadores (§5.2). Hay que ver si esa carga deja de hacer adecuada la decisión.
+
+#### 2. Alternativas consideradas
+
+Seguir con el montículo propio o volver a la lista con búsqueda lineal del mínimo, que ya se había descartado en §4.1. No se evaluó otra estructura: la medición con la carga nueva muestra que el montículo sigue ganando donde importa (ver 5).
+
+#### 3. Decisión
+
+La agenda sigue siendo el montículo binario de mínimos de §4.1, sin cambios. `Modelo/AgendaEventos.py` y `Modelo/Evento.py` no cambiaron desde la medición de la Parte I (commit a4d6299). Los cazadores no usan la agenda para buscar rutas: usan la `ColaPrioridad` (§5.2); la agenda solo programa sus acciones, como las de cualquier enemigo.
+
+#### 4. Análisis de complejidad
+
+Sin cambio respecto de §4.1: agregar y extraer cuestan O(log n); consultar el mínimo, comprobar si un evento está y cancelarlo cuestan O(1). Los intervalos variables cambian los tiempos, no la estructura: más empates se resuelven por la secuencia, como antes.
+
+#### 5. Evidencia empírica
+
+La medición de la Parte I (montículo contra lista, N = 10, 50, 100 y 250) se repitió con `tests/bench_agenda_costos.py` en la misma máquina, en la misma corrida para las dos cargas. Carga antigua: tiempos consecutivos 0 a N−1. Carga nueva: 10 actores, evento i = siguiente acción del actor i % 10 en reloj + `max(1, costo * 100 // velocidad)`, con costos de 50 a 300 y velocidades 50, 100 y 200, semilla 2026. Con N = 250 hay 30 tiempos repetidos y 135 de 249 eventos llegan con un tiempo menor que el anterior. Cifras con N = 250, mediana de 5 repeticiones (`resultados_bench_agenda_despues.txt`):
+
+| Operación | Estructura | Antes (T002, carga antigua) | Carga antigua (misma corrida) | Carga nueva (misma corrida) |
+|---|---|---|---|---|
+| Insertar todos | montículo | 187.4 µs | 170.3 µs | 249.0 µs |
+| Insertar todos | lista | 65.6 µs | 69.7 µs | 85.1 µs |
+| Consultar mínimo | montículo | 0.30 µs | 0.30 µs | 0.30 µs |
+| Consultar mínimo | lista | 35.6 µs | 35.9 µs | 44.1 µs |
+| Extraer todos | montículo | 1.08 ms | 1.93 ms | 1.61 ms |
+| Extraer todos | lista | 3.19 ms | 4.25 ms | 4.89 ms |
+| Buscar un evento | montículo | 0.40 µs | 0.40 µs | 0.30 µs |
+| Buscar un evento | lista | 5.5 µs | 6.9 µs | 5.5 µs |
+
+Con la carga nueva y N = 250 el montículo consulta el mínimo 147 veces más rápido que la lista, busca un evento 18.3 veces más rápido y extrae todos 3.0 veces más rápido; la lista solo gana al insertar (2.9 veces), como en la Parte I. Razón carga nueva / carga antigua del montículo con N = 250: 1.46 al insertar, 1.00 al consultar, 0.84 al extraer y 0.75 al buscar. La comparación válida es entre las dos cargas de una misma corrida: la columna «Antes (T002)» viene de otra corrida, y entre T002 y T069 la mediana de las 16 razones fue 1.20 en el montículo y 1.21 en la lista, con el código de la agenda sin cambios, así que esa diferencia es variación del equipo entre corridas.
+
+Con la carga completa: el ciclo entre dos decisiones del jugador con 500 enemigos activos tuvo p95 de 16.12 ms, por debajo del límite de 20 ms de §5.2 (`resultados_bench_ciclo.txt`, otra máquina), y con 50 cazadores activos en una cripta sintética de 300 salas el p95 fue 3.39 ms (M7 de `resultados_bench_cazador.txt`).
+
+#### 6. Límites conocidos
+
+HIPÓTESIS (no medida): que 10 actores sintéticos con costos al azar representen la carga real de una partida; no se midió la agenda con partidas reales. Con N = 50 hay razones de 1.75 (montículo) y 2.67 (lista) en «buscar un evento», sobre valores de unas décimas de microsegundo que el reloj apenas resuelve; son 2 de 32 razones y se atribuyen al ruido de la medición, sin una repetición aparte que lo confirme. El microbenchmark llega a N = 250; el ciclo completo se midió hasta 500 enemigos. Las cifras son de un solo equipo (Intel i5-7300U, Windows 11, Python 3.13.13). Detalle de la decisión original: §4.1.
+
+### Historial de retroceso (P1 §4.6)
+
+#### 1. Problema
+
+La Parte I eligió el `Historial` (§4.6) para el pergamino de retroceso. La línea de tiempo (§5.5) registra ahora cada acción y recorta al retroceder, y hay que ver si esa carga nueva deja de hacer adecuada la decisión.
+
+#### 2. Alternativas consideradas
+
+Cambiar el `Historial` o reemplazarlo por la línea. No se evaluó otra estructura: M10 muestra que la actual sigue cumpliendo (ver 5).
+
+#### 3. Decisión
+
+El `Historial` se conserva sin cambios. El retroceso hace dos trabajos: el `Historial` deshace los cambios y la línea recorta (§5.5).
+
+#### 4. Análisis de complejidad
+
+El retroceso con la línea cuesta O(V + S + N + E) para el recorte (§5.5, 4), además de lo que ya costaba deshacer en el `Historial` (§4.6); no depende de n.
+
+#### 5. Evidencia empírica
+
+La medición de la Parte I (5 intervalos × 50 cambios) se repitió con la línea registrando (M10).
+
+| | Antes (solo `Historial`) | Después (`Historial` y línea) |
+|---|---|---|
+| registrar 250 cambios | 0.0940 ms | ver el costo de una acción, abajo |
+| deshacer / retroceder | 0.0240 ms (deshacer) | 0.0539 ms con solo el `Historial` y 2.7017 ms con la línea (n = 5 000) |
+
+El retroceso entero tarda a lo sumo 3.929 ms, por debajo de 20 ms. Detalle de M10 en §5.5, 5.
+
+Costo de una acción (M5, n = 5 000), antes y después de la línea:
+
+| | Mediana | p95 | Máximo |
+|---|---|---|---|
+| sin línea (acción) | 0.0512 ms | 0.0949 ms | 6.2632 ms |
+| con línea, K = 50 (acción + registrar) | 0.0661 ms | 0.1420 ms | 6.7263 ms |
+| con línea, K = 1 (acción + registrar) | 2.2336 ms | 4.1361 ms | 21.8619 ms |
+
+El costo del retroceso (M10) sigue siendo el de la fila «deshacer / retroceder» de la tabla anterior: la línea lo sube de 0.0539 ms a 2.7017 ms y sigue por debajo de 20 ms. Con K = 50 (el valor por omisión) el costo de una acción apenas cambia; la decisión del `Historial` no cambia.
+
+#### 6. Límites conocidos
+
+Las cifras son de la máquina y la cripta sintética de 20 salas de `resultados_bench_linea.txt`. El costo de la línea al retroceder depende de lo recortado y del tamaño del estado, no de n: ver §5.5, 6. Detalle de la decisión original: §4.6.

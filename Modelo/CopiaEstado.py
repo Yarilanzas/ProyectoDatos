@@ -20,13 +20,14 @@
 
 | Operación        | Tiempo           | Memoria           |
 |------------------|------------------|-------------------|
-| ``copiar``       | O(S + N + E)     | O(S)              |
-| ``materializar`` | O(S + N + E)     | O(S)              |
+| ``copiar``       | O(S + N + E)     | O(S) + O(N + E)   |
+| ``materializar`` | O(S + N + E)     | O(S + N + E) temporal |
 | ``foto_rastros`` | O(N)             | O(N)              |
 | ``foto_cerradas``| O(N + E)         | O(E)              |
 
-Una línea guarda un punto cada K acciones: cuesta O(S + N + E) de tiempo cada K acciones y O(C · S) de memoria con
-C <= ceil(n / K) + 1 + L + P. El esqueleto (salas y salidas) no se recorre por recursión ni se copia entero: se comparte y
+Una línea guarda un punto cada K acciones: cuesta O(S + N + E) de tiempo cada K acciones y O(C · (S + N + E)) de memoria con
+C <= ceil(n / K) + 1 + L + P (la memoria de un punto crece con N y E por las fotos de `rastro` y `cerrada`: M3 midió 18.0,
+31.4, 76.5 y 666.4 KiB con N = 20, 60, 200 y 2 000). El esqueleto (salas y salidas) no se recorre por recursión ni se copia entero: se comparte y
 solo se guarda lo que cambia en él (``rastro`` y ``cerrada``).
 """
 
@@ -108,7 +109,8 @@ def copiar(motor, accion=None, epoca=0):
 
     No escribe nada en `motor`. `accion` es la posición de la decisión (por omisión, `motor.acciones_jugador`).
 
-    Complejidad (S = tamaño del estado vivo, N salas, E salidas): tiempo O(S + N + E), memoria O(S).
+    Complejidad (S = tamaño del estado vivo, N salas, E salidas): tiempo O(S + N + E), memoria O(S) + O(N + E) (el estado
+    copiado más las fotos de `rastro` y `cerrada`).
     """
     memo = {}
     if motor.gestor_datos is not None:
@@ -186,7 +188,7 @@ def materializar(punto, gestor_historico, abrir_copia=None, ruta_copia=None):
 
     `ciclo` y `version_puertas` llegan en `estado`; el clon no los baja ni los recalcula.
 
-    Complejidad: tiempo O(S + N + E), memoria O(S).
+    Complejidad: tiempo O(S + N + E), memoria O(S + N + E) temporal (el esqueleto propio más la copia del estado).
     """
     estado = punto.estado
     memo = {}

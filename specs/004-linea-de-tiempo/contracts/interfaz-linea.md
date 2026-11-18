@@ -101,12 +101,12 @@ Persistencia y ciclo de vida
 
 | Operación | Cuándo | Efecto | Tiempo | Memoria |
 |-----------|--------|--------|--------|---------|
-| `iniciar` | partida nueva | punto de control en la acción 0, sello inicial `(reloj, secuencia)`, cantidad inicial de pergaminos | `O(S)` | `O(S)` |
-| `registrar_accion` | tras cada acción que cuenta | agrega al guion y a la historia vigente; compara y actualiza la serie de pergaminos; si `n % K == 0`, punto de control | `O(1)` + `O(S)` cada K | `O(1)` + `O(S)` cada K |
-| `registrar_retroceso` | tras `retroceder` aceptado | `V = acciones_antes - acciones_después` del motor; recorta la historia vigente y los puntos con `accion > nuevo_n`; agrega `RETROCESO`; punto del motor real en `nuevo_n`; pliega la serie | `O(V) + O(S)` | `O(S)` |
-| `registrar_carga` | tras cargar | agrega `CARGA`; punto del motor cargado en la acción `n` (siempre agrega su punto: no reemplaza uno regular en `n`); abre época con la copia privada | `O(S)` | `O(S)` + copia |
-| `consultar_instante(t)` | `historia <t>`, `--hasta` | ver abajo | `O(log n + log C + S + K·a)` | `O(S)` temporal |
-| `consultar_accion(k)` | `historia #k` | ver abajo | `O(log C + S + K·a)` | `O(S)` temporal |
+| `iniciar` | partida nueva | punto de control en la acción 0, sello inicial `(reloj, secuencia)`, cantidad inicial de pergaminos | `O(S + N + E)` | `O(S) + O(N + E)` |
+| `registrar_accion` | tras cada acción que cuenta | agrega al guion y a la historia vigente; compara y actualiza la serie de pergaminos; si `n % K == 0`, punto de control | `O(1)` + `O(S + N + E)` cada K | `O(1)` + `O(S) + O(N + E)` cada K |
+| `registrar_retroceso` | tras `retroceder` aceptado | `V = acciones_antes - acciones_después` del motor; recorta la historia vigente y los puntos con `accion > nuevo_n`; agrega `RETROCESO`; punto del motor real en `nuevo_n`; pliega la serie | `O(V + S + N + E)` | `O(S) + O(N + E)` |
+| `registrar_carga` | tras cargar | agrega `CARGA`; punto del motor cargado en la acción `n` (siempre agrega su punto: no reemplaza uno regular en `n`); abre época con la copia privada | `O(S + N + E)` | `O(S) + O(N + E)` + copia |
+| `consultar_instante(t)` | `historia <t>`, `--hasta` | ver abajo | `O(log n + log C + S + K·a)` | `O(S + N + E)` temporal |
+| `consultar_accion(k)` | `historia #k` | ver abajo | `O(log C + S + K·a)` | `O(S + N + E)` temporal |
 | `a_registro` | `guardar` | copia el guion y K | `O(n)` | `O(n)` |
 
 ### `consultar_instante(t)`
@@ -220,6 +220,7 @@ Medidas o leídas en T003 ([research.md](../research.md#t003-revisión-de-deepco
   cuando se pide con `leer_linea()` (`VersionIncompatible` si está dañado), que es lo que hace `cargar`.
 - **Limitación conocida de `cargar`**: es atómico hasta reconstruir la línea; después se cierra lo anterior y, si `shutil.copyfile` de la copia de
   bitácora falla (`OSError`), la partida ya quedó cargada: sigue sin bitácora y se muestra el aviso `No se pudo continuar la bitácora (...)`.
+- **Orden de enemigos con el mismo instante tras cargar**: Tras cargar, dos enemigos de salas distintas con el mismo instante pueden ejecutarse en otro orden, porque el archivo no guarda la secuencia de los enemigos (el CRPT 3 guarda el instante de cada enemigo, no su secuencia): no cambia las decisiones, solo su orden, y la historia posterior a la carga se reconstruye desde la partida cargada. Ver el paso nuevo del orden de carga en [data-model.md](../data-model.md#orden-de-carga-lo-que-la-línea-ve-al-cargar).
 
 ## Qué le pide la línea a los demás
 

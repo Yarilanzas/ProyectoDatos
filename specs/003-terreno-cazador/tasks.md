@@ -161,8 +161,8 @@ Proyecto único MVC en la raíz: reglas en `Modelo/`, pruebas y bench en `tests/
 - [x] T055 [P] [US4] En `tests/test_cazador.py`: **Apéndice B, «una puerta de su ruta se cierra entre dos turnos»**: decide como desde cero: otra ruta mínima dentro del rango o espera con costo 100 (FR-016)
 - [x] T056 [P] [US4] En `tests/test_cazador.py`: una puerta que se abre entre dos turnos crea una ruta más barata y el cazador la sigue (escenario 2; FR-016)
 - [x] T057 [US4] Crear `tests/test_cazador_equivalencia.py`: partidas sintéticas de `tests/utiles_terreno.py` con al menos **1 000 turnos de cazadores** en total, con puertas que se cierran y abren durante el ciclo, el jugador cambiando de sala, varios cazadores con rangos distintos, puertas dirigidas y costos distintos por sentido; en cada turno compara la decisión del campo compartido con la referencia desde cero (acción, sala de destino, salida y costo) y exige 100 % de coincidencia (FR-016, FR-028, SC-003)
-- [ ] T058 [US4] En `tests/test_cazador_equivalencia.py`: partida con cazadores jugada, guardada, cargada y continuada, y la misma partida retrocedida con un pergamino y reproducida con `--replay`: las decisiones de todos los cazadores coinciden en el 100 % de los turnos con la partida original (FR-024, FR-025, SC-005). **⏳ bloqueada parcialmente por la capacidad 004 (formato de guardado)**
-- [ ] T059 [US4] En `tests/test_cazador_equivalencia.py`: la reconstrucción de un estado pasado de la línea de tiempo da las mismas decisiones de los cazadores que la partida jugada (FR-025). **⏳ bloqueada por la capacidad 004**
+- [x] T058 [US4] En `tests/test_cazador_equivalencia.py`: partida con cazadores jugada, guardada, cargada y continuada, y la misma partida retrocedida con un pergamino y reproducida con `--replay`: las decisiones de todos los cazadores coinciden en el 100 % de los turnos con la partida original (FR-024, FR-025, SC-005).
+- [x] T059 [US4] En `tests/test_cazador_equivalencia.py`: la reconstrucción de un estado pasado de la línea de tiempo da las mismas decisiones de los cazadores que la partida jugada (FR-025).
 - [x] T060 [P] [US4] En `tests/test_cazador.py`: un comando rechazado del jugador no cambia `version_puertas`, la sala del jugador ni la siguiente decisión de ningún cazador (FR-023)
 
 **Checkpoint**: equivalencia demostrada; la estrategia compartida puede usarse en el juego.
@@ -196,9 +196,9 @@ Proyecto único MVC en la raíz: reglas en `Modelo/`, pruebas y bench en `tests/
 - [x] T072 [P] `README.md`: costo de las salidas (100 si falta), tiempo de movimiento y comportamiento del cazador; el README está en UTF-16 y se edita avisando al grupo (FR-029)
 - [x] T073 [P] Docstrings de complejidad en `Modelo/ColaPrioridad.py`, `Modelo/BusquedaRuta.py` y `Modelo/GrafoCripta.py`, copiando las tablas de `data-model.md` (FR-033; Principio I)
 - [x] T074 Revisar en `tests/test_terreno.py` y `tests/test_cazador.py` que cada uno de los 7 casos de «Terreno y cazador» del Apéndice B tiene su prueba y cita su FR: T022, T023, T034, T035, T050, T051, T055 (FR-027, SC-001)
-- [ ] T075 Correr `python -m unittest discover -s tests -v` sobre `tests/` y dejarla al 100 % (FR-027; Constitución V)
-- [x] T076 Registro opcional de decisiones de los cazadores colgado del motor (apagado por defecto, reversible con la historia, sin consumir azar, fuera del guardado salvo decisión de 004): ver `contracts/interfaz-cazador-linea.md` §4; lo piden T058 y T059 (FR-024, FR-025). **⏳ el formato de consulta depende del plan de la capacidad 004**
-- [ ] T077 Validar `specs/003-terreno-cazador/quickstart.md`: recorrer sus escenarios cuando la capacidad esté implementada (FR-027)
+- [x] T075 Correr `python -m unittest discover -s tests -v` sobre `tests/` y dejarla al 100 % (FR-027; Constitución V)
+- [x] T076 Registro opcional de decisiones de los cazadores colgado del motor (apagado por defecto, reversible con la historia, sin consumir azar, fuera del guardado salvo decisión de 004): ver `contracts/interfaz-cazador-linea.md` §4; lo piden T058 y T059 (FR-024, FR-025).
+- [x] T077 Validar `specs/003-terreno-cazador/quickstart.md`: recorrer sus escenarios cuando la capacidad esté implementada (FR-027)
 
 ---
 
@@ -211,10 +211,10 @@ Proyecto único MVC en la raíz: reglas en `Modelo/`, pruebas y bench en `tests/
   - T005 → T007 → T011 → T013 (cola, espacio, búsqueda adelante, búsqueda al revés).
   - T014 → T011: el cambio de contrato se avisa a Persona C, y ella lo hace o lo aprueba, antes de implementar `limite` y `espacio`. T014 puede hacerse en cuanto termine T010.
   - T007, T009 → T018; T016 y T017 son independientes de la búsqueda.
-- **US1 (T019–T032)**: después de Foundational. T032 depende además de la capacidad de datos.
+- **US1 (T019–T032)**: después de Foundational. T032 dependía además de la capacidad de datos (ya hecha).
 - **US2 (T033–T049)**: después de US1 (el cazador reprograma con el costo de la salida de T028).
 - **US3 (T050–T054)**: después de US2; no agrega código.
-- **US4 (T055–T060)**: después de US2. T059 depende de la capacidad 004. T076 va antes de T058 y T059 (el registro de decisiones se implementa antes de esas pruebas).
+- **US4 (T055–T060)**: después de US2. T059 dependía de la capacidad 004 (ya está en main). T076 va antes de T058 y T059 (el registro de decisiones se implementa antes de esas pruebas).
 - **US5 (T061–T070)**: después de US4 (T070 cambia la estrategia solo con la equivalencia ya probada).
 - **Polish (T071–T077)**: al final; T071–T073 pueden empezar cuando US2 termine.
 
@@ -229,8 +229,8 @@ Proyecto único MVC en la raíz: reglas en `Modelo/`, pruebas y bench en `tests/
 | T032             | Ya no bloqueada                               | El campo costo ya existe y se conserva en caché y paquete (Persona B). Límite conocido: la caché del esqueleto guarda la versión de la cripta pero no una versión de formato propia; FR-008 solo se verifica para el costo, no para la versión de formato. |
 | T045             | Ya no bloqueada                               | FichaEnemigo.rango ya existe (Persona B); solo falta copiarlo al enemigo |
 | T003, T066       | Ya no bloqueadas                              |`tests/generador_criptas.py` (Persona B) ya existe; se usa mediante `tests/utiles_terreno.py` |
-| T058             | ⏳ bloqueada parcialmente                      | Capacidad 004 (formato de guardado) |
-| T059             | ⏳ bloqueada                                   | Capacidad 004 (línea de tiempo) |
+| T058             | Ya no bloqueada                               | Corregido el fallo de carga de enemigos activos en ConversorPartida.py |
+| T059             | Ya no bloqueada                               | Corregido el fallo de carga de enemigos activos en ConversorPartida.py |
 
 ### Within Each User Story
 
@@ -291,3 +291,4 @@ Luego en orden: T045 → T046 → T047 → T048 → T049
 - T032: la caché guarda costo 100 explícito cuando la salida no lo declara (Salida.desde_json y a_json); el juego ve 100 en ambos casos.
 - Línea base de T001: 295 pruebas corridas, 285 pasan, 0 fallan, 0 errores, 10 omitidas (skip: `test_ruta_contrato`, T063 pendiente de `Modelo/BusquedaRuta.py`) — `python -m unittest discover -s tests -v`, Python 3.13.13, 2026-11-10.
 - Cierre de US1: 428 pruebas corridas, 418 pasan, 0 fallan, 0 errores, 10 omitidas — `python -m unittest discover -s tests`, 2026-11-11.
+- T075: suite completa al cierre de la capacidad: 1183 pruebas, 0 fallos, 0 errores — `python -m unittest discover -s tests`, 2026-11-17.
