@@ -527,7 +527,7 @@ Respaldo automático: `tests/test_viaje.py::test_fr027c_trampa_rearmada_en_la_ru
 
 No se corrió. Ningún dato de cripta ni ninguna acción del juego aplica veneno: `MotorSimulacion.aplicar_veneno` solo
 se llama desde las pruebas, y ninguna cripta offline del repositorio envenena. Por eso este caso no se puede producir
-hoy jugando y no se simuló. Queda como límite conocido ([DECISIONES.md, «Veneno no jugable»](../../Decisiones/DECISIONES.md#veneno-no-jugable-límite-conocido)); Persona B confirmó el 2026-11-17 que el API no manda ningún dato de veneno (ni en enemigos, ni en objetos, ni en trampas).
+hoy jugando y no se simuló. Queda como límite conocido ([DECISIONES.md, «Veneno no jugable»](../../DECISIONES.md#veneno-no-jugable-límite-conocido)); Persona B confirmó el 2026-11-17 que el API no manda ningún dato de veneno (ni en enemigos, ni en objetos, ni en trampas).
 
 Respaldo automático: `tests/test_viaje.py::test_fr027c_escenario_us4_6_veneno_activo_desde_antes_de_la_orden`
 (aplica el veneno directamente al motor).
@@ -808,7 +808,7 @@ las pantallas de la vista.
   matriz.
 - En esta corrida M4 solo tenía filas sintéticas, PROVISIONAL: la grilla de 2500 no cumple, como en T109. §6.1 quedó
   para T110, que después lo dio por cumplido sobre la cripta sustituta: primero `cripta-02` y ahora `cripta-06`
-  ([DECISIONES.md, §5.3](../../Decisiones/DECISIONES.md)).
+  ([DECISIONES.md, §5.3](../../DECISIONES.md)).
 
 Respaldo automático:
 

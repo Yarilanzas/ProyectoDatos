@@ -41,7 +41,7 @@ Agregar un evento y extraer el mínimo cuestan O(log n); consultar el mínimo, c
 
 Medido con tests/bench_decisiones.py en el equipo del proyecto (montículo propio contra una lista con búsqueda lineal), con N = 250 eventos:
 
-![Figura](img.png)
+![Figura](Decisiones/img.png)
 
 La lista solo gana al insertar (2.5 veces), y ese costo no se paga en el bucle principal, donde lo que domina es consultar y extraer. Al pasar de 10 a 250 eventos, consultar el mínimo cuesta lo mismo en el montículo (×1.0) y 19.4 veces más en la lista. Con muy pocos eventos la lista puede igualar al montículo en algunas operaciones, por lo que la ventaja aparece desde unas decenas de eventos, que es la escala de las pruebas.
 
@@ -85,7 +85,7 @@ Una decisión del rastreador es O(s), con s el número de salidas de su sala (co
 
 Medido con tests/bench_decisiones.py, tiempo por decisión según el tamaño de la cripta (3000 llamadas por muestra, mediana de las muestras), en el equipo del proyecto:
 
-![Figura](img_1.png)
+![Figura](Decisiones/img_1.png)
 
 El tiempo de decisión no crece al pasar de 10 a 250 salas (con 250 salas costó 0.56 veces lo de 10 salas; el valor más alto de 10 salas es de calentamiento de la primera medición), que es lo que se pretendía: depende de las salidas, no de la cripta. Buscar una sala sí crece despacio, como corresponde a una búsqueda binaria O(log n), pero solo se paga la primera vez que se usa cada salida. Hay una prueba automática que verifica que el rastreador sigue el rastro más reciente, que desempata por el menor id y que ignora un rastro de 400 unidades o más.
 
@@ -95,7 +95,7 @@ El tiempo de decisión no crece al pasar de 10 a 250 salas (con 250 salas costó
 >
 > • El rastreador es voraz: elige la vecina con el rastro más reciente, así que puede dar vueltas si el jugador retrocede por el mismo pasillo.
 
-![Figura](img_2.png)
+![Figura](Decisiones/img_2.png)
 
 ## §4.8 — Bitácora en pantalla
 
@@ -125,7 +125,7 @@ Agregar un mensaje es O(1) y no mueve ningún otro. Leer los últimos mensajes e
 
 Medido con tests/bench_decisiones.py: tiempo por mensaje agregado, comparando el buffer circular con una lista que se desplaza, con 20000 mensajes:
 
-![Figura](img_3.png)
+![Figura](Decisiones/img_3.png)
 
 Con la capacidad real de 20 la lista que desplaza es más rápida (114 contra 214 ns), porque mover 19 referencias es muy barato; con 2000 mensajes la diferencia se invierte (294 contra 322 ns a favor del buffer circular). Se eligió el buffer circular por el requisito del enunciado (no desplazar físicamente y memoria constante) y no por velocidad. Tras 100000 mensajes agregados el registro sigue teniendo 20 elementos y ocupa aproximadamente 1 KB.
 
@@ -169,7 +169,7 @@ En el archivo PlanificadorPrecarga se recorre el esqueleto por niveles de distan
 
 Medido con --bench: solicitudes de contenido necesarias para recorrer toda la cripta. Es un conteo, no un tiempo:
 
-![Figura](img_4.png)
+![Figura](Decisiones/img_4.png)
 
 ### 6. Límites conocidos
 
@@ -203,7 +203,7 @@ Resolver t tipos nuevos cuesta ⌈t/10⌉ solicitudes en vez de t, ya que, se ag
 
 Medido con --bench: recuperar una ficha desde disco (archivo de 25 fichas) tarda 359.94 microsegundos en el equipo probado y desde memoria 13.35 microsegundos. Se concluye que recupera una ficha desde el disco en aproximadamente 27 veces más lento que hacerlo desde memoria.
 
-![Figura](img_5.png)
+![Figura](Decisiones/img_5.png)
 
 ### 6. Límites conocidos
 
@@ -247,11 +247,11 @@ Buscar es O(log k) e insertar O(k), por el desplazamiento de la lista. Actualiza
 
 Medido con --bench, búsqueda en caché (microsegundos por búsqueda):
 
-![Figura](img_6.png)
+![Figura](Decisiones/img_6.png)
 
 Con 25 fichas, la búsqueda binaria y la lineal casi empatan (1.06 y 1.11 microsegundos); con 100 fichas son 1.17 y 3.11 microsegundos, y con 1000 fichas 2.00 y 26.93 microsegundos, es decir, la lineal es unas 13 veces más lenta. La binaria se justifica por la escala, no por el tamaño por defecto. Además, una consulta con acierto en memoria cuesta unos 13 microsegundos y reacomodar la cola cuesta casi lo mismo, así que prácticamente todo el costo está en mantener el orden de uso y no en la búsqueda. Recuperar una ficha desde disco cuesta 359.94 microsegundos frente a 13.35 microsegundos desde memoria, unas 27 veces más.
 
-![Figura](img_7.png)
+![Figura](Decisiones/img_7.png)
 
 Con 25 fichas, reacomodar la cola cuesta 13.35 microsegundos frente a 0.41 microsegundos de solo encolar; con 100 fichas, 46.12 microsegundos frente a 0.39 microsegundos; y con 1000 fichas, 467.71 microsegundos frente a 0.45 microsegundos. El costo de reacomodar crece aproximadamente en proporción al tamaño de la caché (unas 35 veces más entre 25 y 1000 fichas), mientras que encolar sin reacomodar se mantiene en unos 0.4 microsegundos. A cambio, la cola sin reacomodar crece sin límite: tras 500 operaciones tiene 525, 600 y 1500 elementos, mientras que la que se reacomoda se mantiene exactamente en 25, 100 y 1000, el tamaño de la caché. Con el tamaño por defecto, 13.35 microsegundos es despreciable frente a los unos 400 ms de una solicitud de red, por eso se eligió reacomodar. La alternativa descartada quedó medida: es más barata por operación, pero su memoria no tiene tope.
 
@@ -265,7 +265,7 @@ Con 25 fichas, reacomodar la cola cuesta 13.35 microsegundos frente a 0.41 micro
 
 ## §5.4 — Resolubilidad
 
-Spec: [specs/002-resolubilidad/spec.md](../specs/002-resolubilidad/spec.md) · Plan: [plan.md](../specs/002-resolubilidad/plan.md) · Alternativas: [research.md](../specs/002-resolubilidad/research.md) (R1 a R8) · Tareas: [tasks.md](../specs/002-resolubilidad/tasks.md)
+Spec: [specs/002-resolubilidad/spec.md](specs/002-resolubilidad/spec.md) · Plan: [plan.md](specs/002-resolubilidad/plan.md) · Alternativas: [research.md](specs/002-resolubilidad/research.md) (R1 a R8) · Tareas: [tasks.md](specs/002-resolubilidad/tasks.md)
 
 **¿Coincide con el plan original?** Sí. La versión final es la del plan: vector de salas por id, `Queue` propia, índice de llaves ordenado con búsqueda binaria, un único recorrido por oleadas con puertas en espera, reporte como barrido final, dependencias con zonas selladas y ciclos sobre `depende_de`. Ninguna medición obligó a cambiarla. Lo único que el plan dejaba abierto, el peor caso de las dependencias (P-11), se cerró aceptándolo como excepción documentada de FR-029.
 
@@ -330,20 +330,20 @@ Medido con `python main.py --bench` (`tests/bench_resolubilidad.py`) en un AMD R
 
 **Límite de 200 ms (M1, SC-004).** El enunciado (§6.1) fija 200 ms para la verificación en la cripta publicada más grande, medidos en el equipo local, sin red ni renderizado; por eso se mide solo `verificar` con los datos en memoria. En una cripta sintética del tamaño de la publicada más grande (cripta-06: S = 300, E = 760, K = 4):
 
-![Figura](img_8.png)
+![Figura](Decisiones/img_8.png)
 
 El caso resoluble tarda 1.226 ms de mediana y 1.361 ms de p95; el no resoluble con ciclo, 1.306 ms y 1.637 ms. Los dos cumplen con amplio margen: el p95 es unas 122 veces menor que el límite (200 / 1.637).
 
 **Crecimiento al duplicar la cripta (M2 y M3, SC-005).** De S = 300 a S = 9600, duplicando salas, salidas y llaves:
 
-![Figura](img_9.png)
-![Figura](img_10.png)
+![Figura](Decisiones/img_9.png)
+![Figura](Decisiones/img_10.png)
 
 En el caso resoluble, el cociente de medianas en cada duplicación está entre 2.09 y 2.13; en el no resoluble con reporte, dependencias y ciclos (zonas disjuntas), entre 2.10 y 2.18. Todos quedan por debajo de 2.5, lo que respalda el crecimiento aproximadamente lineal. Con 9600 salas el caso resoluble sigue en 47.855 ms de mediana.
 
 **Versión elegida frente a las alternativas (M4).**
 
-![Figura](img_11.png)
+![Figura](Decisiones/img_11.png)
 
 - **A1, recorrer todo por cada llave:** es la comparación que exige el enunciado (§6.3): recorrido incremental frente a recorrido repetido por llave. Con S = 1200, la ventaja de la versión elegida crece con K: 1.25 veces con 4 llaves, 1.88 con 16, 4.10 con 64 y 11.27 con 256 (7.513 ms frente a 84.688 ms). En las duplicaciones de M2 llega a 7.24 veces con 9600 salas (46.974 ms frente a 340.069 ms). Es la alternativa que más se aleja, porque su costo crece con K·S.
 - **A2, zona de cada llave por separado:** entre 1.05 y 1.11 veces más lenta en el caso no resoluble. La diferencia es pequeña con estas criptas porque sus zonas no se solapan.
@@ -353,7 +353,7 @@ En el caso resoluble, el cociente de medianas en cada duplicación está entre 2
 
 **Peor caso de las dependencias (P-11, informativo, sin límite).** Con zonas que se solapan y casi todas las llaves en salas distintas de una región no alcanzable:
 
-![Figura](img_12.png)
+![Figura](Decisiones/img_12.png)
 
 Aquí, al duplicar la cripta el tiempo se multiplica entre 2.19 y 3.70 veces, en vez de cerca de 2 como en M2 y M3. Desde 600 salas pasa siempre del límite de 2.5. Con 9600 salas y 129 llaves tarda 383.614 ms de mediana. La razón es que cada llave revisa toda la región bloqueada: si se duplican a la vez las llaves y el tamaño de la cripta, el trabajo crece por los dos lados, que es lo que dice el O(L·(S + E)) del análisis. Es el único caso que no crece de forma lineal, y por eso queda documentado como excepción. Solo ocurre en criptas no resolubles con muchas llaves dentro de una misma región bloqueada.
 
@@ -846,7 +846,7 @@ Cada sección sigue la estructura de P1 §8 y además enlaza a su spec y su plan
 
 ## §5.1 — La ruta más barata del cazador
 
-Spec: [specs/003-terreno-cazador/spec.md](../specs/003-terreno-cazador/spec.md) · Plan: [plan.md](../specs/003-terreno-cazador/plan.md) · Alternativas: [research.md](../specs/003-terreno-cazador/research.md) (R1 a R4 y R6) · Tareas: [tasks.md](../specs/003-terreno-cazador/tasks.md)
+Spec: [specs/003-terreno-cazador/spec.md](specs/003-terreno-cazador/spec.md) · Plan: [plan.md](specs/003-terreno-cazador/plan.md) · Alternativas: [research.md](specs/003-terreno-cazador/research.md) (R1 a R4 y R6) · Tareas: [tasks.md](specs/003-terreno-cazador/tasks.md)
 
 **¿Coincide con el plan original?** Sí en lo esencial: Dijkstra con cola propia, listas por ordinal con marca de época, corte por rango y dos estrategias detrás de un único punto de decisión. Cambió una cosa: el plan arrancaba con la referencia desde cero y dejaba el campo compartido condicionado a M3 y M4; con las mediciones se eligió el compartido como estrategia por defecto (T070). Además, la hipótesis k* ≈ 2 no se confirmó: se midió k* = 5.
 
@@ -910,7 +910,7 @@ Medido con `python main.py --bench` (`tests/bench_cazador.py`) en una cripta sin
 
 ## §5.2 — Rutas que dejan de ser válidas
 
-Spec: [specs/003-terreno-cazador/spec.md](../specs/003-terreno-cazador/spec.md) · Plan: [plan.md](../specs/003-terreno-cazador/plan.md) · Alternativas: [research.md](../specs/003-terreno-cazador/research.md) (R5) · Tareas: [tasks.md](../specs/003-terreno-cazador/tasks.md)
+Spec: [specs/003-terreno-cazador/spec.md](specs/003-terreno-cazador/spec.md) · Plan: [plan.md](specs/003-terreno-cazador/plan.md) · Alternativas: [research.md](specs/003-terreno-cazador/research.md) (R5) · Tareas: [tasks.md](specs/003-terreno-cazador/tasks.md)
 
 **¿Coincide con el plan original?** Sí en el mecanismo (una llave que invalida el campo y un contador de versión de puertas). Cambió que la llave pasó de cuatro campos (ciclo, sala del jugador, versión de puertas y cota) a cinco, al añadir la época del espacio de búsqueda, porque una búsqueda individual que reutiliza el mismo espacio invalidaba el campo sin que la llave lo detectara.
 
@@ -976,9 +976,9 @@ M4 (`resultados_bench_cazador.txt`): 50 cazadores de rango 2000 en una cripta si
 
 *Sección de la capacidad 001: niebla de guerra, mapa conocido y viaje automático «ir a».*
 
-Spec: [specs/001-niebla-mapa-ir-a/spec.md](../specs/001-niebla-mapa-ir-a/spec.md) · Plan: [plan.md](../specs/001-niebla-mapa-ir-a/plan.md) (sección «Decisiones», 1 a 6) · Alternativas: [research.md](../specs/001-niebla-mapa-ir-a/research.md) (R1 a R9) · Tareas: [tasks.md](../specs/001-niebla-mapa-ir-a/tasks.md) (T114).
+Spec: [specs/001-niebla-mapa-ir-a/spec.md](specs/001-niebla-mapa-ir-a/spec.md) · Plan: [plan.md](specs/001-niebla-mapa-ir-a/plan.md) (sección «Decisiones», 1 a 6) · Alternativas: [research.md](specs/001-niebla-mapa-ir-a/research.md) (R1 a R9) · Tareas: [tasks.md](specs/001-niebla-mapa-ir-a/tasks.md) (T114).
 
-**Fuente de los datos.** Las tablas M1 a M6 de esta sección vienen de la corrida de [`resultados_bench_niebla.txt`](../resultados_bench_niebla.txt) generada con `python main.py --bench` (medición `tests/bench_niebla.py`, M1 a M6) el 2026-11-16 en la máquina de Persona C: `Windows-11-10.0.26200-SP0 | Intel64 Family 6 Model 154 Stepping 4, GenuineIntel | Python 3.12.10`. Desde entonces Persona B regeneró el archivo (commit `a04849d`, `Windows-11-10.0.26200-SP0 | AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD | Python 3.14.6`); las cifras que se citan de esa corrida están marcadas como tales (corrida de Python 3.14.6 o corrida actual de `resultados_bench_niebla.txt`). Cada dato es la mediana de 7 repeticiones (M6: mediana y p95 de 100 ciclos), sin red ni vista, con **mapas sintéticos** (`tests/mapas_sinteticos.py`), no con una cripta real. Las filas se citan tal cual, en ms. La única excepción es el diagnóstico de M4 (perfil con `cProfile`), que se hizo fuera de `--bench` y se cita como medición puntual.
+**Fuente de los datos.** Las tablas M1 a M6 de esta sección vienen de la corrida de [`resultados_bench_niebla.txt`](resultados_bench_niebla.txt) generada con `python main.py --bench` (medición `tests/bench_niebla.py`, M1 a M6) el 2026-11-16 en la máquina de Persona C: `Windows-11-10.0.26200-SP0 | Intel64 Family 6 Model 154 Stepping 4, GenuineIntel | Python 3.12.10`. Desde entonces Persona B regeneró el archivo (commit `a04849d`, `Windows-11-10.0.26200-SP0 | AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD | Python 3.14.6`); las cifras que se citan de esa corrida están marcadas como tales (corrida de Python 3.14.6 o corrida actual de `resultados_bench_niebla.txt`). Cada dato es la mediana de 7 repeticiones (M6: mediana y p95 de 100 ciclos), sin red ni vista, con **mapas sintéticos** (`tests/mapas_sinteticos.py`), no con una cripta real. Las filas se citan tal cual, en ms. La única excepción es el diagnóstico de M4 (perfil con `cProfile`), que se hizo fuera de `--bench` y se cita como medición puntual.
 
 **Convención (Principio VIII).** Lo que no se midió con `--bench` se marca **HIPÓTESIS**. Las complejidades son análisis, no mediciones.
 
@@ -1127,7 +1127,7 @@ Las filas `guardar` (binario 0.8708, 5.0914 y 72.9557 ms; JSON 0.8722, 5.4020 y 
 - **Opción B, implementaciones separadas** (descartada): cada una se ajusta a su uso, pero duplica algoritmo, desempate, pruebas y mediciones, con riesgo de que diverjan.
 - En la frontera también se descartó devolver la ruta completa (FR-026 la invalida en cada paso), pasar `Conocimiento` directamente y una clase con estado.
 
-**Decisión.** **D-PEND-01 se resolvió con la opción A**: Persona A implementa la búsqueda compartida en `Modelo/BusquedaRuta.py`, con la cola de prioridad en `Modelo/ColaPrioridad.py` (montículo binario propio con inserción perezosa, sin `heapq`). `Modelo/rutas_ir_a.py` solo delega y ofrece la interfaz de una función `primer_paso(grafo, origen, destino, limite=None, espacio=None)` ([contracts/interfaz-ruta.md](../specs/001-niebla-mapa-ir-a/contracts/interfaz-ruta.md)). El grafo es `GrafoConocido`: solo salas exploradas y salidas recordadas abiertas. Desempate: vecina de menor id en el primer paso y, entre salidas a la misma vecina, N, S, E, O. Un `EspacioBusqueda` con época evita limpiar O(n) en cada búsqueda.
+**Decisión.** **D-PEND-01 se resolvió con la opción A**: Persona A implementa la búsqueda compartida en `Modelo/BusquedaRuta.py`, con la cola de prioridad en `Modelo/ColaPrioridad.py` (montículo binario propio con inserción perezosa, sin `heapq`). `Modelo/rutas_ir_a.py` solo delega y ofrece la interfaz de una función `primer_paso(grafo, origen, destino, limite=None, espacio=None)` ([contracts/interfaz-ruta.md](specs/001-niebla-mapa-ir-a/contracts/interfaz-ruta.md)). El grafo es `GrafoConocido`: solo salas exploradas y salidas recordadas abiertas. Desempate: vecina de menor id en el primer paso y, entre salidas a la misma vecina, N, S, E, O. Un `EspacioBusqueda` con época evita limpiar O(n) en cada búsqueda.
 
 **Complejidad** (documentada por Persona A). Con espacio, O((|R| + |E_R|) log |E_R|), donde R son las salas alcanzadas hasta extraer el destino. Sin espacio se suma O(n) para crearlo.
 
@@ -1262,11 +1262,11 @@ Dieron el mismo primer paso que la versión actual en 2800 casos (grilla y caden
 
 **Causa.** Ningún DTO de `DTOS/` trae un dato de veneno: no hay enemigo, trampa ni objeto de la cripta que diga que envenena, y por eso nada del juego llama a `aplicar_veneno`. (`EFECTO_VENENO` de `DTOS/ResumenHistorico.py` solo describe, para `historia`, un veneno ya aplicado; no es una fuente.)
 
-**Qué sí está probado.** `tests/test_viaje.py::test_fr027c_escenario_us4_6_veneno_activo_desde_antes_de_la_orden` aplica el veneno directamente al motor y comprueba que el viaje se detiene. La parada por daño sí se jugó con una trampa ([evidencia_quickstart.md, 4.8](../specs/001-niebla-mapa-ir-a/evidencia_quickstart.md#esc-4-dano)).
+**Qué sí está probado.** `tests/test_viaje.py::test_fr027c_escenario_us4_6_veneno_activo_desde_antes_de_la_orden` aplica el veneno directamente al motor y comprueba que el viaje se detiene. La parada por daño sí se jugó con una trampa ([evidencia_quickstart.md, 4.8](specs/001-niebla-mapa-ir-a/evidencia_quickstart.md#esc-4-dano)).
 
 **Confirmación de Persona B (2026-11-17).** El API no manda ningún dato de veneno: ni en enemigos, ni en objetos, ni en trampas. Por eso queda como límite conocido.
 
-**Cuándo se reabre.** Persona B ya confirmó que el API no manda el dato, así que con el API actual no se reabre. Solo se reabriría si el API llegara a mandarlo; entonces habría que leerlo en el DTO, llamar a `aplicar_veneno` desde el juego y correr los pasos de [4.9](../specs/001-niebla-mapa-ir-a/evidencia_quickstart.md#esc-4-veneno).
+**Cuándo se reabre.** Persona B ya confirmó que el API no manda el dato, así que con el API actual no se reabre. Solo se reabriría si el API llegara a mandarlo; entonces habría que leerlo en el DTO, llamar a `aplicar_veneno` desde el juego y correr los pasos de [4.9](specs/001-niebla-mapa-ir-a/evidencia_quickstart.md#esc-4-veneno).
 
 **De quién es la decisión.** Persona A, autora del motor, votó dejarlo como límite conocido salvo que Persona B confirme que el API manda el dato. Persona B confirmó que no lo manda, así que queda como límite conocido.
 
@@ -1282,7 +1282,7 @@ Dieron el mismo primer paso que la versión actual en 2800 casos (grilla y caden
 
 ## §5.5 — Línea de tiempo y puntos de control
 
-Documentos de la capacidad: [`specs/004-linea-de-tiempo/spec.md`](../specs/004-linea-de-tiempo/spec.md) y [`specs/004-linea-de-tiempo/plan.md`](../specs/004-linea-de-tiempo/plan.md). **La decisión final coincide con la de `plan.md` original** en el diseño (re-simulación desde puntos de control, `copy.deepcopy` con `memo`, K = 50): las mediciones M1 y M2 confirmaron K = 50, que el plan marcaba **HIPÓTESIS**. Lo que cambió respecto del plan va con la medición que lo motivó: las cifras de copiar y materializar con N grande del plan (consulta de ~69 ms con 2 000 salas, de una exploración previa local, no versionada) se corrigieron con M3 (con N = 2 000, `copiar` 66.938 ms y `materializar` 119.817 ms; ver 5).
+Documentos de la capacidad: [`specs/004-linea-de-tiempo/spec.md`](specs/004-linea-de-tiempo/spec.md) y [`specs/004-linea-de-tiempo/plan.md`](specs/004-linea-de-tiempo/plan.md). **La decisión final coincide con la de `plan.md` original** en el diseño (re-simulación desde puntos de control, `copy.deepcopy` con `memo`, K = 50): las mediciones M1 y M2 confirmaron K = 50, que el plan marcaba **HIPÓTESIS**. Lo que cambió respecto del plan va con la medición que lo motivó: las cifras de copiar y materializar con N grande del plan (consulta de ~69 ms con 2 000 salas, de una exploración previa local, no versionada) se corrigieron con M3 (con N = 2 000, `copiar` 66.938 ms y `materializar` 119.817 ms; ver 5).
 
 Fuente de todas las cifras: `resultados_bench_linea.txt` (corrida completa de `tests/bench_linea.py`, Windows 10, Python 3.12.10, cripta sintética de 20 salas, sin red ni vista). Se cita el bloque (M1 a M10, T113). Las cifras son de esa máquina. Lo no medido está marcado como **HIPÓTESIS**, igual que en ese archivo. Los cambios 1 a 3 que se justifican aquí son los de la tabla «Cambios propuestos a la spec» de `specs/004-linea-de-tiempo/plan.md`.
 

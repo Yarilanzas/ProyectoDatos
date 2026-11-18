@@ -15,7 +15,7 @@ capacidades solo se leyó lo que dicen sus specs, contratos y `tasks.md`, y el c
 presente. La idea es **guardar poco y rehacer lo que falta**:
 
 - La línea guarda un **guion** de los comandos aceptados, con el sello `(reloj, secuencia)` de cada decisión, y una **copia completa del
-  estado cada K acciones** (K = 50 por defecto, confirmado con M1 y M2; ver Decisiones/DECISIONES.md §5.5).
+  estado cada K acciones** (K = 50 por defecto, confirmado con M1 y M2; ver DECISIONES.md §5.5).
 - Una consulta busca con **búsqueda binaria propia** el punto de control más cercano, lo copia (con un esqueleto de salas propio, para no
   tocar la partida) y **rehace a lo sumo K acciones** con el propio motor. Para un instante entre dos decisiones corta la agenda del clon
   en `t`, sin modificar el motor.

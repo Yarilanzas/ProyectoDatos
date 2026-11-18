@@ -2801,6 +2801,26 @@ Muestra antes/después de los cambios de documentación y git diff --stat. Regis
 4. Muestra git diff --stat y git diff de ese archivo: debe haber 1 inserción y 1 borrado en tests/test_bench_linea.py y nada más.
 5. Registra este prompt en PROMPTS_LLM.md con la hora real de envío, sin tocar las entradas anteriores. Insértalo al final de la sección «# Persona C», es decir, justo ANTES de la línea «# Persona B», no al final del archivo. Confirma con Select-String que quedó dentro de la sección de Persona C, y que el conteo de líneas «## 20» por sección es A 51, C 81, B 22, D 55.
 ````
+
+## 2026-11-18 02:40 · Mover DECISIONES.md a la raíz del repositorio (§7.2) y actualizar sus enlaces y las menciones en specs/001 a specs/004.
+
+- **Fecha**: 2026-11-18 02:40
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: Mover DECISIONES.md a la raíz del repositorio (§7.2) y actualizar sus enlaces y las menciones en specs/001 a specs/004.
+
+**Prompt**
+
+````text
+/speckit-implement Mover DECISIONES.md a la raíz del repositorio. El enunciado §7.2 pide DECISIONES.md en la raíz; hoy está en Decisiones/DECISIONES.md junto a 13 imágenes (Decisiones/img*.png). No toques README.md (está en UTF-16 y lo edito yo a mano), ni código de producción, pruebas, datos_locales/, resultados_bench_*.txt ni PROMPTS_LLM.md salvo el registro del punto 7. No hagas commit.
+
+1. Antes de mover nada, busca con git grep -n "Decisiones" en archivos .py y en todo el repositorio excepto PROMPTS_LLM.md y README.md, y muestra el resultado, para confirmar que ningún código ni prueba abre el documento por esa ruta (incluidas rutas armadas por partes, por ejemplo os.path.join con "Decisiones"). Si alguna prueba o código lo usa, detente y repórtalo antes de mover.
+2. Con git mv: Decisiones/DECISIONES.md pasa a DECISIONES.md (raíz). Las 13 imágenes se quedan en Decisiones/ (no las muevas).
+3. Dentro de DECISIONES.md: los 9 enlaces relativos que empiezan con ../ pierden el ../ (por ejemplo ../specs/... pasa a specs/..., ../resultados_bench_niebla.txt pasa a resultados_bench_niebla.txt). Las referencias a imágenes (sintaxis ![](...) o <img src=...>) que apuntan a img*.png en la misma carpeta pasan a Decisiones/img*.png. Las 13 imágenes están escritas como ![Figura](img.png), ![Figura](img_1.png), ... ![Figura](img_12.png); cada una debe quedar como ![Figura](Decisiones/img.png), etc., y las 13 deben existir en Decisiones/. Lista antes/después de cada cambio con número de línea.
+4. En los demás .md (specs/001 a specs/004, sin PROMPTS_LLM.md ni README.md): cada mención en texto de «Decisiones/DECISIONES.md» pasa a «DECISIONES.md», y los enlaces relativos del tipo (../../Decisiones/DECISIONES.md) pasan a (../../DECISIONES.md). Lista antes/después con archivo y línea. No cambies nada más de esos archivos.
+5. Verificación: con un script corto de Python sin dependencias externas, recorre DECISIONES.md y los .md que cambiaste y comprueba que cada enlace o imagen relativa (sin http) apunta a un archivo existente. Informa los rotos, y separa los que ya estaban rotos antes de este cambio. Muestra git status --short y git diff --stat -M (para ver el renombrado).
+6. Corre la suite completa (python -m unittest discover -s tests -t .) y reporta Ran y OK o FAILED.
+7. Registra este prompt en PROMPTS_LLM.md con la hora real de envío, sin tocar las anteriores, al final de la sección «# Persona C», justo ANTES de la línea «# Persona B». Confirma con Select-String que quedó dentro de la sección de Persona C y que el conteo de «## 20» por sección es A 51, C 82, B 22, D 55.
+````
 # Persona B — capacidad 002 (resolubilidad)
 
 ## 2026-11-06 23:03

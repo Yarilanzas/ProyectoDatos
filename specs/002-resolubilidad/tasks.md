@@ -201,7 +201,7 @@ description: "Lista de tareas de la verificación de resolubilidad de una cripta
 
 ## Phase 9: Polish y documentación
 
-- [X] T053 Completar en Decisiones/DECISIONES.md la sección «§5.4 — Resolubilidad» de la Parte II, con la estructura de P1 §8 y enlaces a spec.md y plan.md, indicando si la decisión final coincide con la de este plan.md y, si no, qué medición motivó el cambio (enunciado §7.1). Incluir: decisiones R1 a R8 de research.md con sus alternativas; la comparación del recorrido incremental contra el recorrido repetido por llave (A1), y de A2 y A3, con los números de resultados_bench_resolubilidad.txt; M1 (p95 frente a 200 ms), cocientes de M2 y M3 y conteos de M5; el peor caso O(L·(S + E)) de las dependencias (P-11). Toda cifra sale del archivo de bench; lo no medido se marca como hipótesis (Principio VIII). Depende de T052. Atiende: FR-029, FR-030
+- [X] T053 Completar en DECISIONES.md la sección «§5.4 — Resolubilidad» de la Parte II, con la estructura de P1 §8 y enlaces a spec.md y plan.md, indicando si la decisión final coincide con la de este plan.md y, si no, qué medición motivó el cambio (enunciado §7.1). Incluir: decisiones R1 a R8 de research.md con sus alternativas; la comparación del recorrido incremental contra el recorrido repetido por llave (A1), y de A2 y A3, con los números de resultados_bench_resolubilidad.txt; M1 (p95 frente a 200 ms), cocientes de M2 y M3 y conteos de M5; el peor caso O(L·(S + E)) de las dependencias (P-11). Toda cifra sale del archivo de bench; lo no medido se marca como hipótesis (Principio VIII). Depende de T052. Atiende: FR-029, FR-030
 - [X] T054 [P] Revisar que los docstrings de `IndiceLlaves`, `GrafoSalas`, `recorrer`, el barrido del reporte, `calcular_dependencias`, `hallar_ciclos` y `verificar` en `Modelo/Resolubilidad.py` tengan las tablas de complejidad de [data-model.md](data-model.md), y que T016 siga en verde. Atiende: FR-029
 - [X] T055 [P] Actualizar `README.md` (UTF-16: abrirlo y guardarlo en esa codificación; avisar al grupo antes): `--verificar` y `--forzar`, prioridad `--bench > --mostrar-puntajes > --verificar > --replay > --cargar > --cripta / lista`, códigos de salida de este modo, archivo `criptas/<id>/llaves.json` del paquete offline con su formato, caché `datos_locales/llaves_<id>.json` y el nuevo archivo de resultados del bench. Atiende: FR-017, FR-028, FR-031
 - [X] T056 [P] Agregar `criptas/<id>/llaves.json` a cada cripta de `paquete/` (versionado y compartido: avisar al grupo antes de confirmarlo), con la misma herramienta con que se armó el paquete; si no hay herramienta, documentar en `README.md` cómo descargar el archivo de `GET /criptas/<id>/llaves`. Atiende: FR-024, FR-028
@@ -233,7 +233,7 @@ description: "Lista de tareas de la verificación de resolubilidad de una cripta
 | `ControladorPartida.nueva_partida` | T036, T040 | Firma nueva con `forzar=False` por defecto: avisar al grupo |
 | `GestorDatos`, `AlmacenamientoLocalApi`, `API/Fuentes.py` | T005–T007 | Adaptadores compartidos: avisar al grupo |
 | `README.md` | T055 | UTF-16; avisar al grupo |
-| `Decisiones/DECISIONES.md` | T053 | Sección §5.4; el resto del documento es del grupo |
+| `DECISIONES.md` | T053 | Sección §5.4; el resto del documento es del grupo |
 ### Within Each User Story
 
 - Pruebas primero, comprobando que fallan.
