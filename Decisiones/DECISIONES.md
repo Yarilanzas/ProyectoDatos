@@ -332,39 +332,30 @@ Medido con `python main.py --bench` (`tests/bench_resolubilidad.py`) en un AMD R
 
 ![Figura](img_8.png)
 
-El caso resoluble tarda  2.000 ms de mediana y 3.074 ms de p95; el no resoluble con ciclo, 2.159  ms y 2.992 ms. Los dos cumplen con amplio margen: el p95 es aproximadamente unas 56 veces menor que el límite.
+El caso resoluble tarda 1.226 ms de mediana y 1.361 ms de p95; el no resoluble con ciclo, 1.306 ms y 1.637 ms. Los dos cumplen con amplio margen: el p95 es aproximadamente unas 120 veces menor que el límite.
 
 **Crecimiento al duplicar la cripta (M2 y M3, SC-005).** De S = 300 a S = 9600, duplicando salas, salidas y llaves:
 
 ![Figura](img_9.png)
 ![Figura](img_10.png)
 
-En el caso resoluble, el cociente de medianas en cada duplicación está entre 2.04 y 2.34; en el no resoluble con reporte, dependencias y ciclos (zonas disjuntas), entre 2.04 y 2.33. Todos quedan por debajo de 2.5, lo que respalda el crecimiento aproximadamente lineal. Con 9600 salas el caso resoluble sigue en 99.416 ms de mediana.
+En el caso resoluble, el cociente de medianas en cada duplicación está entre 2.09 y 2.13; en el no resoluble con reporte, dependencias y ciclos (zonas disjuntas), entre 2.10 y 2.18. Todos quedan por debajo de 2.5, lo que respalda el crecimiento aproximadamente lineal. Con 9600 salas el caso resoluble sigue en 47.855 ms de mediana.
 
 **Versión elegida frente a las alternativas (M4).**
 
 ![Figura](img_11.png)
 
-- **A1, recorrer todo por cada llave:** es la comparación que exige el enunciado (§6.3): recorrido incremental frente a recorrido repetido por llave. Con S = 1200, la ventaja de la versión elegida crece con K: 1.27 veces con 4 llaves, 1.82 con 16, 3.99 con 64 y 11.28 con 256 (9.719 ms frente a 109.644 ms). En las duplicaciones de M2 llega a 5.52 veces con 9600 salas (81.628 ms frente a 450.318 ms). Es la alternativa que más se aleja, porque su costo crece con K·S.
-- **A2, zona de cada llave por separado:** entre 1.07 y 1.15 veces más lenta en el caso no resoluble. La diferencia es pequeña con estas criptas porque sus zonas no se solapan.
-- **A3, búsqueda lineal del id:** con pocas llaves empata con la búsqueda binaria (entre 0.97 y 1.04 hasta 64 llaves, y 1.00 en las criptas de 300 y 600 salas de M2). La búsqueda binaria se justifica por la escala: con 256 llaves la lineal es 1.31 veces más lenta en el caso resoluble y 1.51 en el no resoluble. En la duplicación de 4800 salas A3 salió más rápida (0.61); **HIPÓTESIS:** es ruido de esa medición, porque la elegida tardó ahí más de lo que sigue la tendencia (48.501 ms, frente a unos 40 ms en M2).
+- **A1, recorrer todo por cada llave:** es la comparación que exige el enunciado (§6.3): recorrido incremental frente a recorrido repetido por llave. Con S = 1200, la ventaja de la versión elegida crece con K: 1.25 veces con 4 llaves, 1.88 con 16, 4.10 con 64 y 11.27 con 256 (7.513 ms frente a 84.688 ms). En las duplicaciones de M2 llega a 7.24 veces con 9600 salas (46.974 ms frente a 340.069 ms). Es la alternativa que más se aleja, porque su costo crece con K·S.
+- **A2, zona de cada llave por separado:** entre 1.05 y 1.11 veces más lenta en el caso no resoluble. La diferencia es pequeña con estas criptas porque sus zonas no se solapan.
+- **A3, búsqueda lineal del id:** con pocas llaves empata con la búsqueda binaria (entre 0.99 y 1.05 hasta 64 llaves, y 1.00 y 0.99 en las criptas de 300 y 600 salas de M2). La búsqueda binaria se justifica por la escala: con 256 llaves la lineal es 1.42 veces más lenta en el caso resoluble y 1.52 en el no resoluble.
 
 **Conteos del índice (M5).** Para respaldar la complejidad sin depender del reloj, se contaron operaciones. Al ordenar las M menciones de llaves con `merge_sort`, las comparaciones crecen como M log M: al dividir las comparaciones entre M·log₂ M, el resultado se mantiene casi igual (entre 0.580 y 0.622) aunque M pase de 26 a 2340. En la búsqueda binaria del índice, cada vez que se duplica la cantidad de llaves, el máximo de pasos sube solo en uno: 3 pasos con 4 llaves, 4 con 8, 5 con 16 y así hasta 9 pasos con 256 llaves. Eso es lo que se espera de una búsqueda O(log K), que parte la lista a la mitad en cada paso.
+
 **Peor caso de las dependencias (P-11, informativo, sin límite).** Con zonas que se solapan y casi todas las llaves en salas distintas de una región no alcanzable:
 
 ![Figura](img_12.png)
 
-Aquí, al duplicar la cripta el tiempo se multiplica entre 2.24 y 3.71 veces, en vez de cerca de 2 como en M2 y M3. Desde 600 salas pasa siempre del límite de 2.5. Con 9600 salas y 129 llaves tarda 511.600 ms de mediana. La razón es que cada llave revisa toda la región bloqueada: si se duplican a la vez las llaves y el tamaño de la cripta, el trabajo crece por los dos lados, que es lo que dice el O(L·(S + E)) del análisis. Es el único caso que no crece de forma lineal, y por eso queda documentado como excepción. Solo ocurre en criptas no resolubles con muchas llaves dentro de una misma región bloqueada.
-### 6. Límites conocidos
-
-- **Peor caso de las dependencias:** si las zonas de muchas llaves se solapan, el cálculo de dependencias crece como O(L·(S + E)) y deja de ser lineal (cocientes de hasta 3.82 en el bench). Solo ocurre en criptas no resolubles y con una forma muy particular. **HIPÓTESIS:** las criptas publicadas no tienen esa forma; no se midió con ellas.
-- **Criptas sintéticas:** M1 usa una cripta sintética del tamaño de cripta-06, no la cripta-06 real. **HIPÓTESIS:** la real se comporta igual, porque el costo depende de S, E y K, no del contenido.
-- **Ids de sala dispersos:** el vector de salas mide `max_id + 1`. Si los ids fueran muy dispersos (por ejemplo, `max_id` mayor que 4·S), la memoria sería O(max_id). No pasa en ninguna cripta publicada. Un id que no sea entero no negativo hace fallar la verificación con `! Error: ...`.
-- **Variación del p95:** en las criptas grandes el p95 se separa de la mediana (por ejemplo, 18.983 ms de mediana y 59.423 ms de p95 con S = 2400). Por eso los criterios de crecimiento usan la mediana. **HIPÓTESIS:** se debe a la recolección de basura o a la carga del equipo; no se verificó por separado. Todas las mediciones son de un solo equipo.
-- **Caché de llaves:** `datos_locales/llaves_<id>.json` lleva identificador y versión de formato (`CRIPTA-LLAVES`, 1), pero las cachés anteriores del esqueleto y del catálogo no; se dejaron así porque son contrato compartido.
-- **El reporte no se mide aparte:** M3 mide la verificación completa del caso no resoluble; no hay una cifra separada de cuánto cuesta solo el reporte.
-
-
+Aquí, al duplicar la cripta el tiempo se multiplica entre 2.19 y 3.70 veces, en vez de cerca de 2 como en M2 y M3. Desde 600 salas pasa siempre del límite de 2.5. Con 9600 salas y 129 llaves tarda 383.614 ms de mediana. La razón es que cada llave revisa toda la región bloqueada: si se duplican a la vez las llaves y el tamaño de la cripta, el trabajo crece por los dos lados, que es lo que dice el O(L·(S + E)) del análisis. Es el único caso que no crece de forma lineal, y por eso queda documentado como excepción. Solo ocurre en criptas no resolubles con muchas llaves dentro de una misma región bloqueada.
 
 *Secciones de Persona C*
 
