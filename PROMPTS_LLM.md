@@ -2783,3 +2783,279 @@ Muestra antes/después de los cambios de documentación y git diff --stat. Regis
 3. Muestra antes/después de cada cambio y git diff --stat.
 4. Registra este prompt en PROMPTS_LLM.md con la hora real, SIN tocar las anteriores, al final de la sección «# Persona C» (justo antes de la siguiente línea que empiece con «# Persona » de otra persona, o al final del archivo si no hay otra). Confirma con Select-String que quedó dentro de mi sección y que el conteo de «## 20» solo subió en 1.
 ````
+# Persona B — capacidad 002 (resolubilidad)
+
+## 2026-11-06 23:03
+
+- **Fecha:** 2026-11-06 23:03
+- **Modelo:** claude-opus-5-5
+- **Para qué se usó:** Definir con `/speckit.specify` la capacidad de verificación de resolubilidad (spec 002): reglas, banderas `--verificar` y `--forzar`, reporte de no resoluble, determinismo y límite de 200 ms.
+
+````text
+/speckit.specify Como usuario quiero saber si una cripta es resoluble. Una cripta es resoluble si, partiendo de la sala inicial, el jugador puede obtener la llave de la salida (llave_salida) y llegar a la sala de salida (sala_salida) a través de una puerta que la requiere. Para decidirlo se asume que: el jugador puede atravesar cualquier salida abierta y cualquier salida cerrada cuya llave ya obtuvo; las llaves no se consumen; todo enemigo puede ser derrotado; una llave que suelta un enemigo se considera obtenible en la sala donde ese enemigo inicia; y las trampas y los cierres automáticos no bloquean, porque una puerta puede volver a abrirse con la misma llave. El programa siempre verifica si una cripta es resoluble al momento de iniciar una partida. Mediante las banderas --verificar <cripta> que muestra al usuario si si puede resuelta la crippta (ejecutando únicamente la verificación, sin iniciar la partida) y en caso de saber que no es resoluble poder jugar en esa cripta con la bandera --forzar. En caso de que una cripta no sea resoluble y no se use la manera --forzar la partida no inicia y se me muestra el reporte de por que no es resoluble(la frontera bloqueada y las dependencias entre llaves. ) si una cripta ya me dio su orden de resolubilidad o no resoubilidad entonces si vuelvo a correr la misma cripta deberia de mostrarme el mismo orden. Esto se cumple siempre: la misma cripta produce el mismo orden de llaves y el mismo reporte, con el mismo ciclo señalado, en cada ejecución. En caso de ser resoluble mostrara un mensaje diciendo un orden de obtención de llaves en el que cada llave aparece después de todas las llaves necesarias para alcanzarla, en caso de no serlo se muestran as llaves que no pueden obtenerse; las puertas de la frontera bloqueada, es decir, las puertas cerradas adyacentes a la región alcanzable, con la llave que requiere cada una; y dónde se encuentra cada una de esas llaves. Si una llave está ubicada detrás de puertas que solo ella abre, directamente o mediante una cadena de llaves, el reporte debe señalar ese ciclo. Si se usa --forzar por si solo deberá iniciar la partida omitiendo el reporte. Si no se puede obtener la ubicación de las llaves (por un error del servicio o porque se agotó el presupuesto de solicitudes), el programa informa el motivo y no inicia la partida. La verificación tarda menos de 200 ms en la cripta publicada más grande, y su costo crece aproximadamente de forma lineal con la cantidad de salas, salidas y llaves.
+````
+
+## 2026-11-07 20:25
+
+- **Fecha:** 2026-11-07 20:25
+- **Modelo:** claude-opus-5-5
+- **Para qué se usó:** Resolver con `/speckit.clarify` las ambigüedades de la spec 002; las preguntas y respuestas quedaron registradas en la sección Clarifications de `spec.md`.
+
+````text
+/speckit-clarify
+````
+
+## 2026-11-09 17:27
+
+- **Fecha:** 2026-11-09 17:27
+- **Modelo:** claude-opus-5-5
+- **Para qué se usó:** Primer llamado a `/speckit.plan` sin texto; se interrumpió y se repitió enseguida con las indicaciones de diseño.
+
+````text
+/speckit-plan
+````
+
+## 2026-11-09 17:28
+
+- **Fecha:** 2026-11-09 17:28
+- **Modelo:** claude-opus-5-5
+- **Para qué se usó:** Generar con `/speckit.plan` el plan de la spec 002 (`plan.md`, `research.md`, `data-model.md` y contratos) a partir de mi propio diseño: estructuras hechas a mano, restricciones del Principio I, alternativas a medir y mediciones de 200 ms y duplicación.
+
+````text
+/speckit-plan Plan para la verificación de resolubilidad (spec 002).
+
+Restricciones: estructuras a mano (Principio I). Prohibidos dict, set, heapq, bisect, collections, networkx y bibliotecas de grafos. Se permite list solo como arreglo de bajo nivel. Cada estructura se documenta con alternativas consideradas, complejidad y evidencia de --bench.
+
+Idea general: un único recorrido en memoria, por rondas, sobre el grafo dirigido de salas. El esqueleto y la ubicación de las llaves se obtienen una sola vez antes del recorrido; durante el recorrido no se hacen solicitudes (FR-026). Costo esperado O(S + E + K log K), con S salas, E salidas y K llaves (FR-029).
+
+Estructuras:
+1. Vector de salas (FR-001, FR-003, FR-005): indexado por id de sala; cada posición guarda las salidas de esa sala (destino, si está cerrada y la llave que pide) y las llaves que hay allí, incluidas las que suelta un enemigo en la sala donde inicia.
+2. Cola FIFO propia de salas por visitar: empieza con sala_inicial; cada salida cruzable cuyo destino no esté marcado se marca y se encola. En el package "Cache" -> "estructuras" se encuentra la estructura ya creada "Queue" para que se reutilice al momento de implementar esta seccion. Se usan los metodos enqueue, dequeue e is_empty, y el metodo  no se usa dentro del recorrido porque recorre toda la cola y cuesta O(n).
+3. Vectores de booleanos: uno de salas visitadas (indexado por id de sala) y otro de llaves obtenidas (indexado por número de llave). Marcar y consultar cuesta un solo paso.
+4. Índice de llaves: los ids son texto, así que se guardan en un arreglo ordenado con búsqueda binaria escrita a mano que los convierte en un número, el cual indexa los demás vectores de llaves.
+5. Puertas en espera: vector indexado por número de llave; cada posición guarda la lista de salidas cerradas que esperan esa llave. Al obtener la llave se sueltan y forman la ronda siguiente. Las llaves de cada ronda se ordenan por identificador y se agregan al orden de obtención (FR-007). Para el ordenamiento se usa merge sort el cual ya esta creado y planteado en el package modelo-> ordenamiento, se prohibe el uso de sorted() ni .sort()
+6. Dependencias y ciclos (FR-011), solo si la cripta no es resoluble: vector indexado por número de llave con la llave de la que depende (a lo sumo una), calculado según la regla de la zona (spec, Clarifications); los ciclos se hallan siguiendo esos enlaces con marcas de visita, desde la llave de menor identificador.
+
+El reporte (FR-009, FR-010, FR-014) es un barrido final por id de sala y salidas en orden fijo, no una estructura.
+
+Alternativas consideradas: árbol rojo-negro o tabla hash para el índice de llaves (la tabla hash queda descartada por la restricción).
+Alternativas medidas en --bench (FR-030): repetir el recorrido completo por cada llave, calcular la zona de cada llave por separado y buscar linealmente el id de cada llave.
+
+Módulos: lectura de la ubicación de llaves en la fuente de datos (red y offline), la verificación en el modelo sin red ni consola, y las banderas en main.py.
+
+Mediciones: 200 ms en la cripta publicada más grande y duplicación del tamaño (SC-004, SC-005).
+````
+
+## 2026-11-10 09:47
+
+- **Fecha:** 2026-11-10 09:47
+- **Modelo:** claude-opus-5-5
+- **Para qué se usó:** Generar `tasks.md` con `/speckit.tasks`: marcar lo que ya existía, exigir trazabilidad con FR en tareas y pruebas, prohibir estructuras de biblioteca, adelantar el generador de criptas sintéticas, señalar dependencias con el grupo e incluir bench y `DECISIONES.md`.
+
+````text
+/speckit-tasks Este es tu prompt corregido, con tu estructura y los ajustes:
+
+> Ya están hechos el DTO `UbicacionLlave` (en `DTOS/UbicacionLlave.py`) y el método `obtener_llaves_cripta` de `FuenteDatos` (en `API/Fuentes.py`). Al método solo le falta rechazar las entradas sin `id` o sin `sala` con `RespuestaInvalidaError`.
+>
+> Cada tarea debe citar los requisitos que atiende con su identificador `FR-xxx`, y cada prueba también debe citar el `FR-xxx` que verifica.
+>
+> Ninguna tarea puede usar `dict`, `set`, `heapq`, `deque`, `bisect`, `collections` ni bibliotecas de grafos en las estructuras del recorrido de resolubilidad.
+>
+> Incluir temprano el generador de criptas sintéticas, determinista por semilla y con cadenas de llaves, porque la capacidad de terreno y cazador también lo necesita (T003 de la spec 003).
+>
+> Dependencias con otros integrantes: `main.py` es compartido, así que hay que hacer `git pull` antes de modificarlo. Los generadores de paquetes de pruebas (`tests/utiles_niebla.py` y `tests/test_integracion.py`) deben escribir también `llaves.json`.
+>
+> Incluir tareas de bench (recorrido incremental frente a recorrido repetido por llave, y el límite de 200 ms) y de la sección de resolubilidad en `DECISIONES.md`.
+````
+
+## 2026-11-10 10:27
+
+- **Fecha:** 2026-11-10 10:27
+- **Modelo:** claude-opus-5-5
+- **Para qué se usó:** Primera revisión de consistencia entre spec, plan y tareas con `/speckit.analyze`; detectó el hallazgo crítico C1 (`Queue` importada desde `Cache/`) y los altos H1 a H3.
+
+````text
+/speckit-analyze
+````
+
+## 2026-11-10 12:53
+
+- **Fecha:** 2026-11-10 12:53
+- **Modelo:** claude-opus-5-5
+- **Para qué se usó:** Segunda revisión con `/speckit.analyze` después de corregir los hallazgos de la primera.
+
+````text
+/speckit-analyze
+````
+
+## 2026-11-10 12:58
+
+- **Fecha:** 2026-11-10 12:58
+- **Modelo:** claude-opus-5-5
+- **Para qué se usó:** Responder al segundo `/speckit.analyze` de la spec 002: pedir ediciones concretas para los hallazgos C1, I1 a I5 y U1, dejar los LOW para después y separar los cambios de la spec en un commit propio (Principio IX).
+
+````text
+
+Sí, propón ediciones concretas, solo para C1, I1, I2, I3, I4, I5 y U1. Los LOW déjalos para después. Para C1: agrega el identificador de formato solo a la caché de llaves (T006 y data-model). Las cachés existentes de esqueleto y catálogo no se cambian; anótalo como límite conocido en el plan.Para I3: T045 se queda en la Fase 5 (US3), porque T034 depende de ella. Cambia su etiqueta a [US3] y agrégala al rango de US3 en Dependencies. Recuerda que I4, I5 y A1 tocan la spec: sepáralas para que yo las confirme en un commit propio antes del resto.
+````
+
+## 2026-11-10 13:03
+
+- **Fecha:** 2026-11-10 13:03
+- **Modelo:** claude-opus-5-5
+- **Para qué se usó:** Aprobar que el agente aplique el commit A (cambios de la spec: I4, I5 y A1) para revisarlo antes del commit B.
+
+````text
+Sí, aplica el commit A con A1 incluido. Lo reviso y confirmo, y después aplicas el B.
+````
+
+## 2026-11-10 13:08
+
+- **Fecha:** 2026-11-10 13:08
+- **Modelo:** claude-opus-5-5
+- **Para qué se usó:** Pedir al agente que aplique el commit B (plan, tareas y documentos de diseño) después de confirmar la spec.
+
+````text
+Ok si ya el commit se hizo correctamente entonces sigamos con el commit b
+````
+
+## 2026-11-10 16:44
+
+- **Fecha:** 2026-11-10 16:44
+- **Modelo:** claude-opus-5-5
+- **Para qué se usó:** Implementar con `/speckit.implement` las fases 1 y 2 (T002 a T011): generador de criptas sintéticas, DTO del resultado, validación y caché de llaves, y `llaves.json` en los paquetes de prueba.
+
+````text
+/speckit-implement Implementa solo las tareas T002 a T011 (fases 1 y 2); T001 ya la hice a mano. Haz un commit por tarea, con el ID de la tarea y sus FR en el mensaje. Al terminar T011, detente y muéstrame el resultado de la suite completa.
+````
+
+## 2026-11-10 17:03
+
+- **Fecha:** 2026-11-10 17:03
+- **Modelo:** claude-opus-5-5
+- **Para qué se usó:** Marcar T001 (línea base) como hecha y corregir el error de la variable `espera_429` en `API/Fuentes.py`, detectado durante la implementación.
+
+````text
+sí, marca T001 y corrige el bug de espera_429
+````
+
+## 2026-11-11 01:05
+
+- **Fecha:** 2026-11-11 01:05
+- **Modelo:** claude-opus-5-5
+- **Para qué se usó:** Implementar US1 (T012 a T024) con pruebas primero: índice de llaves, recorrido por oleadas, `verificar`, la vista y la opción `--verificar`.
+
+````text
+/speckit-implement Implementa solo T012 a T024 (US1). Escribe primero las pruebas (T012–T017) y comprueba que fallan antes de implementar. Un commit por tarea, con el ID y sus FR en el mensaje. Antes de T024 haz git pull, porque main.py es compartido. Al terminar, detente y muéstrame la suite completa.
+````
+
+## 2026-11-11 01:18
+
+- **Fecha:** 2026-11-11 01:18
+- **Modelo:** claude-opus-5-5
+- **Para qué se usó:** Agregar al contrato `cli-verificacion.md` dos decisiones de salida tomadas al implementar US1, para que el código no haga nada que la spec no describa.
+
+````text
+Agrega a contracts/cli-verificacion.md las decisiones 1 y 2 (el texto «Orden de obtención de llaves: ninguna.» y que la sección de puerta de salida no aparece sin llave_salida), en un commit aparte
+````
+
+## 2026-11-11 01:34
+
+- **Fecha:** 2026-11-11 01:34
+- **Modelo:** claude-opus-5-5
+- **Para qué se usó:** Implementar US2 (T025 a T033): reporte de cripta no resoluble con frontera, ubicaciones, dependencias y ciclos.
+
+````text
+/speckit-implement Implementa solo T025 a T033 (US2). Escribe primero las pruebas (T025–T028) y comprueba que fallan antes de implementar. Un commit por tarea, con el ID y sus FR en el mensaje. Si alguna salida de texto no está en cli-verificacion.md, agrégala primero al contrato en un commit aparte. Al terminar, detente y muéstrame la suite completa.
+````
+
+## 2026-11-12 01:20
+
+- **Fecha:** 2026-11-12 01:20
+- **Modelo:** claude-opus-5-5
+- **Para qué se usó:** Repetir la implementación de US2 deteniéndose después de cada tarea y sin commits, para revisar cada cambio y confirmarlo yo.
+
+````text
+/speckit-implement Implementa solo T025 a T033 (US2). Escribe primero las pruebas (T025–T028) y comprueba que fallan antes de implementar. No hagas commits cuando termines cada tarea para y muéstrame los archivos que cambiaste, y espera a que te diga "sigue". Si alguna salida de texto no está en cli-verificacion.md, agrégala primero al contrato como una tarea aparte y reportamelo a mi . Al terminar T033, muéstrame la suite completa.
+````
+
+## 2026-11-12 22:22
+
+- **Fecha:** 2026-11-12 22:22
+- **Modelo:** claude-opus-5-5
+- **Para qué se usó:** Implementar US3 a US5 (T034 a T045): verificación obligatoria al iniciar partida, opción `--forzar` y manejo de errores al obtener las llaves, con pausa por tarea y aviso al grupo por el cambio de firma de `nueva_partida`.
+
+````text
+/speckit-implement Implementa solo T034 a T045 (US3, US4 y US5), en el orden de tasks.md (T045 va en US3, antes de T036). En cada historia escribe primero sus pruebas y comprueba que fallan antes de implementar. No hagas commits: al terminar cada tarea, detente, muéstrame los archivos que cambiaste y el mensaje de commit sugerido (con el ID y sus FR), y espera a que te diga «sigue». Antes de cada tarea que toque main.py, avísame para hacer git pull. En T036 avísame qué cambia en la firma de ControladorPartida.nueva_partida, para avisar al grupo. Si alguna salida de texto no está en cli-verificacion.md, agrégala primero al contrato como una tarea aparte. Al terminar T045, muéstrame la suite completa.
+````
+
+## 2026-11-12 22:41
+
+- **Fecha:** 2026-11-12 22:41
+- **Modelo:** claude-opus-5-5
+- **Para qué se usó:** Consultar si el `dict` de `SalaEsqueleto` viola la prohibición de `dict` de la constitución (Principio I).
+
+````text
+antes de seguir, me puse a revisar el hecho de que no podemos usar dic, y en sala esqueleto    salidas_dict = {} aparece eso, eso esta prohibido no? segun constitucion
+````
+
+## 2026-11-12 23:03
+
+- **Fecha:** 2026-11-12 23:03
+- **Modelo:** claude-opus-5-5
+- **Para qué se usó:** Entender el método `nueva_partida` y cómo verifica la resolubilidad al iniciar cada partida (US3).
+
+````text
+Ok a ver sis entendi este metodo de nueva partida, basicamente es el encargado que en cada partida que se inicie verificar si es resoluble o no?
+````
+
+## 2026-11-13 06:42
+
+- **Fecha:** 2026-11-13 06:42
+- **Modelo:** claude-opus-5-5
+- **Para qué se usó:** Implementar la fase 8 (T046 a T052): bench de resolubilidad con el límite de 200 ms, las duplicaciones y la comparación con las alternativas A1 a A3.
+
+````text
+/speckit-implement Implementa solo las tareas T046 a T052 (Phase 8), en el orden de tasks.md. No hagas commits: al terminar cada tarea, dame un
+  resumen corto de lo que hiciste, los archivos que cambiaste y un mensaje de commit sugerido (con el ID y sus FR), y espera a que te diga
+  «sigue». Antes de T051, avísame para hacer git pull porque toca main.py. En T052, si M1, M2 o M3 no cumplen, detente y muéstrame los números antes de cambiar código o spec.
+````
+
+## 2026-11-13 13:51
+
+- **Fecha:** 2026-11-13 13:51
+- **Modelo:** claude-opus-5-5
+- **Para qué se usó:** Diagnosticar y corregir el error en la prueba `test_sc007` de `test_verificacion_cli.py` (ValueError al abrir la bitácora).
+
+````text
+antes de seguir mis compañeras me estan reportando que estos tests mios fallan 
+
+<pasted_content id="1fbb">
+======================================================================
+ERROR: test_sc007_fr023_misma_bitacora_y_mismo_estado_final (test_verificacion_cli.PruebasVerificacionNoCambiaPartida.test_sc007_fr023_misma_bitacora_y_mismo_estado_final)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "E:\Estructura De Datos\ProyectoDatos\tests\test_verificacion_cli.py", line 470, in test_sc007_fr023_misma_bitacora_y_mismo_estado_final
+    con, vista, ruta_con = self._partida_con_verificacion()
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Estructura De Datos\ProyectoDatos\tests\test_verificacion_cli.py", line 430, in _partida_con_verificacion
+    controlador.nueva_partida(CRIPTA_RESOLUBLE, SEMILLA_SC007)
+  File "E:\Estructura De Datos\ProyectoDatos\Controlador\ControladorPartida.py", line 170, in nueva_partida
+    self.bitacora = BitacoraPartida(
+                    ^^^^^^^^^^^^^^^^
+  File "E:\Estructura De Datos\ProyectoDatos\Bitacora\BitacoraPartida.py", line 48, in __init__
+    self._archivo = open(ruta, "a", encoding="utf-8")
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: Must have exactly one of read or write mode
+</pasted_content id="1fbb">
+````
+
+## 2026-11-14 00:30
+
+- **Fecha:** 2026-11-14 00:30
+- **Modelo:** claude-opus-5-5
+- **Para qué se usó:** Retomar la fase 8 desde T049 hasta T052 en una sesión nueva, sin repetir las tareas ya hechas.
+
+````text
+/speckit-implement Esta fue la ultima instruccion que te puse " Implementa solo las tareas T046 a T052 (Phase 8), en el orden de tasks.md. No hagas commits: al terminar cada tarea, dame un resumen corto de lo que hiciste, los archivos que cambiaste y un mensaje de commit sugerido (con el ID y sus FR), y espera a que te diga «sigue». Antes de T051, avísame para hacer git pull, porque toca main.py. En T052, si M1, M2 o M3 no cumplen, detente y muéstrame los números antes de cambiar código o spec" No empieces de nuevo, hay que retomar desde la tarea T049 y llegar hasta la T052
+````
