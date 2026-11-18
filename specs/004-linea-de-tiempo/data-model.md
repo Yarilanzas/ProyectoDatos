@@ -49,8 +49,9 @@ sigue creciendo estrictamente.
 
 ### Operaciones y complejidad
 
-Ver la tabla de [interfaz-linea.md](contracts/interfaz-linea.md). Resumen: registrar `O(1)` + copia `O(S)` cada K; recortar `O(V + S)`;
-consultar `O(log n + log C + S + K·a)`; memoria `O(n) + O(C·S)`.
+Ver la tabla de [interfaz-linea.md](contracts/interfaz-linea.md). Resumen: iniciar `O(S + N + E)`; registrar `O(1)` + copia `O(S + N + E)` cada K; recortar `O(V + S + N + E)`; cargar `O(S + N + E)`;
+consultar `O(log n + log C + S + K·a)`; memoria temporal de una consulta `O(S + N + E)`; memoria total `O(n) + O(C·(S + N + E))` (cada punto pesa `O(S) + O(N + E)`:
+el estado copiado y las fotos de rastros y de cerradas).
 
 ### Transiciones de estado
 
