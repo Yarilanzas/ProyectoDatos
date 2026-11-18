@@ -2783,6 +2783,24 @@ Muestra antes/después de los cambios de documentación y git diff --stat. Regis
 3. Muestra antes/después de cada cambio y git diff --stat.
 4. Registra este prompt en PROMPTS_LLM.md con la hora real, SIN tocar las anteriores, al final de la sección «# Persona C» (justo antes de la siguiente línea que empiece con «# Persona » de otra persona, o al final del archivo si no hay otra). Confirma con Select-String que quedó dentro de mi sección y que el conteo de «## 20» solo subió en 1.
 ````
+
+## 2026-11-18 02:26 · Arreglar la prueba intermitente test_t113_la_corrida_completa_justifica_el_k_por_omision de tests/test_bench_linea.py (aceptar también «T113 ningún K cumple»).
+
+- **Fecha**: 2026-11-18 02:26
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: Arreglar la prueba intermitente test_t113_la_corrida_completa_justifica_el_k_por_omision de tests/test_bench_linea.py (aceptar también «T113 ningún K cumple»).
+
+**Prompt**
+
+````text
+/speckit-implement Arreglar una prueba intermitente de tests/test_bench_linea.py. La prueba tests.test_bench_linea.PruebasMedicionesRapidas.test_t113_la_corrida_completa_justifica_el_k_por_omision falló una vez en un clon limpio con el equipo cargado (suite de 119 s) y pasa en las demás corridas. Causa: en tests/bench_linea.py, función de la justificación del K (T113), si ningún K cumple la regla el informe imprime «T113 ningún K cumple con estos datos: hay que revisar (plan B de T098)» y NO imprime la línea «T113 K por omisión: ... K_POR_OMISION vale ...»; la prueba exige esa línea y falla. Ambas salidas son válidas. No cambies tests/bench_linea.py, ningún código de producción, README, datos_locales/ ni otros archivos. No hagas commit.
+
+1. Antes de cambiar nada, reproduce la falla con este comando y confirma que da FAILED con AssertionError: python -c "import unittest, tests.bench_linea as b; b.LIMITE_CONSULTA_MS = 0.0001; s = unittest.defaultTestLoader.loadTestsFromName('tests.test_bench_linea.PruebasMedicionesRapidas.test_t113_la_corrida_completa_justifica_el_k_por_omision'); unittest.TextTestRunner().run(s)"
+2. En esa prueba, cambia SOLO la comprobación de la línea «T113 K por omisión: » para que acepte también la línea que empieza con «T113 ningún K cumple». Debe quedar una sola línea: self.assertTrue(any((linea.startswith("T113 K por omisión: ") and "K_POR_OMISION vale" in linea) or linea.startswith("T113 ningún K cumple") for linea in bloque)). No cambies las otras comprobaciones de la prueba.
+3. Repite el comando del punto 1: ahora debe dar OK. Corre también python -m unittest tests.test_bench_linea y confirma OK.
+4. Muestra git diff --stat y git diff de ese archivo: debe haber 1 inserción y 1 borrado en tests/test_bench_linea.py y nada más.
+5. Registra este prompt en PROMPTS_LLM.md con la hora real de envío, sin tocar las entradas anteriores. Insértalo al final de la sección «# Persona C», es decir, justo ANTES de la línea «# Persona B», no al final del archivo. Confirma con Select-String que quedó dentro de la sección de Persona C, y que el conteo de líneas «## 20» por sección es A 51, C 81, B 22, D 55.
+````
 # Persona B — capacidad 002 (resolubilidad)
 
 ## 2026-11-06 23:03

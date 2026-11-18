@@ -140,7 +140,7 @@ class PruebasMedicionesRapidas(unittest.TestCase):
             bloque.append(linea)
         self.assertTrue(any(linea.startswith("T113 regla") for linea in bloque))
         self.assertTrue(any("T113 K=5" in linea and "consulta: p95" in linea and "memoria" in linea for linea in bloque))
-        self.assertTrue(any(linea.startswith("T113 K por omisión: ") and "K_POR_OMISION vale" in linea for linea in bloque))
+        self.assertTrue(any((linea.startswith("T113 K por omisión: ") and "K_POR_OMISION vale" in linea) or linea.startswith("T113 ningún K cumple") for linea in bloque))
         self.assertTrue(any("HIPÓTESIS" in linea for linea in bloque))
 
     def test_el_archivo_de_la_raiz_no_se_toca(self):
