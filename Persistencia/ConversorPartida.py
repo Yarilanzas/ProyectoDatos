@@ -1,6 +1,8 @@
 # Puente entre el motor y el archivo binario de la partida (S4.10)
 # - registros_desde_motor / registro_jugador_desde_motor: estado vivo -> registros para guardar
 # - RestauradorPartida: al cargar, cada sala se lee del archivo SOLO cuando el motor la necesita (busqueda binaria sobre el indice, sin leer el archivo completo)
+#   Excepcion: las salas que traen enemigos activos (tiempo >= 0) se restauran al cargar, junto con la del jugador,
+#   porque sus enemigos siguen actuando aunque el jugador no entre (igual que en la partida guardada)
 
 # Lo que NO se guarda (igual que el historial de retroceso es de sesion):
 # los efectos temporales (veneno, antorcha, velocidad) y los cierres automaticos de puertas pendientes
@@ -229,6 +231,32 @@ def _reactivar_enemigo(motor, enemigo, tiempo):
     motor._programar_regeneracion(enemigo)
 
 
+def _tiene_enemigos_activos(registro):
+    # un enemigo activo se guarda con el instante de su siguiente accion (>= 0); uno inactivo con -1. O(e)
+    return any(tiempo >= 0 for _, _, _, tiempo in registro.enemigos)
+
+
+def validar_registros(motor, registros):
+    """Comprueba, sin modificar el motor, todo lo que `_aplicar_registro` necesita de afuera para esos registros:
+    la sala en la cripta y las fichas de enemigos (con su botin), objetos y trampas desarmadas.
+
+    Construye los enemigos y objetos con las mismas funciones del motor y los descarta: si una ficha falta (o el
+    gestor no la puede dar, por ejemplo sin la carpeta de datos), el error sale aqui, antes de tocar el motor.
+    O(total de enemigos, objetos y trampas de los registros) consultas al gestor.
+    """
+    for registro in registros:
+        sala = motor.buscar_sala(motor.salas, registro.sala_id)
+        if sala is None:
+            raise VersionIncompatible(f"La sala {registro.sala_id} del archivo no existe en la cripta")
+        for instancia, tipo, vida, _ in registro.enemigos:
+            motor.crear_enemigo(instancia, tipo, vida, sala)
+        for instancia, tipo in registro.objetos:
+            motor.crear_objeto(instancia, tipo)
+        for _, tipo, armada in registro.trampas:
+            if not armada:
+                motor.gestor_datos.obtener_ficha(tipo)
+
+
 def _aplicar_registro(motor, registro):
     sala = motor.buscar_sala(motor.salas, registro.sala_id)
     if sala is None:
@@ -307,10 +335,17 @@ class RestauradorPartida:
         return self.lector.leer_linea()
 
     def restaurar_sala(self, motor, id_sala):
+        if motor.contenido_disponible(id_sala):
+            return True  # ya restaurada (por ejemplo al cargar, por sus enemigos activos): no se aplica dos veces
+
         registro = self.lector.leer_sala(id_sala)
         if registro is None:
             return False  # no estaba guardada: el motor la pide al gestor
 
+        self._aplicar(motor, registro)
+        return True
+
+    def _aplicar(self, motor, registro):
         # lo restaurado no es parte de ninguna accion del jugador, asi que no debe quedar en el historial de retroceso
         historial = motor.historial
         motor.historial = Historial()
@@ -319,7 +354,30 @@ class RestauradorPartida:
         finally:
             motor.historial = historial
 
-        return True
+    def leer_salas_con_enemigos_activos(self, excluir=None):
+        """Registros de las salas guardadas con al menos un enemigo activo (tiempo >= 0), en orden de id ascendente,
+        salvo la sala `excluir` (la del jugador, que se restaura por su camino de siempre). Solo lee el archivo.
+
+        Lee el indice y el bloque de cada sala guardada: O(s) lecturas para s salas, mas O(s log s) del orden.
+        """
+        registros = []
+        for id_sala in self.lector.ids_salas():
+            if id_sala == excluir:
+                continue
+            registro = self.lector.leer_sala(id_sala)
+            if _tiene_enemigos_activos(registro):
+                registros.append(registro)
+        # el indice ya viene por id; se ordena igual para que el orden de restauracion no dependa del escritor
+        ordenados, _ = elegir_algoritmo(len(registros))(registros, lambda registro: registro.sala_id)
+        return ordenados
+
+    def restaurar_salas(self, motor, registros):
+        """Aplica `registros` (ya leidos y validados) en el orden recibido, por el mismo camino que `restaurar_sala`.
+        Una sala que el motor ya tiene no se vuelve a aplicar. Los eventos de los enemigos activos reciben su secuencia
+        en este orden: con el mismo instante, el de la sala de id menor va primero."""
+        for registro in registros:
+            if not motor.contenido_disponible(registro.sala_id):
+                self._aplicar(motor, registro)
 
     def registros_pendientes(self, motor):
         # salas del archivo que el motor todavia no restauro (solo se lee el indice + esas salas)
