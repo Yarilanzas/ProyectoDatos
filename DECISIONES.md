@@ -263,108 +263,6 @@ Con 25 fichas, reacomodar la cola cuesta 13.35 microsegundos frente a 0.41 micro
 
 - Un archivo dañado se descarta y se vuelve a pedir, pero no se avisa al usuario.
 
-## §5.4 — Resolubilidad
-
-Spec: [specs/002-resolubilidad/spec.md](specs/002-resolubilidad/spec.md) · Plan: [plan.md](specs/002-resolubilidad/plan.md) · Alternativas: [research.md](specs/002-resolubilidad/research.md) (R1 a R8) · Tareas: [tasks.md](specs/002-resolubilidad/tasks.md)
-
-**¿Coincide con el plan original?** Sí. La versión final es la del plan: vector de salas por id, `Queue` propia, índice de llaves ordenado con búsqueda binaria, un único recorrido por oleadas con puertas en espera, reporte como barrido final, dependencias con zonas selladas y ciclos sobre `depende_de`. Ninguna medición obligó a cambiarla. Lo único que el plan dejaba abierto, el peor caso de las dependencias (P-11), se cerró aceptándolo como excepción documentada de FR-029.
-
-### 1. Problema
-
-Antes de iniciar una partida hay que decidir Y confirmar si la cripta es resoluble. Una cripta es resoluble si desde la sala inicial se puede conseguir "llave_salida" y llegar a "sala_salida" por una puerta que la pida. Se asume que toda salida abierta se cruza, que una cerrada se cruza si ya se tiene su llave, que las llaves no se gastan, que todo enemigo se vence (la llave que suelta cuenta en la sala donde empieza) y que trampas y cierres automáticos no bloquean.
-
-Si es resoluble se muestra un orden de llaves en el que cada una aparece después de las que hacen falta para alcanzarla. Si una cripta no es resoluble, el reporte muestra las llaves que no se pueden obtener, las puertas de la frontera bloqueada con su llave, dónde está cada llave, las dependencias entre llaves y los ciclos (una llave encerrada detrás de puertas que solo ella misma puede abrir). El resultado debe ser idéntico en cada ejecución (deterministico), sin importar el orden en que la fuente entregue los datos (FR-012, FR-013). Además, la verificación debe tardar menos de 200 ms en la cripta publicada más grande y crecer de forma aproximadamente lineal con salas, salidas y llaves (FR-029). Todo esto sin `dict`, `set`, `sorted()` ni `.sort()`, que el curso no permite.
-
-Notación: S salas, E salidas, K llaves distintas, L ubicaciones de llaves, C salidas cerradas que piden llave y M = L + C + 1 menciones de llaves.
-
-### 2. Alternativas consideradas
-
-- **Recorrer otra vez la cripta completa cada vez que se obtiene una llave (A1):** es la idea más simple, pero cuesta O(K·(S + E)) y crece con el número de llaves. Se midió en `--bench` y se descartó (ver evidencia).
-
-- **Calcular la zona de cada llave por separado, limpiando las marcas y revisando todas las puertas cada vez (A2):** cuesta O(K·(S + E)) en las dependencias. Se midió y se descartó.
-
-- **Buscar el id de una llave recorriendo la lista (A3):** cuesta O(K) por búsqueda, O(M·K) en total. Se midió y se descartó.
-
-- **Tabla hash propia como índice de llaves:** daría búsquedas en O(1) esperado, pero no mejora el costo total: el reporte debe salir ordenado por id (FR-014), así que habría que ordenar las llaves aparte y el O(M log M) seguiría. Además, la búsqueda no es el cuello de botella, el índice no cambia después de armarse, y exigiría una función hash propia para textos, porque `hash()` de Python cambia entre ejecuciones y rompería el determinismo (FR-012). Descartada. 
-- **Árbol AVL, rojo-negro o BST como índice de llaves:** misma búsqueda O(log K) con mucho más código, y su ventaja (insertar y borrar en O(log K)) no se usa porque el índice no cambia. Un BST sin balancear sería peor: las llaves llegan ordenadas y el árbol degeneraría en una lista, con búsquedas O(K). Descartados.
-
-- **Revisar todas las puertas cerradas al terminar cada oleada:** O(K·C), en lugar de dejar cada puerta esperando a su llave. Descartada.
-
-### 3. Decisión
-
-- **Vector de salas (R1):** una `list` usada como arreglo de tamaño fijo, indexada por id de sala, de largo `max_id + 1`. Cada sala guarda sus salidas en el orden fijo N, S, E, O y las llaves ubicadas en ella. Se arma una sola vez con un barrido del esqueleto. Los ids de sala de las criptas publicadas son enteros contiguos desde 1, así que llegar a una sala es O(1) sin buscar.
-
-- **Cola del recorrido (R2):** la `Queue` de `Modelo/Estructuras.py` (movida desde `Cache/`, P-12). Solo se usan `enqueue`, `dequeue` e `is_empty`, todas O(1). Una sala se marca al encolarse, así entra a lo sumo una vez.
-
-- **Vectores de marcas (R3):** arreglos de booleanos `visitada`, `obtenida` y `en_ronda`, con consulta y marca en O(1).
-
-- **Índice de llaves (R4):** las M menciones de llaves se ordenan con el `merge_sort` del proyecto, se quitan los repetidos con un barrido y queda un arreglo ordenado `ids_llaves`. Una búsqueda binaria escrita a mano traduce cada id a su número de llave, que indexa todos los demás arreglos. Como el arreglo está ordenado, el orden por número es el orden por id, y todos los órdenes del reporte salen sin volver a comparar textos.
-
-- **Recorrido por oleadas (R5):** un único recorrido en anchura. Una salida cerrada cuya llave aún no se tiene guarda su destino en `espera[llave]`. Al terminar la oleada, las llaves encontradas se ordenan, se marcan obtenidas y sueltan sus puertas en espera; esas salas se procesan en la oleada siguiente. Así una llave encontrada en la oleada *n* solo abre puertas en la *n + 1* (FR-007).
-
-- **Veredicto y reporte (R6):** no tienen estructura propia; son un barrido final sobre lo ya calculado. La frontera sale recorriendo las salas visitadas en orden de id y sus salidas en el orden fijo, así queda ordenada sin ordenar.
-
-- **Dependencias entre llaves (R7):** solo si la cripta no es resoluble. Para cada sala con una llave se recorre su zona hacia atrás con la misma `Queue`. En vez de limpiar las marcas en cada zona (O(S) por zona), un arreglo `sello` guarda el número de la zona que visitó cada sala, y una zona nueva solo usa un sello nuevo. Las puertas internas se descartan y el resto se reduce a *ninguna*, *J* o *conflicto*; con el primer conflicto se corta. Las llaves de la misma sala comparten la zona.
-
-- **Ciclos (R8):** cada llave depende a lo sumo de otra, así que los ciclos son disjuntos y se encuentran siguiendo `depende_de` con una marca por recorrido. Al barrer las llaves en orden de número, la primera de cada ciclo es la de menor id, de modo que cada ciclo empieza por su menor llave y los ciclos salen ordenados sin ordenar nada.
-
-- **Determinismo (R11):** todo orden sale del id de sala, del orden N, S, E, O o del número de llave. Nada depende de la semilla, del orden de las páginas ni de la caché.
-
-### 4. Análisis de complejidad
-
-| Parte | Costo |
-|---|---|
-| Construir el vector de salas y las entrantes | O(S + E) |
-| Construir el índice de llaves (`merge_sort` + repetidos + traducción) | O(M log M) |
-| Buscar una llave en el índice | O(log K) |
-| Recorrido por oleadas (más ordenar cada oleada) | O(S + E + C) + O(K log K) |
-| Barrido del reporte | O(S + E + K + L log L) |
-| Dependencias | O(S + E + Σ tamaño de las zonas); peor caso O(L·(S + E)) |
-| Ciclos | O(K) |
-
-El total del caso resoluble es **O(S + E + M log M)**. Como cada llave aparece en pocas puertas y ubicaciones, M crece con K y C, y al duplicar la cripta el término M log M se multiplica por algo más que 2. La excepción es el cálculo de dependencias: las zonas de distintas llaves pueden solaparse, y en ese caso el peor caso es O(L·(S + E)) (P-11, aceptado como excepción documentada de FR-029). Memoria: O(max_id + K + L).
-
-### 5. Evidencia empírica
-
-Medido con `python main.py --bench` (`tests/bench_resolubilidad.py`) en un AMD Ryzen (Family 25 Model 80) con Windows 11 y Python 3.14.6. Solo se mide `Resolubilidad.verificar` con los datos ya en memoria, sobre criptas sintéticas con semilla 2026, con 3 corridas de calentamiento y 30 repeticiones por caso.
-
-**Límite de 200 ms (M1, SC-004).** El enunciado (§6.1) fija 200 ms para la verificación en la cripta publicada más grande, medidos en el equipo local, sin red ni renderizado; por eso se mide solo `verificar` con los datos en memoria. En una cripta sintética del tamaño de la publicada más grande (cripta-06: S = 300, E = 760, K = 4):
-
-![Figura](Decisiones/img_8.png)
-
-El caso resoluble tarda 1.226 ms de mediana y 1.361 ms de p95; el no resoluble con ciclo, 1.306 ms y 1.637 ms. Los dos cumplen con amplio margen: el p95 es unas 122 veces menor que el límite (200 / 1.637).
-
-**Crecimiento al duplicar la cripta (M2 y M3, SC-005).** De S = 300 a S = 9600, duplicando salas, salidas y llaves:
-
-![Figura](Decisiones/img_9.png)
-![Figura](Decisiones/img_10.png)
-
-En el caso resoluble, el cociente de medianas en cada duplicación está entre 2.09 y 2.13; en el no resoluble con reporte, dependencias y ciclos (zonas disjuntas), entre 2.10 y 2.18. Todos quedan por debajo de 2.5, lo que respalda el crecimiento aproximadamente lineal. Con 9600 salas el caso resoluble sigue en 47.855 ms de mediana.
-
-**Versión elegida frente a las alternativas (M4).**
-
-![Figura](Decisiones/img_11.png)
-
-- **A1, recorrer todo por cada llave:** es la comparación que exige el enunciado (§6.3): recorrido incremental frente a recorrido repetido por llave. Con S = 1200, la ventaja de la versión elegida crece con K: 1.25 veces con 4 llaves, 1.88 con 16, 4.10 con 64 y 11.27 con 256 (7.513 ms frente a 84.688 ms). En las duplicaciones de M2 llega a 7.24 veces con 9600 salas (46.974 ms frente a 340.069 ms). Es la alternativa que más se aleja, porque su costo crece con K·S.
-- **A2, zona de cada llave por separado:** entre 1.05 y 1.11 veces más lenta en el caso no resoluble. La diferencia es pequeña con estas criptas porque sus zonas no se solapan.
-- **A3, búsqueda lineal del id:** con pocas llaves empata con la búsqueda binaria (entre 0.99 y 1.05 hasta 64 llaves, y 1.00 y 0.99 en las criptas de 300 y 600 salas de M2). La búsqueda binaria se justifica por la escala: con 256 llaves la lineal es 1.42 veces más lenta en el caso resoluble y 1.52 en el no resoluble.
-
-**Conteos del índice (M5).** Para respaldar la complejidad sin depender del reloj, se contaron operaciones. Al ordenar las M menciones de llaves con `merge_sort`, las comparaciones crecen como M log M: al dividir las comparaciones entre M·log₂ M, el resultado se mantiene casi igual (entre 0.580 y 0.622) aunque M pase de 26 a 2340. En la búsqueda binaria del índice, cada vez que se duplica la cantidad de llaves, el máximo de pasos sube solo en uno: 3 pasos con 4 llaves, 4 con 8, 5 con 16 y así hasta 9 pasos con 256 llaves. Eso es lo que se espera de una búsqueda O(log K), que parte la lista a la mitad en cada paso.
-
-**Peor caso de las dependencias (P-11, informativo, sin límite).** Con zonas que se solapan y casi todas las llaves en salas distintas de una región no alcanzable:
-
-![Figura](Decisiones/img_12.png)
-
-Aquí, al duplicar la cripta el tiempo se multiplica entre 2.19 y 3.70 veces, en vez de cerca de 2 como en M2 y M3. Desde 600 salas pasa siempre del límite de 2.5. Con 9600 salas y 129 llaves tarda 383.614 ms de mediana. La razón es que cada llave revisa toda la región bloqueada: si se duplican a la vez las llaves y el tamaño de la cripta, el trabajo crece por los dos lados, que es lo que dice el O(L·(S + E)) del análisis. Es el único caso que no crece de forma lineal, y por eso queda documentado como excepción. Solo ocurre en criptas no resolubles con muchas llaves dentro de una misma región bloqueada.
-
-### 6. Límites conocidos
-
-- *Peor caso de las dependencias:* si las zonas de muchas llaves se solapan, el cálculo de dependencias crece como O(L·(S + E)) y deja de ser lineal (cocientes de hasta 3.70 en el bench). Solo ocurre en criptas no resolubles y con una forma muy particular. *HIPÓTESIS:* las criptas publicadas no tienen esa forma; no se midió con ellas.
-- *Criptas sintéticas:* M1 usa una cripta sintética del tamaño de cripta-06, no la cripta-06 real. *HIPÓTESIS:* la real se comporta igual, porque el costo depende de S, E y K, no del contenido.
-- *Ids de sala dispersos:* el vector de salas mide `max_id + 1`. Si los ids fueran muy dispersos (por ejemplo, `max_id` mayor que 4·S), la memoria sería O(max_id). No pasa en ninguna cripta publicada. Un id que no sea entero no negativo hace fallar la verificación con `! Error: ...`.
-- *Variación del p95:* en las criptas grandes el p95 se separa de la mediana (por ejemplo, 12.339 ms de mediana y 47.330 ms de p95 con S = 2400 en el caso no resoluble de M3). Por eso los criterios de crecimiento usan la mediana. *HIPÓTESIS:* se debe a la recolección de basura o a la carga del equipo; no se verificó por separado. Todas las mediciones son de un solo equipo.
-- *Caché de llaves:* `datos_locales/llaves_<id>.json` lleva identificador y versión de formato (`CRIPTA-LLAVES`, 1), pero las cachés anteriores del esqueleto y del catálogo no; se dejaron así porque son contrato compartido.
-- *El reporte no se mide aparte:* M3 mide la verificación completa del caso no resoluble; no hay una cifra separada de cuánto cuesta solo el reporte.
 
 *Secciones de Persona C*
 
@@ -1278,6 +1176,108 @@ Dieron el mismo primer paso que la versión actual en 2800 casos (grilla y caden
 - Que las mejoras pequeñas de la búsqueda ganen de forma consistente, y que reutilizar el `EspacioBusqueda` mejore (M4).
 - Que el veredicto de §6.1 sobre la cripta sustituta (`cripta-06`, 300 salas, medida: peor paso entre 0.15 y 0.43 ms) se mantenga con la cripta de referencia del enunciado, que aún no está publicada.
 
+## §5.4 — Resolubilidad
+
+Spec: [specs/002-resolubilidad/spec.md](specs/002-resolubilidad/spec.md) · Plan: [plan.md](specs/002-resolubilidad/plan.md) · Alternativas: [research.md](specs/002-resolubilidad/research.md) (R1 a R8) · Tareas: [tasks.md](specs/002-resolubilidad/tasks.md)
+
+**¿Coincide con el plan original?** Sí. La versión final es la del plan: vector de salas por id, `Queue` propia, índice de llaves ordenado con búsqueda binaria, un único recorrido por oleadas con puertas en espera, reporte como barrido final, dependencias con zonas selladas y ciclos sobre `depende_de`. Ninguna medición obligó a cambiarla. Lo único que el plan dejaba abierto, el peor caso de las dependencias (P-11), se cerró aceptándolo como excepción documentada de FR-029.
+
+### 1. Problema
+
+Antes de iniciar una partida hay que decidir Y confirmar si la cripta es resoluble. Una cripta es resoluble si desde la sala inicial se puede conseguir "llave_salida" y llegar a "sala_salida" por una puerta que la pida. Se asume que toda salida abierta se cruza, que una cerrada se cruza si ya se tiene su llave, que las llaves no se gastan, que todo enemigo se vence (la llave que suelta cuenta en la sala donde empieza) y que trampas y cierres automáticos no bloquean.
+
+Si es resoluble se muestra un orden de llaves en el que cada una aparece después de las que hacen falta para alcanzarla. Si una cripta no es resoluble, el reporte muestra las llaves que no se pueden obtener, las puertas de la frontera bloqueada con su llave, dónde está cada llave, las dependencias entre llaves y los ciclos (una llave encerrada detrás de puertas que solo ella misma puede abrir). El resultado debe ser idéntico en cada ejecución (deterministico), sin importar el orden en que la fuente entregue los datos (FR-012, FR-013). Además, la verificación debe tardar menos de 200 ms en la cripta publicada más grande y crecer de forma aproximadamente lineal con salas, salidas y llaves (FR-029). Todo esto sin `dict`, `set`, `sorted()` ni `.sort()`, que el curso no permite.
+
+Notación: S salas, E salidas, K llaves distintas, L ubicaciones de llaves, C salidas cerradas que piden llave y M = L + C + 1 menciones de llaves.
+
+### 2. Alternativas consideradas
+
+- **Recorrer otra vez la cripta completa cada vez que se obtiene una llave (A1):** es la idea más simple, pero cuesta O(K·(S + E)) y crece con el número de llaves. Se midió en `--bench` y se descartó (ver evidencia).
+
+- **Calcular la zona de cada llave por separado, limpiando las marcas y revisando todas las puertas cada vez (A2):** cuesta O(K·(S + E)) en las dependencias. Se midió y se descartó.
+
+- **Buscar el id de una llave recorriendo la lista (A3):** cuesta O(K) por búsqueda, O(M·K) en total. Se midió y se descartó.
+
+- **Tabla hash propia como índice de llaves:** daría búsquedas en O(1) esperado, pero no mejora el costo total: el reporte debe salir ordenado por id (FR-014), así que habría que ordenar las llaves aparte y el O(M log M) seguiría. Además, la búsqueda no es el cuello de botella, el índice no cambia después de armarse, y exigiría una función hash propia para textos, porque `hash()` de Python cambia entre ejecuciones y rompería el determinismo (FR-012). Descartada. 
+- **Árbol AVL, rojo-negro o BST como índice de llaves:** misma búsqueda O(log K) con mucho más código, y su ventaja (insertar y borrar en O(log K)) no se usa porque el índice no cambia. Un BST sin balancear sería peor: las llaves llegan ordenadas y el árbol degeneraría en una lista, con búsquedas O(K). Descartados.
+
+- **Revisar todas las puertas cerradas al terminar cada oleada:** O(K·C), en lugar de dejar cada puerta esperando a su llave. Descartada.
+
+### 3. Decisión
+
+- **Vector de salas (R1):** una `list` usada como arreglo de tamaño fijo, indexada por id de sala, de largo `max_id + 1`. Cada sala guarda sus salidas en el orden fijo N, S, E, O y las llaves ubicadas en ella. Se arma una sola vez con un barrido del esqueleto. Los ids de sala de las criptas publicadas son enteros contiguos desde 1, así que llegar a una sala es O(1) sin buscar.
+
+- **Cola del recorrido (R2):** la `Queue` de `Modelo/Estructuras.py` (movida desde `Cache/`, P-12). Solo se usan `enqueue`, `dequeue` e `is_empty`, todas O(1). Una sala se marca al encolarse, así entra a lo sumo una vez.
+
+- **Vectores de marcas (R3):** arreglos de booleanos `visitada`, `obtenida` y `en_ronda`, con consulta y marca en O(1).
+
+- **Índice de llaves (R4):** las M menciones de llaves se ordenan con el `merge_sort` del proyecto, se quitan los repetidos con un barrido y queda un arreglo ordenado `ids_llaves`. Una búsqueda binaria escrita a mano traduce cada id a su número de llave, que indexa todos los demás arreglos. Como el arreglo está ordenado, el orden por número es el orden por id, y todos los órdenes del reporte salen sin volver a comparar textos.
+
+- **Recorrido por oleadas (R5):** un único recorrido en anchura. Una salida cerrada cuya llave aún no se tiene guarda su destino en `espera[llave]`. Al terminar la oleada, las llaves encontradas se ordenan, se marcan obtenidas y sueltan sus puertas en espera; esas salas se procesan en la oleada siguiente. Así una llave encontrada en la oleada *n* solo abre puertas en la *n + 1* (FR-007).
+
+- **Veredicto y reporte (R6):** no tienen estructura propia; son un barrido final sobre lo ya calculado. La frontera sale recorriendo las salas visitadas en orden de id y sus salidas en el orden fijo, así queda ordenada sin ordenar.
+
+- **Dependencias entre llaves (R7):** solo si la cripta no es resoluble. Para cada sala con una llave se recorre su zona hacia atrás con la misma `Queue`. En vez de limpiar las marcas en cada zona (O(S) por zona), un arreglo `sello` guarda el número de la zona que visitó cada sala, y una zona nueva solo usa un sello nuevo. Las puertas internas se descartan y el resto se reduce a *ninguna*, *J* o *conflicto*; con el primer conflicto se corta. Las llaves de la misma sala comparten la zona.
+
+- **Ciclos (R8):** cada llave depende a lo sumo de otra, así que los ciclos son disjuntos y se encuentran siguiendo `depende_de` con una marca por recorrido. Al barrer las llaves en orden de número, la primera de cada ciclo es la de menor id, de modo que cada ciclo empieza por su menor llave y los ciclos salen ordenados sin ordenar nada.
+
+- **Determinismo (R11):** todo orden sale del id de sala, del orden N, S, E, O o del número de llave. Nada depende de la semilla, del orden de las páginas ni de la caché.
+
+### 4. Análisis de complejidad
+
+| Parte | Costo |
+|---|---|
+| Construir el vector de salas y las entrantes | O(S + E) |
+| Construir el índice de llaves (`merge_sort` + repetidos + traducción) | O(M log M) |
+| Buscar una llave en el índice | O(log K) |
+| Recorrido por oleadas (más ordenar cada oleada) | O(S + E + C) + O(K log K) |
+| Barrido del reporte | O(S + E + K + L log L) |
+| Dependencias | O(S + E + Σ tamaño de las zonas); peor caso O(L·(S + E)) |
+| Ciclos | O(K) |
+
+El total del caso resoluble es **O(S + E + M log M)**. Como cada llave aparece en pocas puertas y ubicaciones, M crece con K y C, y al duplicar la cripta el término M log M se multiplica por algo más que 2. La excepción es el cálculo de dependencias: las zonas de distintas llaves pueden solaparse, y en ese caso el peor caso es O(L·(S + E)) (P-11, aceptado como excepción documentada de FR-029). Memoria: O(max_id + K + L).
+
+### 5. Evidencia empírica
+
+Medido con `python main.py --bench` (`tests/bench_resolubilidad.py`) en un AMD Ryzen (Family 25 Model 80) con Windows 11 y Python 3.14.6. Solo se mide `Resolubilidad.verificar` con los datos ya en memoria, sobre criptas sintéticas con semilla 2026, con 3 corridas de calentamiento y 30 repeticiones por caso.
+
+**Límite de 200 ms (M1, SC-004).** El enunciado (§6.1) fija 200 ms para la verificación en la cripta publicada más grande, medidos en el equipo local, sin red ni renderizado; por eso se mide solo `verificar` con los datos en memoria. En una cripta sintética del tamaño de la publicada más grande (cripta-06: S = 300, E = 760, K = 4):
+
+![Figura](Decisiones/img_8.png)
+
+El caso resoluble tarda 1.226 ms de mediana y 1.361 ms de p95; el no resoluble con ciclo, 1.306 ms y 1.637 ms. Los dos cumplen con amplio margen: el p95 es unas 122 veces menor que el límite (200 / 1.637).
+
+**Crecimiento al duplicar la cripta (M2 y M3, SC-005).** De S = 300 a S = 9600, duplicando salas, salidas y llaves:
+
+![Figura](Decisiones/img_9.png)
+![Figura](Decisiones/img_10.png)
+
+En el caso resoluble, el cociente de medianas en cada duplicación está entre 2.09 y 2.13; en el no resoluble con reporte, dependencias y ciclos (zonas disjuntas), entre 2.10 y 2.18. Todos quedan por debajo de 2.5, lo que respalda el crecimiento aproximadamente lineal. Con 9600 salas el caso resoluble sigue en 47.855 ms de mediana.
+
+**Versión elegida frente a las alternativas (M4).**
+
+![Figura](Decisiones/img_11.png)
+
+- **A1, recorrer todo por cada llave:** es la comparación que exige el enunciado (§6.3): recorrido incremental frente a recorrido repetido por llave. Con S = 1200, la ventaja de la versión elegida crece con K: 1.25 veces con 4 llaves, 1.88 con 16, 4.10 con 64 y 11.27 con 256 (7.513 ms frente a 84.688 ms). En las duplicaciones de M2 llega a 7.24 veces con 9600 salas (46.974 ms frente a 340.069 ms). Es la alternativa que más se aleja, porque su costo crece con K·S.
+- **A2, zona de cada llave por separado:** entre 1.05 y 1.11 veces más lenta en el caso no resoluble. La diferencia es pequeña con estas criptas porque sus zonas no se solapan.
+- **A3, búsqueda lineal del id:** con pocas llaves empata con la búsqueda binaria (entre 0.99 y 1.05 hasta 64 llaves, y 1.00 y 0.99 en las criptas de 300 y 600 salas de M2). La búsqueda binaria se justifica por la escala: con 256 llaves la lineal es 1.42 veces más lenta en el caso resoluble y 1.52 en el no resoluble.
+
+**Conteos del índice (M5).** Para respaldar la complejidad sin depender del reloj, se contaron operaciones. Al ordenar las M menciones de llaves con `merge_sort`, las comparaciones crecen como M log M: al dividir las comparaciones entre M·log₂ M, el resultado se mantiene casi igual (entre 0.580 y 0.622) aunque M pase de 26 a 2340. En la búsqueda binaria del índice, cada vez que se duplica la cantidad de llaves, el máximo de pasos sube solo en uno: 3 pasos con 4 llaves, 4 con 8, 5 con 16 y así hasta 9 pasos con 256 llaves. Eso es lo que se espera de una búsqueda O(log K), que parte la lista a la mitad en cada paso.
+
+**Peor caso de las dependencias (P-11, informativo, sin límite).** Con zonas que se solapan y casi todas las llaves en salas distintas de una región no alcanzable:
+
+![Figura](Decisiones/img_12.png)
+
+Aquí, al duplicar la cripta el tiempo se multiplica entre 2.19 y 3.70 veces, en vez de cerca de 2 como en M2 y M3. Desde 600 salas pasa siempre del límite de 2.5. Con 9600 salas y 129 llaves tarda 383.614 ms de mediana. La razón es que cada llave revisa toda la región bloqueada: si se duplican a la vez las llaves y el tamaño de la cripta, el trabajo crece por los dos lados, que es lo que dice el O(L·(S + E)) del análisis. Es el único caso que no crece de forma lineal, y por eso queda documentado como excepción. Solo ocurre en criptas no resolubles con muchas llaves dentro de una misma región bloqueada.
+
+### 6. Límites conocidos
+
+- *Peor caso de las dependencias:* si las zonas de muchas llaves se solapan, el cálculo de dependencias crece como O(L·(S + E)) y deja de ser lineal (cocientes de hasta 3.70 en el bench). Solo ocurre en criptas no resolubles y con una forma muy particular. *HIPÓTESIS:* las criptas publicadas no tienen esa forma; no se midió con ellas.
+- *Criptas sintéticas:* M1 usa una cripta sintética del tamaño de cripta-06, no la cripta-06 real. *HIPÓTESIS:* la real se comporta igual, porque el costo depende de S, E y K, no del contenido.
+- *Ids de sala dispersos:* el vector de salas mide `max_id + 1`. Si los ids fueran muy dispersos (por ejemplo, `max_id` mayor que 4·S), la memoria sería O(max_id). No pasa en ninguna cripta publicada. Un id que no sea entero no negativo hace fallar la verificación con `! Error: ...`.
+- *Variación del p95:* en las criptas grandes el p95 se separa de la mediana (por ejemplo, 12.339 ms de mediana y 47.330 ms de p95 con S = 2400 en el caso no resoluble de M3). Por eso los criterios de crecimiento usan la mediana. *HIPÓTESIS:* se debe a la recolección de basura o a la carga del equipo; no se verificó por separado. Todas las mediciones son de un solo equipo.
+- *Caché de llaves:* `datos_locales/llaves_<id>.json` lleva identificador y versión de formato (`CRIPTA-LLAVES`, 1), pero las cachés anteriores del esqueleto y del catálogo no; se dejaron así porque son contrato compartido.
+- *El reporte no se mide aparte:* M3 mide la verificación completa del caso no resoluble; no hay una cifra separada de cuánto cuesta solo el reporte.
 
 
 ## §5.5 — Línea de tiempo y puntos de control
