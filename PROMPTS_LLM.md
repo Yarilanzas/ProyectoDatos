@@ -2748,3 +2748,38 @@ PARTE 2 (documentación, con las cifras del resultados_bench_niebla.txt recién 
 
 Muestra antes/después de los cambios de documentación y git diff --stat. Registra este prompt en PROMPTS_LLM.md con la hora real de envío, sin tocar las anteriores, y confirma con Select-String.
 ````
+
+## 2026-11-17 23:58 · Actualizar las citas de resultados_bench_niebla.txt tras la corrida de Yariela Lanzas (commit a04849d; AMD, Windows 11, Python 3.14.6) en trazabilidad.md y DECISIONES.md.
+
+- **Fecha**: 2026-11-17 23:58
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: Actualizar las citas de resultados_bench_niebla.txt tras la corrida de Yariela Lanzas (commit a04849d; AMD, Windows 11, Python 3.14.6) en trazabilidad.md y DECISIONES.md.
+
+**Prompt**
+
+````text
+/speckit-implement Actualizar las citas de resultados_bench_niebla.txt. Yariela Lanzas regeneró ese archivo en otra máquina (commit a04849d; equipo AMD, Windows 11, Python 3.14.6). Las filas actuales son: M4 referencia/paso cripta-06 V=300 origenes=299 pares=22052 confirmados=50: peor=122->283 costo=1240, por llamada, 0.1917 ms, cumple; peor=182->1 costo=1460, reutilizado, 0.1923 ms, cumple. Sintéticas de 2500: grilla 9.7776 ms (por llamada) y 9.5636 ms (reutilizado), no cumple; cadena 3.5778 y 3.7302 ms, cumple. No cambies el código, las pruebas, resultados_bench_niebla.txt, README, datos_locales/ ni archivos de A, B o D. No hagas commit. Primero lee el archivo actual y toma TODAS las cifras de ahí, no de este prompt.
+
+1. Busca en Decisiones/DECISIONES.md y specs/001-niebla-mapa-ir-a/ (trazabilidad.md, evidencia_quickstart.md, tasks.md; sin PROMPTS_LLM.md) las cifras citadas de ese archivo y la descripción de la máquina: 0.4320, 0.2830, 27.4635, 22.5135, 10.1897, 11.6780, «Python 3.12.10», «Intel», «peor=115->272», «peor=189->186», «0.15 y 0.43» y «al menos 11 veces». Lista antes/después de cada una, sin cambiar nada todavía.
+2. Actualiza solo lo que cita el archivo: (a) en trazabilidad.md (SC-007) copia las dos filas «referencia/paso» de cripta-06 y el párrafo de «peor paso»; (b) en DECISIONES.md, «Espacio reutilizado»: las cifras de la grilla y la cadena de 2500 al archivo actual, sin la nota «(corrida con el equipo cargado)» si ya no aplica; (c) en el apartado «ir a y el límite de §6.1»: el equipo ya no es una sola máquina. Escribe que las mediciones de T110 se hicieron en dos máquinas: la de Persona C (Windows 11, Intel, Python 3.12.10, 4 corridas, peor paso entre 0.15 y 0.43 ms) y la de la corrida que está hoy en resultados_bench_niebla.txt (AMD, Windows 11, Python 3.14.6, 0.19 ms por paso). El rango global del peor paso es el mínimo y el máximo de las cinco corridas; recalcula el margen contra 5 ms con el peor valor (0.43 ms). La conclusión (cumple, HIPÓTESIS de que cripta-06 sustituye a la de referencia) no cambia.
+3. La cadena de 2500 de la corrida actual dio 3.58 y 3.73 ms y cumple; en las filas sintéticas deja el rango normal «de 2.5 a 3.4 ms», agrega «hasta 3.7 ms en la corrida de Python 3.14.6» y conserva el máximo con el equipo cargado de 11.7 ms (corrida de Persona C del 2026-11-17). No cambies las demás cifras.
+4. Muestra antes/después de cada cambio y git diff --stat.
+5. Registra este prompt en PROMPTS_LLM.md con la hora real de envío, sin tocar las anteriores y SIN agregarlo al final del archivo: insértalo al final de la sección «# Persona C» de ese archivo, es decir, justo antes de la siguiente línea que empiece con «# Persona » (otra persona), o al final del archivo si no hay otra. Confirma con Select-String que quedó dentro de tu sección y no bajo la de otra persona, y que el conteo de líneas «## 20» solo subió en 1.
+````
+
+## 2026-11-18 00:02 · Corregir en DECISIONES.md la fuente de los datos (dos corridas de resultados_bench_niebla.txt: Persona C e Intel; Persona B, a04849d, AMD) y el rango de la grilla de 400.
+
+- **Fecha**: 2026-11-18 00:02
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: Corregir en DECISIONES.md la fuente de los datos (dos corridas de resultados_bench_niebla.txt: Persona C e Intel; Persona B, a04849d, AMD) y el rango de la grilla de 400.
+
+**Prompt**
+
+````text
+/speckit-implement Dos correcciones de documentación en Decisiones/DECISIONES.md tras regenerar Persona B (Yariela Lanzas) resultados_bench_niebla.txt (commit a04849d). No cambies código, pruebas, README, resultados_bench_*.txt, datos_locales/ ni archivos de A, B o D. No hagas commit. Lee primero resultados_bench_niebla.txt y toma las cifras de ahí.
+
+1. Cerca de la línea 972, la frase dice que las cifras de la sección vienen del archivo «generado … el 2026-11-16 en el equipo de Lucía (Intel, Python 3.12.10)». Reescríbela para que sea verdadera: las tablas M1 a M6 vienen de la corrida del 2026-11-16 en la máquina de Persona C (Intel, Python 3.12.10); desde entonces Persona B regeneró el archivo (commit a04849d, AMD, Windows 11, Python 3.14.6), y las cifras que se citan de esa corrida están marcadas como tales. No cambies ninguna cifra de las tablas.
+2. Cerca de la línea 1226: «La grilla de 400 da de 1.0 a 1.2 ms por paso en condiciones normales». La corrida actual da 1.3729 y 1.3782 ms para la grilla de 400. Busca también con Select-String otras citas del rango de la grilla de 400 («1.0 a 1.» y «1.7») en DECISIONES.md y specs/001-niebla-mapa-ir-a/. Lista antes/después y unifica el rango en todas: mínimo y máximo entre mis corridas normales y la de Python 3.14.6, sin tocar el valor «hasta 3.8 ms con el equipo cargado».
+3. Muestra antes/después de cada cambio y git diff --stat.
+4. Registra este prompt en PROMPTS_LLM.md con la hora real, SIN tocar las anteriores, al final de la sección «# Persona C» (justo antes de la siguiente línea que empiece con «# Persona » de otra persona, o al final del archivo si no hay otra). Confirma con Select-String que quedó dentro de mi sección y que el conteo de «## 20» solo subió en 1.
+````

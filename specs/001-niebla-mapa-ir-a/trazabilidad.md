@@ -103,11 +103,14 @@ la `primer_paso` real en el peor caso del mapa conocido completo de `cripta-06` 
 repetición y los 50 más lentos se confirman con la mediana de 7. Filas «referencia/paso» de `resultados_bench_niebla.txt`:
 
 ```text
-M4 referencia/paso  cripta=cripta-06 V=300 pasos=1 origenes=299 pares=22052 confirmados=50 peor=115->272 costo=1340 espacio=por llamada     0.4320 ms   cumple
-M4 referencia/paso  cripta=cripta-06 V=300 pasos=1 origenes=299 pares=22052 confirmados=50 peor=189->186 costo=2040 espacio=reutilizado     0.2830 ms   cumple
+M4 referencia/paso  cripta=cripta-06 V=300 pasos=1 origenes=299 pares=22052 confirmados=50 peor=122->283 costo=1240 espacio=por llamada     0.1917 ms   cumple
+M4 referencia/paso  cripta=cripta-06 V=300 pasos=1 origenes=299 pares=22052 confirmados=50 peor=182->1 costo=1460 espacio=reutilizado     0.1923 ms   cumple
 ```
 
-En cuatro corridas el peor paso dio entre 0.15 y 0.43 ms: **cumple**, con un margen de al menos 11 veces.
+Las mediciones se hicieron en dos máquinas: cuatro corridas en la de Persona C (Windows 11, Intel, Python 3.12.10; peor
+paso entre 0.15 y 0.43 ms) y la corrida que está hoy en `resultados_bench_niebla.txt` (AMD, Windows 11, Python 3.14.6;
+0.19 ms, filas de arriba). En las cinco corridas el peor paso dio entre 0.15 y 0.43 ms: **cumple**, con un margen de al
+menos 11 veces (5 / 0.4320 ≈ 11.6).
 **HIPÓTESIS**: la cripta de referencia del enunciado aún no está publicada; `cripta-06` se usa como sustituta porque es
 la mayor de las copias locales y la mayor publicada, y el veredicto definitivo queda pendiente de la publicación.
 Medición previa con `cripta-02` (20 salas, 325 pares): entre 0.02 y 0.09 ms, cumple. Las filas
