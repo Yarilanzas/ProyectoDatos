@@ -759,7 +759,7 @@ def preparar_m4_referencia(carpeta=CARPETA_DATOS_LOCALES):
     Como `preparar_m4`, se entra sin antorcha a cada sala: todas quedan exploradas y cada puerta queda recordada con
     su estado real del esqueleto. Las puertas cerradas (con llave) quedan recordadas cerradas y no entran al grafo.
     El grafo es dirigido: una puerta cerrada en un sentido puede estar abierta en el otro. Por eso no todo par de
-    salas es alcanzable, y la medición recorre solo los pares que lo son. El costo de cada salida lo da
+    salas es alcanzable, y la medición solo usa pares que lo son. El costo de cada salida lo da
     `motor.costo_salida`, como en el juego. O(V log V + e)."""
     cripta = cripta_mas_grande(carpeta)
     if cripta is None:
@@ -779,25 +779,70 @@ def preparar_m4_referencia(carpeta=CARPETA_DATOS_LOCALES):
     return id_cripta, grafo, salas
 
 
-def pares_alcanzables(grafo, salas, espacio=None):
-    """Pares (origen, destino) distintos para los que `primer_paso` encuentra ruta, en el orden de ``salas``.
-    O(V² · búsqueda)."""
-    pares = []
+def _distancias_desde(grafo, origen, espacio):
+    """Dijkstra completo hacia adelante desde ``origen`` sobre ``grafo.aristas``, sin destino ni cota. Usa las listas
+    por ordinal y la `ColaPrioridad` de ``espacio`` (un `EspacioBusqueda`, sin modificar su código): al terminar,
+    ``espacio.dist[k]`` vale para cada ordinal k con ``espacio.epoca[k] == espacio.epoca_actual``; los demás no son
+    alcanzables. Principio I: listas y cola propias, sin dict ni set como índice. O((V + E) log E)."""
+    espacio.reiniciar()
+    dist, epoca, sala, cola = espacio.dist, espacio.epoca, espacio.sala, espacio.cola
+    vigente = espacio.epoca_actual
+    inicio = grafo.ordinal(origen)
+    dist[inicio], epoca[inicio], sala[inicio] = 0, vigente, origen
+    cola.insertar(0, inicio)
+    while not cola.vacia():
+        distancia, ordinal = cola.extraer_minimo()
+        if distancia > dist[ordinal]:
+            continue  # entrada vieja de la inserción perezosa
+        for _direccion, vecina, costo in grafo.aristas(sala[ordinal]):
+            nueva = distancia + costo
+            otro = grafo.ordinal(vecina)
+            if epoca[otro] != vigente or nueva < dist[otro]:
+                dist[otro], epoca[otro], sala[otro] = nueva, vigente, vecina
+                cola.insertar(nueva, otro)
+
+
+def destinos_mas_lejanos(grafo, salas, espacio=None):
+    """[(origen, destino, costo)]: por cada origen de ``salas`` con algún destino alcanzable, el destino alcanzable
+    de MAYOR costo acumulado desde él (en empate, el de menor id), en el orden de ``salas``. Los orígenes sin ningún
+    destino alcanzable se omiten. ``espacio`` es un `EspacioBusqueda` para ``grafo.cantidad_salas``; None crea uno.
+
+    SUPOSICIÓN sobre el peor caso: `primer_paso` es un Dijkstra que corta al sacar el destino de la cola, y saca las
+    salas en orden de distancia; así, el trabajo hasta el destino no decrece con su distancia, y el destino más lejano
+    es el peor caso de ese origen. Los empates de distancia pueden alterar el orden en que salen las salas, así que es
+    una suposición, no una garantía. O(V · (V + E) log E)."""
+    if espacio is None:
+        espacio = EspacioBusqueda(grafo.cantidad_salas)
+    else:
+        espacio.validar(grafo)
+    elegidos = []
     for origen in salas:
+        _distancias_desde(grafo, origen, espacio)
+        vigente, mejor, mejor_costo = espacio.epoca_actual, None, None
         for destino in salas:
-            if origen is not destino and primer_paso(grafo, origen, destino, None, espacio) is not None:
-                pares.append((origen, destino))
-    return pares
+            ordinal = grafo.ordinal(destino)
+            if destino is origen or espacio.epoca[ordinal] != vigente:
+                continue
+            costo = espacio.dist[ordinal]
+            if (mejor is None or costo > mejor_costo
+                    or (costo == mejor_costo and destino.id < mejor.id)):
+                mejor, mejor_costo = destino, costo
+        if mejor is not None:
+            elegidos.append((origen, mejor, mejor_costo))
+    return elegidos
 
 
 def medir_m4_referencia(repeticiones=REPETICIONES, espacio=None, carpeta=CARPETA_DATOS_LOCALES):
-    """M4 de §6.1 (T110): el peor caso de un paso de «ir a» entre todos los pares alcanzables del mapa conocido
-    completo de la cripta sustituta (la mayor de las copias locales; HIPÓTESIS: la cripta de referencia del
-    enunciado aún no está publicada, así que el veredicto no es definitivo). Cada par se mide como el paso de `medir_m4` (`medir_ms` de `primer_paso`);
-    la fila reporta el máximo en ms, el par que lo produce («peor») y cuántos pares se midieron («pares»). El
-    veredicto es `veredicto_paso` del máximo, contra `LIMITE_PASO_IR_A_MS`. La fila no es provisional.
+    """M4 de §6.1 (T110): el peor caso de un paso de «ir a» en el mapa conocido completo de la cripta sustituta (la
+    mayor de las copias locales; HIPÓTESIS: la cripta de referencia del enunciado aún no está publicada, así que el
+    veredicto no es definitivo). No mide todos los pares (con cientos de salas serían decenas de miles): por cada
+    origen con algún destino alcanzable mide un solo paso, hacia su destino más lejano (`destinos_mas_lejanos`, con
+    su SUPOSICIÓN sobre el peor caso). Cada par se mide como el paso de `medir_m4` (`medir_ms` de `primer_paso`).
+    La fila reporta el máximo en ms, el par que lo produce («peor») con su costo acumulado («costo»), cuántos
+    orígenes se midieron («origenes») y cuántos pares («pares», uno por origen). El veredicto es `veredicto_paso`
+    del máximo, contra `LIMITE_PASO_IR_A_MS`. La fila no es provisional.
 
-    ``espacio``: como en `medir_m4`; el `EspacioBusqueda` se crea una vez y se reutiliza en todos los pares.
+    ``espacio``: como en `medir_m4`; el `EspacioBusqueda` se crea una vez y se reutiliza en todos los pares medidos.
     Si no hay copias locales, o no se pueden leer, devuelve una fila «no medido» con el motivo: no falla."""
     modo = ("espacio", "por llamada" if espacio is None else "reutilizado")
     try:
@@ -813,22 +858,22 @@ def medir_m4_referencia(repeticiones=REPETICIONES, espacio=None, carpeta=CARPETA
     reutilizado = None if espacio is None else espacio(grafo.cantidad_salas)
     peor_ms, peor_par, medidos = None, None, 0
     try:
-        for origen, destino in pares_alcanzables(grafo, salas, reutilizado):
+        for origen, destino, costo in destinos_mas_lejanos(grafo, salas, reutilizado):
             def un_paso(origen=origen, destino=destino):
                 primer_paso(grafo, origen, destino, None, reutilizado)
 
             ms = float(medir_ms(un_paso, repeticiones))
             medidos += 1
             if peor_ms is None or ms > peor_ms:
-                peor_ms, peor_par = ms, (origen, destino)
+                peor_ms, peor_par = ms, (origen, destino, costo)
     except Exception as error:  # noqa: BLE001 - se informa en la fila
         return [Fila("M4", "referencia/paso", (("cripta", id_cripta), ("pasos", 1), modo), None,
                      HIPOTESIS_REFERENCIA_M4, f"{type(error).__name__}: {error}")]
     if peor_ms is None:
         return [Fila("M4", "referencia/paso", (("cripta", id_cripta), ("pasos", 1), modo), None,
                      HIPOTESIS_REFERENCIA_M4, "el mapa conocido completo no tiene ningún par de salas alcanzable")]
-    parametros = (("cripta", id_cripta), ("V", len(salas)), ("pasos", 1), ("pares", medidos),
-                  ("peor", f"{peor_par[0].id}->{peor_par[1].id}"), modo)
+    parametros = (("cripta", id_cripta), ("V", len(salas)), ("pasos", 1), ("origenes", medidos),
+                  ("pares", medidos), ("peor", f"{peor_par[0].id}->{peor_par[1].id}"), ("costo", peor_par[2]), modo)
     nota = NOTA_REFERENCIA_M4.format(id_cripta=id_cripta, salas=len(salas))
     return [Fila("M4", "referencia/paso", parametros, peor_ms, HIPOTESIS_REFERENCIA_M4, nota,
                  veredicto=veredicto_paso(peor_ms), provisional=False)]
@@ -1039,8 +1084,9 @@ def correr_bench(ruta=ARCHIVO_RESULTADOS, tamanos=None, datos_locales=CARPETA_DA
          medir_m3(t.m3_n, t.m3_vecinas, t.repeticiones)),
         (f"M4: un paso y un viaje de «ir a» por primer_paso, límite {LIMITE_PASO_IR_A_MS} ms por paso, con y sin "
          f"EspacioBusqueda reutilizado (R6; FR-024, FR-026, SC-007). Filas sintéticas, PROVISIONAL: "
-         f"{NOTA_PROVISIONAL_M4}. Fila «referencia/paso»: medición de §6.1, el peor paso entre todos los pares "
-         "alcanzables del mapa conocido completo de la cripta sustituta, la mayor de las copias locales (T110; "
+         f"{NOTA_PROVISIONAL_M4}. Fila «referencia/paso»: medición de §6.1, el peor paso entre un par por "
+         "origen (hacia su destino alcanzable más lejano; SUPOSICIÓN: es el peor caso de ese origen) del mapa "
+         "conocido completo de la cripta sustituta, la mayor de las copias locales (T110; "
          "HIPÓTESIS: la cripta de referencia del enunciado aún no está publicada)",
          # Las filas de la cripta sustituta van después de todas las sintéticas: medirlas entre los dos
          # bloques sintéticos alteraba las filas que venían después.

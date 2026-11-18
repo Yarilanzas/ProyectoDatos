@@ -501,25 +501,34 @@ def _mas_grande(carpeta=DATOS_LOCALES):
     return elegido
 
 
-def _pares_alcanzables(esqueleto):
-    """Pares (origen, destino) distintos con ruta por salidas abiertas en el esqueleto. Cálculo independiente del
-    bench: recorrido en anchura sobre el JSON, sin `Conocimiento` ni `GrafoConocido`."""
+def _mas_lejanos_json(esqueleto):
+    """[(origen, destino, costo)] por cada origen con algún destino alcanzable, en el orden del esqueleto: el destino
+    alcanzable de mayor costo acumulado (en empate, el de menor id). Cálculo independiente del bench: Bellman-Ford
+    sobre el JSON, por salidas abiertas, con el costo de cada salida (100 si no lo trae), sin `GrafoConocido`."""
     ids = [sala["id"] for sala in esqueleto]
-    pares = 0
-    for origen in esqueleto:
-        vistos = [origen["id"]]
-        frente = [origen]
-        while frente:
-            siguiente = []
-            for sala in frente:
-                for salida in sala["salidas"].values():
-                    if salida.get("cerrada") or salida["sala"] in vistos or salida["sala"] not in ids:
-                        continue
-                    vistos.append(salida["sala"])
-                    siguiente.append(esqueleto[ids.index(salida["sala"])])
-            frente = siguiente
-        pares += len(vistos) - 1
-    return pares
+    aristas = []
+    for sala in esqueleto:
+        for salida in sala["salidas"].values():
+            if not salida.get("cerrada") and salida["sala"] in ids:
+                aristas.append((ids.index(sala["id"]), ids.index(salida["sala"]), salida.get("costo", 100)))
+    resultado = []
+    for inicio in range(len(ids)):
+        dist = [None] * len(ids)
+        dist[inicio] = 0
+        for _ in range(len(ids) - 1):
+            for a, b, costo in aristas:
+                if dist[a] is not None and (dist[b] is None or dist[a] + costo < dist[b]):
+                    dist[b] = dist[a] + costo
+        elegido = None
+        for indice in range(len(ids)):
+            if indice == inicio or dist[indice] is None:
+                continue
+            if (elegido is None or dist[indice] > dist[elegido]
+                    or (dist[indice] == dist[elegido] and ids[indice] < ids[elegido])):
+                elegido = indice
+        if elegido is not None:
+            resultado.append((ids[inicio], ids[elegido], dist[elegido]))
+    return resultado
 
 
 def _instantanea(carpeta):
@@ -533,8 +542,31 @@ def _instantanea(carpeta):
     return resultado
 
 
-def _salida_json(destino, cerrada=False):
-    return {"sala": destino, "cerrada": cerrada, "llave": None, "cierre_automatico": None}
+def _salida_json(destino, cerrada=False, costo=None):
+    salida = {"sala": destino, "cerrada": cerrada, "llave": None, "cierre_automatico": None}
+    if costo is not None:
+        salida["costo"] = costo
+    return salida
+
+
+# Mapa chico con costos variados. 4 -> 5 está cerrada: 5 solo se alcanza desde sí misma, así que ningún otro origen
+# la tiene como destino. 6 solo tiene una salida cerrada: no alcanza ninguna sala y se omite como origen.
+MAPA_LEJANOS = [
+    {"id": 1, "nombre": "a", "salidas": {"E": _salida_json(2, costo=1), "S": _salida_json(3, costo=10)}},
+    {"id": 2, "nombre": "b", "salidas": {"O": _salida_json(1, costo=1), "E": _salida_json(4, costo=2)}},
+    {"id": 3, "nombre": "c", "salidas": {"N": _salida_json(1, costo=1)}},
+    {"id": 4, "nombre": "d", "salidas": {"O": _salida_json(2, costo=5), "E": _salida_json(5, cerrada=True)}},
+    {"id": 5, "nombre": "e", "salidas": {"O": _salida_json(4, costo=1)}},
+    {"id": 6, "nombre": "f", "salidas": {"N": _salida_json(5, cerrada=True)}},
+]
+# Calculado a mano: (origen, destino más lejano, costo acumulado). 6 no aparece: no alcanza ninguna sala.
+LEJANOS_ESPERADOS = [(1, 3, 10), (2, 3, 11), (3, 4, 4), (4, 3, 16), (5, 3, 17)]
+
+
+def _guardar_copia(carpeta, id_cripta, salas_json):
+    from AlmacenamientoLocalApi.AlmacenamientoLocalApi import AlmacenamientoLocalApi
+    from DTOS.SalaEsqueleto import SalaEsqueleto
+    AlmacenamientoLocalApi(carpeta).guardar_esqueleto(id_cripta, "v1", [SalaEsqueleto.desde_json(s) for s in salas_json])
 
 
 class TestM4Referencia(unittest.TestCase):
@@ -564,13 +596,14 @@ class TestM4Referencia(unittest.TestCase):
                 self.assertEqual(fila.valor("V"), len(esqueleto))
                 self.assertEqual(fila.valor("pasos"), 1)
                 self.assertEqual(fila.valor("espacio"), modo)
-                # Todos los pares alcanzables por puertas abiertas, contados aparte sobre el JSON.
-                self.assertEqual(fila.valor("pares"), _pares_alcanzables(esqueleto))
+                # Un par por origen con algún destino alcanzable (su destino más lejano), calculado aparte sobre
+                # el JSON; el peor par es uno de ellos y la fila trae su costo acumulado.
+                lejanos = _mas_lejanos_json(esqueleto)
+                self.assertEqual(fila.valor("origenes"), len(lejanos))
+                self.assertEqual(fila.valor("pares"), len(lejanos))
                 origen, destino = (int(parte) for parte in fila.valor("peor").split("->"))
-                ids = [sala["id"] for sala in esqueleto]
-                self.assertIn(origen, ids)
-                self.assertIn(destino, ids)
                 self.assertNotEqual(origen, destino)
+                self.assertIn((origen, destino, fila.valor("costo")), lejanos)
                 # Veredicto con la única constante y la fila no es provisional.
                 self.assertEqual(fila.veredicto, bench_niebla.veredicto_paso(fila.ms))
                 with mock.patch.object(bench_niebla, "LIMITE_PASO_IR_A_MS", -1):
@@ -601,9 +634,10 @@ class TestM4Referencia(unittest.TestCase):
             self.assertEqual(_instantanea(carpeta), antes)
         self.assertEqual(fila.valor("cripta"), "cripta-grande")
         self.assertEqual(fila.valor("V"), 4)
-        # El grafo es fuertemente conexo salvo por la puerta cerrada: los 4·3 pares siguen alcanzables.
-        self.assertEqual(fila.valor("pares"), _pares_alcanzables(grande))
-        self.assertEqual(fila.valor("pares"), 12)
+        # El grafo es fuertemente conexo salvo por la puerta cerrada: los 4 orígenes alcanzan algo, un par cada uno.
+        self.assertEqual(fila.valor("origenes"), 4)
+        self.assertEqual(fila.valor("pares"), 4)
+        self.assertEqual(fila.valor("pares"), len(_mas_lejanos_json(grande)))
         self.assertEqual(fila.nota, NOTA_REFERENCIA.format("cripta-grande", 4))
 
     def test_sc007_pr15_t110_grafo_dirigido_excluye_la_puerta_cerrada(self):
@@ -616,8 +650,57 @@ class TestM4Referencia(unittest.TestCase):
             AlmacenamientoLocalApi(carpeta).guardar_esqueleto("cripta-par", "v1",
                                                               [SalaEsqueleto.desde_json(s) for s in salas])
             fila = self._fila_unica(self._medir(carpeta))
+        self.assertEqual(fila.valor("origenes"), 1)
         self.assertEqual(fila.valor("pares"), 1)
         self.assertEqual(fila.valor("peor"), "2->1")
+        self.assertEqual(fila.valor("costo"), 100)
+
+    def test_sc007_pr15_t110_por_cada_origen_elige_el_destino_alcanzable_mas_lejano(self):
+        # (a) Mapa chico con costos variados y salidas cerradas: el destino de cada origen es el alcanzable de mayor
+        # costo acumulado, comparado con lo calculado a mano y con Bellman-Ford sobre el JSON. (b) La sala 6 no
+        # alcanza ninguna otra: se omite como origen, sin fallar.
+        calcular = getattr(bench_niebla, "destinos_mas_lejanos", None)
+        self.assertIsNotNone(calcular, "el bench no calcula el destino más lejano de cada origen")
+        self.assertEqual(_mas_lejanos_json(MAPA_LEJANOS), LEJANOS_ESPERADOS)
+        with tempfile.TemporaryDirectory() as carpeta:
+            _guardar_copia(carpeta, "cripta-lejanos", MAPA_LEJANOS)
+            _, grafo, salas = bench_niebla.preparar_m4_referencia(carpeta)
+        for modo, espacio in (("por llamada", None), ("reutilizado", bench_niebla.EspacioBusqueda)):
+            with self.subTest(espacio=modo):
+                reutilizado = None if espacio is None else espacio(grafo.cantidad_salas)
+                elegidos = calcular(grafo, salas, reutilizado)
+                self.assertEqual([(o.id, d.id, costo) for o, d, costo in elegidos], LEJANOS_ESPERADOS)
+                # El costo acumulado es el de la ruta que encuentra `primer_paso`.
+                for origen, destino, costo in elegidos:
+                    self.assertEqual(bench_niebla.primer_paso(grafo, origen, destino).costo_total, costo)
+
+    def test_sc007_pr15_t110_desempate_del_mas_lejano_por_menor_id(self):
+        # Dos destinos a la misma distancia máxima: se elige el de menor id, sin depender del orden de las salas.
+        calcular = getattr(bench_niebla, "destinos_mas_lejanos", None)
+        self.assertIsNotNone(calcular, "el bench no calcula el destino más lejano de cada origen")
+        salas_json = [{"id": 5, "nombre": "a", "salidas": {"E": _salida_json(9, costo=3), "O": _salida_json(2, costo=3)}},
+                      {"id": 9, "nombre": "b", "salidas": {"O": _salida_json(5, costo=3)}},
+                      {"id": 2, "nombre": "c", "salidas": {"E": _salida_json(5, costo=3)}}]
+        with tempfile.TemporaryDirectory() as carpeta:
+            _guardar_copia(carpeta, "cripta-empate", salas_json)
+            _, grafo, salas = bench_niebla.preparar_m4_referencia(carpeta)
+        elegidos = [(o.id, d.id, costo) for o, d, costo in calcular(grafo, salas)]
+        self.assertEqual(elegidos, _mas_lejanos_json(salas_json))
+        self.assertEqual(elegidos[0], (5, 2, 3))
+
+    def test_sc007_pr15_t110_la_fila_dice_origenes_pares_peor_y_su_costo(self):
+        # (c) Un paso por origen medido: pares = orígenes medidos; el peor par es uno de ellos, con su costo.
+        with tempfile.TemporaryDirectory() as carpeta:
+            _guardar_copia(carpeta, "cripta-lejanos", MAPA_LEJANOS)
+            for modo, espacio in (("por llamada", None), ("reutilizado", bench_niebla.EspacioBusqueda)):
+                with self.subTest(espacio=modo):
+                    fila = self._fila_unica(self._medir(carpeta, espacio=espacio))
+                    self.assertEqual(fila.valor("origenes"), len(LEJANOS_ESPERADOS))
+                    self.assertEqual(fila.valor("pares"), fila.valor("origenes"))
+                    origen, destino = (int(parte) for parte in fila.valor("peor").split("->"))
+                    self.assertIn((origen, destino, fila.valor("costo")), LEJANOS_ESPERADOS)
+                    self.assertIn("origenes=5", fila.texto())
+                    self.assertEqual(fila.veredicto, bench_niebla.veredicto_paso(fila.ms))
 
     def test_sc007_pr15_t110_sin_esqueleto_la_fila_dice_no_medido_y_no_falla(self):
         with tempfile.TemporaryDirectory() as raiz:
