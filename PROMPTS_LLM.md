@@ -2,6 +2,1203 @@
 
 Registro de los prompts usados con el agente de IA durante la Parte 2 (Principio XI de la constitución). Las fechas y horas son las de Costa Rica (UTC−6) y pueden diferir unos minutos de la hora real de envío; el texto de cada prompt es el enviado.
 
+# Persona A — capacidad 003 (terreno y cazador)
+
+## 2026-11-09 19:32 · Especificación de la capacidad 003: costo de las salidas y cazador (/speckit.specify).
+
+- **Fecha**: 2026-11-09 19:32
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: Especificación de la capacidad 003: costo de las salidas y cazador (/speckit.specify).
+
+**Prompt**
+
+````text
+/speckit.specify Capacidad "Terreno, cazador e invalidación de rutas" (carpeta 003-terreno-cazador).
+
+Contexto: juego de consola CRIPTA, Python 3.11, motor de eventos con reloj virtual. Escribe solo QUÉ debe hacer el programa y por qué desde el punto de vista del juego. No nombres estructuras de datos, clases ni módulos.
+
+Reglas (Parte II §3.1 y §3.2):
+- Cada salida puede declarar costo, entero >= 1; si no lo declara vale 100; es igual en ambos sentidos.
+- Moverse por una salida es una acción cuyo costo base es el costo de esa salida. intervalo = max(1, costo_salida*100 // velocidad). Aplica a todos los actores. Atacar, esperar y demás acciones no cambian. Errantes y rastreadores conservan su comportamiento.
+- Nuevo comportamiento de enemigo "cazador" con campo rango (entero en unidades de costo). En su turno: (1) si comparte sala con el jugador, ataca; (2) si no, considera el costo mínimo d desde su sala hasta la sala del jugador sumando el costo de cada salida y usando solo salidas abiertas en ese instante; (3) si no hay ruta o d > rango, espera con costo 100; (4) si hay, se mueve un paso por una ruta de costo d; el costo de la acción es el de la salida que atraviesa.
+- Desempate: entre las vecinas v tales que costo(u,v)+dist(v,jugador)=d, va a la de menor id.
+- El cazador conoce el esqueleto completo y el estado actual de las puertas; no le afecta la niebla; no abre puertas cerradas; su decisión no depende del contenido de ninguna sala.
+- Equivalencia observable: la decisión debe ser idéntica a la de calcular la ruta desde cero en ese instante, aunque las puertas, el jugador o los demás actores hayan cambiado entre turnos. Se pueden reutilizar cálculos solo si nunca cambia la decisión.
+
+Escenarios de aceptación obligatorios (Apéndice B, "Terreno y cazador"), uno por viñeta:
+1) sin ruta abierta: espera con costo 100; 2) ruta más barata cuesta más que rango: espera con costo 100; 3) ruta de menos salas pero mayor costo vs. más salas y menor costo: sigue la de menor costo; 4) dos vecinas con rutas de costo mínimo: va a la de menor id; 5) una puerta de su ruta se cierra entre dos turnos: decide como si calculara desde cero; 6) actor de velocidad alta cruza salida de costo 1: intervalo al menos 1; 7) cambia la velocidad de un actor que cruza una salida costosa: tiempo restante escalado según P1 §2.3.
+
+Requisitos: FR-### estables y numerados; requisitos de rendimiento numerados (ciclo de eventos < 20 ms con decenas de cazadores activos, §6.1). Incluye historias de usuario con prioridades y casos borde (jugador y cazador en la misma sala, cazador muerto, salida con costo ausente, velocidad cambiada a mitad de movimiento, varios cazadores con el mismo objetivo).
+Deja las dudas reales como [NEEDS CLARIFICATION]. Respeta la constitución del repo.
+````
+
+## 2026-11-09 19:42 · Correcciones de spec.md: rendimiento del cazador (FR-033), activación, costos y rangos inválidos, ids de sala, bench y caché.
+
+- **Fecha**: 2026-11-09 19:42
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: Correcciones de spec.md: rendimiento del cazador (FR-033), activación, costos y rangos inválidos, ids de sala, bench y caché.
+
+**Prompt**
+
+````text
+Edita specs/003-terreno-cazador/spec.md (no crees archivos nuevos). No inventes nada que yo no haya dicho.
+
+1) Agrega un requisito de rendimiento FR-033: "El costo de decidir de un cazador MUST depender de las salas que quedan dentro de su rango, no del total de salas de la cripta: con un rango fijo, agrandar la cripta no debe aumentar el tiempo de decisión. Se mide con --bench con criptas sintéticas de tamaños crecientes y el mismo rango (enunciado §5.1)." Agrega su escenario en la User Story 5 y un criterio SC.
+
+2) Activación del cazador: el cazador actúa desde el inicio de la partida, sin esperar a que el jugador entre en su sala, porque su rango solo tiene sentido si persigue desde lejos. Agrega un FR que lo diga, un escenario de aceptación (cazador a distancia dentro de su rango se mueve sin que el jugador haya entrado a su sala) y regístralo en Assumptions como "pendiente de confirmar con P1 §2.4".
+
+3) FR-001: resuelve el [NEEDS CLARIFICATION] así: un costo inválido (0, negativo o no entero) hace que la cripta se rechace con un mensaje claro y no se asume ningún valor. Si los dos sentidos de una misma conexión declaran costos distintos (incluido uno declarado y el otro ausente), el programa usa el costo de la salida que se atraviesa y no valida simetría; queda como supuesto sobre los datos del servicio. Quita la marca [NEEDS CLARIFICATION] y registra pregunta y respuesta en Clarifications.
+
+4) FR-009: resuelve el [NEEDS CLARIFICATION] así: un cazador sin rango, con rango negativo o no entero hace que la cripta se rechace con un mensaje claro. Registra pregunta y respuesta en Clarifications.
+
+5) Agrega a Clarifications y a Assumptions: los ids de sala son opacos y se comparan con el mismo criterio que usa la capacidad 001 en FR-024; si ese criterio cambia, el de esta capacidad cambia igual.
+
+6) FR-031 y FR-032: haz explícito que el bench incluye dos escenarios (puertas que cambian con frecuencia y puertas que casi nunca cambian) y la alternativa de recalcular siempre desde cero, y que cualquier reutilización se justifica con esa comparación.
+
+7) En FR-008 agrega al final: "Esta capacidad verifica que el costo se conserve en la caché; el cambio de los datos del servicio y de la caché lo implementa la capacidad de datos."
+
+No cambies nada más. Al terminar, lista los cambios que hiciste.
+````
+
+## 2026-11-09 19:46 · Ajuste de spec.md sobre el costo de una salida en los dos sentidos (FR-003, casos borde y checklist).
+
+- **Fecha**: 2026-11-09 19:46
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: Ajuste de spec.md sobre el costo de una salida en los dos sentidos (FR-003, casos borde y checklist).
+
+**Prompt**
+
+````text
+Sí, ajusta FR-003, la definición de "Costo de una salida", los casos borde y el checklist, con este criterio: el enunciado §3.1 dice que el costo es el mismo en ambos sentidos, así que eso se mantiene como regla sobre los datos de la cripta (supuesto de datos), pero el programa no lo valida: cada actor usa el costo de la salida que atraviesa. El escenario 3 de la User Story 1 se queda, planteado como una cripta cuyos datos traen el mismo costo en ambos sentidos. En los casos borde, quita "pendiente de aclaración" y apunta a la respuesta ya registrada en Clarifications. En el checklist, marca como resueltos los dos pendientes. Al terminar, confirma que no queda ningún [NEEDS CLARIFICATION] en la spec.
+````
+
+## 2026-11-09 19:55 · Hacer medibles FR-033, SC-007 y el escenario 3 de la User Story 5.
+
+- **Fecha**: 2026-11-09 19:55
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: Hacer medibles FR-033, SC-007 y el escenario 3 de la User Story 5.
+
+**Prompt**
+
+````text
+Edita specs/003-terreno-cazador/spec.md (no crees archivos nuevos). Solo estos dos cambios, nada más.
+
+1) Haz medibles FR-033, SC-007 y el escenario 3 de la User Story 5: en lugar de "agrandar la cripta no aumenta el tiempo de decisión", di "con la cripta más grande medida, el tiempo de decisión del cazador no supera 1,5 veces el tiempo con la cripta más pequeña, con el mismo rango". Mantén las referencias cruzadas entre FR-033, SC-007 y el escenario.
+
+2) En "Fuera de alcance", reemplaza la línea "Costos distintos en cada sentido de una misma salida" por "Validar que los costos de los dos sentidos de una conexión coincidan (el programa no lo comprueba; FR-001, FR-003)".
+
+Al terminar, lista exactamente las líneas que cambiaste.
+````
+
+## 2026-11-09 19:58 · Quitar una repetición en SC-007.
+
+- **Fecha**: 2026-11-09 19:58
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: Quitar una repetición en SC-007.
+
+**Prompt**
+
+````text
+Sí, quita el "con el mismo rango" repetido en SC-007
+````
+
+## 2026-11-09 22:47 · Plan de implementación de la capacidad 003 (/speckit.plan).
+
+- **Fecha**: 2026-11-09 22:47
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: Plan de implementación de la capacidad 003 (/speckit.plan).
+
+**Prompt**
+
+````text
+/speckit.plan Capacidad 003-terreno-cazador. Python 3.11, solo biblioteca estándar más requests. Prohibido (constitución y enunciado §6.2): dict o set como índice o caché, heapq, bisect, collections (deque, OrderedDict, defaultdict, Counter), networkx, cualquier biblioteca de grafos o de búsqueda de rutas, y sorted()/list.sort() para los ordenamientos evaluados. Toda estructura auxiliar es propia. Puedo reutilizar estructuras de la Parte I si son adecuadas (la agenda de eventos tiene un montículo mínimo propio con índice intrusivo).
+
+Produce plan.md, research.md y data-model.md. No agregues reglas que no estén en spec.md. Para cada decisión da: alternativas, elección, complejidad esperada, evidencia a medir y límites.
+
+Contexto ya decidido por el grupo:
+- La búsqueda de ruta es compartida con «ir a» (capacidad 001, decisión D-PEND-01, opción A). Vive en Modelo/BusquedaRuta.py y la cola de prioridad propia en Modelo/ColaPrioridad.py. Debe cumplir la interfaz primer_paso(grafo, origen, destino) de specs/001-niebla-mapa-ir-a/contracts/interfaz-ruta.md, con sus 7 obligaciones (primer paso de una ruta de costo mínimo; desempate por menor id; empate entre salidas a la misma vecina por el orden N, S, E, O; None si no hay ruta; solo usa el grafo; determinista; sin estructuras prohibidas).
+- Las salidas son dirigidas (A→B cerrada no implica B→A cerrada).
+- FR-034: los cazadores siguen P1 §2.4 (duermen hasta que el jugador entra a su sala, luego quedan activos y su primera acción usa costo base 100).
+- Hoy el motor reprograma a todo enemigo con costo fijo 100 después de actuar; el plan debe indicar dónde y cómo ese costo pasa a ser el de la salida que atraviesa para los movimientos (FR-004, FR-005), sin cambiar atacar ni esperar.
+
+Decisiones a evaluar, con complejidad y mediciones planificadas:
+1) Cola de prioridad: montículo binario propio; ¿reutilizar el de la agenda o uno aparte (Modelo/ColaPrioridad.py)?
+2) Distancias en arreglos densos por ordinal de sala, sin dict.
+3) FR-033: costo proporcional a la región dentro del rango, no al tamaño de la cripta (corte de la búsqueda cuando la distancia supera el rango; no reinicializar arreglos de tamaño n en cada decisión).
+4) Un cálculo por cazador frente a un cálculo compartido desde el jugador. Las salidas son dirigidas, así que el cálculo compartido desde el jugador debe recorrer las salidas al revés; analiza si es correcto, cuándo cambia la respuesta y el punto de quiebre (cuántos cazadores, qué rango).
+5) Invalidación (FR-016, FR-031, FR-032): qué eventos invalidan qué información (apertura o cierre de puerta, movimiento del jugador, muerte o cambio de sala de otros actores, cambio de velocidad) y cuánto trabajo se ahorra. Demostrar que reutilizar no cambia la decisión; la referencia es siempre el cálculo desde cero. Contadores de versión como alternativa a recalcular siempre.
+6) El desempate por menor id debe cumplirse siempre, aunque el algoritmo recorra en otro orden.
+7) Mediciones con python main.py --bench: cazador frente a muchos; rango pequeño frente a rango grande; compartido frente a individual; puertas estables frente a inestables frente a recalcular siempre; criptas sintéticas de tamaños crecientes (umbral 1,5× de FR-033); 50 cazadores activos con ciclo < 20 ms; repetición de las mediciones de la agenda de la Parte I §4.1 con la carga nueva (enunciado §5.6, con antes y después).
+8) Coordinación: el campo costo en Salida y rango en la ficha del enemigo los agrega la capacidad de datos; este plan solo los lee (motor.costo_salida da 100 si falta).
+
+Incluye una tabla de Constitution Check y una tabla de trazabilidad FR → decisión del plan. El plan es el borrador de la sección del Documento de Decisiones (§7.1).
+````
+
+## 2026-11-09 23:09 · Correcciones de plan.md, research.md y data-model.md (entre ellas, que GrafoCripta no dependa de Conocimiento, FR-015).
+
+- **Fecha**: 2026-11-09 23:09
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: Correcciones de plan.md, research.md y data-model.md (entre ellas, que GrafoCripta no dependa de Conocimiento, FR-015).
+
+**Prompt**
+
+````text
+Edita specs/003-terreno-cazador/plan.md, research.md y data-model.md. Solo estos cambios, sin confirmar nada:
+
+1) GrafoCripta no debe depender de Conocimiento (FR-015; los motores armados a mano no lo tienen). Que asigne sus propios ordinales a las salas y construya sus propias listas de salidas entrantes al iniciar o cargar la partida (O(n+m), una vez), sin usar `_ordinal`, `_origen` ni `entrantes` de Conocimiento. Corrige data-model §1 y §2, research.md ("Hechos del código actual" y R2), la fila de Principio I del Constitution Check y cualquier otra mención.
+
+2) Aclara dónde viven `dist`, `primero` y `epoca` cuando `primer_paso` recibe un grafo que no es GrafoCripta (por ejemplo GrafoConocido de «ir a»). Propón un objeto de espacio de trabajo propio de BusquedaRuta, que la función recibe de forma opcional (`espacio=None`) y que crea por llamada si no se le da; el motor guarda uno persistente para los cazadores. Documenta el costo O(n) de crear uno por llamada y que no aplica al cazador.
+
+3) Simplifica D5/R5: la validez del campo compartido entre ciclos descansa en `ciclo`; retroceder, cargar, reproducir y reconstruir ocurren entre ciclos. El método único de puertas con `version_puertas` solo es indispensable para escrituras dentro de un ciclo (cierre automático); mantenlo para todas las escrituras del motor, pero quita de la lista de cambios obligatorios la «restauración de puertas al cargar» si ese código vive en persistencia o en el controlador (no se toca; basta con que `ciclo` avance). Ajusta data-model §1 y §6, la tabla «Dónde cambia el costo» y los Límites de R5.
+
+4) P-01: se acepta `limite=None` como parámetro opcional al final de `primer_paso`; `entrantes` solo lo ofrece GrafoCripta (para `campo_hacia`) y no se exige a GrafoConocido. Ajusta P-01, la fila «Contratos compartidos» del Constitution Check y Project Structure: no cambia ninguna llamada existente de «ir a».
+
+5) P-02: propón que la validación (rechazo de costo o rango inválidos) la haga la capacidad de datos al convertir el JSON (Salida.desde_json y FichaEnemigo.desde_json), y que esta capacidad aporte las pruebas. Déjalo como propuesta pendiente de acuerdo.
+
+6) En tests/test_invalidacion_puertas.py (en la lista de pruebas del plan) agrega una prueba que lea el código fuente de Modelo/ y falle si aparece una asignación `.cerrada =` fuera del método único.
+
+No cambies nada más. Lista al final qué cambiaste en cada archivo.
+````
+
+## 2026-11-09 23:17 · Tres ajustes de la documentación de 003, el primero sobre la prueba de código fuente de test_invalidacion_puertas.py.
+
+- **Fecha**: 2026-11-09 23:17
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: Tres ajustes de la documentación de 003, el primero sobre la prueba de código fuente de test_invalidacion_puertas.py.
+
+**Prompt**
+
+````text
+Haz estos tres ajustes en specs/003-terreno-cazador (sin confirmar nada):
+
+1) En plan.md y research.md, la prueba de código fuente de test_invalidacion_puertas.py debe excluir Modelo/prueba_actores.py por nombre y documentarlo.
+
+2) La misma prueba debe detectar también asignaciones de "cerrada" hechas con setattr(..., "cerrada", ...) y con _asignar_reversible(..., "cerrada", ...), además de `.cerrada =`. Los deshacer del cierre automático y de abrir_salida deben ir por el método único.
+
+3) En P-02 y R8, nombra la clase como FichaEnemigo (definida en DTOS/FichaCatalogo.py) y Salida (DTOS/Salida.py).
+
+Lista qué cambiaste.
+````
+
+## 2026-11-09 23:24 · Descomposición del plan en tareas (/speckit.tasks).
+
+- **Fecha**: 2026-11-09 23:24
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: Descomposición del plan en tareas (/speckit.tasks).
+
+**Prompt**
+
+````text
+/speckit.tasks Descompón specs/003-terreno-cazador/plan.md en tareas pequeñas y verificables, en orden y con dependencias. Cada tarea cita el FR que atiende y cada escenario del Apéndice B (los 7 de «Terreno y cazador») tiene su tarea de prueba que cita su FR. Incluye: ColaPrioridad con pruebas propias; EspacioBusqueda; GrafoCripta con ordinales y entrantes propios; BusquedaRuta (primer_paso con limite y espacio, campo_hacia) cumpliendo tests/test_ruta_contrato.py; método único de escritura de puertas y la prueba de código fuente; contadores ciclo y version_puertas; costo del movimiento en ejecutar_evento y mover_jugador; decisión del cazador (ATACAR, ESPERAR, MOVER) y su activación según P1 §2.4; pruebas de equivalencia contra la referencia desde cero con al menos 1 000 turnos; pruebas de rechazo de costo y rango inválidos (FR-001, FR-009); prueba de conservación del costo en la caché (FR-008); M1 a M8 en --bench; repetición de la agenda de §4.1 con antes y después; ayuda y README (FR-029). Marca qué tareas bloquean a otra persona (BusquedaRuta bloquea a «ir a»). Ninguna tarea sin requisito. No cambies spec.md ni plan.md.
+````
+
+## 2026-11-09 23:31 · Ajustes de tasks.md sobre el generador de criptas sintéticas (T003 y T066).
+
+- **Fecha**: 2026-11-09 23:31
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: Ajustes de tasks.md sobre el generador de criptas sintéticas (T003 y T066).
+
+**Prompt**
+
+````text
+Edita specs/003-terreno-cazador/tasks.md. Solo estos cambios:
+1) T003 y T066: usar el generador de criptas sintéticas de la capacidad de datos (Persona B) cuando exista; mientras tanto, un generador mínimo propio en tests/utiles_terreno.py; las criptas deben ser deterministas por semilla (enunciado §6.3). Agrega esa dependencia a la tabla "Bloqueos con otras personas".
+2) T014: aclarar que el archivo specs/001-niebla-mapa-ir-a/contracts/interfaz-ruta.md es de Persona C y que el cambio lo hace ella o con su aprobación.
+3) T058: marcarla ⏳ bloqueada parcialmente por la capacidad 004 (formato de guardado) y agregarla a la tabla de bloqueos.
+4) Sustituye "Esta capacidad" por "Persona A" donde se reparte trabajo (Parallel Example y Parallel Team Strategy).
+No cambies spec.md ni plan.md. Lista los cambios.
+````
+
+## 2026-11-09 23:33 · Análisis de consistencia de los documentos de la capacidad (/speckit.analyze).
+
+- **Fecha**: 2026-11-09 23:33
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: Análisis de consistencia de los documentos de la capacidad (/speckit.analyze).
+
+**Prompt**
+
+````text
+/speckit.analyze Revisa la consistencia entre spec.md, plan.md, research.md, data-model.md y tasks.md de specs/003-terreno-cazador. Marca: requisitos FR-001 a FR-034 sin tarea; tareas sin requisito; escenarios del Apéndice B (los 7 de «Terreno y cazador») sin prueba que cite su FR; algo en el plan o las tareas que contradiga la constitución (heapq, bisect, collections, networkx, dict o set como índice, sorted o list.sort en ordenamientos evaluados); reglas en plan.md o tasks.md que no estén en spec.md; contradicciones entre documentos (por ejemplo entre la activación de P1 §2.4 y cualquier mención de «desde el inicio»); y dependencias de tareas en orden incorrecto. No modifiques ningún archivo: solo reporta.
+````
+
+## 2026-11-09 23:41 · Correcciones de tasks.md tras el análisis.
+
+- **Fecha**: 2026-11-09 23:41
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: Correcciones de tasks.md tras el análisis.
+
+**Prompt**
+
+````text
+Aplica estas ediciones SOLO a specs/003-terreno-cazador/tasks.md. No toques plan.md ni ningún otro archivo.
+
+1. C1: en T010, agrega una clase de pruebas nueva que llame directamente a Modelo.BusquedaRuta.primer_paso (no a buscador_prueba ni a rutas_ir_a). Pon los casos de `limite` en una clase aparte para que no corran contra buscador_prueba. En T011, escribe qué clase exacta debe pasar. Antes verifica en tests/test_ruta_contrato.py cómo está armado el conjunto compartido, para que lo que escribas sea cierto.
+2. D1: en "Phase Dependencies" cambia "T009 → T018" por "T007, T009 → T018".
+3. D2: haz que T011 dependa de T014 (avisar a Persona C del cambio de contrato antes de implementar limite/espacio). Actualiza la sección de dependencias y el orden de las tareas si hace falta.
+4. I1: en T068, cambia tests/bench_ciclo.py por tests/bench_cazador.py para que coincida con el plan.
+5. I3: en T048, escribe que la estrategia inicial es la referencia desde cero (búsqueda individual acotada) y que el campo compartido solo se activa si T070 lo decide con M3 y M4.
+6. G1: en Notes, agrega: "FR-008 (versión de caché y paquete) depende de la capacidad de datos; aquí solo se verifica en T032 que el costo se conserve."
+
+Al terminar, muéstrame el diff de tasks.md (git diff specs/003-terreno-cazador/tasks.md) y no hagas commit.
+````
+
+## 2026-11-10 16:58 · T001 y T002: línea base de la suite y medición «antes» de la agenda.
+
+- **Fecha**: 2026-11-10 16:58
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: T001 y T002: línea base de la suite y medición «antes» de la agenda.
+
+**Prompt**
+
+````text
+Vamos a ejecutar SOLO T001 y T002 de specs/003-terreno-cazador/tasks.md. No modifiques ningún archivo de Modelo/, Vista/, DTOS/ ni de tests existentes.
+
+T001: corre `python -m unittest discover -s tests -v` y dime cuántas pruebas corren, cuántas pasan, cuántas fallan y cuántas se omiten (skip). Anota ese resultado en la línea «Línea base de T001» de la sección Notes de tasks.md (solo esa línea).
+
+T002: antes de cualquier cambio del motor, localiza `bench_agenda` en tests/bench_motor.py y corre esa medición de la agenda de la Parte I §4.1 con el código actual. Guarda la salida completa en `resultados_bench_agenda_antes.txt` en la raíz, con el equipo (sistema operativo, CPU) y la versión de Python al inicio. Si bench_motor.py ya escribe su propio archivo de resultados, dime cuál es y cópialo, sin sobrescribir nada existente. Si hace falta un comando distinto de `python main.py --bench` para correr solo esa medición, dime cuál usaste.
+
+No hagas commit. Al terminar, muéstrame: la salida de T001, el contenido de resultados_bench_agenda_antes.txt y `git status`.
+````
+
+## 2026-11-10 17:03 · Copia del script de medición de la agenda a tests/bench_agenda_solo.py.
+
+- **Fecha**: 2026-11-10 17:03
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: Copia del script de medición de la agenda a tests/bench_agenda_solo.py.
+
+**Prompt**
+
+````text
+Haz solo esto, sin tocar Modelo/, Vista/, DTOS/ ni pruebas existentes:
+1. Copia el script solo_agenda.py (el que usaste para T002) a tests/bench_agenda_solo.py.
+2. Corre otra vez la medición con esa copia y dime si las tendencias de la tabla coinciden con resultados_bench_agenda_antes.txt (no sobrescribas ese archivo).
+3. En el encabezado de resultados_bench_agenda_antes.txt agrega una línea con el comando exacto para repetirla con tests/bench_agenda_solo.py.
+No hagas commit. Muéstrame git status.
+````
+
+## 2026-11-10 20:06 · T003: tests/utiles_terreno.py y sus pruebas.
+
+- **Fecha**: 2026-11-10 20:06
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: T003: tests/utiles_terreno.py y sus pruebas.
+
+**Prompt**
+
+````text
+Vamos a hacer T003 de specs/003-terreno-cazador/tasks.md. NO modifiques tests/generador_criptas.py (es de Persona B), ni Modelo/, Vista/, DTOS/, ni pruebas existentes.
+
+Crea tests/utiles_terreno.py como adaptador sobre generar_cripta de tests/generador_criptas.py (léelo primero). Antes de escribir, investiga y dime: cómo arman hoy un MotorSimulacion las pruebas sin red (tests/test_costo_salida.py `preparar`, Modelo/prueba_actores.py, tests/utiles_niebla.py) y cómo se convierte una SalaEsqueleto en las salas que recibe motor.iniciar_partida.
+
+Datos que ya existen: Salida.desde_json ya lee `costo` y FichaEnemigo ya lee `rango`. Úsalos tal cual. NO asignes costo ni rango como atributos a mano. `Enemigo` todavía no guarda `rango` (eso es T045): construye las fichas con rango y los enemigos con motor.crear_enemigo; hasta T045 las pruebas del cazador fallarán, y es lo esperado.
+
+Debe ofrecer, sin dict/set como índice, sin heapq/bisect/collections, sin sorted ni list.sort, sin datos de criptas reales y sin tocar el random global:
+1. cripta_terreno(semilla, salas, costo_ida=100, costo_vuelta=100, variacion=None): usa generar_cripta con llaves=1 (cripta casi abierta); si variacion no es None, reasigna el costo de cada salida de salas_json con un random.Random(semilla) local, de forma determinista (costos distintos por salida y por sentido, siempre enteros ≥ 1).
+2. armar_motor(cripta, sala_jugador, cazadores): cazadores es una lista de (sala, rango); construye el motor sin red con el jugador y los cazadores (comportamiento "cazador", ficha con su rango).
+3. mapa_a_mano(...): construye un motor pequeño desde una descripción explícita de salas, salidas (con costo y cerrada), para los casos del Apéndice B (por ejemplo, 2 salidas con costo 500 frente a 4 con costo 400).
+
+Crea también tests/test_utiles_terreno.py con pocas pruebas (cita FR-028 o FR-033): misma semilla da los mismos costos; costos distintos por sentido; 10 000 salas se generan sin error; armar_motor deja al jugador y a k cazadores en las salas pedidas; el estado del random global no cambia.
+
+Al terminar corre `python -m unittest discover -s tests 2>&1 | Select-String -Pattern "^Ran |^OK|^FAILED|^ERROR:|^FAIL:"` y muéstrame el resultado, la respuesta a lo que investigaste y `git status`. No hagas commit.
+````
+
+## 2026-11-11 00:08 · Documentación de 003: quickstart.md, contrato interfaz-cazador-linea.md, plan.md y T077.
+
+- **Fecha**: 2026-11-11 00:08
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: Documentación de 003: quickstart.md, contrato interfaz-cazador-linea.md, plan.md y T077.
+
+**Prompt**
+
+````text
+Vamos a completar la documentación de specs/003-terreno-cazador sin tocar código ni spec.md.
+
+1. Crea specs/003-terreno-cazador/quickstart.md con el formato de specs/001-niebla-mapa-ir-a/quickstart.md: requisitos, comando de pruebas y escenarios para validar la capacidad de punta a punta cuando esté implementada (terreno con costo, cazador que persigue, cazador que espera, equivalencia con el cálculo desde cero, bench con `python main.py --bench`), cada uno citando sus FR. Sin código de implementación.
+2. Crea specs/003-terreno-cazador/contracts/interfaz-cazador-linea.md con lo que la capacidad 004 necesita de ésta, tomándolo de specs/004-linea-de-tiempo/contracts/interfaz-linea.md: todo el estado cuelga del motor; ciclo, version_puertas, GrafoCripta, EspacioBusqueda y campo compartido cuelgan del motor; el cazador no consume azar; el registro de decisiones colgado del motor (reversible con la historia, activable, fuera del guardado salvo decisión de 004); y la exclusión por nombre de Modelo/CopiaEstado.py de la prueba de T015.
+3. En plan.md, cambia la frase «No se generan contracts/ ni quickstart.md en esta pasada...» y el árbol de la estructura para que incluyan los dos archivos nuevos.
+4. En tasks.md agrega T077 «Validar quickstart.md: recorrer sus escenarios cuando la capacidad esté implementada (FR-027)», sin renumerar nada.
+
+No hagas commit. Muéstrame el resumen de lo creado y git status.
+````
+
+## 2026-11-11 00:23 · T004 y T005: pruebas y código de la cola de prioridad (Modelo/ColaPrioridad.py).
+
+- **Fecha**: 2026-11-11 00:23
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: T004 y T005: pruebas y código de la cola de prioridad (Modelo/ColaPrioridad.py).
+
+**Prompt**
+
+````text
+Vamos a hacer SOLO T004 y T005 de specs/003-terreno-cazador/tasks.md (la cola de prioridad). No toques Modelo/MotorSimulacion.py, DTOS/, Vista/ ni pruebas existentes. Primero lee la sección de ColaPrioridad en specs/003-terreno-cazador/data-model.md, research.md (R2) y plan.md, y sigue exactamente esa interfaz.
+
+Orden obligatorio (pruebas primero):
+1. Crea tests/test_cola_prioridad.py (T004). Cada prueba cita su FR (FR-011, FR-021, FR-033) y el Principio I. Debe cubrir: extrae en orden de (distancia, ordinal); entradas repetidas del mismo ordinal (inserción perezosa: se extraen todas, en orden); vacia() en cola nueva, con elementos y después de extraer todo; vaciar() deja la cola vacía y usable; orden determinista ante claves iguales (mismo resultado en dos corridas con las mismas inserciones); extraer_minimo() sobre una cola vacía se comporta como define el data-model; una prueba con unos 1 000 elementos insertados en orden pseudoaleatorio con un random.Random(semilla) local, que se extraen ordenados; y una que lee el código fuente de Modelo/ColaPrioridad.py y falla si importa heapq, bisect o collections.
+2. Corre las pruebas y muéstrame que fallan (el módulo aún no existe).
+3. Implementa Modelo/ColaPrioridad.py (T005): montículo binario mínimo en lista, con insertar(distancia, ordinal), extraer_minimo(), vacia() y vaciar(). Restricciones del proyecto: sin heapq, bisect, collections ni networkx; sin sorted ni list.sort; sin dict ni set como índice; sin estado a nivel de módulo ni atributos de clase mutables; sin usar el random global. vaciar() debe ser O(1). Docstrings con la complejidad de cada operación (O(log t) insertar y extraer, O(1) vacia y vaciar), copiando el estilo de las tablas de data-model.md.
+4. Corre las pruebas de la cola, y después la suite completa con: python -m unittest discover -s tests 2>&1 | Select-String -Pattern "^Ran |^OK|^FAILED|^ERROR:|^FAIL:"
+
+No marques casillas en tasks.md ni hagas commit. Al terminar muéstrame: la salida de las pruebas fallando, la de pasando, la suite completa, el contenido de Modelo/ColaPrioridad.py y git status.
+````
+
+## 2026-11-11 15:19 · T006: pruebas de EspacioBusqueda.
+
+- **Fecha**: 2026-11-11 15:19
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: T006: pruebas de EspacioBusqueda.
+
+**Prompt**
+
+````text
+Vamos a hacer SOLO T006 de specs/003-terreno-cazador/tasks.md (las pruebas de EspacioBusqueda). NO implementes EspacioBusqueda ni crees Modelo/BusquedaRuta.py, y no toques Modelo/, DTOS/, Vista/ ni pruebas existentes.
+
+Primero lee data-model.md §4.3, research.md (R3 y R6) y plan.md, y usa exactamente los nombres de atributos y métodos que ahí se definen (dist, primero, epoca, epoca_actual y la cola).
+
+Crea tests/test_espacio_busqueda.py. Cada prueba cita su FR (FR-033) y el Principio I. Debe cubrir:
+- las listas dist, primero y epoca tienen tamaño n (la cantidad de salas con que se creó);
+- incrementar epoca_actual invalida todo en O(1), sin recorrer las listas (una prueba que lo demuestre, por ejemplo comprobando que las listas no se tocan);
+- una entrada solo vale si su época coincide con epoca_actual;
+- un espacio creado para n salas se rechaza con otro cantidad_salas, como define el data-model (qué método o excepción);
+- la cola que trae es una ColaPrioridad, se puede reutilizar entre búsquedas y se vacía en el reinicio;
+- que el módulo no importe heapq, bisect ni collections ni tenga estado a nivel de módulo.
+Importa Modelo.BusquedaRuta dentro de cada prueba o en setUpClass (no al principio del archivo), para que solo falle este archivo mientras el módulo no exista.
+
+Corre las pruebas, muéstrame que fallan por la importación, y no hagas commit. Al terminar muéstrame el archivo de pruebas y git status.
+````
+
+## 2026-11-11 16:43 · T019 a T026: pruebas de la historia US1 (el terreno determina cuánto tarda moverse).
+
+- **Fecha**: 2026-11-11 16:43
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: T019 a T026: pruebas de la historia US1 (el terreno determina cuánto tarda moverse).
+
+**Prompt**
+
+````text
+Vamos a hacer SOLO T019 a T026 de specs/003-terreno-cazador/tasks.md: las pruebas de la historia US1 (el terreno determina cuánto tarda moverse) en tests/test_terreno.py. NO modifiques Modelo/MotorSimulacion.py ni ningún archivo de Modelo/, DTOS/, Vista/, ni pruebas existentes (tampoco tests/test_costo_salida.py: se actualiza en T027).
+
+Primero lee: spec.md (US1 y FR-001 a FR-007), research.md, tests/utiles_terreno.py (mapa_a_mano y armar_motor), el patrón `preparar` de tests/test_costo_salida.py, y de Modelo/MotorSimulacion.py calcu_inter, proxima_accion, mover_jugador, ejecutar_evento y activar_enemigo. Usa tests/utiles_terreno.py para armar los motores.
+
+Cada prueba cita su FR y su escenario o caso del Apéndice B en el docstring. Pruebas:
+- T019: jugador de velocidad 100 cruza una salida de costo 300; su siguiente turno es 300 después (FR-004, FR-005).
+- T020: salida sin costo declarado, velocidad 100; siguiente turno 100 después (FR-002).
+- T021: 250 en ambos sentidos de A–B; un actor cruza A→B y otro B→A, los dos tardan 250 (FR-003).
+- T022 (Apéndice B): velocidad 1 000 y costo 1 dan intervalo 1, nunca 0 (FR-005).
+- T023 (Apéndice B): velocidad 100 cruza costo 400 en t = 1 000; en t = 1 100 la velocidad pasa a 200; su próximo turno queda en 1 250 (FR-007).
+- T024: un errante y un rastreador eligen su destino igual que en la Parte I (misma semilla) y su siguiente turno ocurre según el costo de la salida atravesada (FR-006).
+- T025: atacar, esperar y usar un objeto conservan su costo de la Parte I en una sala cuyas salidas cuestan 300 (FR-005).
+- T026: cada paso de un viaje «ir a» avanza el reloj según el costo de la salida de ese paso (FR-004, FR-026), usando el buscador inyectado de Viaje porque primer_paso aún no existe.
+
+Corre las pruebas y muéstrame que fallan por la razón correcta (porque mover aún cobra 100, no por errores de importación o de armado). No implementes nada. No hagas commit. Muéstrame el archivo, la salida de las pruebas y git status.
+````
+
+## 2026-11-11 18:22 · T030 y T031: pruebas de validación de los datos de costo (tests/test_validacion_datos.py).
+
+- **Fecha**: 2026-11-11 18:22
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: T030 y T031: pruebas de validación de los datos de costo (tests/test_validacion_datos.py).
+
+**Prompt**
+
+````text
+Vamos a hacer SOLO T030 y T031 de specs/003-terreno-cazador/tasks.md en un archivo nuevo, tests/test_validacion_datos.py. NO modifiques Modelo/, DTOS/, Vista/, tests/utiles_terreno.py, ni pruebas existentes. Si alguna prueba falla porque el código de B se comporta distinto de lo que dice la spec, NO lo arregles: dime qué falla y por qué.
+
+Primero lee spec.md (FR-001, FR-002, FR-003 y sus escenarios), DTOS/Salida.py (Salida.desde_json), DTOS/SalaEsqueleto.py y tests/utiles_terreno.py (mapa_a_mano). Cada prueba cita su FR en el docstring.
+
+T030 (FR-001): Salida.desde_json rechaza con ValueError y mensaje claro un costo inválido. Casos: 0, -5, 2.5, "100" (texto) y True (booleano). El mensaje debe mencionar la sala destino y el valor rechazado. Un costo válido (1, 100, 250, 1000) se acepta y se conserva tal cual, y una salida sin la clave `costo` se acepta con el valor por defecto 100 (FR-002). Una prueba más: una sala del esqueleto (SalaEsqueleto.desde_json) con una salida de costo inválido también se rechaza, para que la cripta no se cargue. No asumas ningún valor ni pruebes el caso `null` salvo que la spec lo diga.
+
+T031 (FR-001, FR-003): una conexión cuyos sentidos declaran costos distintos no se rechaza. Casos: A→B con 300 y B→A con 100; y A→B con 300 y B→A sin costo declarado (vale 100). Con un motor armado con tests/utiles_terreno.mapa_a_mano, cruzar A→B tarda 300 y cruzar B→A tarda 100, cada actor lo de la salida que atraviesa. Hoy la cripta con costos distintos por sentido debe cargarse sin error.
+
+Sin red, sin datos de criptas reales, sin heapq/bisect/collections, sin sorted ni list.sort, sin random global.
+
+Corre `python -m unittest tests.test_validacion_datos -v` y muéstrame el resultado, el archivo y git status. No hagas commit.
+````
+
+## 2026-11-11 20:03 · Cierre de US1 (primera versión, con pasos de commit; reemplazada por la siguiente).
+
+- **Fecha**: 2026-11-11 20:03
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: Cierre de US1 (primera versión, con pasos de commit; reemplazada por la siguiente).
+
+**Prompt**
+
+````text
+Trabajo en la capacidad 003, cierre de US1. Haz solo lo siguiente, en este orden, sin tocar ningún otro archivo ni hacer git push.
+
+1. Contrato (T014). Edita specs/001-niebla-mapa-ir-a/contracts/interfaz-ruta.md. Persona C, dueña del archivo, autorizó el cambio por escrito. Lee el archivo completo antes y conserva su estilo y estructura. Agrega:
+   - La firma queda primer_paso(grafo, origen, destino, limite=None, espacio=None).
+   - limite: entero >= 0 o None. Con None no hay cota (comportamiento anterior). Con valor: si el costo mínimo d == limite devuelve el paso; si d > limite devuelve None.
+   - espacio: EspacioBusqueda opcional y reutilizable; si es None se crea uno por llamada; el resultado es idéntico con o sin espacio.
+   - Nota: `entrantes` solo lo ofrece GrafoCripta; GrafoConocido no lo ofrece y no se le exige; primer_paso no lo usa (solo campo_hacia).
+   No cambies ninguna de las 7 obligaciones existentes.
+
+2. tests/test_costo_salida.py (archivo de Persona C, autorizó estos cambios y solo estos):
+   - En test_fr005_mover_ignora_el_costo_de_la_salida: el valor esperado del reloj pasa a 250.
+   - En test_fr005_mover_ignora_el_costo_con_otra_velocidad (velocidad 50, costo 250): el valor esperado pasa a 500.
+   - Renombra la clase TestMoverNoCambia a TestMoverUsaElCosto y los dos métodos a test_fr005_mover_usa_el_costo_de_la_salida y test_fr005_mover_usa_el_costo_con_otra_velocidad.
+   - Actualiza el comentario de la clase y el del encabezado del archivo que digan que mover ignora el costo: ahora mover usa el costo (costo * 100 // velocidad).
+   No modifiques nada más del archivo.
+
+3. Corre `python -m unittest discover -s tests`. Debe dar OK con skipped=10. Si falla algo, detente y repórtalo sin arreglar nada fuera de lo indicado.
+
+4. specs/003-terreno-cazador/tasks.md: marca [x] T006, T007, T014, T019 a T029. Corrige la línea del final de Dependencies (US4 y US5 están pegados en una sola línea; separa "- **US5 (T061–T070)**" en su propia línea). En Notes agrega una línea con el total de pruebas de la suite al cierre de US1 (el número real de la corrida del paso 3). No cambies nada más.
+
+5. Dos commits, sin push:
+   a) git add specs/001-niebla-mapa-ir-a/contracts/interfaz-ruta.md
+      commit: "docs(001): contrato de primer_paso con limite y espacio opcionales (T014)"
+   b) git add Modelo/MotorSimulacion.py tests/test_terreno.py tests/test_validacion_datos.py tests/test_costo_salida.py specs/003-terreno-cazador/tasks.md
+      commit: "feat(003): costo de las salidas en el movimiento (T019-T031)"
+   Antes de cada commit muestra `git status` y confirma que solo están esos archivos.
+
+Termina mostrando `git log --oneline -3` y `git status`.
+````
+
+## 2026-11-11 20:04 · Cierre de US1: contrato de primer_paso (T014), ajuste de tests/test_costo_salida.py, suite y tasks.md.
+
+- **Fecha**: 2026-11-11 20:04
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: Cierre de US1: contrato de primer_paso (T014), ajuste de tests/test_costo_salida.py, suite y tasks.md.
+
+**Prompt**
+
+````text
+Trabajo en la capacidad 003, cierre de US1. Haz solo lo siguiente, en este orden, sin tocar ningún otro archivo ni hacer git push.
+
+1. Contrato (T014). Edita specs/001-niebla-mapa-ir-a/contracts/interfaz-ruta.md. Persona C, dueña del archivo, autorizó el cambio por escrito. Lee el archivo completo antes y conserva su estilo y estructura. Agrega:
+   - La firma queda primer_paso(grafo, origen, destino, limite=None, espacio=None).
+   - limite: entero >= 0 o None. Con None no hay cota (comportamiento anterior). Con valor: si el costo mínimo d == limite devuelve el paso; si d > limite devuelve None.
+   - espacio: EspacioBusqueda opcional y reutilizable; si es None se crea uno por llamada; el resultado es idéntico con o sin espacio.
+   - Nota: `entrantes` solo lo ofrece GrafoCripta; GrafoConocido no lo ofrece y no se le exige; primer_paso no lo usa (solo campo_hacia).
+   No cambies ninguna de las 7 obligaciones existentes.
+
+2. tests/test_costo_salida.py (archivo de Persona C, autorizó estos cambios y solo estos):
+   - En test_fr005_mover_ignora_el_costo_de_la_salida: el valor esperado del reloj pasa a 250.
+   - En test_fr005_mover_ignora_el_costo_con_otra_velocidad (velocidad 50, costo 250): el valor esperado pasa a 500.
+   - Renombra la clase TestMoverNoCambia a TestMoverUsaElCosto y los dos métodos a test_fr005_mover_usa_el_costo_de_la_salida y test_fr005_mover_usa_el_costo_con_otra_velocidad.
+   - Actualiza el comentario de la clase y el del encabezado del archivo que digan que mover ignora el costo: ahora mover usa el costo (costo * 100 // velocidad).
+   No modifiques nada más del archivo.
+
+3. Corre `python -m unittest discover -s tests`. Debe dar OK con skipped=10. Si falla algo, detente y repórtalo sin arreglar nada fuera de lo indicado.
+
+4. specs/003-terreno-cazador/tasks.md: marca [x] T006, T007, T014, T019 a T029. Corrige la línea del final de Dependencies (US4 y US5 están pegados en una sola línea; separa "- **US5 (T061–T070)**" en su propia línea). En Notes agrega una línea con el total de pruebas de la suite al cierre de US1 (el número real de la corrida del paso 3). No cambies nada más.
+````
+
+## 2026-11-11 20:23 · T010: pruebas del contrato de primer_paso sobre Modelo.BusquedaRuta.
+
+- **Fecha**: 2026-11-11 20:23
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: T010: pruebas del contrato de primer_paso sobre Modelo.BusquedaRuta.
+
+**Prompt**
+
+````text
+Capacidad 003, tarea T010. Haz solo esto, sin tocar ningún otro archivo, sin crear Modelo/BusquedaRuta.primer_paso y sin hacer commit ni push.
+
+Contexto: lee specs/003-terreno-cazador/tasks.md (T010 y T011), specs/001-niebla-mapa-ir-a/contracts/interfaz-ruta.md y tests/test_ruta_contrato.py completo antes de escribir nada. Hoy ese archivo tiene el mixin `ContratoRuta` (casos del contrato, con `buscar` como atributo de clase), `GrafoPrueba`, y las subclases `TestContratoBuscadorPrueba` y `TestContratoPrimerPaso` (esta última con @unittest.skip). No cambies nada de lo existente.
+
+Agrega al final de tests/test_ruta_contrato.py dos clases nuevas:
+
+(a) `TestContratoBusquedaRuta(ContratoRuta, unittest.TestCase)`: corre los casos existentes del mixin llamando directamente a `Modelo.BusquedaRuta.primer_paso`, no a `buscador_prueba` ni a `rutas_ir_a`.
+
+(b) `TestLimiteBusquedaRuta(unittest.TestCase)`: NO hereda de ContratoRuta. Casos, cada uno con su docstring que cita el FR:
+   - `d == limite` devuelve el paso (FR-012).
+   - `d > limite` devuelve None (FR-012).
+   - `limite=0` con origen distinto de destino devuelve None (FR-012).
+   - mismo resultado con y sin `espacio` dado, comparando acción, destino y costo_total (FR-033).
+   - dos llamadas seguidas con el mismo `espacio` no se contaminan: la segunda da lo mismo que con un espacio nuevo, incluso cuando la primera llamada exploró salas que la segunda no debería ver (FR-033).
+   - la tabla de desempates del contrato sigue pasando con `limite` grande (FR-014).
+   - `limite=None` equivale a no pasarlo.
+   Usa los grafos de prueba existentes (GrafoPrueba) y arma el espacio con `EspacioBusqueda(grafo.cantidad_salas)`.
+
+Reglas importantes:
+- `Modelo.BusquedaRuta` se importa DENTRO de las clases nuevas (en `setUpClass`), con un alias distinto de `primer_paso` (por ejemplo `primer_paso_busqueda`), y NO al principio del archivo. Así, mientras `primer_paso` no exista en BusquedaRuta.py, fallan solo las clases nuevas y no las existentes, y no se pisa el `primer_paso` de `Modelo.rutas_ir_a` que ya importa el archivo.
+- Fíjate cómo `TestContratoBuscadorPrueba` asigna `buscar` (una función como atributo de clase se convierte en método ligado si no se protege) y haz lo mismo en `TestContratoBusquedaRuta` con el alias, por ejemplo con `staticmethod`.
+- No uses heapq, bisect, collections, dict ni set como índice en el código de pruebas nuevo, solo para ser coherente con el proyecto.
+
+Al terminar corre:
+  python -m unittest tests.test_ruta_contrato -v
+Debe pasar todo lo que pasaba antes (TestContratoBuscadorPrueba) y las clases existentes deben seguir igual (la omitida sigue omitida), y las dos clases nuevas deben fallar, todas, por no existir `primer_paso` en Modelo.BusquedaRuta (ImportError al importarlo). Pégame la salida completa y lista cuántas pruebas tiene cada clase nueva. No intentes hacer que pasen.
+````
+
+## 2026-11-12 19:34 · T008: pruebas de Modelo.GrafoCripta.
+
+- **Fecha**: 2026-11-12 19:34
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: T008: pruebas de Modelo.GrafoCripta.
+
+**Prompt**
+
+````text
+Capacidad 003, tarea T008. Haz solo esto, sin tocar ningún otro archivo, sin crear Modelo/GrafoCripta.py y sin hacer commit ni push.
+
+Contexto: lee specs/003-terreno-cazador/tasks.md (T008 y T009), specs/003-terreno-cazador/data-model.md §2 y tests/utiles_terreno.py (mapa_a_mano, armar_motor, cripta_terreno) antes de escribir nada.
+
+Crea tests/test_grafo_cripta.py para la clase Modelo.GrafoCripta.GrafoCripta, con esta interfaz:
+  GrafoCripta(salas, destino_de, costo_de)   # en el juego: GrafoCripta(motor.salas, motor._destino, motor.costo_salida)
+  .cantidad_salas   (atributo entero)
+  .ordinal(sala)    -> entero en [0, cantidad_salas)
+  .aristas(sala)    -> lista de (direccion, sala_destino, costo), solo salidas ABIERTAS, en el orden de sala.salidas
+  .entrantes(sala)  -> lista de (direccion, sala_origen, costo), una por cada salida ABIERTA w->sala, con el costo y el estado de ESA salida
+Importa Modelo.GrafoCripta dentro de setUpClass (no al inicio del archivo), con un alias.
+
+Casos, cada uno con docstring que cite su FR (FR-003, FR-011, FR-015, FR-017):
+1. Funciona en un motor armado a mano (mapa_a_mano) con motor.conocimiento = None antes de construir el grafo: sin Conocimiento (FR-015).
+2. Ordinales propios: son 0..n-1, distintos, y no tocan el `_ordinal` de Conocimiento. Para probarlo, arma el motor (que sí crea Conocimiento en iniciar_partida), guarda [sala._ordinal for sala in motor.salas], construye el grafo pasando `list(reversed(motor.salas))` para que sus ordinales sean distintos de los de Conocimiento, y comprueba que los `_ordinal` no cambiaron y que `ordinal` sigue el orden de la lista pasada (FR-011, FR-015).
+3. aristas(sala) entrega solo salidas abiertas, con el costo de costo_salida; una salida sin costo declarado vale 100 (FR-003, FR-017).
+4. entrantes(sala) entrega cada salida abierta w->sala con el costo y la puerta de esa salida. Con A->B cerrada y B->A abierta: entrantes(A) incluye B->A y entrantes(B) no incluye A->B (FR-017).
+5. Con costos distintos por sentido (A->B 250, B->A 100): cada entrante lleva su propio costo (FR-003).
+6. El estado de las puertas se lee en vivo: abrir o cerrar una salida después de construir el grafo cambia al instante lo que devuelven aristas y entrantes (FR-015, FR-017).
+7. Consistencia en una cripta sintética (cripta_terreno + armar_motor, varias semillas): con algunas puertas cerradas al azar después de construir, el conjunto de (origen, direccion, destino, costo) de aristas es igual al conjunto de entrantes (FR-011, FR-017).
+8. Determinista: dos grafos construidos sobre las mismas salas dan los mismos ordinales y las mismas listas (FR-011).
+9. Estructuras propias: leyendo el código fuente de Modelo/GrafoCripta.py con ast, comprueba que no importa Modelo.Conocimiento, heapq, bisect ni collections; que no accede a los atributos `_ordinal` ni `_origen` (nombre exacto) ni usa un `entrantes` de Conocimiento; que no hay literales ni comprensiones de dict/set ni llamadas a dict() o set(); y que no hay variables mutables a nivel de módulo (Principio I).
+
+Al terminar corre:
+  python -m unittest tests.test_grafo_cripta -v
+Deben fallar todas por no existir Modelo/GrafoCripta.py (ImportError en setUpClass). Pégame la salida completa y la lista de pruebas por caso. No intentes hacer que pasen.
+````
+
+## 2026-11-12 23:45 · T008: pruebas de Modelo.GrafoCripta (mismo texto que el anterior).
+
+- **Fecha**: 2026-11-12 23:45
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: T008: pruebas de Modelo.GrafoCripta (mismo texto que el anterior).
+
+**Prompt**
+
+````text
+Capacidad 003, tarea T008. Haz solo esto, sin tocar ningún otro archivo, sin crear Modelo/GrafoCripta.py y sin hacer commit ni push.
+
+Contexto: lee specs/003-terreno-cazador/tasks.md (T008 y T009), specs/003-terreno-cazador/data-model.md §2 y tests/utiles_terreno.py (mapa_a_mano, armar_motor, cripta_terreno) antes de escribir nada.
+
+Crea tests/test_grafo_cripta.py para la clase Modelo.GrafoCripta.GrafoCripta, con esta interfaz:
+  GrafoCripta(salas, destino_de, costo_de)   # en el juego: GrafoCripta(motor.salas, motor._destino, motor.costo_salida)
+  .cantidad_salas   (atributo entero)
+  .ordinal(sala)    -> entero en [0, cantidad_salas)
+  .aristas(sala)    -> lista de (direccion, sala_destino, costo), solo salidas ABIERTAS, en el orden de sala.salidas
+  .entrantes(sala)  -> lista de (direccion, sala_origen, costo), una por cada salida ABIERTA w->sala, con el costo y el estado de ESA salida
+Importa Modelo.GrafoCripta dentro de setUpClass (no al inicio del archivo), con un alias.
+
+Casos, cada uno con docstring que cite su FR (FR-003, FR-011, FR-015, FR-017):
+1. Funciona en un motor armado a mano (mapa_a_mano) con motor.conocimiento = None antes de construir el grafo: sin Conocimiento (FR-015).
+2. Ordinales propios: son 0..n-1, distintos, y no tocan el `_ordinal` de Conocimiento. Para probarlo, arma el motor (que sí crea Conocimiento en iniciar_partida), guarda [sala._ordinal for sala in motor.salas], construye el grafo pasando `list(reversed(motor.salas))` para que sus ordinales sean distintos de los de Conocimiento, y comprueba que los `_ordinal` no cambiaron y que `ordinal` sigue el orden de la lista pasada (FR-011, FR-015).
+3. aristas(sala) entrega solo salidas abiertas, con el costo de costo_salida; una salida sin costo declarado vale 100 (FR-003, FR-017).
+4. entrantes(sala) entrega cada salida abierta w->sala con el costo y la puerta de esa salida. Con A->B cerrada y B->A abierta: entrantes(A) incluye B->A y entrantes(B) no incluye A->B (FR-017).
+5. Con costos distintos por sentido (A->B 250, B->A 100): cada entrante lleva su propio costo (FR-003).
+6. El estado de las puertas se lee en vivo: abrir o cerrar una salida después de construir el grafo cambia al instante lo que devuelven aristas y entrantes (FR-015, FR-017).
+7. Consistencia en una cripta sintética (cripta_terreno + armar_motor, varias semillas): con algunas puertas cerradas al azar después de construir, el conjunto de (origen, direccion, destino, costo) de aristas es igual al conjunto de entrantes (FR-011, FR-017).
+8. Determinista: dos grafos construidos sobre las mismas salas dan los mismos ordinales y las mismas listas (FR-011).
+9. Estructuras propias: leyendo el código fuente de Modelo/GrafoCripta.py con ast, comprueba que no importa Modelo.Conocimiento, heapq, bisect ni collections; que no accede a los atributos `_ordinal` ni `_origen` (nombre exacto) ni usa un `entrantes` de Conocimiento; que no hay literales ni comprensiones de dict/set ni llamadas a dict() o set(); y que no hay variables mutables a nivel de módulo (Principio I).
+
+Al terminar corre:
+  python -m unittest tests.test_grafo_cripta -v
+Deben fallar todas por no existir Modelo/GrafoCripta.py (ImportError en setUpClass). Pégame la salida completa y la lista de pruebas por caso. No intentes hacer que pasen.
+````
+
+## 2026-11-13 00:20 · T015 y pruebas de T018: invalidación de rutas al cambiar las puertas (tests/test_invalidacion_puertas.py).
+
+- **Fecha**: 2026-11-13 00:20
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: T015 y pruebas de T018: invalidación de rutas al cambiar las puertas (tests/test_invalidacion_puertas.py).
+
+**Prompt**
+
+````text
+Capacidad 003, tareas T015 y pruebas de T018. Haz solo esto, sin tocar Modelo/ ni ningún otro archivo, sin hacer commit ni push.
+
+Contexto: lee specs/003-terreno-cazador/tasks.md (T015 a T018), specs/003-terreno-cazador/contracts/interfaz-cazador-linea.md §5, tests/utiles_terreno.py (mapa_a_mano) y tests/test_grafo_cripta.py antes de escribir nada.
+
+Parte A. Crea tests/test_invalidacion_puertas.py. Contadores del motor: `motor.version_puertas` y `motor.ciclo`, enteros que empiezan en 0 al construir el MotorSimulacion y solo crecen. El único lugar que escribe Salida.cerrada será el método `MotorSimulacion._escribir_cerrada(salida, cerrada, descripcion="puerta", registrar=True)`. Casos, cada uno con docstring que cite su FR (FR-016, FR-024, FR-031):
+1. Puerta cerrada que se abre con `motor.ejecutar_accion("abrir", "E")` (mapa_a_mano, sala_jugador 1, salida E cerrada=True sin llave): `version_puertas` sube en 1 y la puerta queda abierta.
+2. Cierre automático: puerta abierta, `motor.programar_evento(motor.reloj + 100, "CERRAR_PUERTA", salida)` y luego `motor.ejecutar_accion("esperar", None)`: la puerta queda cerrada y `version_puertas` sube en 1.
+3. Un evento CERRAR_PUERTA sobre una puerta que ya estaba cerrada no cambia `version_puertas`.
+4. Deshacer cada uno: después de (1) y de (2), `motor.historial.deshacer_ultimo()` restaura la puerta a su valor anterior y `version_puertas` sube otra vez en 1 (nunca baja). Verifica en cada paso que el valor nunca es menor que el anterior en toda la secuencia.
+5. `ciclo` crece al empezar cada ciclo de eventos: crece en 1 con cada acción del jugador que avanza el reloj, y `deshacer_ultimo()` no lo cambia. Un comando rechazado (por ejemplo mover contra una pared) no cambia `ciclo` ni `version_puertas`.
+6. Prueba de código fuente: lee con ast todos los .py de Modelo/ y falla si encuentra, fuera del método `_escribir_cerrada` de MotorSimulacion: (a) una asignación a un atributo `.cerrada` cuyo objeto no sea `self`; (b) una llamada setattr(..., "cerrada", ...) ; (c) una llamada `_asignar_reversible(..., "cerrada", ...)`. Excluye por nombre de archivo, escribiendo el motivo en un comentario de la prueba: `Modelo/prueba_actores.py` (pruebas manuales de la Parte I que arman salas a mano) y `Modelo/CopiaEstado.py` (la capacidad 004 restaura `Salida.cerrada` desde una foto en un clon desechable; motivo en contracts/interfaz-cazador-linea.md §5). Las asignaciones `self.cerrada = ...` están permitidas porque son el atributo propio de otras clases (por ejemplo `SalidaVerif` en Modelo/Resolubilidad.py), no de una Salida; deja ese motivo escrito. Comprueba además que el método `_escribir_cerrada` existe en MotorSimulacion, para que la prueba no pase en vacío.
+
+Parte B. Agrega a tests/test_grafo_cripta.py una clase nueva `TestGrafoYEspacioDelMotor` (FR-015, FR-033) con: (1) tras iniciar_partida (usa armar_motor/mapa_a_mano), `motor.grafo_cripta` es un GrafoCripta con cantidad_salas igual a len(motor.salas) y `motor.espacio_busqueda` es un EspacioBusqueda con ese mismo cantidad_salas; (2) el grafo del motor lee el estado de las puertas en vivo (abrir una puerta con ejecutar_accion cambia lo que devuelve motor.grafo_cripta.aristas); (3) un MotorSimulacion que no ha pasado por iniciar_partida tiene grafo_cripta y espacio_busqueda en None; (4) volver a llamar iniciar_partida con otras salas crea un grafo nuevo con la cantidad de salas nueva. Importa GrafoCripta y EspacioBusqueda en la clase (setUpClass) para no afectar las demás.
+
+Al terminar corre `python -m unittest tests.test_invalidacion_puertas tests.test_grafo_cripta -v`. Deben fallar solo las pruebas nuevas, por no existir todavía version_puertas, ciclo, _escribir_cerrada, grafo_cripta ni espacio_busqueda, y la prueba de fuente por las asignaciones directas que hoy hay en Modelo/MotorSimulacion.py. Las 15 pruebas de GrafoCripta que ya existen deben seguir pasando. Pégame la salida completa. No intentes hacer que pasen.
+````
+
+## 2026-11-14 00:42 · T012: pruebas de campo_hacia (tests/test_campo_hacia.py).
+
+- **Fecha**: 2026-11-14 00:42
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: T012: pruebas de campo_hacia (tests/test_campo_hacia.py).
+
+**Prompt**
+
+````text
+Capacidad 003, tarea T012. Haz solo esto: crea tests/test_campo_hacia.py. No toques Modelo/ ni otro archivo, sin commit ni push.
+
+Contexto: lee antes specs/003-terreno-cazador/data-model.md §4.2 y §4.3, tasks.md (T012 y T013), tests/utiles_terreno.py, tests/test_grafo_cripta.py (cómo construye aristas con costos distintos por sentido) y Modelo/BusquedaRuta.py (primer_paso y EspacioBusqueda).
+
+Función bajo prueba (aún no existe): `from Modelo.BusquedaRuta import campo_hacia`; `campo_hacia(grafo, destino, cota, espacio=None)` devuelve el espacio usado. Al terminar, para toda sala u con `espacio.epoca[grafo.ordinal(u)] == espacio.epoca_actual`, `espacio.dist[grafo.ordinal(u)]` es la distancia de costo mínimo de u a destino (destino vale 0); cualquier otra sala se trata como infinito. La cota es inclusiva (distancia <= cota). Usa la salida w→x con el costo de esa salida, no el de la vuelta x→w. Solo cuentan salidas abiertas. Cada llamada sube epoca_actual en 1. No llena `primero`. Si el espacio es de otra cantidad_salas lanza ValueError.
+
+Importa campo_hacia dentro de setUpClass de cada clase (no a nivel de módulo), para que, mientras no exista, fallen las clases por separado y no todo el archivo de golpe. Cada prueba lleva docstring con su FR (FR-003, FR-011, FR-016, FR-033). Casos:
+1. Coincide con primer_paso: con cripta_terreno y armar_motor (varias semillas y tamaños, con y sin `variacion`; cierra algunas puertas al azar con una instancia local de random con semilla fija), para varios destinos y cotas (0, 100, 250, 900, 5000): cada sala u distinta de destino tiene época vigente y dist == primer_paso(grafo, u, destino).costo_total si hay ruta y su costo es <= cota; si no hay ruta o cuesta más que la cota, su época NO es la vigente.
+2. cota 0: solo el destino queda vigente.
+3. Cota exacta: en una cadena a mano, la sala cuya distancia es justo la cota entra; con cota - 1 no entra.
+4. Dirigidas: con A→B de costo 100 y B→A de costo 500 (construido como en test_grafo_cripta), campo_hacia hacia A da dist[B] = 500 y hacia B da dist[A] = 100. Y con dos salidas de una sala w hacia la misma x con costos distintos, gana la barata.
+5. Puertas cerradas: una sala alcanzable solo por una puerta cerrada no queda vigente; al abrir la puerta (con `salida.cerrada = False`, el grafo lee en vivo) y repetir, sí queda.
+6. Espacio persistente: el resultado con un EspacioBusqueda propio es igual al de sin espacio; la época sube en 1 por llamada; dos campos seguidos sobre el mismo espacio con destinos distintos no se mezclan (el segundo manda); la función devuelve el mismo espacio que recibió.
+7. Un espacio creado para otra cantidad de salas lanza ValueError.
+8. Determinista: dos llamadas idénticas dan las mismas distancias vigentes.
+
+Al terminar corre `python -m unittest tests.test_campo_hacia -v` y pégame la salida completa. Deben fallar todas por no existir campo_hacia. No intentes hacer que pasen.
+````
+
+## 2026-11-14 00:59 · Pruebas de la historia US2 (T033 a T044) y de la lectura del rango (T045), en tests/test_cazador.py.
+
+- **Fecha**: 2026-11-14 00:59
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: Pruebas de la historia US2 (T033 a T044) y de la lectura del rango (T045), en tests/test_cazador.py.
+
+**Prompt**
+
+````text
+Capacidad 003, pruebas de la historia US2 (T033 a T044) y una prueba de la lectura del rango (T045). Haz solo esto: crea tests/test_cazador.py. No toques Modelo/ ni ningún otro archivo, sin commit ni push.
+
+Lee antes, completos: specs/003-terreno-cazador/tasks.md (T033 a T049), data-model.md §7 y §8, spec.md (FR-009 a FR-021, FR-034 y los escenarios de la US2), tests/utiles_terreno.py (mapa_a_mano y armar_motor, con su docstring), tests/test_terreno.py (cómo observa tiempos y posiciones), Modelo/MotorSimulacion.py (activar_enemigo, activar_enemigos_de_sala, ejecutar_evento rama Enemigo, mover_enemigo, atacar, proxima_accion, costo_salida) y Modelo/AgendaEventos.py (orden de eventos con el mismo tiempo).
+
+Situación: hoy accion_enemigo devuelve ESPERAR para comportamiento "cazador", y el cazador todavía no tiene `rango` (T045). Las pruebas deben describir el comportamiento final y fallar hoy por eso. Reglas de la decisión (data-model §8), en este orden: 1) misma sala que el jugador → atacar; 2) sin ruta abierta, o distancia mínima de costo d > rango → esperar con costo 100; 3) si no, un paso por una ruta de costo mínimo hacia la sala del jugador, a la vecina de menor id entre las que dan el mínimo y, entre salidas a esa vecina, la de menor costo y luego el orden N, S, E, O. La distancia cuenta solo salidas abiertas, con el costo de cada salida (100 si no se declara). El cazador ignora la niebla del jugador, no abre puertas y no guarda memoria. El paso por una salida de costo c con velocidad v tarda max(1, c*100 // v).
+
+Cómo observar (no dependas de nombres de métodos que aún no existen: la decisión no tiene método fijo todavía): maneja la partida con motor.ejecutar_accion("esperar", None) y similares, y observa cazador.sala, cazador.tiempo_siguiente, motor.reloj y los mensajes del motor. Para tener un cazador activo y lejos del jugador usa motor.activar_enemigo(cazador) después de armar el motor (programa su primera acción a reloj + 100); para las pruebas de activación (T039) usa el camino real (el jugador entra a su sala). Cuando necesites el orden entre la acción del jugador y la del cazador en el mismo instante, léelo del código de la agenda, y escribe en un comentario qué orden supusiste. Para comprobar «no busca» cuenta las llamadas a motor.grafo_cripta.aristas y motor.grafo_cripta.entrantes reemplazándolas por una envoltura contadora en la instancia (así no depende de la estrategia).
+
+Cada prueba lleva docstring con su tarea y su FR, y los casos del Apéndice B llevan el nombre del caso entre comillas. Casos:
+- T033: cazador en la sala del jugador ataca con el costo de ataque de la Parte I, también con rango 0 (FR-010).
+- T034: Apéndice B «ruta de menos salas pero mayor costo vs. más salas y menor costo»: usa el mapa del docstring de mapa_a_mano (cazador en 1 con rango 400, jugador en 3): da su primer paso hacia 4 por la ruta de costo 400, no por la de costo 500 (FR-011, FR-013).
+- T035: Apéndice B «dos vecinas con rutas de costo mínimo»: va a la vecina de menor id; y con dos salidas hacia esa vecina del mismo costo (por ejemplo N y S) usa la primera en el orden N, S, E, O. Cubre también el caso en que la salida de menor id sea la de mayor costo y no se elija (FR-014).
+- T036: paso por una salida de costo 150 con velocidad 100; su siguiente turno ocurre 150 después (FR-013).
+- T037: distancia exactamente igual al rango: se mueve; con distancia = rango + 1: espera con costo 100 (FR-012).
+- T038: el jugador cambia de sala entre dos turnos del cazador y este decide con la sala nueva (FR-016).
+- T039: dormido dentro del rango no actúa ni busca (cuenta de llamadas = 0); tras entrar el jugador a su sala queda activo y su primera acción se programa con costo base 100; persigue cuando el jugador sale dentro del rango; un cazador activo que cambia de sala sigue activo (FR-034).
+- T040: la decisión no cambia al agregar enemigos dormidos, objetos, trampas o rastro en las salas de la ruta, ni con la niebla del jugador (sala nunca vista): compara, en dos motores iguales, la secuencia de salas y de tiempos del cazador durante varios ciclos (FR-015). Averigua en el código cómo se agregan objetos, trampas y rastro.
+- T041: varios cazadores con el mismo objetivo deciden cada uno con su sala y su rango, y pueden terminar en la misma sala (FR-018).
+- T042: un cazador muerto no vuelve a actuar y su turno pendiente se descarta sin efecto (FR-019).
+- T043: al entrar o salir de la sala del jugador y al atacar, el cazador produce los mismos mensajes que los demás enemigos (compara con lo que produce un guardián o un errante en la misma situación, con su id cambiado) (FR-020).
+- T044: el estado del generador de azar (motor.azar.getstate()) es el mismo antes y después de cualquier decisión del cazador: moverse, esperar y atacar (FR-021). Si atacar usa el azar en el código actual de la Parte I, prueba solo mover y esperar y deja escrito el motivo.
+- T045 (una prueba): el enemigo creado desde una ficha de cazador con rango R guarda `enemigo.rango == R`, incluido R = 0 (FR-009).
+
+Al terminar corre `python -m unittest tests.test_cazador -v` y pégame la salida completa. Deben fallar casi todas. Dime, una por una, cuáles pasan hoy y por qué (si pasan porque son vacías o triviales, dilo: las pruebas que pasan sin cazador son sospechosas). No intentes hacer que pasen ni modifiques nada fuera de tests/test_cazador.py.
+````
+
+## 2026-11-14 01:43 · Más pruebas de tests/test_cazador.py (T047 a T054): decisión individual y compartida del cazador.
+
+- **Fecha**: 2026-11-14 01:43
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: Más pruebas de tests/test_cazador.py (T047 a T054): decisión individual y compartida del cazador.
+
+**Prompt**
+
+````text
+Capacidad 003. Agrega pruebas a tests/test_cazador.py (no crees archivo nuevo, no toques Modelo/ ni otro archivo, sin commit ni push). Conserva todo lo que ya hay en el archivo.
+
+Lee antes: specs/003-terreno-cazador/tasks.md (T047 a T054), data-model.md §5 y §8, specs/001-niebla-mapa-ir-a/contracts/interfaz-ruta.md (tabla de desempates), tests/test_ruta_contrato.py (DESEMPATES, GrafoPrueba, invertido y resumen) y tests/utiles_terreno.py (mapa_a_mano).
+
+Interfaz nueva que las pruebas usan (aún no existe; escríbelas como si existiera):
+- motor.decidir_cazador_individual(cazador) y motor.decidir_cazador_compartida(cazador): devuelven un DecisionCazador (Modelo/DecisionCazador.py) con accion ("ATACAR", "ESPERAR" o "MOVER"), salida (la Salida del motor que se cruza, o None) y costo_base. Se llaman directamente, sin pasar por la agenda.
+- motor.decidir_cazador(cazador): elige entre las dos según motor.estrategia_cazador, que vale "individual" por defecto y puede valer "compartida".
+
+Parte A, T049 (FR-014, FR-021): importa DESEMPATES e invertido de tests.test_ruta_contrato y corre cada caso de la tabla contra la decisión del cazador con las DOS estrategias, permutando el orden de las salidas (el orden dado y el invertido). Cada caso es (ids, aristas, origen, destino, esperado) con aristas (sala origen, dirección, sala destino, costo): arma el motor con mapa_a_mano (un cazador en `origen` con rango 10**9, jugador en `destino`), llama a las dos estrategias y comprueba que cada una elige la dirección y la vecina que dice `esperado`, y que las dos coinciden entre sí en accion, salida (misma Salida) y costo_base. Usa subTest. Cuida que las salas del caso tengan sus salidas en mapa_a_mano aunque no salga ninguna (lista vacía).
+
+Parte B, campo compartido (T047; FR-016, FR-018, FR-033):
+1. Mismo resultado en un mapa con rangos y puertas variados: en el mapa de T034 (MAPA_DOS_RUTAS) y en una cripta de cripta_terreno con puertas cerradas al azar (instancia local de random con semilla fija, cerrando después de armar el motor), con varios cazadores de rangos distintos incluidos 0 y menores que la distancia: para cada cazador, decidir_cazador_individual y decidir_cazador_compartida dan la misma decisión.
+2. Un campo por ciclo: con cuatro cazadores y el motor en un mismo ciclo, la primera decisión compartida consulta motor.grafo_cripta.entrantes (cuenta > 0, con una envoltura contadora en la instancia como en las pruebas de T039) y las siguientes decisiones compartidas del mismo ciclo no la consultan (la cuenta no crece).
+3. Se recalcula cuando debe: tras motor.ejecutar_accion("esperar", None) (empieza otro ciclo) la cuenta de entrantes vuelve a crecer; y si la puerta de una salida cambia entre dos decisiones del mismo ciclo (usa motor._escribir_cerrada(salida, nuevo_valor), el único método que escribe Salida.cerrada), la cuenta también crece y la decisión refleja la puerta nueva.
+4. Un cazador con rango mayor que la cota del campo calculado fuerza un recálculo: calcula el campo decidiendo con un cazador de rango pequeño y luego decide con uno de rango mayor, y comprueba que el segundo obtiene la misma decisión que con la estrategia individual.
+5. Una búsqueda individual intercalada nunca deja un campo viejo: decide con la compartida, luego con la individual, luego con la compartida otra vez; las tres coinciden.
+6. Despacho: por defecto motor.estrategia_cazador == "individual" y decidir_cazador no consulta entrantes; con motor.estrategia_cazador = "compartida", decidir_cazador sí lo hace (cuenta > 0) y da la misma decisión.
+
+Parte C, US3, T050 a T054 (cada prueba con docstring con su tarea y su FR, como las de US2; los casos del Apéndice B con el nombre entre comillas). Se observan con la partida real (motor.ejecutar_accion("esperar", None), cazador.sala, cazador.tiempo_siguiente), igual que las pruebas de US2:
+- T050 «sin ruta abierta» (FR-012, FR-017): todas las rutas del cazador al jugador pasan por puertas cerradas; el cazador espera con costo 100 turno tras turno y ninguna puerta cambia (comprueba cerrada de cada salida y motor.version_puertas antes y después).
+- T051 «ruta más barata cuesta más que el rango» (FR-012): ruta de costo 600 y rango 500; espera con costo 100. Añade el contraste: con rango 600 se mueve.
+- T052 (escenario 3; FR-016): un cazador que esperaba por una puerta cerrada de su ruta persigue en su siguiente turno cuando la puerta se abre y la nueva ruta no supera el rango (abre la puerta con motor._escribir_cerrada(salida, False) entre dos de sus turnos). Y una variante: la puerta se abre pero la nueva ruta supera el rango; sigue esperando.
+- T053 (escenario 4; FR-012): rango 0 en otra sala; espera con costo 100.
+- T054 (FR-017): un cazador que porta la llave de una puerta cerrada de su única ruta no la abre ni la usa, y espera. Lee en el código cómo se modelan las llaves (clase Salida, llave_salida, botin del enemigo, objetos de llave) y construye el caso con lo que ya existe. Si mapa_a_mano no deja poner una llave en una salida, arma la salida cerrada por el camino público que haya sin cambiar utiles_terreno.py y dímelo. Si no hay forma de construirlo sin tocar otro archivo, NO lo inventes: deja la prueba con unittest.skip y el motivo, y avísame.
+
+Al terminar corre `python -m unittest tests.test_cazador -v` y pégame la salida completa. Deben fallar las de la Parte A y la Parte B (por no existir decidir_cazador_individual ni decidir_cazador_compartida). Las de la Parte C deberían pasar ya con lo que existe: dime cuáles pasan y cuáles no, y si alguna pasa por ser trivial. No intentes hacer que pasen las que fallan.
+````
+
+## 2026-11-14 17:45 · Historia US4: pruebas de T055 a T060 y de equivalencia con el cálculo desde cero (T057).
+
+- **Fecha**: 2026-11-14 17:45
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: Historia US4: pruebas de T055 a T060 y de equivalencia con el cálculo desde cero (T057).
+
+**Prompt**
+
+````text
+Capacidad 003, historia US4. Haz solo esto, sin tocar Modelo/ ni otros archivos existentes salvo agregar pruebas a tests/test_cazador.py, sin commit ni push.
+
+Lee antes: specs/003-terreno-cazador/tasks.md (T055 a T060), spec.md (FR-016, FR-023, FR-028, SC-003 y los escenarios de US4), data-model.md §5 y §8, tests/utiles_terreno.py (mapa_a_mano, armar_motor, cripta_terreno) y tests/test_cazador.py completo (sus helpers: cazadores_de, registrar_movimientos, contar_entrantes, firma, ConDecision, MAPA_DOS_RUTAS, etc.; reutilízalos, no los dupliques).
+
+Interfaz que existe: motor.decidir_cazador_individual(cazador) y motor.decidir_cazador_compartida(cazador) devuelven DecisionCazador (accion "ATACAR"/"ESPERAR"/"MOVER", salida, costo_base); motor.decidir_cazador(cazador) elige según motor.estrategia_cazador ("individual" por defecto o "compartida"); motor._escribir_cerrada(salida, cerrada) es el único método que escribe Salida.cerrada; motor.ciclo y motor.version_puertas son contadores; el cierre automático se programa con motor.programar_evento(tiempo, "CERRAR_PUERTA", salida).
+
+Parte A, en tests/test_cazador.py (agrega una clase por tarea, con docstring con tarea y FR; los casos del Apéndice B llevan el nombre entre comillas):
+- T055 Apéndice B «una puerta de su ruta se cierra entre dos turnos» (FR-016): un cazador activo que ya va por su ruta de costo mínimo; un evento CERRAR_PUERTA sobre una salida de esa ruta ocurre entre dos de sus turnos. Dos casos: (a) hay otra ruta mínima dentro del rango: en su siguiente turno decide con esa otra ruta, igual que la decisión desde cero; (b) no hay otra ruta, o la otra cuesta más que su rango: espera con costo 100. Para cada caso comprueba el movimiento real (registrar_movimientos y cazador.tiempo_siguiente) y que decidir_cazador_individual y decidir_cazador_compartida coinciden.
+- T056 escenario 2 de US4 (FR-016): una puerta cerrada se abre entre dos turnos del cazador (con motor._escribir_cerrada(salida, False)) y crea una ruta más barata que la que tenía o una que antes no existía; en su siguiente turno la sigue. Mismo estilo de comprobación.
+- T060 (FR-023): comandos rechazados del jugador (mover contra una pared, mover por una puerta cerrada, abrir una puerta sin la llave necesaria, abrir una salida que no existe, atacar a un enemigo que no está en la sala o no existe, recoger un objeto que no existe) devuelven False y no cambian version_puertas, ciclo, reloj, la sala del jugador, el tamaño de la agenda, ni la decisión (decidir_cazador_individual y decidir_cazador_compartida) de ningún cazador del motor, comparada antes y después. Lee en el código cuáles de esos comandos se rechazan hoy y cómo; si alguno hoy se acepta, no lo uses y dímelo.
+
+Parte B, archivo nuevo tests/test_cazador_equivalencia.py (T057; FR-016, FR-028, SC-003):
+Partidas sintéticas jugadas de verdad con motor.ejecutar_accion, donde en CADA turno de cada cazador la decisión de la estrategia compartida se compara con una referencia desde cero. Cómo:
+1. La referencia la escribe la prueba (no uses decidir_cazador_individual, porque comparte el espacio del motor): `primer_paso(motor.grafo_cripta, cazador.sala, jugador.sala, limite=cazador.rango)` de Modelo.BusquedaRuta, SIN pasar espacio, y la traduce a (accion, dirección, id de la sala destino, costo de esa salida); si es la misma sala, "ATACAR"; si primer_paso da None, "ESPERAR" con 100. Antes de buscar, no hace falta que el cazador esté activo: la prueba solo compara en los turnos en que el motor llama a decidir_cazador.
+2. Pon motor.estrategia_cazador = "compartida" y envuelve motor.decidir_cazador en la instancia con una función que calcula la referencia ANTES de llamar al original, llama al original (que usa la compartida), compara accion, dirección, sala destino y costo, acumula contadores y devuelve el resultado original. Si hay una diferencia, falla con un mensaje que diga ciclo, id del cazador, sala, rango y las dos decisiones.
+3. El jugador actúa con un random.Random de semilla fija propio de la prueba (nunca el azar del motor): mover por una salida abierta al azar, esperar, abrir una puerta cerrada contigua. Además, entre acciones del jugador la prueba cierra y abre puertas de la cripta con motor._escribir_cerrada y programa cierres automáticos con programar_evento, de modo que cambian durante el ciclo.
+4. Escenarios, todos con cripta_terreno (lee su firma): costos distintos por sentido (puertas dirigidas con costo_ida distinto de costo_vuelta y variacion > 0), criptas de varios tamaños (por ejemplo 8, 25 y 60 salas), varios cazadores en la misma partida con rangos distintos (0, rangos cortos, medios y muy grandes), cazadores activados con motor.activar_enemigo, y el jugador cambiando de sala. Varias semillas.
+5. Total: al menos 1 000 turnos de cazadores comparados entre todos los escenarios (cuenta turnos con un contador y exígelo con assertGreaterEqual). Exige además cobertura mínima, para que la prueba no sea trivial: al menos 100 turnos con MOVER, 100 con ESPERAR y 30 con ATACAR; al menos 50 cierres y 50 aperturas de puerta durante la partida; el jugador cambió de sala al menos 100 veces. Si la cobertura no se alcanza con la semilla elegida, ajusta los parámetros de la propia prueba, no los umbrales.
+6. Comprueba también que la partida avanzó con la estrategia compartida: la posición de cada cazador después del turno es la sala de destino de la decisión, y la prueba termina con la partida sin excepciones. Que corra en pocos segundos.
+Deja un comentario al inicio del archivo explicando que T058 y T059 (guardar y cargar, reproducir y reconstruir) se agregan aquí después y dependen de la capacidad 004; no las escribas.
+
+Al terminar corre `python -m unittest tests.test_cazador tests.test_cazador_equivalencia -v` y pégame la salida completa, y dime cuántos turnos comparó cada escenario y la cobertura obtenida (MOVER, ESPERAR, ATACAR, cierres, aperturas, cambios de sala). Con lo que existe hoy deberían pasar casi todas, porque US4 no pide código nuevo; si alguna falla, dime cuál y por qué, no la arregles tocando Modelo/.
+````
+
+## 2026-11-16 22:55 · Historia US5: benchmarks T061 a T068 (tests/bench_cazador.py).
+
+- **Fecha**: 2026-11-16 22:55
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: Historia US5: benchmarks T061 a T068 (tests/bench_cazador.py).
+
+**Prompt**
+
+````text
+Capacidad 003, historia US5, benchmarks. Haz T061 a T068 de specs/003-terreno-cazador/tasks.md. Solo archivos nuevos o con cambios mínimos: tests/bench_cazador.py (nuevo) y el registro en main.py. No toques Modelo/, no cambies la estrategia por defecto del motor ("individual"), sin commit ni push.
+
+Lee antes: tasks.md (T061 a T070 completos), spec.md (FR-030, FR-031, FR-032, FR-033, SC-004, SC-007), research.md (R4 y R5), tests/bench_ciclo.py y tests/bench_motor.py (cómo miden, bench_ciclo_real, fmt_t, titulo), tests/utiles_terreno.py (cripta_terreno, armar_motor), tests/generador_criptas.py, Modelo/BusquedaRuta.py (primer_paso, campo_hacia, EspacioBusqueda), Modelo/ColaPrioridad.py y Modelo/MotorSimulacion.py (decidir_cazador_individual, decidir_cazador_compartida, estrategia_cazador, ciclo, version_puertas).
+
+T061: crea tests/bench_cazador.py con la misma estructura de bench_ciclo.py: función correr_bench(), escribe resultados_bench_cazador.txt (en la raíz, igual que los otros), con cabecera de equipo y versión de Python, y reporta mediana y p95 con time.perf_counter. Todo con semillas fijas, sin red ni vista. Regístralo en main.py dentro de --bench (junto a bench_ciclo), sin instanciar la vista. Cada medición debe poder correrse sola (una función por M) y el módulo debe poder correr con `python -m tests.bench_cazador`. Agrega un parámetro o variable de entorno BENCH_CAZADOR_RAPIDO=1 que reduzca repeticiones y tamaños para probar que el script funciona en menos de 20 segundos; la corrida completa debe durar como máximo 3 minutos.
+
+Mediciones (cada una imprime una tabla y agrega sus líneas al archivo, con el FR que respalda):
+- T062 M1: costo de decidir un cazador frente a 50 en la misma cripta (FR-030). Estrategia individual.
+- T063 M2: ColaPrioridad frente a la agenda del motor y frente a la búsqueda lineal del mínimo, regiones de 10 a 10 000 salas (FR-033).
+- T064 M3: campo compartido frente a individual con k en {1, 2, 5, 10, 25, 50} cazadores, con rango pequeño y rango grande, puertas estables. Reporta el k* medido: el menor k desde el que la compartida es más rápida que la individual (o "no se alcanza" si nunca) (FR-030, FR-032).
+- T065 M4: 50 cazadores activados antes de medir (motor.activar_enemigo), tres escenarios: (a) puertas estables con la compartida, (b) puertas que cambian con frecuencia (cambia puertas con motor._escribir_cerrada entre ciclos) con la compartida, (c) recalcular siempre desde cero (individual). Por escenario: mediana, p95, número de búsquedas hechas (cuéntalas envolviendo primer_paso y campo_hacia en la instancia, sin modificar Modelo/) y si cumple < 20 ms (FR-030, FR-031, FR-032).
+- T066 M5: criptas sintéticas deterministas por semilla de 10², 10³, 10⁴ y 10⁵ salas, mismo rango y misma posición relativa del cazador y el jugador (usa cripta_terreno/armar_motor, no el generador directo). Reporta el cociente tiempo(10⁵)/tiempo(10²) y si es ≤ 1,5 (SC-007, FR-033). Incluye el control: la misma búsqueda creando listas nuevas por búsqueda (un espacio nuevo por llamada, espacio=None) frente a reutilizar el EspacioBusqueda. Si la cripta de 10⁵ salas tarda demasiado en generarse, dime cuánto tarda y no cambies el tamaño sin avisar.
+- T067 M6: rango pequeño frente a grande en la misma cripta (FR-033).
+- T068 M7: 50 cazadores activos en la cripta de referencia; ciclo completo (avanzar hasta la siguiente decisión del jugador, como bench_ciclo_real), mediana y p95, y si cumple < 20 ms (FR-030, SC-004).
+
+Reglas: las mediciones no deben cambiar el estado compartido de otras (cada una arma su motor), el resultado no debe depender del orden, y las salidas del archivo en español con el formato de bench_ciclo.py. No escribas conclusiones inventadas: cada línea "cumple/NO cumple" se calcula. No sobrescribas resultados_bench_agenda_antes.txt.
+
+Al terminar: corre BENCH_CAZADOR_RAPIDO=1 python -m tests.bench_cazador (en PowerShell: $env:BENCH_CAZADOR_RAPIDO=1; python -m tests.bench_cazador), luego la corrida completa, y pégame el contenido completo de resultados_bench_cazador.txt, el tiempo total de la corrida completa, y la salida de `python -m unittest discover -s tests -t .` (no debe haber cambiado). Dime qué M no cumplió su umbral y cuál fue el k* medido.
+````
+
+## 2026-11-16 23:18 · Historia US5: ajuste de la medición M5 (T066) y otras dos correcciones del bench.
+
+- **Fecha**: 2026-11-16 23:18
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: Historia US5: ajuste de la medición M5 (T066) y otras dos correcciones del bench.
+
+**Prompt**
+
+````text
+Capacidad 003, historia US5. Tres cosas, en este orden. Sin commit ni push.
+
+1) M5 (T066) en tests/bench_cazador.py. En resultados_bench_cazador.txt salió cociente tiempo(100000)/tiempo(100) = 1.59 (máximo 1.5), con decisiones de 90.6, 81.0, 46.7 y 143.8 µs: el tamaño 100 parece medido en frío (10^4 sale más rápido que 10^2). No cambies COCIENTE_MAXIMO ni quites tamaños. Agrega a medir_m5 un calentamiento sin medir (por ejemplo 500 llamadas a decidir() por tamaño antes de cronometrar, con la cripta de 100 también) y repite la medición de todos los tamaños 5 veces, reportando en el archivo la mediana de decidir() de cada tamaño en cada repetición y el cociente de cada repetición, más el cociente de la mediana de las 5. Deja el veredicto calculado, no escrito a mano. Corre solo M5 (python -m tests.bench_cazador M5) y pégame la salida completa. Si después del calentamiento sigue por encima de 1.5, no lo arregles: dímelo.
+
+2) T069, M8 «después». Lee T069 en tasks.md y la cabecera de resultados_bench_agenda_antes.txt (trae el comando exacto para repetir). Repite la medición idéntica con tests/bench_agenda_solo.py, mismos parámetros y la misma CPU del archivo «antes», y guarda la salida en resultados_bench_agenda_despues.txt (nunca redirigir sobre el «antes»), con una comparación al final (antes, después y razón por operación y tamaño). Si T069 pide una carga nueva con intervalos variables por costo que bench_agenda de bench_motor.py no puede generar tal cual, no la inventes: dime qué falta y qué propones.
+
+3) T070. Decisión (con M3 y M4 de resultados_bench_cazador.txt): la estrategia por defecto pasa a "compartida". Cambia solo el valor inicial en MotorSimulacion.__init__ (estrategia_cazador) y el texto del docstring/comentario que diga "individual por defecto"; no toques decidir_cazador ni nada más de Modelo/. Actualiza las dos pruebas que asumían el valor anterior (tests/test_cazador.py: TestCampoCompartido.test_fr016_despacho_segun_estrategia y test_fr016_nuevo_ciclo_recalcula, y el comentario de la línea ~698 y la prueba de la línea ~993 si afirman que el valor por defecto es "individual"): que ahora comprueben que el valor por defecto es "compartida", y que las pruebas de la individual la fijen explícitamente. Escribe en specs/003-terreno-cazador/research.md las secciones R4 y R5 con los números exactos del archivo de resultados (M3: k* = 5 con rango pequeño y grande; M4 (a) p95 6.87 ms, (b) 5.72 ms, (c) 29.48 ms con 603 búsquedas frente a 100; M7: individual 19.43 ms de p95; M2, M5 con el cociente final que quede), la conclusión (activar la compartida por defecto, equivalencia por T057) y las limitaciones: cripta sintética provisional de 300 salas, equipo de las mediciones, y que M4 (b) cambia las puertas entre ciclos, no durante un ciclo, y eso no se midió. No toques spec.md ni plan.md.
+
+Al final corre `python -m unittest discover -s tests -t .` (debe quedar OK, mismo número de pruebas) y dime qué archivos cambiaste.
+````
+
+## 2026-11-16 23:33 · Cierre de US5: estado de T070 y repetición de M7 con la estrategia por defecto nueva.
+
+- **Fecha**: 2026-11-16 23:33
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: Cierre de US5: estado de T070 y repetición de M7 con la estrategia por defecto nueva.
+
+**Prompt**
+
+````text
+Capacidad 003, cierre de US5. Sin commit ni push.
+
+1) Confirma el estado de T070: dime el valor actual de estrategia_cazador en MotorSimulacion.__init__ y pega el resultado de `python -m unittest discover -s tests -t .` con el tiempo total. Si la prueba de tests/test_bench_niebla.py (main.py --bench) todavía corre el bench del cazador real, arréglala como te dije (mock de bench_cazador.correr_bench, assert_called_once_with()).
+2) Repite M7 con la estrategia por defecto nueva: `python -m tests.bench_cazador M7` y pégame el bloque.
+3) En specs/003-terreno-cazador/research.md haz solo estas ediciones: (a) en R4 y R5, donde se describe la llave del campo (ciclo, sala del jugador, versión de puertas, cota), agrega la época del espacio de búsqueda como quinto campo, tal como está en Modelo/CampoDistancias.py; (b) en R4, M5: cambia «se atribuyó a una medición en frío» por que es una hipótesis no verificada por separado, y agrega que la mediana de 10^4 a 10^5 salas sube de 42.2 a 78.7 µs (1.87 veces; el cociente 0.96 es contra 10^2, cuya mediana es 82.2 µs) y que probablemente es efecto de caché de memoria (ver R2, Límites); (c) en R5, tras el M7 individual (19.43 ms), agrega el M7 con la compartida con los números del paso 2, y que el de la individual se midió antes del cambio de estrategia. No cambies nada más.
+4) Termina T069 (M8 «después») como te indiqué y pégame resultados_bench_agenda_despues.txt con su comparación, o dime qué falta.
+````
+
+## 2026-11-16 23:41 · T069 (M8): medición de la agenda con la carga nueva (tests/bench_agenda_costos.py).
+
+- **Fecha**: 2026-11-16 23:41
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: T069 (M8): medición de la agenda con la carga nueva (tests/bench_agenda_costos.py).
+
+**Prompt**
+
+````text
+T069 (M8), parte pendiente. Sin commit ni push. No toques resultados_bench_agenda_antes.txt ni Modelo/.
+
+Crea tests/bench_agenda_costos.py (o agrega una función nueva a tests/bench_agenda_solo.py, sin cambiar lo que ya hace) con la carga nueva de bench_agenda: en vez de insertar Evento(i, i, ...) con tiempos consecutivos, los tiempos siguen el intervalo del motor para una acción de movimiento, max(1, costo * 100 // velocidad), acumulado como reloj + intervalo. Costos de salida variados con random.Random de semilla fija (por ejemplo costos 50 a 300 en pasos de 10, y velocidades 50, 100 y 200), con los mismos N = 10, 50, 100, 250 y las mismas 4 operaciones (insertar todos, consultar mínimo, extraer todos, buscar un evento), heap propio (AgendaEventos) frente a lista, 5 repeticiones, mediana, mismo formato de tabla que bench_agenda_solo.py.
+En la MISMA corrida y en la misma máquina, mide también la carga antigua (tiempos consecutivos) para tener una comparación válida: tabla final con razón carga nueva / carga antigua por operación, estructura y N. Agrega esta sección al final de resultados_bench_agenda_despues.txt (sin borrar lo que ya tiene), con una nota que diga que la comparación válida de esta sección es entre cargas en la misma corrida y que la comparación «antes/después» de arriba solo muestra variación del equipo.
+Pégame la sección nueva completa y dime si alguna razón carga nueva / carga antigua pasa de 1.5.
+````
+
+## 2026-11-16 23:47 · Ayuda de --bench en main.py y resultados de T069 en research.md (R7).
+
+- **Fecha**: 2026-11-16 23:47
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: Ayuda de --bench en main.py y resultados de T069 en research.md (R7).
+
+**Prompt**
+
+````text
+Dos ediciones pequeñas, sin commit ni push.
+1) main.py: en el help de --bench agrega el cazador (por ejemplo «persistencia, ciclo de eventos, cazador, resolubilidad y niebla de guerra / «ir a»»). No cambies nada más.
+2) specs/003-terreno-cazador/research.md, R7: tras «Evidencia a medir», agrega un párrafo «Resultados medidos (T069)» con los números de resultados_bench_agenda_despues.txt: la comparación antes/después de la misma carga (razón mediana heap 1.20, lista 1.21, AgendaEventos.py y Evento.py sin cambios desde a4d6299: variación del equipo) y la comparación carga nueva/carga antigua en la misma corrida (30 de 32 razones ≤ 1.5; las dos mayores son «Buscar un evento», lista N=50 = 2.67 y heap N=50 = 1.75, con lecturas por debajo de 5 µs; insertar heap N=250 = 1.46; extraer heap N=250 = 0.84), y la conclusión de que la agenda no se degrada con intervalos variables por costo. Dilo con esa cautela: son medianas de 5 repeticiones en un equipo, no una demostración.
+Corre `python -m unittest discover -s tests -t .` y confirma OK.
+````
+
+## 2026-11-17 00:00 · T076: registro de decisiones de los cazadores (Modelo/MotorSimulacion.py).
+
+- **Fecha**: 2026-11-17 00:00
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: T076: registro de decisiones de los cazadores (Modelo/MotorSimulacion.py).
+
+**Prompt**
+
+````text
+Capacidad 003, T076: registro de decisiones de los cazadores. Lee antes specs/003-terreno-cazador/contracts/interfaz-cazador-linea.md (§1 a §4), data-model.md §8, y Modelo/MotorSimulacion.py (ejecutar_evento, rama Enemigo, y decidir_cazador). Primero las pruebas, luego el código; no hagas commit ni push.
+
+Diseño (del contrato §4):
+- Colgado del motor, no de un módulo: atributo motor.registro_decisiones, que vale None cuando está apagado (por defecto) y una lista cuando está encendido. Un método motor.activar_registro_decisiones() lo pone en []; no hace falta uno para apagar.
+- Qué anota, por cada turno de un cazador: una tupla (ciclo, reloj, id del cazador, acción "ATACAR"/"ESPERAR"/"MOVER", id de la sala de destino (la propia si no se movió), dirección de la salida (None si no hay), costo base). Anota también los turnos en que el cazador comparte sala con el jugador (accion_enemigo devuelve "ATACAR" y no llama a decidir_cazador): registra en ejecutar_evento, en un solo punto de la rama Enemigo con comportamiento "cazador", con la acción y el costo base efectivamente aplicados (si mover_enemigo falla, el costo base real es 100). Tuplas, sin collections, sin dict como índice (Constitución I).
+- Reversible: cada anotación se registra en self.historial.registrar con un deshacer que quita esa entrada (siguiendo el patrón de _escribir_cerrada y _mensaje), de modo que un retroceso quita las decisiones del intervalo revertido y el registro coincide con la historia vigente.
+- Apagado no cambia nada: ni decisiones, ni reloj, ni secuencia, ni estado del azar, ni historial, ni bitácora. Encendido no consume azar ni cambia las decisiones. Fuera del guardado, de la bitácora y de la línea de tiempo: no toques Persistencia/ ni Bitacora/ ni nada de 004.
+- iniciar_partida: si el registro está encendido, lo reinicia a lista vacía; si está apagado, lo deja apagado.
+
+Pruebas, en tests/test_registro_decisiones.py (nuevo), con partidas de tests/utiles_terreno.py y varios cazadores con distintos rangos, y la estrategia por defecto:
+1. Apagado por defecto (registro_decisiones es None) y, apagado frente a encendido con la misma semilla y las mismas acciones, motor.obtener_estado_resumen() es idéntico (reloj, secuencia, azar, enemigos, puertas) después de N acciones.
+2. Encendido: cada entrada coincide con lo que el motor hizo (compara con una envoltura de decidir_cazador y con el movimiento real de cada cazador), incluidos los turnos de ATACAR resueltos por accion_enemigo; ciclo y reloj crecen de forma coherente.
+3. Reversible: tras un retroceso (busca cómo lo hacen las pruebas existentes: pergamino de retroceso con ejecutar_accion("retroceder") o Historial directamente), el registro es el mismo que tenía en el estado al que se volvió.
+4. Clon: copy.deepcopy(motor) con el registro encendido da un registro propio del clon (agregar entradas al clon no cambia el del original) y, continuando el original y el clon con las mismas acciones, los dos registros coinciden entrada por entrada. Si el deshacer del historial del clon apunta al motor original (por ser una clausura), dímelo y explica cómo lo trata Modelo/CopiaEstado.py de 004; no lo arregles tocando 004.
+5. No consume azar: motor.azar.getstate() es el mismo con el registro apagado y encendido.
+
+Al terminar corre `python -m unittest tests.test_registro_decisiones -v` y la suite completa (`python -m unittest discover -s tests -t .`, que hoy da 955 OK) y pégame las dos salidas, más qué archivos cambiaste. No marques tareas en tasks.md.
+````
+
+## 2026-11-17 00:12 · T076: dos pruebas más de tests/test_registro_decisiones.py (costos distintos).
+
+- **Fecha**: 2026-11-17 00:12
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: T076: dos pruebas más de tests/test_registro_decisiones.py (costos distintos).
+
+**Prompt**
+
+````text
+Dos pruebas más en tests/test_registro_decisiones.py (no cambies el código de Modelo/). Sin commit ni push.
+1) Costos distintos: una partida como la de test_fr025_cada_entrada_coincide_con_lo_que_hizo_el_motor pero con cripta_terreno(SEMILLA, SALAS, costo_ida=120, costo_vuelta=80, variacion=40) (mira la firma en tests/utiles_terreno.py). La comparación con los turnos observados debe seguir cerrando, y exige que al menos un MOVER del registro tenga costo base distinto de 100 y que haya al menos dos costos distintos entre los MOVER. (Hoy todas las salidas cuestan 100, así que un registro que anotara siempre 100 pasaría.)
+2) Solo cazadores: a una partida con los cazadores de CAZADORES, cámbiale el comportamiento a uno o dos enemigos extra (por ejemplo "errante" y "guardian", asignando enemigo.comportamiento tras armar el motor, o agregando enemigos con armar_motor como indique utiles_terreno) y activa los enemigos; juega ACCIONES y exige que todos los ids del registro sean de enemigos con comportamiento "cazador", que los no cazadores hayan actuado (que existan turnos suyos) y que el registro tenga entradas de los cazadores. El azar del motor lo consumen los errantes; compara con un motor sin registro para ver que el estado (obtener_estado_resumen) es el mismo apagado y encendido.
+Corre `python -m unittest tests.test_registro_decisiones -v` y la suite completa y pégame las salidas.
+````
+
+## 2026-11-17 14:22 · Cierre de 003 con T076 hecha: correcciones de tasks.md y pruebas del registro de decisiones y del retroceso.
+
+- **Fecha**: 2026-11-17 14:22
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: Cierre de 003 con T076 hecha: correcciones de tasks.md y pruebas del registro de decisiones y del retroceso.
+
+**Prompt**
+
+````text
+Contexto: capacidad 003-terreno-cazador, T076 ya hecha. Tres cosas, en este orden, sin tocar código de producción salvo que una prueba revele un bug real (si lo revela, avísame antes de cambiarlo):
+
+1) specs/003-terreno-cazador/tasks.md: T058 y T059 están escritas "- []"; corrígelas a "- [ ]".
+
+2) tests/test_registro_decisiones.py: agrega una prueba
+   test_fr024_retroceso_quita_la_ultima_decision_y_conserva_las_anteriores:
+   partida con cazador, registro encendido, avanza hasta tener al menos 3 entradas
+   registradas, retrocede UNA sola acción con el historial y comprueba que la lista
+   completa de registro_decisiones es igual a la lista que había justo antes de esa
+   última acción (comparar la lista entera, en orden, no solo len). Hazla fallar
+   a propósito (mutación: _quitar_decision quita la primera en vez de la última)
+   para confirmar que detecta el cambio, y revierte la mutación.
+
+3) tests/test_cazador_equivalencia.py: implementa T058 y T059 con las interfaces reales
+   de la capacidad 004 (CRPT 3 en Persistencia, LineaTiempo.clon_antes_de(k, motor),
+   main.ejecutar_replay(ruta_bitacora, gestor)). Lee primero esas firmas y los tests
+   existentes de 004 (tests/test_linea_registro.py) y reutiliza sus ayudas.
+   - T058 (a): partida con cazadores jugada, guardada, cargada y continuada: las decisiones
+     (usa motor.registro_decisiones) coinciden en el 100 % de los turnos con la partida
+     original sin guardar.
+   - T058 (b): la misma partida retrocedida con un pergamino y vuelta a jugar con las
+     mismas acciones: decisiones idénticas.
+   - T058 (c): la partida reproducida con --replay (ejecutar_replay) da las mismas decisiones.
+   - T059: el estado reconstruido con clon_antes_de(k, motor) da, al avanzar, las mismas
+     decisiones de los cazadores que la partida jugada desde k.
+   Usa al menos 2 escenarios de los que ya hay en ESCENARIOS (uno con rango pequeño y
+   uno con empate de costos), y exige que haya al menos un movimiento y un ataque
+   comparados, para que la prueba no pase vacía.
+   Al terminar marca T058 y T059 como [x] en tasks.md, quita la nota "bloqueada" de
+   esas dos líneas y de la tabla de dependencias, y corre la suite completa.
+   No hagas commits. Repórtame: pruebas nuevas, tiempo de la suite, y cualquier bug.
+````
+
+## 2026-11-17 14:56 · Cierre de 003: T071 (ayuda del juego) y otras tareas pendientes tras el defecto de carga.
+
+- **Fecha**: 2026-11-17 14:56
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: Cierre de 003: T071 (ayuda del juego) y otras tareas pendientes tras el defecto de carga.
+
+**Prompt**
+
+````text
+Contexto: capacidad 003-terreno-cazador. T076 está hecho y subido. T058 y T059 ya tienen sus pruebas escritas en tests/test_cazador_equivalencia.py, pero NO las marques [x] todavía: fallan por un bug de carga en Persistencia/ConversorPartida.py (lo arregla D). No toques Persistencia ni ese archivo de pruebas.
+
+Haz estas tareas en este orden, una por una, y al terminar cada una corre la suite completa:
+
+1) specs/003-terreno-cazador/tasks.md: si T058/T059 siguen escritas "- []", corrígelas a "- [ ]". No cambies su estado ni sus notas.
+
+2) T071: ayuda del juego en Vista/VistaConsola.py (AYUDA): explicar que cada salida tiene un costo que define cuánto se tarda en cruzarla (100 si no lo trae) y que el cazador persigue por la ruta más barata dentro de su rango, espera si no hay ruta abierta o es más cara que su rango, y ataca si comparte sala con el jugador. Si hay una prueba de la ayuda, actualízala; si no, agrega una mínima que compruebe que el texto menciona costo y cazador. Marca T071 [x].
+
+3) T073: docstrings de complejidad en Modelo/ColaPrioridad.py, Modelo/BusquedaRuta.py y Modelo/GrafoCripta.py copiando las tablas de specs/003-terreno-cazador/data-model.md (n salas, m salidas, R, E_R; operaciones y su costo). Solo docstrings, sin cambiar código. Marca T073 [x].
+
+4) T074: revisar en tests/test_terreno.py y tests/test_cazador.py que cada uno de los 7 casos del Apéndice B (T022, T023, T034, T035, T050, T051, T055) tiene su prueba y cita su FR en el nombre o el docstring. Si falta una cita, agrégala en el docstring. Si falta una prueba, avísame antes de escribirla. Marca T074 [x] y repórtame la tabla caso → prueba → FR.
+
+5) T032: tests/test_costo_cache.py: el costo de cada salida sobrevive a AlmacenamientoLocalApi.guardar_esqueleto y a la lectura posterior por GestorDatos.obtener_esqueleto, y al paquete --offline; una salida sin costo sigue sin costo; sin red, con paquete temporal (FR-008, FR-002). Primero revisa si ya hay pruebas equivalentes en tests/test_costo_salida.py u otro archivo; si ya existen, dime cuáles y no dupliques. Si no se puede hacer con lo que hay, dime qué falta. Marca T032 [x] solo si pasa.
+
+No hagas commits. Al terminar repórtame: archivos cambiados, pruebas nuevas, tiempo de la suite y cualquier cosa que no pudiste hacer.
+````
+
+## 2026-11-17 15:46 · T032: cobertura del costo de las salidas en la caché y el paquete offline (FR-008, FR-002).
+
+- **Fecha**: 2026-11-17 15:46
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: T032: cobertura del costo de las salidas en la caché y el paquete offline (FR-008, FR-002).
+
+**Prompt**
+
+````text
+Contexto: capacidad 003-terreno-cazador. Tarea T032 (FR-008, FR-002). No toques Modelo/, Persistencia/ ni DTOS/ salvo que una prueba revele un bug real; si lo revela, avísame antes de cambiar nada.
+
+T032 dice: en tests/test_costo_cache.py, el costo de cada salida sobrevive a AlmacenamientoLocalApi.guardar_esqueleto y a la lectura posterior por GestorDatos.obtener_esqueleto, y al paquete --offline; una salida sin costo sigue sin costo (100 en el juego); sin red, con paquete temporal.
+
+Paso 1 (solo lectura, antes de escribir nada): busca si ya existe cobertura equivalente. Revisa tests/test_costo_cache.py (si existe), tests/test_costo_salida.py, tests/test_cache_*.py, tests/test_almacenamiento*.py, tests/test_paquete_offline*.py y tests/test_validacion_datos.py. Para cada una de estas tres propiedades, dime si ya hay una prueba que la cubra y cuál:
+  (a) guardar_esqueleto + obtener_esqueleto conserva salida.costo (valor declarado) por salida;
+  (b) el paquete --offline (crear y leer) conserva salida.costo;
+  (c) una salida sin costo sigue sin costo (None o ausente) y el juego usa 100 (motor.costo_salida).
+
+Paso 2: escribe en tests/test_costo_cache.py solo lo que falte de (a), (b) y (c). Reglas:
+  - Sin red: usa carpetas temporales (tempfile) y limpia con addCleanup; nada de llamadas HTTP reales.
+  - Usa una cripta con al menos tres salidas: una con costo 1, una con costo 300 y una sin costo; y una conexión con costos distintos por sentido (A→B 250, B→A 120) para comprobar que cada sentido conserva el suyo.
+  - Compara salida por salida (sala, dirección, costo), no solo la cantidad.
+  - Cada prueba cita su FR en el nombre o el docstring (FR-008, FR-002) y T032.
+  - Una prueba negativa: si el costo guardado se altera (por ejemplo, borras el campo del JSON en disco), la prueba debe detectarlo; comprueba al menos una vez que fallaría con esa alteración (hazlo a mano, no lo dejes en el repo).
+
+Paso 3: corre la suite completa. Las únicas pruebas que pueden seguir fallando son 3 de tests/test_cazador_equivalencia.py (T058 (a), T058 (c) y T059, bug de carga ajeno). Si falla otra cosa, avísame.
+
+Paso 4: en specs/003-terreno-cazador/tasks.md marca T032 [x] y quita la nota "⏳ bloqueada" de su línea y de la fila de T032 en la tabla de bloqueos (reemplázala por "Ya no bloqueada: campo costo y versión de formato ya existen (Persona B)"). Si no pudiste cubrir alguna de las tres propiedades, NO la marques y dime qué falta.
+
+No hagas commits. Repórtame: qué ya estaba cubierto y dónde, qué pruebas nuevas agregaste, tiempo de la suite y cualquier bug.
+````
+
+## 2026-11-17 15:55 · T032: decisión sobre la propiedad (c) y cierre de la tarea.
+
+- **Fecha**: 2026-11-17 15:55
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: T032: decisión sobre la propiedad (c) y cierre de la tarea.
+
+**Prompt**
+
+````text
+Decisión sobre T032: reescribe la propiedad (c) como "una salida sin costo vale 100 en el juego" (FR-002). La frase "sigue sin costo" se descarta porque Salida.desde_json pone 100 cuando falta la clave y a_json siempre escribe costo; eso es detalle de la capacidad de datos y no incumple FR-002.
+
+1) En specs/003-terreno-cazador/tasks.md, en la línea de T032, cambia "una salida sin costo sigue sin costo (100 en el juego)" por "una salida sin costo vale 100 en el juego tras pasar por la caché y por el paquete". Marca T032 [x].
+
+2) Quita la nota "⏳ bloqueada por la capacidad de datos..." de la línea de T032 y reemplaza la fila de T032 en la tabla de bloqueos por: "T032 | Ya no bloqueada | El campo costo ya existe y se conserva en caché y paquete (Persona B). Límite conocido: la caché del esqueleto guarda la versión de la cripta pero no una versión de formato propia; FR-008 solo se verifica para el costo, no para la versión de formato."
+
+3) En la sección Notes del mismo archivo agrega una línea: "T032: la caché guarda costo 100 explícito cuando la salida no lo declara (Salida.desde_json y a_json); el juego ve 100 en ambos casos."
+
+4) En el docstring de test_fr002_t032_salida_sin_costo_vale_100_en_el_juego_tras_la_cache aclara que verifica el valor 100 y no la ausencia del campo.
+
+No toques código fuera de tests/ y tasks.md. Corre la suite completa y repórtame el resultado.
+````
+
+## 2026-11-17 16:22 · Dos tareas de cierre, la primera T077: validar quickstart.md recorriendo sus escenarios.
+
+- **Fecha**: 2026-11-17 16:22
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: Dos tareas de cierre, la primera T077: validar quickstart.md recorriendo sus escenarios.
+
+**Prompt**
+
+````text
+Contexto: capacidad 003-terreno-cazador. Dos tareas de cierre. No toques Modelo/, Persistencia/ ni DTOS/. Si algo falla al validar, avísame antes de cambiar código.
+
+TAREA A (T077): validar specs/003-terreno-cazador/quickstart.md.
+1) Lee quickstart.md y recorre cada escenario en orden, ejecutando de verdad los comandos que indica (python main.py ..., --offline, --bench si aplica; para --bench usa BENCH_CAZADOR_RAPIDO=1 si existe, para no esperar minutos). Usa el paquete/cripta de prueba que el quickstart pida; sin red.
+2) Para cada escenario anota: comando, resultado esperado según el quickstart, resultado real, y si coincide. Si un comando o ruta del quickstart ya no existe o cambió de nombre, no lo arregles en silencio: dímelo y propón la corrección del texto.
+3) Si todo coincide, marca T077 [x] en tasks.md. Si algo no coincide, NO la marques y repórtame la tabla.
+
+TAREA B (T072): README.md. Está en UTF-16 (con BOM). Edítalo conservando exactamente esa codificación y los finales de línea; verifica antes y después con un script que lea los primeros bytes y que el resto del archivo no cambió (diff de las líneas que no tocaste). Agrega, en la sección que corresponda según la estructura actual del README (si no hay una, una sección "Terreno y cazador"), en el mismo tono que el resto:
+  - Costo de las salidas: cada salida puede traer un costo entero >= 1 que define cuánto se tarda en cruzarla; si falta, vale 100. Ir y volver por la misma puerta puede costar distinto. El tiempo de un movimiento es costo * 100 // velocidad (mínimo 1).
+  - Comportamiento del cazador: ataca si comparte sala con el jugador; si no, persigue por la ruta de menor costo total usando solo salidas abiertas, siempre que el costo total no supere su rango; si no hay ruta abierta o la ruta cuesta más que su rango, espera con costo 100. No ve la niebla, no abre puertas y no usa azar.
+  - Límite conocido: un cazador activo que está en una sala que el jugador visitó pero donde ya no está no sobrevive a guardar y cargar (se restaura solo la sala del jugador y las demás se cargan al entrar). [Quita esta línea si te digo que D lo arregló.]
+  - Mediciones: una línea que diga que python main.py --bench incluye las mediciones del cazador (tests/bench_cazador.py) y que los resultados están en resultados_bench_cazador.txt.
+Marca T072 [x] en tasks.md solo si el README quedó en UTF-16 y se lee bien.
+
+Al terminar corre la suite completa (las únicas fallas permitidas son las 3 de tests/test_cazador_equivalencia.py si ese archivo está en el árbol) y repórtame: la tabla de T077, el diff del README y el tiempo de la suite. No hagas commits.
+````
+
+## 2026-11-17 16:48 · Correcciones del README (UTF-16): instalación, costo de mover, descripción de --bench y sección duplicada.
+
+- **Fecha**: 2026-11-17 16:48
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: Correcciones del README (UTF-16): instalación, costo de mover, descripción de --bench y sección duplicada.
+
+**Prompt**
+
+````text
+Corrige el README.md conservando UTF-16: (1) deja la línea «Cargar una partida con línea de tiempo…» sin el fragmento duplicado «ersión del catálogo, la semilla y el reloj…»; (2) python -m pip install requests; (3) en la tabla de comandos, costo de mover: «El de la salida (100 si no trae costo)»; (4) unifica la descripción de --bench y de «Mediciones» a las mediciones reales, incluido el cazador, también en «Archivos generados»; (5) elimina la segunda copia idéntica de «Cargar una partida guardada en modo offline». No toques el conteo de pruebas ni el límite del cazador. Al terminar, verifica con Get-Content README.md -Encoding Unicode que se lee bien y pásame la tabla de validación de T077.
+````
+
+## 2026-11-17 16:53 · Correcciones de quickstart.md: comandos reproducibles de los escenarios 1, 2 y 4.
+
+- **Fecha**: 2026-11-17 16:53
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: Correcciones de quickstart.md: comandos reproducibles de los escenarios 1, 2 y 4.
+
+**Prompt**
+
+````text
+Corrige specs/003-terreno-cazador/quickstart.md. (1) En el escenario 1, cripta-terreno no existe y paquete/ no trae costos ni cazador. Reemplaza el comando por el que sí funcionó: generar el paquete con crear_paquete_niebla (indica la llamada exacta, from tests... import ... en una línea) y usar --cripta cripta-niebla. Anota las acciones e, esperar, o, s, mapa y los resultados esperados que obtuviste (reloj 0→250, 350→470 con costo 120, 470→570). (2) Haz lo mismo con el escenario 2 y con el replay del escenario 4: indica cómo se arma el paquete o la bitácora, para que cualquiera los reproduzca. (3) En el escenario 5 aclara que BENCH_*_RAPIDO=1 solo valida que el script corre y que la evidencia son los resultados del modo completo. (4) No marques T077 en tasks.md. Pasa git status para confirmar que no quedó modificado ningún resultados_bench_*.txt.
+````
+
+## 2026-11-17 19:22 · Arreglo del defecto de carga de enemigos activos (pedido por Persona D).
+
+- **Fecha**: 2026-11-17 19:22
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: Arreglo del defecto de carga de enemigos activos (pedido por Persona D).
+
+**Prompt**
+
+````text
+Arreglo del defecto de carga de enemigos activos (capacidad 003, lo pide la persona D).
+
+Problema: al cargar una partida, Persistencia/ConversorPartida.py restaura solo la sala del jugador; las demás salas se leen perezosamente al entrar. Los enemigos activos (cazadores y los demás) que están en salas ya visitadas donde el jugador ya no está desaparecen tras cargar, mientras que la reconstrucción de la línea de tiempo (simula desde el inicio) sí los tiene. Reproducción: tests/test_cazador_equivalencia.py, escenario "8 salas" (fallan T058 (a), T058 (c) y T059).
+
+Cambio pedido: al cargar, restaurar también, como ya se hace con la sala del jugador, las salas donde el guardado trae enemigos activos (tiempo >= 0). Antes de tocar nada, lee ConversorPartida.py y explícame cómo restaura hoy la sala del jugador; reutiliza ese mismo camino.
+
+Condiciones obligatorias:
+1) No cambiar el formato CRPT 3, ni Persistencia/ArchivoPartida.py, ni Controlador/ControladorPartida.py.
+2) La carga sigue siendo atómica: si leer esas salas falla (por ejemplo, sin la carpeta de datos), el error sale con código 1 y no se carga nada, igual que hoy. Lee primero todo lo necesario y solo después modifica el motor.
+3) Determinismo: restaurar las salas en un orden fijo (id ascendente) y comprobar que los eventos de los enemigos restaurados conservan el orden (tiempo, secuencia) que tenían en la partida guardada. Si el orden de restauración puede cambiar un desempate, dímelo en vez de resolverlo en silencio.
+4) Al entrar después a una sala ya restaurada, no se cargan ni se duplican sus enemigos ni sus eventos.
+5) Agrega pruebas propias, además de las 3 que ya fallan: (a) tras cargar, entrar a una sala ya restaurada no duplica enemigos; (b) carga sin la carpeta de datos con enemigos en salas no actuales: falla con código 1 y el motor queda sin cargar; (c) un enemigo con tiempo < 0 (inactivo) no se restaura.
+
+Verificación: corre la suite completa y, aparte, tests/test_linea_cargar.py, tests/test_linea_cargar_cli.py y tests/test_archivo_partida.py. La suite tiene hoy 1164 pruebas (3 fallan por este defecto); tras el arreglo deben pasar todas. Pásame el diff completo de ConversorPartida.py y la lista de pruebas nuevas, y el resultado de cada comando. No hagas commits, no marques tareas en tasks.md y no toques DECISIONES.md ni el README.
+````
+
+## 2026-11-17 20:50 · Cierre de tareas (T058, T059 y T077) y retoques de tasks.md, README y DECISIONES.
+
+- **Fecha**: 2026-11-17 20:50
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: Cierre de tareas (T058, T059 y T077) y retoques de tasks.md, README y DECISIONES.
+
+**Prompt**
+
+````text
+Aplica estos retoques y pásame el diff de cada archivo. No hagas commits.
+
+1) specs/003-terreno-cazador/tasks.md: T058, T059 y T077 a [x]; quita las notas "⏳ bloqueada…" de las líneas de T058 y T059; en la tabla de bloqueos, las filas de T058 y T059 pasan a "Ya no bloqueada" con la nota "Corregido el fallo de carga de enemigos activos en ConversorPartida.py"; corrige la línea "T032 depende además de la capacidad de datos" (T032 ya está hecha) y la línea "T059 depende de la capacidad 004" (004 ya está en main).
+
+2) README.md (conservar UTF-16 con BOM y CRLF): (a) paso 3 de "Cargar": sustituye "Las salas **no se leen todas**: …" por "Se reconstruye la partida (misma cripta y semilla) y se restaura el jugador. Las salas guardadas se leen con búsqueda binaria en el índice cuando el motor las necesita, salvo las que traen enemigos activos, que se restauran al cargar junto con la del jugador porque sus enemigos siguen actuando."; (b) límites conocidos: sustituye el punto del cazador que no sobrevive a guardar y cargar por "Tras guardar y cargar, dos enemigos de salas distintas que actúan en el mismo instante pueden ejecutarse en otro orden que en la partida guardada, porque el formato CRPT 3 guarda el instante pero no la secuencia."; (c) en "Pruebas de aceptación por escenario" añade el enlace a specs/003-terreno-cazador/quickstart.md (costo de las salidas y cazador); (d) en la lista de lo que cubren las pruebas añade el costo de las salidas, el cazador y la línea de tiempo. NO toques el conteo de pruebas todavía.
+
+3) Decisiones/DECISIONES.md: en los límites de §5.2 sustituye el punto "Un cazador activo que está en una sala que el jugador ya visitó…" por "Tras guardar y cargar, dos enemigos de salas distintas que actúan en el mismo instante pueden ejecutarse en otro orden que en la partida guardada (primero la sala del jugador, luego las demás por id), porque el formato CRPT 3 guarda el instante de cada enemigo pero no su secuencia. Resolverlo exigiría un formato nuevo." No toques nada más de ese archivo.
+
+Verifica que el README se lee bien con Get-Content README.md -Encoding Unicode y que solo cambiaron esas líneas.
+````
+
+## 2026-11-17 20:55 · README: criterio de 5 ms de «ir a» y límites conocidos.
+
+- **Fecha**: 2026-11-17 20:55
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: README: criterio de 5 ms de «ir a» y límites conocidos.
+
+**Prompt**
+
+````text
+README.md (conservar UTF-16 con BOM y CRLF): (1) en "Límites conocidos", sustituye el punto del criterio de 5 ms de «ir a» por: "El criterio de 5 ms por paso de «ir a» (enunciado §6.1) se cumple con el mapa conocido completo de `cripta-02` (20 salas, la mayor de las copias locales): el peor paso dio entre 0.02 y 0.09 ms. La cripta de referencia del enunciado todavía no está publicada, así que `cripta-02` es una sustituta y el veredicto definitivo queda pendiente. La mayor publicada, `cripta-06` (300 salas), no tiene copia local y no se midió; con mapas sintéticos se cumple hasta 400 salas y no se cumple en una grilla de 2500 (ver `Decisiones/DECISIONES.md`, §5.3)."; (2) en la tabla de "Mediciones", fila de niebla de guerra y «ir a», cambia «con la cripta publicada más grande (`cripta-02`)» por «con la mayor copia local de las criptas (`cripta-02`, sustituta de la cripta de referencia)»; (3) en "Pruebas" (sección de proceso), cambia la etiqueta del segundo punto a "Pruebas de aceptación del terreno y el cazador:". No toques el conteo de pruebas. Verifica con Get-Content README.md -Encoding Unicode y pásame el diff.
+````
+
+## 2026-11-17 21:02 · README: conteo de pruebas y pruebas de aceptación de 003.
+
+- **Fecha**: 2026-11-17 21:02
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: README: conteo de pruebas y pruebas de aceptación de 003.
+
+**Prompt**
+
+````text
+1) README.md (conservar UTF-16 con BOM y CRLF): cambia "1143" por "1174" en la línea de "Referencia rápida" (# pruebas (1143, todas OK)) y en el párrafo de "Pruebas" ("1143 pruebas, todas OK, sin red"). No toques nada más.
+2) specs/003-terreno-cazador/tasks.md: marca T075 como [x] y agrega al final de Notes: "- T075: suite completa al cierre de la capacidad: 1174 pruebas, 0 fallos, 0 errores — `python -m unittest discover -s tests`, 2026-11-17." Quita de T076 la nota "⏳ el formato de consulta depende del plan de la capacidad 004".
+Verifica el README con Get-Content README.md -Encoding Unicode y pásame los dos diffs. No hagas commits.
+````
+
+## 2026-11-17 21:09 · Fusión del README en un conflicto de git pull --rebase (primer intento).
+
+- **Fecha**: 2026-11-17 21:09
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: Fusión del README en un conflicto de git pull --rebase (primer intento).
+
+**Prompt**
+
+````text
+Estoy en medio de un `git pull --rebase` con conflicto en README.md (UTF-16 LE con BOM y CRLF; Git no lo fusiona). Tres versiones:
+- base: `git show 57fce83:README.md`
+- mía: `git show ecb0b67:README.md`
+- de origin/main: `git show 50b618a:README.md`
+Lee cada una como BYTES (subprocess con stdout binario, nunca con redirección de PowerShell, que la corrompe), decodifícalas como UTF-16, conviértelas a UTF-8 con LF en archivos temporales FUERA del repositorio y haz una fusión de tres vías con `git merge-file` (mía sobre la de origin/main, con la base). Si hay conflictos de texto, no los resuelvas a ciegas: muéstrame cada uno. Después reescribe README.md en la carpeta del proyecto como UTF-16 LE con BOM y CRLF. Verifica: (1) Get-Content README.md -Encoding Unicode se lee bien, con tildes y símbolos; (2) conserva mis cambios (1174 pruebas, paso 3 de "Cargar", límite del desempate, cripta-02 como sustituta, los dos puntos de pruebas de aceptación); (3) conserva todo lo que cambió la versión de origin/main respecto de la base. Pásame (a) qué líneas cambió origin/main, (b) el resultado de la fusión. No hagas `git add`, `git rebase --continue` ni commits.
+````
+
+## 2026-11-17 21:19 · Fusión de tres vías del README (UTF-16) y verificación.
+
+- **Fecha**: 2026-11-17 21:19
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: Fusión de tres vías del README (UTF-16) y verificación.
+
+**Prompt**
+
+````text
+README.md está en UTF-16 LE con BOM y CRLF. Git lo trata como binario, así que no se puede fusionar con git normal. Tres versiones:
+- base: `git show 57fce83:README.md`
+- mía: `git show ecb0b67:README.md`
+- actual: README.md de la carpeta (igual que origin/main, HEAD).
+
+Pasos:
+1. Lee cada versión como BYTES (subprocess con stdout binario). Nunca uses redirección de PowerShell (`>`), porque corrompe el archivo.
+2. Decodifica como UTF-16 y guarda tres temporales UTF-8 con LF en una carpeta FUERA del repositorio (base.md, mia.md, actual.md).
+3. Antes de fusionar, dime qué cambió origin/main respecto de la base: `diff base.md actual.md`.
+4. Fusiona con `git merge-file -p actual.md base.md mia.md > fusion.md`, o con --diff3 si hay conflictos. No resuelvas conflictos a ciegas: muéstrame cada uno.
+5. Reescribe README.md como UTF-16 LE con BOM y CRLF, escribiendo bytes (no `>`).
+6. Verifica que README.md se lee bien (`Get-Content README.md -Encoding Unicode`) y que conserva mis cambios: 1174 pruebas (líneas ~44 y ~609), paso 3 de «Cargar» con enemigos activos, límite del desempate tras cargar, cripta-02 como sustituta y cripta-06 sin medir, el límite de veneno, la sección «Terreno y cazador», la tabla de seis mediciones de --bench y los dos puntos de pruebas de aceptación. Verifica también que conserva todo lo que cambió origin/main.
+7. Muéstrame (a) las líneas que cambió origin/main respecto de la base y (b) el diff final de README.md contra HEAD, en texto.
+
+No hagas commits ni push.
+````
+
+## 2026-11-17 21:27 · README: partir del README de origin y aplicar solo el conteo de pruebas y el enlace de aceptación.
+
+- **Fecha**: 2026-11-17 21:27
+- **Modelo**: Opus 5.5 (Claude Code)
+- **Para qué se usó**: README: partir del README de origin y aplicar solo el conteo de pruebas y el enlace de aceptación.
+
+**Prompt**
+
+````text
+Parte de actual.md (el README de origin/main, ya en UTF-8 con LF en la carpeta scratchpad\fusion2). Descarta resuelto.md: tomó mi versión en conflictos donde la de origin es la vigente (cripta-06 ya medida, paso 3 y límite del desempate ya actualizados por Lucía).
+
+Aplica SOLO estos cambios sobre actual.md, sin tocar nada más:
+1. Línea 44: «pruebas (1143, todas OK)» -> «pruebas (1174, todas OK)».
+2. Línea ~609: «1143 pruebas, todas OK» -> «1174 pruebas, todas OK».
+3. En ese mismo párrafo de la lista de pruebas, agrega «el costo de las salidas, el cazador,» después de «el guardado del conocimiento,», sin cambiar lo demás.
+4. En «Pruebas de aceptación», agrega después de la línea de 001: «- Pruebas de aceptación del terreno y el cazador: [specs/003-terreno-cazador/quickstart.md](specs/003-terreno-cazador/quickstart.md) (costo de las salidas y cazador)».
+
+No cambies la fila del bench de niebla, el punto del criterio de 5 ms, el paso 3 de «Cargar» ni los límites del veneno y del desempate: quedan como en actual.md.
+
+Escribe README.md como UTF-16 LE con BOM y CRLF desde bytes (nunca con `>`). Verifica con Get-Content README.md -Encoding Unicode y muéstrame `git diff --no-index actual.md nuevo.md` en UTF-8: deben ser unas 4 líneas cambiadas. Sin commits.
+````
+
 # Persona C — capacidad 001 (niebla de guerra, mapa conocido y viaje «ir a»)
 
 ## 2026-11-04 11:59 · Enmienda de la constitución acordada por el grupo (se elimina el punto 12).
