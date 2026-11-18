@@ -12,25 +12,26 @@
 #
 #   | Operación          | Tiempo                         | Memoria                  |
 #   |--------------------|--------------------------------|--------------------------|
-#   | iniciar            | O(S + N + E)                   | O(S)                     |
-#   | registrar_accion   | O(1), más O(S + N + E) cada K  | O(1), más O(S) cada K    |
+#   | iniciar            | O(S + N + E)                   | O(S) + O(N + E)          |
+#   | registrar_accion   | O(1), más O(S + N + E) cada K  | O(1), más O(S) + O(N + E) cada K |
 #   | sello_de           | O(1)                           | O(1)                     |
-#   | registrar_retroceso| O(V + S + N + E)               | O(S)                     |
-#   | registrar_carga    | O(S + N + E)                   | O(S)                     |
+#   | registrar_retroceso| O(V + S + N + E)               | O(S) + O(N + E)          |
+#   | registrar_carga    | O(S + N + E)                   | O(S) + O(N + E), más la copia privada |
 #   | a_registro         | O(n_guion)                     | O(n_guion)               |
 #   | desde_registro     | O(n_guion)                     | O(n_guion)               |
 #   | cerrar             | O(L)                           | O(L)                     |
 #   | serie: registrar   | O(capacidad del inventario)    | O(1)                     |
 #   | serie: plegar      | O(registros sacados)           | O(1)                     |
 #   | serie: en          | O(log longitud)                | O(1)                     |
-#   | consultar_accion  | O(log C + S + K·a)             | O(S) temporal            |
-#   | consultar_instante | O(log n + log C + S + K·a)     | O(S) temporal            |
-#   | clon_antes_de      | O(log C + S + K·a)             | O(S) (lo descarta quien lo pide) |
+#   | consultar_accion  | O(log C + S + K·a)             | O(S + N + E) temporal    |
+#   | consultar_instante | O(log n + log C + S + K·a)     | O(S + N + E) temporal    |
+#   | clon_antes_de      | O(log C + S + K·a)             | O(S + N + E) (lo descarta quien lo pide) |
 #   | comprobar_sello    | O(1)                           | O(1)                     |
 #   | propiedades        | O(1)                           | O(1)                     |
 #   | acciones_rehechas  | O(1)                           | O(1)                     |
 #
-#   Memoria total: O(n) para el guion y la historia vigente, más O(C·S) para los puntos de control.
+#   Memoria total: O(n) para el guion y la historia vigente, más O(C·(S + N + E)) para los puntos de control (cada punto pesa O(S) + O(N + E): el estado copiado y las fotos de
+#   rastros y de cerradas).
 #   Cota de puntos de control: C <= ceil(n / K) + 1 + L + P, con L cargas y P usos del pergamino que no coinciden con un
 #   punto existente (el +1 es el estado inicial). Cada carga agrega siempre un punto del motor cargado, aunque ya hubiera uno
 #   regular en esa misma acción: `pc_accion` queda con repetidos y la búsqueda devuelve el último.
@@ -158,19 +159,19 @@ class LineaTiempo:
 
     | Operación            | Tiempo                         | Memoria                   |
     |----------------------|--------------------------------|---------------------------|
-    | ``iniciar``          | O(S + N + E)                   | O(S)                      |
-    | ``registrar_accion`` | O(1), más O(S + N + E) cada K  | O(1), más O(S) cada K     |
-    | ``registrar_retroceso`` | O(V + S + N + E)            | O(S)                      |
-    | ``registrar_carga``  | O(S + N + E)                   | O(S), más la copia privada|
-    | ``consultar_instante`` | O(log n + log C + S + K·a)   | O(S) temporal             |
-    | ``consultar_accion`` | O(log C + S + K·a)             | O(S) temporal             |
+    | ``iniciar``          | O(S + N + E)                   | O(S) + O(N + E)           |
+    | ``registrar_accion`` | O(1), más O(S + N + E) cada K  | O(1), más O(S) + O(N + E) cada K |
+    | ``registrar_retroceso`` | O(V + S + N + E)            | O(S) + O(N + E)           |
+    | ``registrar_carga``  | O(S + N + E)                   | O(S) + O(N + E), más la copia privada |
+    | ``consultar_instante`` | O(log n + log C + S + K·a)   | O(S + N + E) temporal     |
+    | ``consultar_accion`` | O(log C + S + K·a)             | O(S + N + E) temporal     |
     | ``a_registro``       | O(n_guion)                     | O(n_guion)                |
     | ``desde_registro``   | O(n_guion)                     | O(n_guion)                |
     | ``cerrar``           | O(L)                           | O(L)                      |
     | propiedades          | O(1)                           | O(1)                      |
 
     Memoria total: ``M(n) = n·b_guion + (P + L)·b_guion + C·(S + N + E) + serie``, es decir, O(n) para el guion y la historia
-    vigente más O(C·S) para los puntos de control, con ``C <= ceil(n / K) + 1 + L + P``. No contiene el término «acciones ×
+    vigente más O(C·(S + N + E)) para los puntos de control (cada punto: O(S) + O(N + E)), con ``C <= ceil(n / K) + 1 + L + P``. No contiene el término «acciones ×
     tamaño del estado»: para K fijo el segundo sumando crece como n / K, y duplicar n duplica M.
     """
 
