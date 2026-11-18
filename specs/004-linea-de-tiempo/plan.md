@@ -15,7 +15,7 @@ capacidades solo se leyó lo que dicen sus specs, contratos y `tasks.md`, y el c
 presente. La idea es **guardar poco y rehacer lo que falta**:
 
 - La línea guarda un **guion** de los comandos aceptados, con el sello `(reloj, secuencia)` de cada decisión, y una **copia completa del
-  estado cada K acciones** (K = 50 por defecto, **HIPÓTESIS** hasta medir).
+  estado cada K acciones** (K = 50 por defecto, confirmado con M1 y M2; ver Decisiones/DECISIONES.md §5.5).
 - Una consulta busca con **búsqueda binaria propia** el punto de control más cercano, lo copia (con un esqueleto de salas propio, para no
   tocar la partida) y **rehace a lo sumo K acciones** con el propio motor. Para un instante entre dos decisiones corta la agenda del clon
   en `t`, sin modificar el motor.
@@ -161,7 +161,7 @@ PR-14 (M10) no depende de la persona C ni de la A: usa `Historial` y `LineaTiemp
 | **P-D05** | ¿El grupo acepta los [cambios propuestos a la spec](#cambios-propuestos-a-la-spec)? | Grupo | Código (Principio IX) | Se implementa lo que no depende de ellos |
 | **P-D06** | ¿Es aceptable el límite de escala (consulta ~69 ms con 2 000 salas)? Las criptas locales tienen 5 a 20 | Grupo | Nada hoy | M3 mide; el plan B es una copia que no recorre salas sin cambios |
 | ~~P-D07~~ **Cerrada** (decidido por C el 2026-11-12, T005) | `main.py` lo tocan B (`--verificar`, `--forzar`), C (`--replay` sin vista, bench) y D (`--hasta`, `--checkpoint-cada`, bench): ¿en qué orden y con qué dueño del merge? **Decisión**: D implementa T035, T036, T063a, T063b, T085, T086, T088, T066 y T111 (T111 por confirmar con C); C es dueña de `ControladorPartida.py` y `main.py` (revisa cada commit y resuelve el merge) y coordina T115. Reglas: un turno a la vez; aviso al grupo antes de tocar `ControladorPartida.py`, `main.py` o el README; `git pull --no-edit` y subir el mismo día. Orden: C sube 001-T062 a T065; T035 y T036 en local hasta T047; T063a y T063b (con B); T085 y T086 tras T084; al final T088, T066, T111 y T115. C avisa los cambios de su bench antes de que D toque `main.py` | B, C, D | — | Resuelta: ver T005 |
-| **P-D08** | K por defecto = 50 es **HIPÓTESIS** | D con el grupo | Documentar el valor | M1 y M2 lo confirman o lo cambian |
+| ~~P-D08~~ **Cerrada** | K por defecto = 50 | D con el grupo | — | Resuelta: con K = 50 el 100 % de las consultas tarda menos de 50 ms (máximo 15.6 ms, M1) y T113 lo conserva |
 | **P-D09** | Tras terminar la partida no hay `historia` interactiva (spec: Assumptions); solo `--replay --hasta` | — | Nada | Sin cambio |
 
 ## Riesgos
@@ -282,7 +282,7 @@ tests/                      # test_linea_*.py, test_cli_historia.py, utiles_line
 
 ## Complexity Tracking
 
-No hay excepciones a la constitución. `copy.deepcopy` y su `memo` (un `dict` temporal) están **autorizados por el profesor el 2026-11-12 (ver T003 de [tasks.md](tasks.md))**, solo para el `memo`; el resto de las estructuras sigue sin `dict` ni `set` como índice. Elementos y costos de diseño:
+Excepciones y usos acotados de la constitución: `copy.deepcopy` y su `memo` (un `dict` temporal) están **autorizados por el profesor el 2026-11-12 (ver T003 de [tasks.md](tasks.md))**, solo para el `memo`; el resto de las estructuras sigue sin `dict` ni `set` como índice. Elementos y costos de diseño:
 
 | Elemento | Por qué hace falta | Alternativa más simple descartada porque |
 |----------|--------------------|------------------------------------------|
@@ -291,3 +291,5 @@ No hay excepciones a la constitución. `copy.deepcopy` y su `memo` (un `dict` te
 | Segundo `GestorDatos` (`GestorHistorico`) | Garantía estructural de que reconstruir no hace solicitudes (Principio VII) | Reusar el gestor vivo: altera contadores y caché y depende de que el disco nunca falle |
 | Copia privada del archivo cargado (archivo temporal por carga) | Restaurar salas pendientes tal como estaban al cargar, aunque un guardado posterior sobrescriba el original | Guardar los registros de sala en memoria: exige envolver `motor.restaurador`, que `guardar` reasigna |
 | Puntos de control extra tras retroceso y carga | Reconstrucción exacta (R5) | Reemplazar el previo: rompe FR-019 |
+| Modelo/LineaTiempo.py importa RegistroLinea de Persistencia/ | a_registro y desde_registro convierten la línea en el registro que se guarda; RegistroLinea es un tipo de datos sin abrir archivos, red ni consola, así que Modelo/ sigue sin entradas ni salidas (Principio II) | Duplicar el tipo en Modelo/ deja dos definiciones del mismo registro, y moverlo a Modelo/ mezcla el formato binario con las reglas del juego |
+| RegistroLinea.to_dict (clave linea del JSON) | Arma con un dict la salida que ExportadorJSON escribe para comparar con el binario; el dict solo da forma al JSON | Un exportador sin dict obliga a escribir un serializador propio de JSON; el dict no se usa como índice ni como caché de ninguna estructura (Principio I) |
