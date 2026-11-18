@@ -1386,7 +1386,44 @@ Enunciado de la Parte II, §5.6: repetir las mediciones de la primera parte con 
 
 ### Agenda de eventos (P1 §4.1)
 
-[PENDIENTE: persona A, agenda de eventos P1 §4.1]
+#### 1. Problema
+
+La Parte I eligió un montículo binario propio para la agenda de eventos (§4.1). La carga nueva de la Parte II cambia lo que se programa: los tiempos ya no son consecutivos sino reloj + intervalo según el costo de la salida y la velocidad del actor (`calcu_inter`), hay más actores con su propio reloj y entran los cazadores (§5.2). Hay que ver si esa carga deja de hacer adecuada la decisión.
+
+#### 2. Alternativas consideradas
+
+Seguir con el montículo propio o volver a la lista con búsqueda lineal del mínimo, que ya se había descartado en §4.1. No se evaluó otra estructura: la medición con la carga nueva muestra que el montículo sigue ganando donde importa (ver 5).
+
+#### 3. Decisión
+
+La agenda sigue siendo el montículo binario de mínimos de §4.1, sin cambios. `Modelo/AgendaEventos.py` y `Modelo/Evento.py` no cambiaron desde la medición de la Parte I (commit a4d6299). Los cazadores no usan la agenda para buscar rutas: usan la `ColaPrioridad` (§5.2); la agenda solo programa sus acciones, como las de cualquier enemigo.
+
+#### 4. Análisis de complejidad
+
+Sin cambio respecto de §4.1: agregar y extraer cuestan O(log n); consultar el mínimo, comprobar si un evento está y cancelarlo cuestan O(1). Los intervalos variables cambian los tiempos, no la estructura: más empates se resuelven por la secuencia, como antes.
+
+#### 5. Evidencia empírica
+
+La medición de la Parte I (montículo contra lista, N = 10, 50, 100 y 250) se repitió con `tests/bench_agenda_costos.py` en la misma máquina, en la misma corrida para las dos cargas. Carga antigua: tiempos consecutivos 0 a N−1. Carga nueva: 10 actores, evento i = siguiente acción del actor i % 10 en reloj + `max(1, costo * 100 // velocidad)`, con costos de 50 a 300 y velocidades 50, 100 y 200, semilla 2026. Con N = 250 hay 30 tiempos repetidos y 135 de 249 eventos llegan con un tiempo menor que el anterior. Cifras con N = 250, mediana de 5 repeticiones (`resultados_bench_agenda_despues.txt`):
+
+| Operación | Estructura | Antes (T002, carga antigua) | Carga antigua (misma corrida) | Carga nueva (misma corrida) |
+|---|---|---|---|---|
+| Insertar todos | montículo | 187.4 µs | 170.3 µs | 249.0 µs |
+| Insertar todos | lista | 65.6 µs | 69.7 µs | 85.1 µs |
+| Consultar mínimo | montículo | 0.30 µs | 0.30 µs | 0.30 µs |
+| Consultar mínimo | lista | 35.6 µs | 35.9 µs | 44.1 µs |
+| Extraer todos | montículo | 1.08 ms | 1.93 ms | 1.61 ms |
+| Extraer todos | lista | 3.19 ms | 4.25 ms | 4.89 ms |
+| Buscar un evento | montículo | 0.40 µs | 0.40 µs | 0.30 µs |
+| Buscar un evento | lista | 5.5 µs | 6.9 µs | 5.5 µs |
+
+Con la carga nueva y N = 250 el montículo consulta el mínimo 147 veces más rápido que la lista, busca un evento 18.3 veces más rápido y extrae todos 3.0 veces más rápido; la lista solo gana al insertar (2.9 veces), como en la Parte I. Razón carga nueva / carga antigua del montículo con N = 250: 1.46 al insertar, 1.00 al consultar, 0.84 al extraer y 0.75 al buscar. La comparación válida es entre las dos cargas de una misma corrida: la columna «Antes (T002)» viene de otra corrida, y entre T002 y T069 la mediana de las 16 razones fue 1.20 en el montículo y 1.21 en la lista, con el código de la agenda sin cambios, así que esa diferencia es variación del equipo entre corridas.
+
+Con la carga completa: el ciclo entre dos decisiones del jugador con 500 enemigos activos tuvo p95 de 16.12 ms, por debajo del límite de 20 ms de §5.2 (`resultados_bench_ciclo.txt`, otra máquina), y con 50 cazadores activos en una cripta sintética de 300 salas el p95 fue 3.39 ms (M7 de `resultados_bench_cazador.txt`).
+
+#### 6. Límites conocidos
+
+HIPÓTESIS (no medida): que 10 actores sintéticos con costos al azar representen la carga real de una partida; no se midió la agenda con partidas reales. Con N = 50 hay razones de 1.75 (montículo) y 2.67 (lista) en «buscar un evento», sobre valores de unas décimas de microsegundo que el reloj apenas resuelve; son 2 de 32 razones y se atribuyen al ruido de la medición, sin una repetición aparte que lo confirme. El microbenchmark llega a N = 250; el ciclo completo se midió hasta 500 enemigos. Las cifras son de un solo equipo (Intel i5-7300U, Windows 11, Python 3.13.13). Detalle de la decisión original: §4.1.
 
 ### Historial de retroceso (P1 §4.6)
 
